@@ -9,12 +9,12 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Establish toolchain and prove compiled runtime
 
-- **Status:** closed
+- **Status:** in-review
 - **Estimate:** unknown
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R4, R6, R8
 - **Depends on:** none
-- **PR:** -
+- **PR:** [#1](https://github.com/TrentBrown/portreeve/pull/1)
 
 Create the Bun/Commander.js/checkJs project foundation and execute the
 compiled-runtime spike before committing the rest of the architecture.
@@ -27,12 +27,12 @@ consumption. `bun run build` produces a runnable native ARM64 executable.
 
 ## I-2 - Implement protocol, domain model, and SQLite registry
 
-- **Status:** closed
+- **Status:** in-review
 - **Estimate:** unknown
 - **Plan steps:** P2
 - **Rubric criteria:** R1, R2, R3, R6, R8
 - **Depends on:** I-1
-- **PR:** -
+- **PR:** [#1](https://github.com/TrentBrown/portreeve/pull/1)
 
 Define the versioned contracts and durable transactional model used by every
 later slice.
@@ -45,12 +45,12 @@ corrupt records, settings persistence, and atomic mutation/audit rollback.
 
 ## I-3 - Deliver local server and JavaScript allocation client
 
-- **Status:** closed
+- **Status:** in-review
 - **Estimate:** unknown
 - **Plan steps:** P3
 - **Rubric criteria:** R1, R2, R3, R6
 - **Depends on:** I-2
-- **PR:** -
+- **PR:** [#1](https://github.com/TrentBrown/portreeve/pull/1)
 
 Complete the first end-to-end acquire, bind, confirm, release, retry, and
 restart-persistence workflow over the real Unix-socket protocol.
@@ -66,12 +66,12 @@ incompatible failures.
 
 ## I-4 - Reconcile live listeners and expose global inventory
 
-- **Status:** closed
+- **Status:** in-review
 - **Estimate:** unknown
 - **Plan steps:** P4
 - **Rubric criteria:** R4
 - **Depends on:** I-3
-- **PR:** -
+- **PR:** [#1](https://github.com/TrentBrown/portreeve/pull/1)
 
 Build platform inspection, process fingerprints, run lineage, and the global
 list/inspect evidence model.
@@ -86,12 +86,12 @@ Linux execution remains part of the P9 cross-platform matrix.
 
 ## I-5 - Implement safe reclamation and unsafe eviction
 
-- **Status:** closed
+- **Status:** in-review
 - **Estimate:** unknown
 - **Plan steps:** P5
 - **Rubric criteria:** R5, R8
 - **Depends on:** I-4
-- **PR:** -
+- **PR:** [#1](https://github.com/TrentBrown/portreeve/pull/1)
 
 Implement and verify every replacement policy, target revalidation, dry-run,
 unsafe consent boundary, and audit outcome.
@@ -109,12 +109,12 @@ SIGKILL behavior.
 
 ## I-6 - Complete operational CLI and administration
 
-- **Status:** closed
+- **Status:** in-review
 - **Estimate:** unknown
 - **Plan steps:** P6
 - **Rubric criteria:** R6, R8
 - **Depends on:** I-3, I-4, I-5
-- **PR:** -
+- **PR:** [#1](https://github.com/TrentBrown/portreeve/pull/1)
 
 Finish stable human/JSON output, exit codes, claims/config commands, pruning,
 and bounded local logs/history.
@@ -132,12 +132,12 @@ absence of outbound telemetry integrations.
 
 ## I-7 - Add native supervision and managed upgrades
 
-- **Status:** closed
+- **Status:** in-review
 - **Estimate:** unknown
 - **Plan steps:** P7
 - **Rubric criteria:** R7
 - **Depends on:** I-6
-- **PR:** -
+- **PR:** [#1](https://github.com/TrentBrown/portreeve/pull/1)
 
 Deliver and test LaunchAgent and `systemd --user` lifecycle behavior,
 installation, upgrades, health checks, and rollback.
@@ -159,12 +159,12 @@ execution remains part of the P9 cross-platform matrix.
 
 ## I-8 - Package and document the release
 
-- **Status:** closed
+- **Status:** in-review
 - **Estimate:** unknown
 - **Plan steps:** P8
 - **Rubric criteria:** R6, R8
 - **Depends on:** I-6, I-7
-- **PR:** -
+- **PR:** [#1](https://github.com/TrentBrown/portreeve/pull/1)
 
 Produce protocol and operator documentation, compiled artifacts, checksums,
 Homebrew packaging, and the npm client package.
@@ -196,7 +196,7 @@ package.
 - **Plan steps:** P9
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
 - **Depends on:** I-1, I-2, I-3, I-4, I-5, I-6, I-7, I-8
-- **PR:** -
+- **PR:** [#1](https://github.com/TrentBrown/portreeve/pull/1)
 
 Execute the complete rubric and Definition-of-Done matrix, resolve blocking
 findings, and produce feature-completion evidence.

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portreeve PR #1 - Explain Diff</title>
+    <style>
+      body {
+        max-width: 920px;
+        margin: 3rem auto;
+        padding: 0 1.5rem;
+        font: 16px/1.55 system-ui, sans-serif;
+        color: #17212b;
+      }
+      h1,
+      h2 {
+        line-height: 1.2;
+      }
+      code {
+        background: #eef2f5;
+        padding: 0.1rem 0.3rem;
+      }
+      .note {
+        border-left: 4px solid #b56b00;
+        padding: 0.75rem 1rem;
+        background: #fff8e8;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Portreeve initial release</h1>
+    <p>
+      PR #1 turns an empty repository into a local, per-user port authority,
+      its official JavaScript client, native lifecycle tooling, and a
+      fail-closed release pipeline.
+    </p>
+
+    <h2>Runtime architecture</h2>
+    <p>
+      A foreground <code>portreeve serve</code> process owns a private Unix
+      socket and SQLite registry. Clients negotiate protocol compatibility,
+      acquire a short-lived candidate lease, bind their TCP listener, and
+      confirm the run with fresh listener and process-lineage evidence.
+    </p>
+
+    <h2>Safety model</h2>
+    <p>
+      Inventory is derived from complete LISTEN-specific <code>lsof</code>
+      snapshots. Normal reclamation signals only listeners verified against
+      one confirmed run and revalidates every process instance before each
+      signal. The any-owner escape hatch is a separate, explicitly unsafe,
+      exact-port operation and still remains fingerprint-bound.
+    </p>
+
+    <h2>Developer and operator surface</h2>
+    <p>
+      Commander.js provides human and JSON CLI contracts for serving,
+      lifecycle, ports, claims, configuration, logs, and history. Native
+      integration uses per-user LaunchAgents on macOS and
+      <code>systemd --user</code> on Linux while preserving foreground manual
+      operation.
+    </p>
+
+    <h2>Distribution</h2>
+    <p>
+      The build emits four standalone executables, checksums, a manifest, a
+      Homebrew formula referencing the same artifacts, and a dependency-free
+      npm client tarball. Publication is gated on native target execution,
+      matching tag/version metadata, and public repository visibility.
+    </p>
+
+    <p class="note">
+      This remains a draft boundary. R1-R7 pass; R8 is open until a Linux ARM64
+      release runner, public repository visibility, and npm credentials are in
+      place. Nothing has been published.
+    </p>
+  </body>
+</html>
