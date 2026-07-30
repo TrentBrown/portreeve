@@ -1,0 +1,8 @@
+.cache/
+.checkpoints/
+coverage/
+dist/
+node_modules/
+bun.lock
+docs/
+CHECKPOINT.md
