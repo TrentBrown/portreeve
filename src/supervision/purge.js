@@ -230,7 +230,21 @@ export async function executePurge(manager, confirmationToken) {
       refused.push(...deletionPreview.refused);
       retained.push(...deletionPreview.paths.map(({ path }) => path));
     } else {
-      await deletePreviewedTree(deletionPreview, removed, retained, missing, refused);
+      const previewedPaths = new Set(preview.paths.map(({ path }) => path));
+      const addedPaths = deletionPreview.paths.filter(
+        ({ path }) => !previewedPaths.has(path),
+      );
+      if (addedPaths.length > 0) {
+        refused.push(
+          ...addedPaths.map(({ path }) => ({
+            path,
+            reason: 'path-added-after-preview',
+          })),
+        );
+        retained.push(...deletionPreview.paths.map(({ path }) => path));
+      } else {
+        await deletePreviewedTree(deletionPreview, removed, retained, missing, refused);
+      }
     }
   } catch (caught) {
     error = lifecycleError(caught);

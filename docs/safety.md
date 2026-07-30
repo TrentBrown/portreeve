@@ -44,5 +44,6 @@ complete tree with `lstat`, refuses symlinks, foreign ownership, nonprivate
 roots or markers, paths writable by another user, and live
 manual/ambiguous/incompatible servers, and hashes that evidence into a
 confirmation token. Execution accepts only an identical fresh preview,
-revalidates after stopping supervised state, keeps the marker when deletion is
-partial, and reports retained or refused paths instead of claiming success.
+revalidates after stopping supervised state, refuses any path added during
+that shutdown window, keeps the marker when deletion is partial, and reports
+retained or refused paths instead of claiming success.

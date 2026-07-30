@@ -71,6 +71,69 @@ test('refuses execution when filesystem evidence changed after preview', async (
   await access(fixture.root);
 });
 
+test('does not delete paths created during supervised shutdown', async () => {
+  const fixture = await createFixture();
+  const manager = /** @type {any} */ (fixture.manager);
+  const definitionPath = manager.supervisor.definitionPath;
+  const addedPath = join(fixture.root, 'created-during-stop');
+  let active = true;
+  await writeFile(definitionPath, 'definition', { mode: 0o600 });
+  manager.status = () => {
+    const value = status(fixture.root, join(fixture.root, 'portreeve.sock'), 'none');
+    return Promise.resolve({
+      ...value,
+      supervisor: {
+        kind: 'launchd',
+        state: active ? 'active' : 'unavailable',
+        mainPid: active ? 4242 : null,
+        error: null,
+      },
+      socket: active
+        ? {
+            path: join(fixture.root, 'portreeve.sock'),
+            state: 'healthy',
+            server: {
+              softwareVersion: '0.1.0',
+              protocol: { minimum: 1, maximum: 1 },
+              capabilities: [],
+              pid: 4242,
+              mode: 'supervised',
+            },
+            error: null,
+          }
+        : value.socket,
+      mode: active ? 'supervised' : 'none',
+      versions: {
+        ...value.versions,
+        running: active ? '0.1.0' : null,
+      },
+    });
+  };
+  manager.supervisor.stop = async () => {
+    active = false;
+    await writeFile(addedPath, 'late state', { mode: 0o600 });
+  };
+  manager.supervisor.uninstall = async () => {
+    await unlink(definitionPath);
+  };
+  const preview = await previewPurge(manager);
+
+  const result = await executePurge(manager, preview.confirmationToken);
+  expect(result).toMatchObject({
+    outcome: 'partial',
+    refused: [
+      {
+        path: join(preview.root, 'created-during-stop'),
+        reason: 'path-added-after-preview',
+      },
+    ],
+    error: null,
+  });
+  expect(result.retained).toContain(preview.root);
+  expect(result.retained).toContain(join(preview.root, 'created-during-stop'));
+  await access(addedPath);
+});
+
 test('refuses symlinks and live manual-server evidence', async () => {
   const symlinkFixture = await createFixture();
   const target = join(await temporaryDirectory(), 'target');
