@@ -3,6 +3,7 @@
 import { chmod, lstat, mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { OWNERSHIP_MARKER_FILENAME, ensureOwnershipMarker } from './ownership.js';
 
 /**
  * @param {NodeJS.ProcessEnv} [environment]
@@ -20,6 +21,7 @@ export function resolveRuntimePaths(environment = process.env) {
 
   return Object.freeze({
     applicationDirectory,
+    ownershipMarkerPath: join(applicationDirectory, OWNERSHIP_MARKER_FILENAME),
     binaryDirectory: join(applicationDirectory, 'bin'),
     managedExecutablePath: join(applicationDirectory, 'bin', 'portreeve'),
     rollbackExecutablePath: join(applicationDirectory, 'bin', 'portreeve.previous'),
@@ -38,6 +40,7 @@ export function resolveRuntimePaths(environment = process.env) {
  */
 export async function prepareRuntimeDirectories(paths) {
   await ensurePrivateDirectory(paths.applicationDirectory);
+  await ensureOwnershipMarker(paths);
   if ('binaryDirectory' in paths && typeof paths.binaryDirectory === 'string') {
     await ensurePrivateDirectory(paths.binaryDirectory);
   }

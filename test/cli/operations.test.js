@@ -75,7 +75,11 @@ test('operational commands expose stable JSON and exit-code contracts', async ()
   expect(status.exitCode, status.stderr).toBe(0);
   expect(JSON.parse(status.stdout)).toMatchObject({
     version: 1,
-    status: { running: true, socketPath },
+    status: {
+      socket: { path: socketPath, state: 'healthy' },
+      mode: 'manual',
+      versions: { cli: '0.1.0', running: '0.1.0' },
+    },
   });
 
   const configSet = await runCli([
@@ -223,7 +227,10 @@ test('operational commands expose stable JSON and exit-code contracts', async ()
   const stopped = await runCli(['status', '--socket', socketPath, '--json']);
   expect(stopped.exitCode).toBe(10);
   expect(JSON.parse(stopped.stdout)).toMatchObject({
-    status: { running: false },
+    status: {
+      socket: { state: 'unavailable' },
+      mode: 'none',
+    },
   });
   const unavailable = await runCli([
     'claims',

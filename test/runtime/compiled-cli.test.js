@@ -1,7 +1,7 @@
 // @ts-check
 
 import { expect, test } from 'bun:test';
-import { chmod, mkdtemp, rm } from 'node:fs/promises';
+import { access, chmod, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { PortreeveClient } from '../../packages/client/src/index.js';
@@ -69,6 +69,12 @@ test('Commander.js CLI runs from the standalone executable', async () => {
 
     const home = join(directory, 'home');
     const socketPath = join(home, 'portreeve.sock');
+    const lifecycleEnvironment = {
+      ...process.env,
+      HOME: directory,
+      PORTREEVE_SUPERVISOR_DEFINITION: join(directory, 'portreeve.plist'),
+      PORTREEVE_SUPERVISOR_LABEL: `com.portreeve.compiled-test.${process.pid}`,
+    };
     const serve = Bun.spawn([binaryPath, 'serve', '--home', home], {
       stderr: 'pipe',
       stdout: 'pipe',
@@ -89,6 +95,7 @@ test('Commander.js CLI runs from the standalone executable', async () => {
       const status = Bun.spawn(
         [binaryPath, 'status', '--socket', socketPath, '--json'],
         {
+          env: lifecycleEnvironment,
           stderr: 'pipe',
           stdout: 'pipe',
         },
@@ -99,7 +106,11 @@ test('Commander.js CLI runs from the standalone executable', async () => {
       expect(statusExitCode, statusError).toBe(0);
       expect(JSON.parse(statusOutput)).toMatchObject({
         version: 1,
-        status: { running: true, socketPath },
+        status: {
+          socket: { path: socketPath, state: 'healthy' },
+          mode: 'manual',
+          versions: { cli: '0.1.0', running: '0.1.0' },
+        },
       });
 
       const config = Bun.spawn(
@@ -118,10 +129,124 @@ test('Commander.js CLI runs from the standalone executable', async () => {
         settings: { historyMaximumEvents: 10_000 },
       });
 
-      serve.kill('SIGTERM');
+      const implicitStop = Bun.spawn(
+        [binaryPath, 'stop', '--home', home, '--socket', socketPath, '--json'],
+        {
+          env: lifecycleEnvironment,
+          stderr: 'pipe',
+          stdout: 'pipe',
+        },
+      );
+      const implicitStopCode = await implicitStop.exited;
+      const implicitStopOutput = await new Response(implicitStop.stdout).text();
+      expect(implicitStopCode).toBe(20);
+      expect(JSON.parse(implicitStopOutput)).toMatchObject({
+        version: 1,
+        result: {
+          operation: 'stop',
+          outcome: 'refused',
+          changed: false,
+          before: { mode: 'manual' },
+          after: { mode: 'manual' },
+          error: { code: 'conflict' },
+        },
+      });
+
+      const explicitStop = Bun.spawn(
+        [binaryPath, 'stop-manual', '--home', home, '--socket', socketPath, '--json'],
+        {
+          env: lifecycleEnvironment,
+          stderr: 'pipe',
+          stdout: 'pipe',
+        },
+      );
+      const explicitStopCode = await explicitStop.exited;
+      const explicitStopError = await new Response(explicitStop.stderr).text();
+      const explicitStopOutput = await new Response(explicitStop.stdout).text();
+      expect(explicitStopCode, explicitStopError).toBe(0);
+      expect(JSON.parse(explicitStopOutput)).toMatchObject({
+        version: 1,
+        result: {
+          operation: 'stop-manual',
+          outcome: 'succeeded',
+          changed: true,
+          before: { mode: 'manual' },
+          after: {
+            mode: 'none',
+            socket: { state: 'unavailable' },
+          },
+          error: null,
+        },
+      });
+
       const serveExitCode = await serve.exited;
       const serveError = await new Response(serve.stderr).text();
       expect(serveExitCode, serveError).toBe(0);
+
+      const purgePreview = Bun.spawn(
+        [
+          binaryPath,
+          'purge',
+          '--home',
+          home,
+          '--socket',
+          socketPath,
+          '--dry-run',
+          '--json',
+        ],
+        {
+          env: lifecycleEnvironment,
+          stderr: 'pipe',
+          stdout: 'pipe',
+        },
+      );
+      const purgePreviewCode = await purgePreview.exited;
+      const purgePreviewError = await new Response(purgePreview.stderr).text();
+      const purgePreviewOutput = JSON.parse(
+        await new Response(purgePreview.stdout).text(),
+      );
+      expect(
+        purgePreviewCode,
+        `${purgePreviewError}\n${JSON.stringify(purgePreviewOutput, null, 2)}`,
+      ).toBe(0);
+      expect(purgePreviewOutput).toMatchObject({
+        version: 1,
+        preview: { operation: 'purge', dryRun: true, allowed: true },
+      });
+
+      const purge = Bun.spawn(
+        [
+          binaryPath,
+          'purge',
+          '--home',
+          home,
+          '--socket',
+          socketPath,
+          '--confirm',
+          purgePreviewOutput.preview.confirmationToken,
+          '--json',
+        ],
+        {
+          env: lifecycleEnvironment,
+          stderr: 'pipe',
+          stdout: 'pipe',
+        },
+      );
+      const purgeCode = await purge.exited;
+      const purgeError = await new Response(purge.stderr).text();
+      const purgeOutput = await new Response(purge.stdout).text();
+      expect(purgeCode, purgeError).toBe(0);
+      expect(JSON.parse(purgeOutput)).toMatchObject({
+        version: 1,
+        result: {
+          operation: 'purge',
+          outcome: 'succeeded',
+          confirmationToken: purgePreviewOutput.preview.confirmationToken,
+          retained: [],
+          refused: [],
+        },
+      });
+      await expect(access(home)).rejects.toMatchObject({ code: 'ENOENT' });
     } finally {
       serve.kill('SIGKILL');
       await serve.exited;

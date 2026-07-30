@@ -36,10 +36,12 @@ describe('Portreeve CLI', () => {
     expect(program.commands.map((command) => command.name())).toEqual([
       'serve',
       'status',
+      'purge',
       'install',
       'uninstall',
       'start',
       'stop',
+      'stop-manual',
       'restart',
       'ports',
       'claims',

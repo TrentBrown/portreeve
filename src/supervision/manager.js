@@ -5,9 +5,21 @@ import {
   PortreeveClient,
   PortreeveClientError,
 } from '../../packages/client/src/index.js';
+import { PORTREEVE_VERSION } from '../version.js';
 import { prepareRuntimeDirectories } from '../platform/paths.js';
+import { HealthResponseSchema } from '../protocol/schemas.js';
 import { runCommand, assertCommandSucceeded } from './command.js';
 import { promoteExecutable, readOptionalFile, restoreExecutable } from './files.js';
+import {
+  executePurge as executePurgeOperation,
+  previewPurge as previewPurgeOperation,
+} from './purge.js';
+import {
+  LifecycleStatusSchema,
+  SemanticVersionSchema,
+  lifecycleError,
+} from './schemas.js';
+import { compareSemanticVersions } from './version.js';
 
 export class LifecycleConflictError extends PortreeveClientError {
   /** @param {string} message */
@@ -50,34 +62,178 @@ export class LifecycleManager {
   }
 
   async status() {
-    const native = await this.supervisor.state();
-    let health = null;
-    try {
-      health = await this.client.health();
-    } catch (error) {
-      if (!(error instanceof PortreeveClientError) || error.code !== 'unavailable') {
-        throw error;
-      }
+    const [installation, supervisor, socket] = await Promise.all([
+      this.observeInstallation(),
+      this.observeSupervisor(),
+      this.observeSocket(),
+    ]);
+    const mode = effectiveMode(supervisor, socket);
+    const limitations = [];
+    if (installation.error !== null) {
+      limitations.push('managed-installation-evidence-incomplete');
     }
-    const supervised =
-      health !== null &&
-      health.mode === 'supervised' &&
-      native.active &&
-      native.mainPid !== null &&
-      health.pid === native.mainPid;
-    return {
-      running: health !== null,
-      socketPath: this.paths.socketPath,
-      mode: health === null ? null : supervised ? 'supervised' : 'manual',
-      server: health,
-      native,
-    };
+    if (supervisor.error !== null) {
+      limitations.push('supervisor-evidence-incomplete');
+    }
+    if (
+      socket.error !== null &&
+      socket.state !== 'unavailable' &&
+      socket.state !== 'incompatible'
+    ) {
+      limitations.push('socket-evidence-incomplete');
+    }
+    if (mode === 'ambiguous') {
+      limitations.push('execution-mode-ambiguous');
+    }
+    return LifecycleStatusSchema.parse({
+      observedAt: new Date().toISOString(),
+      installation,
+      supervisor,
+      socket,
+      mode,
+      versions: {
+        cli: PORTREEVE_VERSION,
+        managed: installation.version,
+        running: socket.server?.softwareVersion ?? null,
+      },
+      limitations,
+    });
+  }
+
+  async observeInstallation() {
+    let information;
+    try {
+      information = await lstat(this.paths.managedExecutablePath);
+    } catch (error) {
+      if (isMissingFile(error)) {
+        return {
+          state: /** @type {'absent'} */ ('absent'),
+          managedExecutablePath: this.paths.managedExecutablePath,
+          version: null,
+          error: null,
+        };
+      }
+      return {
+        state: /** @type {'invalid'} */ ('invalid'),
+        managedExecutablePath: this.paths.managedExecutablePath,
+        version: null,
+        error: lifecycleError(error),
+      };
+    }
+
+    const invalidReason = invalidExecutableReason(
+      information,
+      this.paths.managedExecutablePath,
+      this.uid,
+    );
+    if (invalidReason !== null) {
+      return {
+        state: /** @type {'invalid'} */ ('invalid'),
+        managedExecutablePath: this.paths.managedExecutablePath,
+        version: null,
+        error: lifecycleError(invalidReason),
+      };
+    }
+
+    try {
+      return {
+        state: /** @type {'installed'} */ ('installed'),
+        managedExecutablePath: this.paths.managedExecutablePath,
+        version: await executableVersion(this.paths.managedExecutablePath, this.runner),
+        error: null,
+      };
+    } catch (error) {
+      return {
+        state: /** @type {'invalid'} */ ('invalid'),
+        managedExecutablePath: this.paths.managedExecutablePath,
+        version: null,
+        error: lifecycleError(error),
+      };
+    }
+  }
+
+  async observeSupervisor() {
+    try {
+      const native = await this.supervisor.state();
+      if (native.kind.startsWith('unsupported:')) {
+        return {
+          kind: native.kind,
+          state: /** @type {'unavailable'} */ ('unavailable'),
+          mainPid: null,
+          error: {
+            code: 'unsupported_platform',
+            message: `Native supervision is unavailable on ${native.kind.slice(
+              'unsupported:'.length,
+            )}.`,
+          },
+        };
+      }
+      return {
+        kind: native.kind,
+        state: /** @type {'unavailable' | 'inactive' | 'starting' | 'active'} */ (
+          !native.installed
+            ? 'unavailable'
+            : !native.active
+              ? 'inactive'
+              : native.mainPid === null
+                ? 'starting'
+                : 'active'
+        ),
+        mainPid: native.mainPid,
+        error: null,
+      };
+    } catch (error) {
+      return {
+        kind: this.supervisor.kind,
+        state: /** @type {'failed'} */ ('failed'),
+        mainPid: null,
+        error: lifecycleError(error),
+      };
+    }
+  }
+
+  async observeSocket() {
+    try {
+      return {
+        path: this.paths.socketPath,
+        state: /** @type {'healthy'} */ ('healthy'),
+        server: HealthResponseSchema.parse(await this.client.health()),
+        error: null,
+      };
+    } catch (error) {
+      const evidence = lifecycleError(error);
+      if (error instanceof PortreeveClientError) {
+        if (error.code === 'unavailable') {
+          return {
+            path: this.paths.socketPath,
+            state: /** @type {'unavailable'} */ ('unavailable'),
+            server: null,
+            error: evidence,
+          };
+        }
+        if (error.code === 'incompatible_protocol') {
+          return {
+            path: this.paths.socketPath,
+            state: /** @type {'incompatible'} */ ('incompatible'),
+            server: null,
+            error: evidence,
+          };
+        }
+      }
+      return {
+        path: this.paths.socketPath,
+        state: /** @type {'unhealthy'} */ ('unhealthy'),
+        server: null,
+        error: evidence,
+      };
+    }
   }
 
   async install() {
     this.assertPerUser();
     const priorStatus = await this.status();
-    if (priorStatus.running && priorStatus.mode === 'manual') {
+    this.assertMutationCompatible(priorStatus);
+    if (priorStatus.mode === 'manual' || priorStatus.mode === 'ambiguous') {
       throw new LifecycleConflictError(
         'A manual Portreeve server is running. Stop it before installing or upgrading the supervised service.',
       );
@@ -87,13 +243,26 @@ export class LifecycleManager {
     const source = await validateSourceExecutable(this.sourceExecutable);
     await validateManagedExecutable(this.paths.managedExecutablePath, this.uid);
     const version = await executableVersion(source, this.runner);
+    const comparisonVersions = [
+      priorStatus.versions.managed,
+      priorStatus.versions.running,
+    ].filter((value) => value !== null);
+    for (const installedVersion of comparisonVersions) {
+      if (compareSemanticVersions(version, installedVersion) < 0) {
+        throw new LifecycleConflictError(
+          `Portreeve ${version} will not replace newer Portreeve ${installedVersion}.`,
+        );
+      }
+    }
     const priorDefinition = await readOptionalFile(this.supervisor.definitionPath);
-    const priorState = priorStatus.native;
+    const priorActive =
+      priorStatus.supervisor.state === 'active' ||
+      priorStatus.supervisor.state === 'starting';
     /** @type {{hadPrevious: boolean} | null} */
     let promotion = null;
 
     try {
-      if (priorState.active) {
+      if (priorActive) {
         await this.supervisor.stop();
         await this.waitUntilUnavailable();
       }
@@ -104,14 +273,14 @@ export class LifecycleManager {
       );
       const definition = this.supervisor.renderDefinition(this.definition());
       await this.supervisor.installDefinition(definition);
-      if (priorState.active) {
+      if (priorActive) {
         await this.supervisor.start();
         await this.waitUntilHealthy(version);
       }
       return {
         installed: true,
         upgraded: promotion.hadPrevious,
-        active: priorState.active,
+        active: priorActive,
         version,
         executable: this.paths.managedExecutablePath,
         supervisor: this.supervisor.kind,
@@ -130,7 +299,7 @@ export class LifecycleManager {
       } else {
         await this.supervisor.installDefinition(priorDefinition);
       }
-      if (priorState.active) {
+      if (priorActive) {
         await this.supervisor.start();
         await this.waitUntilHealthy().catch(() => {});
       }
@@ -146,7 +315,16 @@ export class LifecycleManager {
   async uninstall() {
     this.assertPerUser();
     const status = await this.status();
-    if (status.native.active) {
+    this.assertMutationCompatible(status);
+    if (status.mode === 'manual' || status.mode === 'ambiguous') {
+      throw new LifecycleConflictError(
+        'A manual or ambiguous Portreeve server is running. Stop it explicitly before uninstalling native supervision.',
+      );
+    }
+    if (
+      status.supervisor.state === 'active' ||
+      status.supervisor.state === 'starting'
+    ) {
       await this.supervisor.stop();
       if (status.mode === 'supervised') {
         await this.waitUntilUnavailable();
@@ -166,17 +344,18 @@ export class LifecycleManager {
   async start() {
     this.assertPerUser();
     const status = await this.status();
-    if (!status.native.installed) {
+    this.assertMutationCompatible(status);
+    if (status.installation.state !== 'installed') {
       throw new LifecycleConflictError(
         'Portreeve is not installed for native supervision. Run "portreeve install" first.',
       );
     }
-    if (status.running && status.mode === 'manual') {
+    if (status.mode === 'manual' || status.mode === 'ambiguous') {
       throw new LifecycleConflictError(
         'A manual Portreeve server is already running. Stop it before starting the supervised service.',
       );
     }
-    if (!status.native.active) {
+    if (status.supervisor.state !== 'active') {
       await this.supervisor.start();
     }
     return this.waitUntilHealthy();
@@ -185,17 +364,21 @@ export class LifecycleManager {
   async restart() {
     this.assertPerUser();
     const status = await this.status();
-    if (!status.native.installed) {
+    this.assertMutationCompatible(status);
+    if (status.installation.state !== 'installed') {
       throw new LifecycleConflictError(
         'Portreeve is not installed for native supervision. Run "portreeve install" first.',
       );
     }
-    if (status.running && status.mode === 'manual') {
+    if (status.mode === 'manual' || status.mode === 'ambiguous') {
       throw new LifecycleConflictError(
         'A manual Portreeve server is running. Portreeve will not adopt or replace it.',
       );
     }
-    if (status.native.active) {
+    if (
+      status.supervisor.state === 'active' ||
+      status.supervisor.state === 'starting'
+    ) {
       await this.supervisor.stop();
       await this.waitUntilUnavailable();
     }
@@ -206,29 +389,55 @@ export class LifecycleManager {
   async stop() {
     this.assertPerUser();
     const status = await this.status();
-    if (!status.running && !status.native.active) {
+    this.assertMutationCompatible(status);
+    const supervisorActive =
+      status.supervisor.state === 'active' || status.supervisor.state === 'starting';
+    if (
+      status.mode === 'manual' ||
+      (status.mode === 'ambiguous' && !supervisorActive)
+    ) {
+      throw new LifecycleConflictError(
+        'A manual or ambiguous Portreeve server is running. Use "portreeve stop-manual" for explicit manual-server shutdown.',
+      );
+    }
+    if (status.socket.state === 'unavailable' && !supervisorActive) {
       return { changed: false, mode: null };
     }
-    if (status.native.active) {
+    if (supervisorActive) {
       await this.supervisor.stop();
-      if (status.running && status.mode === 'manual') {
-        await this.client.stopServer();
+      if (status.mode === 'supervised') {
+        await this.waitUntilUnavailable();
       }
-      await this.waitUntilUnavailable();
-      return {
-        changed: true,
-        mode:
-          status.running && status.mode === 'manual'
-            ? 'supervised-and-manual'
-            : 'supervised',
-      };
-    }
-    if (status.running) {
-      await this.client.stopServer();
-      await this.waitUntilUnavailable();
-      return { changed: true, mode: 'manual' };
+      return { changed: true, mode: 'supervised' };
     }
     return { changed: false, mode: null };
+  }
+
+  async stopManual() {
+    this.assertPerUser();
+    const status = await this.status();
+    this.assertMutationCompatible(status);
+    if (status.mode !== 'manual') {
+      throw new LifecycleConflictError(
+        status.mode === 'none'
+          ? 'No manual Portreeve server is running.'
+          : 'Portreeve will not stop an ambiguous or supervised server through the manual-server operation.',
+      );
+    }
+    await this.client.stopServer();
+    await this.waitUntilUnavailable();
+    return { changed: true, mode: 'manual' };
+  }
+
+  async previewPurge() {
+    this.assertPerUser();
+    return previewPurgeOperation(this);
+  }
+
+  /** @param {string} confirmationToken */
+  async purge(confirmationToken) {
+    this.assertPerUser();
+    return executePurgeOperation(this, confirmationToken);
   }
 
   definition() {
@@ -249,6 +458,28 @@ export class LifecycleManager {
     }
   }
 
+  /**
+   * @param {import('zod').infer<typeof LifecycleStatusSchema>} status
+   */
+  assertMutationCompatible(status) {
+    if (status.socket.state === 'incompatible') {
+      throw new PortreeveClientError(
+        'The running Portreeve server is protocol-incompatible with this CLI.',
+        { code: 'incompatible_protocol' },
+      );
+    }
+    if (status.installation.state === 'invalid') {
+      throw new LifecycleConflictError(
+        'The managed Portreeve installation is unsafe or unreadable.',
+      );
+    }
+    if (status.supervisor.state === 'failed') {
+      throw new LifecycleConflictError(
+        'Native supervisor state could not be observed safely.',
+      );
+    }
+  }
+
   /** @param {string} [expectedVersion] */
   async waitUntilHealthy(expectedVersion) {
     const deadline = Date.now() + this.healthTimeoutMilliseconds;
@@ -257,15 +488,14 @@ export class LifecycleManager {
       try {
         const status = await this.status();
         if (
-          status.running &&
+          status.socket.state === 'healthy' &&
           status.mode === 'supervised' &&
-          (expectedVersion === undefined ||
-            status.server?.softwareVersion === expectedVersion)
+          (expectedVersion === undefined || status.versions.running === expectedVersion)
         ) {
           return status;
         }
         lastError = new Error(
-          status.running
+          status.socket.state === 'healthy'
             ? 'the responding server did not match the supervised process and expected version'
             : 'the server socket was not reachable',
         );
@@ -296,6 +526,51 @@ export class LifecycleManager {
     }
     throw new Error('Portreeve did not stop before the lifecycle timeout.');
   }
+}
+
+/**
+ * @param {import('zod').infer<typeof import('./schemas.js').LifecycleSupervisorSchema>} supervisor
+ * @param {import('zod').infer<typeof import('./schemas.js').LifecycleSocketSchema>} socket
+ * @returns {'none' | 'manual' | 'supervised' | 'ambiguous'}
+ */
+function effectiveMode(supervisor, socket) {
+  const supervisorActive =
+    supervisor.state === 'active' || supervisor.state === 'starting';
+  if (socket.state !== 'healthy' || socket.server === null) {
+    return supervisorActive ? 'ambiguous' : 'none';
+  }
+  if (
+    supervisor.state === 'active' &&
+    supervisor.mainPid !== null &&
+    socket.server.mode === 'supervised' &&
+    socket.server.pid === supervisor.mainPid
+  ) {
+    return 'supervised';
+  }
+  if (!supervisorActive && socket.server.mode === 'manual') {
+    return 'manual';
+  }
+  return 'ambiguous';
+}
+
+/**
+ * @param {import('node:fs').Stats} information
+ * @param {string} path
+ * @param {number | undefined} uid
+ */
+function invalidExecutableReason(information, path, uid) {
+  if (!information.isFile() || information.isSymbolicLink()) {
+    return new Error(`Unsafe managed Portreeve executable: ${path}`);
+  }
+  if (uid !== undefined && information.uid !== uid) {
+    return new Error(`Managed Portreeve executable has another owner: ${path}`);
+  }
+  if ((information.mode & 0o022) !== 0) {
+    return new Error(
+      `Managed Portreeve executable is writable by another user: ${path}`,
+    );
+  }
+  return null;
 }
 
 /** @param {string} path */
@@ -332,16 +607,9 @@ async function validateManagedExecutable(path, uid) {
     }
     throw error;
   }
-  if (!information.isFile() || information.isSymbolicLink()) {
-    throw new Error(`Unsafe managed Portreeve executable: ${path}`);
-  }
-  if (uid !== undefined && information.uid !== uid) {
-    throw new Error(`Managed Portreeve executable has another owner: ${path}`);
-  }
-  if ((information.mode & 0o022) !== 0) {
-    throw new Error(
-      `Managed Portreeve executable is writable by another user: ${path}`,
-    );
+  const reason = invalidExecutableReason(information, path, uid);
+  if (reason !== null) {
+    throw reason;
   }
 }
 
@@ -352,11 +620,24 @@ async function validateManagedExecutable(path, uid) {
 async function executableVersion(executable, runner) {
   const result = await runner(executable, ['--version']);
   assertCommandSucceeded(result, 'Portreeve executable validation');
-  const version = result.stdout.trim();
-  if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) {
-    throw new Error(`Portreeve executable returned an invalid version: ${version}`);
+  try {
+    return SemanticVersionSchema.parse(result.stdout.trim());
+  } catch {
+    throw new Error(
+      `Portreeve executable returned an invalid version: ${result.stdout.trim()}`,
+    );
   }
-  return version;
+}
+
+/**
+ * @param {unknown} error
+ */
+function isMissingFile(error) {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    /** @type {{code?: string}} */ (error).code === 'ENOENT'
+  );
 }
 
 /** @param {number} milliseconds */

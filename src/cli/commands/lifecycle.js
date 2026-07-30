@@ -1,103 +1,278 @@
 // @ts-check
 
-import { PORTREEVE_VERSION } from '../../version.js';
 import { EXIT_CODES } from '../../protocol/constants.js';
 import { createLifecycleManager } from '../../supervision/factory.js';
-import { setExitCode } from '../exit.js';
+import {
+  LifecycleMutationResultSchema,
+  LifecycleOperationSchema,
+  lifecycleError,
+} from '../../supervision/schemas.js';
+import { CliUsageError, exitCodeForError, setExitCode } from '../exit.js';
 import { renderOutput } from '../output/render.js';
 
 /**
- * @param {{home?: string, socket?: string, json?: boolean}} options
+ * @typedef {{home?: string, socket?: string, json?: boolean}} LifecycleOptions
  */
+
+/** @param {LifecycleOptions} options */
 export async function installCommand(options) {
-  const result = await managerFor(options).install();
-  renderOutput(options.json ?? false, 'installation', result, [
-    `${result.upgraded ? 'Upgraded' : 'Installed'} Portreeve ${result.version} for ${result.supervisor} supervision.`,
-    result.active
-      ? 'The supervised server is active and healthy.'
-      : 'The supervised server remains inactive; run "portreeve start" to start it.',
-  ]);
+  await runMutation(options, 'install', async (manager) => {
+    await manager.install();
+    return true;
+  });
 }
 
-/**
- * @param {{home?: string, socket?: string, json?: boolean}} options
- */
+/** @param {LifecycleOptions} options */
 export async function uninstallCommand(options) {
-  const result = await managerFor(options).uninstall();
-  renderOutput(options.json ?? false, 'installation', result, [
-    'Removed Portreeve native supervision and its managed executable.',
-    'Claims, settings, history, and diagnostic data were preserved.',
-  ]);
+  await runMutation(options, 'uninstall', async (manager, before) => {
+    await manager.uninstall();
+    return (
+      before.installation.state !== 'absent' ||
+      before.supervisor.state !== 'unavailable'
+    );
+  });
 }
 
-/**
- * @param {{home?: string, socket?: string, json?: boolean}} options
- */
+/** @param {LifecycleOptions} options */
 export async function startCommand(options) {
-  const status = await managerFor(options).start();
-  renderStatus(options.json ?? false, status, 'started');
+  await runMutation(options, 'start', async (manager, before) => {
+    await manager.start();
+    return before.mode !== 'supervised';
+  });
 }
 
-/**
- * @param {{home?: string, socket?: string, json?: boolean}} options
- */
+/** @param {LifecycleOptions} options */
 export async function restartCommand(options) {
-  const status = await managerFor(options).restart();
-  renderStatus(options.json ?? false, status, 'restarted');
+  await runMutation(options, 'restart', async (manager) => {
+    await manager.restart();
+    return true;
+  });
 }
 
-/**
- * @param {{home?: string, socket?: string, json?: boolean}} options
- */
+/** @param {LifecycleOptions} options */
 export async function stopCommand(options) {
-  const result = await managerFor(options).stop();
-  renderOutput(options.json ?? false, 'stop', result, [
-    result.changed
-      ? `Stopped the ${result.mode} Portreeve server.`
-      : 'Portreeve is already stopped.',
-  ]);
+  await runMutation(options, 'stop', async (manager) => {
+    const result = await manager.stop();
+    return result.changed;
+  });
 }
 
-/**
- * @param {{home?: string, socket?: string, json?: boolean}} options
- */
+/** @param {LifecycleOptions} options */
+export async function stopManualCommand(options) {
+  await runMutation(options, 'stop-manual', async (manager) => {
+    const result = await manager.stopManual();
+    return result.changed;
+  });
+}
+
+/** @param {LifecycleOptions} options */
 export async function lifecycleStatusCommand(options) {
   const status = await managerFor(options).status();
-  const versionMatches =
-    status.server === null ? null : status.server.softwareVersion === PORTREEVE_VERSION;
-  const result = { ...status, cliVersion: PORTREEVE_VERSION, versionMatches };
-  const lines = [
-    status.running
-      ? `Portreeve is running in ${status.mode} mode at ${status.socketPath}.`
-      : `Portreeve is not running at ${status.socketPath}.`,
-    `Native supervision: ${status.native.installed ? 'installed' : 'not installed'} (${status.native.kind}), ${status.native.active ? 'active' : 'inactive'}.`,
-    ...(status.server === null
-      ? []
-      : [
-          `CLI version: ${PORTREEVE_VERSION}; server version: ${status.server.softwareVersion}${versionMatches ? '' : ' (mismatch)'}.`,
-        ]),
-  ];
-  if (!status.running) {
+  if (status.socket.state !== 'healthy' || status.mode === 'ambiguous') {
     setExitCode(EXIT_CODES.stateDifference);
   }
-  renderOutput(options.json ?? false, 'status', result, lines);
+  renderOutput(options.json ?? false, 'status', status, statusLines(status));
+}
+
+/**
+ * @param {LifecycleOptions & {dryRun?: boolean, confirm?: string}} options
+ */
+export async function purgeCommand(options) {
+  if ((options.dryRun ?? false) === (options.confirm !== undefined)) {
+    throw new CliUsageError(
+      'Purge requires exactly one of --dry-run or --confirm <preview-token>.',
+    );
+  }
+  const manager = managerFor(options);
+  if (options.dryRun) {
+    const preview = await manager.previewPurge();
+    if (!preview.allowed) {
+      setExitCode(EXIT_CODES.conflict);
+    }
+    renderOutput(options.json ?? false, 'preview', preview, purgePreviewLines(preview));
+    return;
+  }
+  const result = await manager.purge(/** @type {string} */ (options.confirm));
+  if (result.outcome === 'refused') {
+    setExitCode(EXIT_CODES.conflict);
+  } else if (result.outcome === 'partial') {
+    setExitCode(EXIT_CODES.internal);
+  }
+  renderOutput(options.json ?? false, 'result', result, purgeResultLines(result));
+}
+
+/**
+ * @param {LifecycleOptions} options
+ * @param {import('zod').infer<typeof LifecycleOperationSchema>} operation
+ * @param {(
+ *   manager: ReturnType<typeof managerFor>,
+ *   before: Awaited<ReturnType<ReturnType<typeof managerFor>['status']>>
+ * ) => Promise<boolean>} mutate
+ */
+async function runMutation(options, operation, mutate) {
+  const manager = managerFor(options);
+  const execution = await executeLifecycleMutation(manager, operation, mutate);
+  if (execution.exitCode !== EXIT_CODES.success) {
+    setExitCode(execution.exitCode);
+  }
+  renderMutation(options.json ?? false, execution.result);
+}
+
+/**
+ * Execute one lifecycle mutation while preserving before/after evidence even
+ * when the operation refuses or fails.
+ *
+ * @param {ReturnType<typeof managerFor>} manager
+ * @param {import('zod').infer<typeof LifecycleOperationSchema>} operation
+ * @param {(
+ *   manager: ReturnType<typeof managerFor>,
+ *   before: Awaited<ReturnType<ReturnType<typeof managerFor>['status']>>
+ * ) => Promise<boolean>} mutate
+ * @param {() => Date} [now]
+ */
+export async function executeLifecycleMutation(
+  manager,
+  operation,
+  mutate,
+  now = () => new Date(),
+) {
+  const parsedOperation = LifecycleOperationSchema.parse(operation);
+  const before = await manager.status();
+  const startedAt = now().toISOString();
+  try {
+    const changed = await mutate(manager, before);
+    const after = await manager.status();
+    const result = LifecycleMutationResultSchema.parse({
+      operation: parsedOperation,
+      outcome: changed ? 'succeeded' : 'no-change',
+      changed,
+      startedAt,
+      completedAt: now().toISOString(),
+      before,
+      after,
+      error: null,
+    });
+    return { result, exitCode: EXIT_CODES.success };
+  } catch (error) {
+    const after = await manager.status();
+    const changed = lifecycleStateChanged(before, after);
+    const exitCode = exitCodeForError(error);
+    const refused =
+      exitCode === EXIT_CODES.conflict || exitCode === EXIT_CODES.incompatible;
+    const result = LifecycleMutationResultSchema.parse({
+      operation: parsedOperation,
+      outcome: refused ? 'refused' : changed ? 'partial' : 'failed',
+      changed,
+      startedAt,
+      completedAt: now().toISOString(),
+      before,
+      after,
+      error: lifecycleError(error),
+    });
+    return { result, exitCode };
+  }
 }
 
 /**
  * @param {boolean} json
- * @param {Awaited<ReturnType<import('../../supervision/manager.js').LifecycleManager['status']>>} status
- * @param {string} verb
+ * @param {import('zod').infer<typeof LifecycleMutationResultSchema>} result
  */
-function renderStatus(json, status, verb) {
-  renderOutput(json, 'status', status, [
-    `Portreeve ${verb} under ${status.native.kind} supervision.`,
-    `Server ${status.server?.softwareVersion ?? 'unknown'} is healthy at ${status.socketPath}.`,
-  ]);
+function renderMutation(json, result) {
+  const lines = [
+    `Portreeve ${result.operation}: ${result.outcome}.`,
+    `Before: ${statusSummary(result.before)}.`,
+    `After: ${statusSummary(result.after)}.`,
+    ...(result.error === null ? [] : [`${result.error.code}: ${result.error.message}`]),
+  ];
+  renderOutput(json, 'result', result, lines);
 }
 
 /**
- * @param {{home?: string, socket?: string}} options
+ * @param {Awaited<ReturnType<ReturnType<typeof managerFor>['status']>>} status
  */
+function statusLines(status) {
+  return [
+    `Portreeve mode: ${status.mode}; observed ${status.observedAt}.`,
+    `Installation: ${status.installation.state}; managed version ${status.versions.managed ?? 'unavailable'}.`,
+    `Supervisor: ${status.supervisor.state} (${status.supervisor.kind}); pid ${status.supervisor.mainPid ?? 'unavailable'}.`,
+    `Socket: ${status.socket.state} at ${status.socket.path}; running version ${status.versions.running ?? 'unavailable'}.`,
+    ...(status.limitations.length === 0
+      ? []
+      : [`Evidence limitations: ${status.limitations.join(', ')}.`]),
+  ];
+}
+
+/**
+ * @param {Awaited<ReturnType<ReturnType<typeof managerFor>['previewPurge']>>} preview
+ */
+function purgePreviewLines(preview) {
+  return [
+    `Purge preview: ${preview.allowed ? 'allowed' : 'refused'}.`,
+    `Application home: ${preview.root}`,
+    `Paths: ${String(preview.paths.length)}.`,
+    `Confirmation token: ${preview.confirmationToken}`,
+    ...preview.refused.map(
+      ({ path, reason }) => `Refused: ${path ?? 'lifecycle'} (${reason})`,
+    ),
+  ];
+}
+
+/**
+ * @param {Awaited<ReturnType<ReturnType<typeof managerFor>['purge']>>} result
+ */
+function purgeResultLines(result) {
+  return [
+    `Portreeve purge: ${result.outcome}.`,
+    `Removed: ${String(result.removed.length)}; retained: ${String(
+      result.retained.length,
+    )}; missing: ${String(result.missing.length)}.`,
+    ...result.refused.map(
+      ({ path, reason }) => `Refused: ${path ?? 'lifecycle'} (${reason})`,
+    ),
+    ...(result.error === null ? [] : [`${result.error.code}: ${result.error.message}`]),
+  ];
+}
+
+/**
+ * @param {Awaited<ReturnType<ReturnType<typeof managerFor>['status']>>} status
+ */
+function statusSummary(status) {
+  return `${status.installation.state} installation, ${status.supervisor.state} supervisor, ${status.socket.state} socket, ${status.mode} mode`;
+}
+
+/**
+ * @param {Awaited<ReturnType<ReturnType<typeof managerFor>['status']>>} before
+ * @param {Awaited<ReturnType<ReturnType<typeof managerFor>['status']>>} after
+ */
+function lifecycleStateChanged(before, after) {
+  return (
+    JSON.stringify(stateFingerprint(before)) !== JSON.stringify(stateFingerprint(after))
+  );
+}
+
+/**
+ * @param {Awaited<ReturnType<ReturnType<typeof managerFor>['status']>>} status
+ */
+function stateFingerprint(status) {
+  return {
+    installation: {
+      state: status.installation.state,
+      version: status.installation.version,
+    },
+    supervisor: {
+      state: status.supervisor.state,
+      mainPid: status.supervisor.mainPid,
+    },
+    socket: {
+      state: status.socket.state,
+      pid: status.socket.server?.pid ?? null,
+    },
+    mode: status.mode,
+    versions: status.versions,
+  };
+}
+
+/** @param {{home?: string, socket?: string}} options */
 function managerFor(options) {
   return createLifecycleManager({
     ...(options.home ? { home: options.home } : {}),

@@ -36,3 +36,13 @@ must not be writable by another user. `start` and `restart` refuse manual
 servers rather than adopting them. Active upgrades atomically promote a staged
 binary, verify the responding PID/version through both socket and supervisor
 evidence, and restore the previous binary and active state on failed health.
+
+Complete reset requires a strict private ownership marker matching the
+canonical application root and current user. Marker creation claims only a new
+empty home or recognized pre-marker Portreeve state. Purge preview inspects the
+complete tree with `lstat`, refuses symlinks, foreign ownership, nonprivate
+roots or markers, paths writable by another user, and live
+manual/ambiguous/incompatible servers, and hashes that evidence into a
+confirmation token. Execution accepts only an identical fresh preview,
+revalidates after stopping supervised state, keeps the marker when deletion is
+partial, and reports retained or refused paths instead of claiming success.

@@ -17,6 +17,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { PortreeveClient } from '../packages/client/src/index.js';
+import {
+  LifecycleMutationResultSchema,
+  LifecycleStatusSchema,
+} from '../src/supervision/schemas.js';
 import { PORTREEVE_VERSION } from '../src/version.js';
 import {
   inspectExecutable,
@@ -195,10 +199,13 @@ async function smokeNativeLifecycle(releaseManifest) {
       [0],
       'native lifecycle install',
     );
+    const installationResult = LifecycleMutationResultSchema.parse(installation.result);
     if (
-      installation.installation?.installed !== true ||
-      installation.installation?.active !== false ||
-      installation.installation?.upgraded !== false
+      installationResult.operation !== 'install' ||
+      installationResult.outcome !== 'succeeded' ||
+      installationResult.after.installation.state !== 'installed' ||
+      installationResult.after.supervisor.state !== 'inactive' ||
+      installationResult.after.socket.state !== 'unavailable'
     ) {
       throw new Error('Native lifecycle install did not preserve inactive state.');
     }
@@ -209,7 +216,7 @@ async function smokeNativeLifecycle(releaseManifest) {
       [0],
       'native lifecycle start',
     );
-    assertSupervisedStatus(started.status, 'start');
+    assertSupervisedStatus(started.result?.after, 'start');
 
     const upgraded = await runJson(
       [executable, 'install', ...lifecycleArguments],
@@ -217,9 +224,12 @@ async function smokeNativeLifecycle(releaseManifest) {
       [0],
       'native lifecycle active upgrade',
     );
+    const upgradeResult = LifecycleMutationResultSchema.parse(upgraded.result);
     if (
-      upgraded.installation?.upgraded !== true ||
-      upgraded.installation?.active !== true
+      upgradeResult.operation !== 'install' ||
+      upgradeResult.outcome !== 'succeeded' ||
+      upgradeResult.before.versions.managed !== PORTREEVE_VERSION ||
+      upgradeResult.after.mode !== 'supervised'
     ) {
       throw new Error('Native lifecycle active upgrade did not remain active.');
     }
@@ -230,7 +240,7 @@ async function smokeNativeLifecycle(releaseManifest) {
       [0],
       'native lifecycle restart',
     );
-    assertSupervisedStatus(restarted.status, 'restart');
+    assertSupervisedStatus(restarted.result?.after, 'restart');
 
     const stopped = await runJson(
       [executable, 'stop', ...lifecycleArguments],
@@ -238,7 +248,13 @@ async function smokeNativeLifecycle(releaseManifest) {
       [0],
       'native lifecycle stop',
     );
-    if (stopped.stop?.changed !== true || stopped.stop?.mode !== 'supervised') {
+    const stoppedResult = LifecycleMutationResultSchema.parse(stopped.result);
+    if (
+      stoppedResult.operation !== 'stop' ||
+      stoppedResult.changed !== true ||
+      stoppedResult.after.supervisor.state !== 'inactive' ||
+      stoppedResult.after.socket.state !== 'unavailable'
+    ) {
       throw new Error('Native lifecycle stop did not unload supervision.');
     }
 
@@ -248,10 +264,11 @@ async function smokeNativeLifecycle(releaseManifest) {
       [10],
       'native lifecycle inactive status',
     );
+    const inactiveStatus = LifecycleStatusSchema.parse(inactive.status);
     if (
-      inactive.status?.running !== false ||
-      inactive.status?.native?.installed !== true ||
-      inactive.status?.native?.active !== false
+      inactiveStatus.socket.state !== 'unavailable' ||
+      inactiveStatus.installation.state !== 'installed' ||
+      inactiveStatus.supervisor.state !== 'inactive'
     ) {
       throw new Error('Native lifecycle inactive status is inconsistent.');
     }
@@ -262,15 +279,60 @@ async function smokeNativeLifecycle(releaseManifest) {
       [0],
       'native lifecycle uninstall',
     );
+    const removedResult = LifecycleMutationResultSchema.parse(removed.result);
     if (
-      removed.installation?.installed !== false ||
-      removed.installation?.dataPreserved !== true
+      removedResult.operation !== 'uninstall' ||
+      removedResult.after.installation.state !== 'absent' ||
+      removedResult.after.supervisor.state !== 'unavailable'
     ) {
       throw new Error('Native lifecycle uninstall did not preserve user data.');
     }
     await access(join(applicationDirectory, 'registry.sqlite'));
     await assertMissing(join(applicationDirectory, 'bin', 'portreeve'));
     await assertMissing(definitionPath);
+
+    const purgePreview = await runJson(
+      [executable, 'purge', ...lifecycleArguments, '--dry-run'],
+      environment,
+      [0],
+      'native lifecycle purge preview',
+    );
+    if (
+      purgePreview.preview?.allowed !== true ||
+      typeof purgePreview.preview?.confirmationToken !== 'string'
+    ) {
+      throw new Error('Native lifecycle purge preview was not executable.');
+    }
+    const purged = await runJson(
+      [
+        executable,
+        'purge',
+        ...lifecycleArguments,
+        '--confirm',
+        purgePreview.preview.confirmationToken,
+      ],
+      environment,
+      [0],
+      'native lifecycle purge',
+    );
+    if (
+      purged.result?.outcome !== 'succeeded' ||
+      purged.result?.retained?.length !== 0 ||
+      purged.result?.refused?.length !== 0
+    ) {
+      throw new Error('Native lifecycle purge did not remove all owned state.');
+    }
+    await assertMissing(applicationDirectory);
+
+    const reinstalled = await runJson(
+      [executable, 'install', ...lifecycleArguments],
+      environment,
+      [0],
+      'native lifecycle reinstall after purge',
+    );
+    if (reinstalled.result?.after?.installation?.state !== 'installed') {
+      throw new Error('Native lifecycle reinstall after purge failed.');
+    }
   } catch (error) {
     primaryError = error instanceof Error ? error : new Error(String(error));
   } finally {
@@ -481,12 +543,13 @@ async function runJson(command, environment, expectedCodes, operation) {
  * @param {string} operation
  */
 function assertSupervisedStatus(status, operation) {
+  const snapshot = LifecycleStatusSchema.parse(status);
   if (
-    status?.running !== true ||
-    status.mode !== 'supervised' ||
-    status.native?.installed !== true ||
-    status.native?.active !== true ||
-    status.native?.mainPid !== status.server?.pid
+    snapshot.mode !== 'supervised' ||
+    snapshot.installation.state !== 'installed' ||
+    snapshot.supervisor.state !== 'active' ||
+    snapshot.socket.state !== 'healthy' ||
+    snapshot.supervisor.mainPid !== snapshot.socket.server?.pid
   ) {
     throw new Error(`Native lifecycle ${operation} status is inconsistent.`);
   }

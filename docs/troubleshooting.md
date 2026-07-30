@@ -15,9 +15,12 @@ means a command that required the socket could not reach it.
 
 ## Manual server conflicts with start or install
 
-`status` reports `mode: "manual"` when a socket responder does not match the
-native supervisor PID. Stop it with `portreeve stop`, then retry the native
-operation. Portreeve never adopts a shell-backgrounded `serve` process.
+`status` reports `mode: "manual"` only when the responder asserts manual mode
+and no native supervisor is active. Stop it explicitly with `portreeve
+stop-manual`, then retry the native operation. `portreeve stop` controls only
+the observed native supervisor; it never sends shutdown to a manual or
+ambiguous socket responder. Portreeve never adopts a shell-backgrounded
+`serve` process.
 
 ## Requested port is unavailable
 
@@ -56,7 +59,8 @@ The default application directory is
 
 ## CLI and server versions differ
 
-Compatible versions may interoperate. `status` reports `versionMatches` plus
-both versions. To promote a newly downloaded CLI into an installed service,
-run `portreeve install`; it restarts only when the service was already active
+Compatible versions may interoperate. `status` independently reports the CLI,
+managed, and running versions. To promote a newly downloaded CLI into an
+installed service, run `portreeve install`; it refuses to replace a newer
+managed or running version, restarts only when the service was already active,
 and rolls back a failed activation.
