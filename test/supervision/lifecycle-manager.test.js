@@ -1,0 +1,298 @@
+// @ts-check
+
+import { afterEach, describe, expect, test } from 'bun:test';
+import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { PortreeveClientError } from '../../packages/client/src/index.js';
+import {
+  LifecycleConflictError,
+  LifecycleManager,
+} from '../../src/supervision/manager.js';
+
+/** @type {string[]} */
+const directories = [];
+
+afterEach(async () => {
+  for (const directory of directories.splice(0)) {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+describe('lifecycle manager', () => {
+  test('installs idempotently and preserves inactive state during upgrades', async () => {
+    const fixture = await createFixture('1.0.0');
+    expect(await fixture.manager.install()).toMatchObject({
+      installed: true,
+      upgraded: false,
+      active: false,
+      version: '1.0.0',
+    });
+    expect(fixture.supervisor.active).toBe(false);
+
+    await writeExecutable(fixture.source, '2.0.0');
+    expect(await fixture.manager.install()).toMatchObject({
+      upgraded: true,
+      active: false,
+      version: '2.0.0',
+    });
+    expect(fixture.supervisor.startCount).toBe(0);
+    expect(await readFile(fixture.paths.managedExecutablePath, 'utf8')).toContain(
+      '2.0.0',
+    );
+  });
+
+  test('health-checks an active upgrade and rolls back failed activation', async () => {
+    const fixture = await createFixture('1.0.0');
+    await fixture.manager.install();
+    await fixture.manager.start();
+    expect(fixture.supervisor.active).toBe(true);
+
+    await writeExecutable(fixture.source, '2.0.0');
+    fixture.client.rejectedVersion = '2.0.0';
+    await expect(fixture.manager.install()).rejects.toThrow(
+      'prior installation was restored',
+    );
+    expect(fixture.supervisor.active).toBe(true);
+    expect(await readFile(fixture.paths.managedExecutablePath, 'utf8')).toContain(
+      '1.0.0',
+    );
+  });
+
+  test('health-checks a successful active upgrade and keeps supervision active', async () => {
+    const fixture = await createFixture('1.0.0');
+    await fixture.manager.install();
+    await fixture.manager.start();
+
+    await writeExecutable(fixture.source, '2.0.0');
+    expect(await fixture.manager.install()).toMatchObject({
+      upgraded: true,
+      active: true,
+      version: '2.0.0',
+    });
+    expect(fixture.supervisor.active).toBe(true);
+    expect(fixture.supervisor.startCount).toBe(2);
+  });
+
+  test('refuses to adopt a manual server and can stop one gracefully', async () => {
+    const fixture = await createFixture('1.0.0');
+    fixture.client.manual = true;
+    await expect(fixture.manager.install()).rejects.toBeInstanceOf(
+      LifecycleConflictError,
+    );
+
+    expect(await fixture.manager.stop()).toEqual({
+      changed: true,
+      mode: 'manual',
+    });
+    expect(fixture.client.manual).toBe(false);
+    expect(fixture.client.stopCount).toBe(1);
+  });
+
+  test('uninstall removes integration and binaries but preserves registry data', async () => {
+    const fixture = await createFixture('1.0.0');
+    await fixture.manager.install();
+    await writeFile(fixture.paths.databasePath, 'claims');
+
+    expect(await fixture.manager.uninstall()).toMatchObject({
+      installed: false,
+      active: false,
+      dataPreserved: true,
+    });
+    expect(await readFile(fixture.paths.databasePath, 'utf8')).toBe('claims');
+    expect(fixture.supervisor.installed).toBe(false);
+    expect(await fixture.manager.uninstall()).toMatchObject({
+      installed: false,
+      active: false,
+    });
+  });
+
+  test('rejects native lifecycle mutation as root', async () => {
+    const fixture = await createFixture('1.0.0', 0);
+    await expect(fixture.manager.install()).rejects.toThrow('not as root');
+  });
+
+  test('rejects executables writable by another user', async () => {
+    const unsafeSource = await createFixture('1.0.0');
+    await chmod(unsafeSource.source, 0o722);
+    await expect(unsafeSource.manager.install()).rejects.toThrow(
+      'writable by another user',
+    );
+
+    const unsafeManaged = await createFixture('1.0.0');
+    await unsafeManaged.manager.install();
+    await chmod(unsafeManaged.paths.managedExecutablePath, 0o722);
+    await expect(unsafeManaged.manager.install()).rejects.toThrow(
+      'Managed Portreeve executable is writable by another user',
+    );
+  });
+
+  test('stopping supervision prevents automatic restart', async () => {
+    const fixture = await createFixture('1.0.0');
+    await fixture.manager.install();
+    await fixture.manager.start();
+
+    expect(await fixture.manager.stop()).toEqual({
+      changed: true,
+      mode: 'supervised',
+    });
+    expect(fixture.supervisor.active).toBe(false);
+    await expect(fixture.client.health()).rejects.toMatchObject({
+      code: 'unavailable',
+    });
+  });
+});
+
+/**
+ * @param {string} version
+ * @param {number} [uid]
+ */
+async function createFixture(
+  version,
+  uid = typeof process.getuid === 'function' ? process.getuid() : 501,
+) {
+  const directory = await mkdtemp(join(tmpdir(), 'portreeve-lifecycle-'));
+  directories.push(directory);
+  const source = join(directory, 'portreeve-source');
+  await writeExecutable(source, version);
+  const paths = {
+    applicationDirectory: join(directory, 'data'),
+    socketPath: join(directory, 'data', 'portreeve.sock'),
+    managedExecutablePath: join(directory, 'data', 'bin', 'portreeve'),
+    rollbackExecutablePath: join(directory, 'data', 'bin', 'portreeve.previous'),
+    supervisorStandardOutputPath: join(directory, 'data', 'stdout.log'),
+    supervisorStandardErrorPath: join(directory, 'data', 'stderr.log'),
+    databasePath: join(directory, 'data', 'registry.sqlite'),
+  };
+  const supervisor = new FakeSupervisor(join(directory, 'native.service'));
+  const client = new FakeClient(supervisor, paths.managedExecutablePath);
+  /** @type {(executable: string, args: string[]) => Promise<{code: number, stdout: string, stderr: string}>} */
+  const runner = async (executable, args) => {
+    expect(args).toEqual(['--version']);
+    return {
+      code: 0,
+      stdout: versionFromContent(await readFile(executable, 'utf8')),
+      stderr: '',
+    };
+  };
+  const manager = new LifecycleManager({
+    supervisor,
+    paths,
+    sourceExecutable: source,
+    client: /** @type {any} */ (client),
+    uid,
+    runner,
+    healthTimeoutMilliseconds: 200,
+  });
+  return { manager, supervisor, client, source, paths };
+}
+
+class FakeSupervisor {
+  /** @param {string} definitionPath */
+  constructor(definitionPath) {
+    this.kind = 'fake-user';
+    this.definitionPath = definitionPath;
+    this.installed = false;
+    this.active = false;
+    this.startCount = 0;
+  }
+
+  state() {
+    return Promise.resolve({
+      kind: this.kind,
+      installed: this.installed,
+      active: this.active,
+      mainPid: this.active ? 4242 : null,
+    });
+  }
+
+  /** @param {import('../../src/supervision/types.js').SupervisorDefinition} value */
+  renderDefinition(value) {
+    return JSON.stringify(value);
+  }
+
+  /** @param {string} content */
+  async installDefinition(content) {
+    await writeFile(this.definitionPath, content);
+    this.installed = true;
+  }
+
+  start() {
+    this.active = true;
+    this.startCount += 1;
+    return Promise.resolve();
+  }
+
+  stop() {
+    this.active = false;
+    return Promise.resolve();
+  }
+
+  async uninstall() {
+    this.active = false;
+    this.installed = false;
+    await rm(this.definitionPath, { force: true });
+  }
+}
+
+class FakeClient {
+  /**
+   * @param {FakeSupervisor} supervisor
+   * @param {string} managedExecutable
+   */
+  constructor(supervisor, managedExecutable) {
+    this.supervisor = supervisor;
+    this.managedExecutable = managedExecutable;
+    this.manual = false;
+    /** @type {string | null} */
+    this.rejectedVersion = null;
+    this.stopCount = 0;
+  }
+
+  async health() {
+    if (this.manual) {
+      return health('9.9.9', 'manual', 9000);
+    }
+    if (!this.supervisor.active) {
+      throw unavailable();
+    }
+    const current = versionFromContent(await readFile(this.managedExecutable, 'utf8'));
+    return health(
+      this.rejectedVersion === current ? '0.1.0-broken' : current,
+      'supervised',
+      4242,
+    );
+  }
+
+  stopServer() {
+    this.manual = false;
+    this.stopCount += 1;
+    return Promise.resolve({ changed: true, at: new Date().toISOString() });
+  }
+}
+
+/** @param {string} path @param {string} version */
+async function writeExecutable(path, version) {
+  await writeFile(path, `#!/bin/sh\n# VERSION=${version}\n`);
+  await chmod(path, 0o700);
+}
+
+/** @param {string} content */
+function versionFromContent(content) {
+  return content.match(/VERSION=([^\n]+)/)?.[1] ?? 'unknown';
+}
+
+/** @param {string} version @param {'manual' | 'supervised'} mode @param {number} pid */
+function health(version, mode, pid) {
+  return {
+    softwareVersion: version,
+    protocol: { minimum: 1, maximum: 1 },
+    capabilities: [],
+    mode,
+    pid,
+  };
+}
+
+function unavailable() {
+  return new PortreeveClientError('unavailable', { code: 'unavailable' });
+}

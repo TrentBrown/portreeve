@@ -1,0 +1,124 @@
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      PORTREEVE_HOMEPAGE_URL: ${{ github.server_url }}/${{ github.repository }}
+      PORTREEVE_RELEASE_BASE_URL:
+        ${{ github.server_url }}/${{ github.repository }}/releases/download
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun ci
+      - run: bun run check
+      - run: bun run release:build
+      - run: bun run release:verify -- --native
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portreeve-release
+          path: dist/release
+          if-no-files-found: error
+
+  native-smoke:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            platform: macos-arm64
+          - runner: macos-15-intel
+            platform: macos-x64
+          - runner: ubuntu-24.04
+            platform: linux-x64
+          - runner: [self-hosted, linux, ARM64, portreeve-release]
+            platform: linux-arm64
+    runs-on: ${{ matrix.runner }}
+    name: native-smoke (${{ matrix.platform }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun ci
+      - run: bun run check
+      - uses: actions/download-artifact@v4
+        with:
+          name: portreeve-release
+          path: dist/release
+      - run: bun run release:verify -- --native --lifecycle
+      - if: startsWith(matrix.platform, 'macos-')
+        run: bun run release:verify -- --homebrew
+
+  release-policy:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: native-smoke
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: portreeve-release
+          path: dist/release
+      - name: Verify tag matches manifest
+        run: |
+          version=$(jq -r .softwareVersion dist/release/manifest.json)
+          test "$GITHUB_REF_NAME" = "v$version"
+      - name: Require public repository for release distribution
+        run: test "$(gh api "repos/$GITHUB_REPOSITORY" --jq .visibility)" = "public"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  publish-github:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: release-policy
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: portreeve-release
+          path: dist/release
+      - run:
+          gh release create "$GITHUB_REF_NAME" dist/release/* --verify-tag
+          --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  publish-npm:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: release-policy
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v4
+        with:
+          name: portreeve-release
+          path: dist/release
+      - run: npm publish dist/release/portreeve-*.tgz --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
