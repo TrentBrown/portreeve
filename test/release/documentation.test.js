@@ -57,6 +57,10 @@ test('release workflow runs full and lifecycle gates on every native target', as
   const workflow = await readFile(resolve('.github/workflows/release.yml'), 'utf8');
 
   expect(workflow).toContain('node-version: 22');
+  expect(workflow).toContain('actions/checkout@v7');
+  expect(workflow).toContain('actions/setup-node@v7');
+  expect(workflow).toContain('actions/upload-artifact@v7');
+  expect(workflow).toContain('actions/download-artifact@v8');
   expect(workflow).toContain('- run: bun run check');
   expect(workflow).toContain('- run: bun run release:verify -- --native --lifecycle');
   expect(workflow).toContain('runner: ubuntu-24.04-arm');

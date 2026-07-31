@@ -17,8 +17,8 @@ jobs:
       PORTREEVE_RELEASE_BASE_URL:
         ${{ github.server_url }}/${{ github.repository }}/releases/download
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - uses: oven-sh/setup-bun@v2
@@ -28,7 +28,7 @@ jobs:
       - run: bun run check
       - run: bun run release:build
       - run: bun run release:verify -- --native
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: portreeve-release
           path: dist/release
@@ -51,8 +51,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     name: native-smoke (${{ matrix.platform }})
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - uses: oven-sh/setup-bun@v2
@@ -60,7 +60,7 @@ jobs:
           bun-version: 1.3.14
       - run: bun ci
       - run: bun run check
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: portreeve-release
           path: dist/release
@@ -75,11 +75,11 @@ jobs:
     needs: native-smoke
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: portreeve-release
           path: dist/release
@@ -116,7 +116,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: portreeve-release
           path: dist/release
@@ -134,11 +134,11 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: portreeve-release
           path: dist/release
