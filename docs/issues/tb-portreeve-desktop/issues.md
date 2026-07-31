@@ -63,7 +63,7 @@ verified release artifacts.
 - **Plan steps:** P4
 - **Rubric criteria:** R1, R2, R3, R8
 - **Depends on:** I-1, I-2
-- **PR:** -
+- **PR:** [#3](https://github.com/TrentBrown/portreeve/pull/3)
 
 Extend and pass the release matrix, resolve the recorded repository visibility,
 npm, and native Linux ARM64 prerequisites, then publish and inspect Portreeve
@@ -76,6 +76,16 @@ Release policy now fails closed on missing npm authority or an already
 published version. The remaining external prerequisite is an authenticated
 first npm publication; after the package exists, publishing can move to
 GitHub Actions OIDC trusted publishing.
+
+**PR-boundary evidence 2026-07-30.** Release workflow run
+[#30593716275](https://github.com/TrentBrown/portreeve/actions/runs/30593716275)
+passed the build and native lifecycle matrix on macOS ARM64/x64 and Linux
+ARM64/x64, plus real Homebrew installation on both macOS architectures.
+GitHub artifact mode loss is repaired before verification, systemd supervision
+now pre-creates private logs and enforces `UMask=0077`, and current
+GitHub-maintained action majors run without Node 20 deprecation warnings. No
+tag, GitHub Release, or npm package was created. I-3 remains in progress until
+the authenticated first publication is completed and inspected.
 
 ## I-4 - Deliver the secured read-only desktop slice
 

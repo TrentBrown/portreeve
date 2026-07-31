@@ -73,7 +73,7 @@ contract.
 
 ## [3] Use hosted ARM64 and bootstrap npm trust after first publish
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
