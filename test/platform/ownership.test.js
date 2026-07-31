@@ -4,6 +4,7 @@ import { afterEach, expect, test } from 'bun:test';
 import {
   chmod,
   lstat,
+  mkdir,
   mkdtemp,
   readFile,
   rm,
@@ -59,6 +60,17 @@ test('migrates recognized pre-marker state and refuses unrelated entries', async
   await expect(
     ensureOwnershipMarker({ applicationDirectory: unrelated }),
   ).rejects.toThrow('unrelated entries: family-photo.jpg');
+
+  const nestedUnrelated = await directory();
+  await mkdir(join(nestedUnrelated, 'bin'), { mode: 0o700 });
+  await writeFile(join(nestedUnrelated, 'bin', 'notes.txt'), 'not Portreeve');
+  await expect(
+    ensureOwnershipMarker({
+      applicationDirectory: nestedUnrelated,
+      binaryDirectory: join(nestedUnrelated, 'bin'),
+      socketPath: join(nestedUnrelated, 'portreeve.sock'),
+    }),
+  ).rejects.toThrow('bin directory containing unrelated entries');
 });
 
 test('refuses symlinked, malformed, and mismatched ownership markers', async () => {

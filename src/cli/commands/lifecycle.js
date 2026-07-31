@@ -7,6 +7,7 @@ import {
   LifecycleOperationSchema,
   lifecycleError,
 } from '../../supervision/schemas.js';
+import { PurgeConfirmationTokenSchema } from '../../supervision/purge.js';
 import { CliUsageError, exitCodeForError, setExitCode } from '../exit.js';
 import { renderOutput } from '../output/render.js';
 
@@ -92,7 +93,13 @@ export async function purgeCommand(options) {
     renderOutput(options.json ?? false, 'preview', preview, purgePreviewLines(preview));
     return;
   }
-  const result = await manager.purge(/** @type {string} */ (options.confirm));
+  const token = PurgeConfirmationTokenSchema.safeParse(options.confirm);
+  if (!token.success) {
+    throw new CliUsageError(
+      'Purge confirmation token must be the 64-character lowercase hexadecimal token returned by --dry-run.',
+    );
+  }
+  const result = await manager.purge(token.data);
   if (result.outcome === 'refused') {
     setExitCode(EXIT_CODES.conflict);
   } else if (result.outcome === 'partial') {

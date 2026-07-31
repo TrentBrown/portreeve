@@ -37,15 +37,17 @@ const PurgeRefusalSchema = z
 /** @typedef {z.infer<typeof PurgePathSchema>} PurgePath */
 /** @typedef {z.infer<typeof PurgeRefusalSchema>} PurgeRefusal */
 
+export const PurgeConfirmationTokenSchema = z
+  .string()
+  .length(64)
+  .regex(/^[a-f0-9]+$/);
+
 export const PurgePreviewSchema = z
   .object({
     operation: z.literal('purge'),
     dryRun: z.literal(true),
     allowed: z.boolean(),
-    confirmationToken: z
-      .string()
-      .length(64)
-      .regex(/^[a-f0-9]+$/),
+    confirmationToken: PurgeConfirmationTokenSchema,
     root: z.string().min(1),
     marker: OwnershipMarkerSchema.nullable(),
     status: LifecycleStatusSchema,
@@ -58,10 +60,7 @@ export const PurgeResultSchema = z
   .object({
     operation: z.literal('purge'),
     outcome: z.enum(['succeeded', 'refused', 'partial']),
-    confirmationToken: z
-      .string()
-      .length(64)
-      .regex(/^[a-f0-9]+$/),
+    confirmationToken: PurgeConfirmationTokenSchema,
     startedAt: TimestampSchema,
     completedAt: TimestampSchema,
     before: LifecycleStatusSchema,
@@ -210,6 +209,9 @@ export async function executePurge(manager, confirmationToken) {
   /** @type {PurgeRefusal[]} */
   const refused = [];
   let error = null;
+  const definitionWasPresent = preview.paths.some(
+    ({ path }) => path === manager.supervisor.definitionPath,
+  );
   try {
     if (
       preview.status.supervisor.state === 'active' ||
@@ -222,14 +224,26 @@ export async function executePurge(manager, confirmationToken) {
     }
     if (preview.status.supervisor.state !== 'unavailable') {
       await manager.supervisor.uninstall();
-      removed.push(manager.supervisor.definitionPath);
     }
 
     const deletionPreview = await previewPurge(manager);
     if (!deletionPreview.allowed) {
       refused.push(...deletionPreview.refused);
       retained.push(...deletionPreview.paths.map(({ path }) => path));
+    } else if (
+      deletionPreview.paths.some(
+        ({ path }) => path === manager.supervisor.definitionPath,
+      )
+    ) {
+      refused.push({
+        path: manager.supervisor.definitionPath,
+        reason: 'supervisor-definition-retained',
+      });
+      retained.push(...deletionPreview.paths.map(({ path }) => path));
     } else {
+      if (definitionWasPresent) {
+        removed.push(manager.supervisor.definitionPath);
+      }
       const previewedPaths = new Set(preview.paths.map(({ path }) => path));
       const addedPaths = deletionPreview.paths.filter(
         ({ path }) => !previewedPaths.has(path),

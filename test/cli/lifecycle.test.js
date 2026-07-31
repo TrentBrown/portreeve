@@ -83,6 +83,9 @@ test('purge requires exactly one preview or evidence-bound execution mode', asyn
   await expect(
     purgeCommand({ dryRun: true, confirm: 'token', json: true }),
   ).rejects.toBeInstanceOf(CliUsageError);
+  await expect(
+    purgeCommand({ confirm: 'not-a-preview-token', json: true }),
+  ).rejects.toThrow('64-character lowercase hexadecimal token');
 });
 
 /**

@@ -209,6 +209,43 @@ test('reports supervisor cleanup failure as partial without deleting data', asyn
   await access(fixture.root);
 });
 
+test('does not claim success when supervisor uninstall retains its definition', async () => {
+  const fixture = await createFixture();
+  const manager = /** @type {any} */ (fixture.manager);
+  const definitionPath = manager.supervisor.definitionPath;
+  await writeFile(definitionPath, 'definition', { mode: 0o600 });
+  manager.status = () => {
+    const value = status(fixture.root, join(fixture.root, 'portreeve.sock'), 'none');
+    return Promise.resolve({
+      ...value,
+      supervisor: {
+        kind: 'launchd',
+        state: /** @type {'inactive'} */ ('inactive'),
+        mainPid: null,
+        error: null,
+      },
+    });
+  };
+  const preview = await previewPurge(manager);
+
+  const result = await executePurge(manager, preview.confirmationToken);
+  expect(result).toMatchObject({
+    outcome: 'refused',
+    removed: [],
+    refused: [
+      {
+        path: definitionPath,
+        reason: 'supervisor-definition-retained',
+      },
+    ],
+    error: null,
+  });
+  expect(result.retained).toContain(preview.root);
+  expect(result.retained).toContain(definitionPath);
+  await access(fixture.root);
+  await access(definitionPath);
+});
+
 /**
  * @param {'none' | 'manual'} [mode]
  */
