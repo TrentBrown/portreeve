@@ -1,0 +1,30 @@
+# Branch Tracker - tb-portreeve-desktop
+
+**Spec:** [`spec.md`](spec.md)
+**Plan:** [`plan.md`](plan.md)
+**Issues:** [`issues.md`](issues.md)
+**Created:** 2026-07-30
+
+## Rubric Status
+
+| # | Criterion (short) | Status | PR | Notes |
+|---|-------------------|--------|----|-------|
+| R1 | Layered lifecycle status | PASS | [#2](https://github.com/TrentBrown/portreeve/pull/2) | Strict schema fixtures, layered manager tests, compiled CLI status, and native macOS x64 supervisor/socket lifecycle pass |
+| R2 | Safe lifecycle mutations | NOT YET | [#2](https://github.com/TrentBrown/portreeve/pull/2) | Contract, refusal, partial-result, no-downgrade, manual-stop, and native LaunchAgent evidence pass; native systemd-user exercise remains in P4 |
+| R3 | Complete reset | PASS | [#2](https://github.com/TrentBrown/portreeve/pull/2) | Marker migration, adversarial filesystem, token drift, partial-result, compiled CLI, and native macOS x64 purge/reinstall evidence pass |
+| R4 | Desktop integration | NOT YET | - | Planning pending |
+| R5 | MVP user workflows | NOT YET | - | Planning pending |
+| R6 | Electron security and freshness | NOT YET | - | Planning pending |
+| R7 | Version and update policy | NOT YET | - | Planning pending |
+| R8 | Release identity and native execution | NOT YET | - | Planning pending |
+
+## PR Log
+
+### PR #2 - Lifecycle and reset contracts
+
+- **PR:** [#2](https://github.com/TrentBrown/portreeve/pull/2)
+- **Status:** draft
+- **Scope:** P1-P3 lifecycle contract and complete-reset prerequisite slice.
+- **Evidence packet:** [pr-2](pr-2/)
+- **Result:** R1 and R3 pass. R2 remains open for native systemd-user
+  verification in P4; R4-R8 remain future desktop and release work.

@@ -15,9 +15,11 @@ import { historyCommand, logsCommand } from './commands/observability.js';
 import {
   installCommand,
   lifecycleStatusCommand,
+  purgeCommand,
   restartCommand,
   startCommand,
   stopCommand,
+  stopManualCommand,
   uninstallCommand,
 } from './commands/lifecycle.js';
 import {
@@ -57,6 +59,19 @@ export function createProgram() {
     .option('--json', 'emit versioned JSON output')
     .action(lifecycleStatusCommand);
 
+  program
+    .command('purge')
+    .description('Preview or execute complete Portreeve removal')
+    .option('--home <path>', 'override the Portreeve application directory')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--dry-run', 'inspect the exact deletion evidence without mutation')
+    .option(
+      '--confirm <preview-token>',
+      'execute only when current evidence matches this preview token',
+    )
+    .option('--json', 'emit versioned JSON output')
+    .action(purgeCommand);
+
   /** @type {Array<[string, string, (options: {home?: string, socket?: string, json?: boolean}) => Promise<void>]>} */
   const lifecycleCommands = [
     [
@@ -70,7 +85,12 @@ export function createProgram() {
       uninstallCommand,
     ],
     ['start', 'Start the installed supervised server', startCommand],
-    ['stop', 'Stop a manual or supervised server', stopCommand],
+    ['stop', 'Stop the installed supervised server', stopCommand],
+    [
+      'stop-manual',
+      'Explicitly stop a server running outside native supervision',
+      stopManualCommand,
+    ],
     ['restart', 'Restart the installed supervised server', restartCommand],
   ];
   for (const [name, description, action] of lifecycleCommands) {

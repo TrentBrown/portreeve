@@ -74,14 +74,15 @@ describe('lifecycle manager', () => {
     expect(fixture.supervisor.startCount).toBe(2);
   });
 
-  test('refuses to adopt a manual server and can stop one gracefully', async () => {
+  test('refuses to adopt or implicitly stop a manual server', async () => {
     const fixture = await createFixture('1.0.0');
     fixture.client.manual = true;
     await expect(fixture.manager.install()).rejects.toBeInstanceOf(
       LifecycleConflictError,
     );
+    await expect(fixture.manager.stop()).rejects.toBeInstanceOf(LifecycleConflictError);
 
-    expect(await fixture.manager.stop()).toEqual({
+    expect(await fixture.manager.stopManual()).toEqual({
       changed: true,
       mode: 'manual',
     });
@@ -123,7 +124,100 @@ describe('lifecycle manager', () => {
     await unsafeManaged.manager.install();
     await chmod(unsafeManaged.paths.managedExecutablePath, 0o722);
     await expect(unsafeManaged.manager.install()).rejects.toThrow(
-      'Managed Portreeve executable is writable by another user',
+      'installation is unsafe or unreadable',
+    );
+  });
+
+  test('returns independently layered status for absent, manual, and supervised states', async () => {
+    const fixture = await createFixture('1.0.0');
+    expect(await fixture.manager.status()).toMatchObject({
+      installation: {
+        state: 'absent',
+        version: null,
+      },
+      supervisor: {
+        kind: 'fake-user',
+        state: 'unavailable',
+        mainPid: null,
+      },
+      socket: {
+        state: 'unavailable',
+        server: null,
+      },
+      mode: 'none',
+      versions: {
+        cli: '0.1.0',
+        managed: null,
+        running: null,
+      },
+    });
+
+    fixture.client.manual = true;
+    expect(await fixture.manager.status()).toMatchObject({
+      socket: {
+        state: 'healthy',
+        server: { mode: 'manual', pid: 9000 },
+      },
+      mode: 'manual',
+      versions: { running: '9.9.9' },
+    });
+    fixture.client.manual = false;
+
+    await fixture.manager.install();
+    await fixture.manager.start();
+    expect(await fixture.manager.status()).toMatchObject({
+      installation: {
+        state: 'installed',
+        version: '1.0.0',
+      },
+      supervisor: {
+        state: 'active',
+        mainPid: 4242,
+      },
+      socket: {
+        state: 'healthy',
+        server: { mode: 'supervised', pid: 4242 },
+      },
+      mode: 'supervised',
+      versions: {
+        managed: '1.0.0',
+        running: '1.0.0',
+      },
+      limitations: [],
+    });
+  });
+
+  test('keeps invalid and incompatible layers inside status snapshots', async () => {
+    const fixture = await createFixture('1.0.0');
+    await fixture.manager.install();
+    await chmod(fixture.paths.managedExecutablePath, 0o722);
+    fixture.client.incompatible = true;
+
+    expect(await fixture.manager.status()).toMatchObject({
+      installation: {
+        state: 'invalid',
+        version: null,
+        error: { code: 'internal' },
+      },
+      socket: {
+        state: 'incompatible',
+        server: null,
+        error: { code: 'incompatible_protocol' },
+      },
+      limitations: ['managed-installation-evidence-incomplete'],
+    });
+  });
+
+  test('refuses to replace a newer managed executable', async () => {
+    const fixture = await createFixture('2.0.0');
+    await fixture.manager.install();
+    await writeExecutable(fixture.source, '1.9.9');
+
+    await expect(fixture.manager.install()).rejects.toThrow(
+      'will not replace newer Portreeve 2.0.0',
+    );
+    expect(await readFile(fixture.paths.managedExecutablePath, 'utf8')).toContain(
+      '2.0.0',
     );
   });
 
@@ -140,6 +234,24 @@ describe('lifecycle manager', () => {
     await expect(fixture.client.health()).rejects.toMatchObject({
       code: 'unavailable',
     });
+  });
+
+  test('stops a known active supervisor even when its socket is unavailable', async () => {
+    const fixture = await createFixture('1.0.0');
+    await fixture.manager.install();
+    await fixture.manager.start();
+    fixture.client.unavailable = true;
+
+    expect(await fixture.manager.status()).toMatchObject({
+      supervisor: { state: 'active' },
+      socket: { state: 'unavailable' },
+      mode: 'ambiguous',
+    });
+    expect(await fixture.manager.stop()).toEqual({
+      changed: true,
+      mode: 'supervised',
+    });
+    expect(fixture.supervisor.active).toBe(false);
   });
 });
 
@@ -244,12 +356,22 @@ class FakeClient {
     this.supervisor = supervisor;
     this.managedExecutable = managedExecutable;
     this.manual = false;
+    this.incompatible = false;
+    this.unavailable = false;
     /** @type {string | null} */
     this.rejectedVersion = null;
     this.stopCount = 0;
   }
 
   async health() {
+    if (this.unavailable) {
+      throw unavailable();
+    }
+    if (this.incompatible) {
+      throw new PortreeveClientError('incompatible', {
+        code: 'incompatible_protocol',
+      });
+    }
     if (this.manual) {
       return health('9.9.9', 'manual', 9000);
     }

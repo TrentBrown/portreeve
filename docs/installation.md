@@ -64,7 +64,7 @@ bun run release:verify -- --homebrew
 header, validates the formula syntax, and actually runs the artifact matching
 the current machine. Adding `--lifecycle` uses a unique temporary native
 service to verify inactive installation, start, active upgrade, restart, stop,
-uninstall, data preservation, and cleanup.
+uninstall, data preservation, marker-bound purge, clean reinstall, and cleanup.
 
 Every advertised OS/architecture combination must pass the complete source
 gate and both native release smokes before publication. Cross-compilation alone
