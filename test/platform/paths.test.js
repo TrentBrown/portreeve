@@ -30,14 +30,48 @@ test('creates private application and socket directories', async () => {
   const root = await directory();
   const applicationDirectory = join(root, 'data');
   const socketDirectory = join(root, 'runtime');
+  const supervisorStandardOutputPath = join(
+    applicationDirectory,
+    'supervisor.stdout.log',
+  );
+  const supervisorStandardErrorPath = join(
+    applicationDirectory,
+    'supervisor.stderr.log',
+  );
 
   await prepareRuntimeDirectories({
     applicationDirectory,
     socketPath: join(socketDirectory, 'portreeve.sock'),
+    supervisorStandardOutputPath,
+    supervisorStandardErrorPath,
   });
 
   expect((await stat(applicationDirectory)).mode & 0o777).toBe(0o700);
   expect((await stat(socketDirectory)).mode & 0o777).toBe(0o700);
+  expect((await stat(supervisorStandardOutputPath)).mode & 0o777).toBe(0o600);
+  expect((await stat(supervisorStandardErrorPath)).mode & 0o777).toBe(0o600);
+});
+
+test('rejects unsafe existing supervisor logs rather than repairing them', async () => {
+  const root = await directory();
+  const applicationDirectory = join(root, 'data');
+  const supervisorStandardOutputPath = join(
+    applicationDirectory,
+    'supervisor.stdout.log',
+  );
+  await mkdir(applicationDirectory);
+  await chmod(applicationDirectory, 0o700);
+  await writeFile(supervisorStandardOutputPath, '');
+  await chmod(supervisorStandardOutputPath, 0o664);
+
+  await expect(
+    prepareRuntimeDirectories({
+      applicationDirectory,
+      socketPath: join(applicationDirectory, 'portreeve.sock'),
+      supervisorStandardOutputPath,
+    }),
+  ).rejects.toThrow(/not private|writable by another user/u);
+  expect((await stat(supervisorStandardOutputPath)).mode & 0o777).toBe(0o664);
 });
 
 test('rejects rather than repairs an unsafe existing directory', async () => {

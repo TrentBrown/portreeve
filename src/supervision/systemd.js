@@ -41,6 +41,7 @@ Description=Portreeve local development port authority
 [Service]
 Type=simple
 Environment=PORTREEVE_SUPERVISED=1
+UMask=0077
 ExecStart=${command}
 Restart=on-failure
 StandardOutput=append:${escapeSystemdSpecifiers(definition.standardOutputPath)}

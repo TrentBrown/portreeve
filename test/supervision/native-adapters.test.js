@@ -119,6 +119,7 @@ describe('native supervisor adapters', () => {
     try {
       const content = supervisor.renderDefinition(definition);
       expect(content).toContain('Environment=PORTREEVE_SUPERVISED=1');
+      expect(content).toContain('UMask=0077');
       expect(content).toContain('%%');
       expect(content).toContain('"/Users/Example User/.portreeve/bin/portreeve"');
       await supervisor.installDefinition(content);
