@@ -9,12 +9,12 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Finalize layered lifecycle and mutation contracts
 
-- **Status:** closed
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P1, P2
 - **Rubric criteria:** R1, R2
 - **Depends on:** none
-- **PR:** -
+- **PR:** [#2](https://github.com/TrentBrown/portreeve/pull/2)
 
 Replace the unpublished lifecycle JSON contract with runtime-validated
 status/mutation schemas, implement independent evidence collection, enforce the
@@ -34,12 +34,12 @@ timeout races `lsof` after killing a PID.
 
 ## I-2 - Implement ownership marking and complete reset
 
-- **Status:** closed
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P3
 - **Rubric criteria:** R3
 - **Depends on:** I-1
-- **PR:** -
+- **PR:** [#2](https://github.com/TrentBrown/portreeve/pull/2)
 
 Add validated marker initialization/migration, purge preview and execution,
 evidence binding, symlink/path/ownership/live-process safeguards, structured

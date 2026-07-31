@@ -6,6 +6,8 @@ Permanent record of decisions promoted from `scratchpad.md`.
 
 ## [1] Use snapshots as the canonical lifecycle evidence boundary
 
+**PR:** [#2](https://github.com/TrentBrown/portreeve/pull/2)
+
 **Confidence:** HIGH
 
 **Blast Radius:** lifecycle schemas, supervision manager, CLI JSON and exit
@@ -36,6 +38,8 @@ runtime-validate and consume.
   termination is a separate user consent boundary in the approved design.
 
 ## [2] Bind purge execution to a deterministic preview token
+
+**PR:** [#2](https://github.com/TrentBrown/portreeve/pull/2)
 
 **Confidence:** HIGH
 
