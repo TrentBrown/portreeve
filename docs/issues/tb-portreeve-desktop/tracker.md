@@ -23,7 +23,7 @@
 ### PR #2 - Lifecycle and reset contracts
 
 - **PR:** [#2](https://github.com/TrentBrown/portreeve/pull/2)
-- **Status:** draft
+- **Status:** merged
 - **Scope:** P1-P3 lifecycle contract and complete-reset prerequisite slice.
 - **Evidence packet:** [pr-2](pr-2/)
 - **Result:** R1 and R3 pass. R2 remains open for native systemd-user

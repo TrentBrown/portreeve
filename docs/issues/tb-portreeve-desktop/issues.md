@@ -9,7 +9,7 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Finalize layered lifecycle and mutation contracts
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P1, P2
 - **Rubric criteria:** R1, R2
@@ -34,7 +34,7 @@ timeout races `lsof` after killing a PID.
 
 ## I-2 - Implement ownership marking and complete reset
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P3
 - **Rubric criteria:** R3
@@ -58,7 +58,7 @@ verified release artifacts.
 
 ## I-3 - Publish the first CLI/server authority
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1d
 - **Plan steps:** P4
 - **Rubric criteria:** R1, R2, R3, R8
@@ -68,6 +68,14 @@ verified release artifacts.
 Extend and pass the release matrix, resolve the recorded repository visibility,
 npm, and native Linux ARM64 prerequisites, then publish and inspect Portreeve
 CLI/server `0.1.0` before desktop packaging consumes it.
+
+**Started 2026-07-30.** PR #2 merged and the repository passed a complete
+history secret scan before becoming public. Current GitHub-hosted
+`ubuntu-24.04-arm` replaces the obsolete self-hosted ARM64 prerequisite.
+Release policy now fails closed on missing npm authority or an already
+published version. The remaining external prerequisite is an authenticated
+first npm publication; after the package exists, publishing can move to
+GitHub Actions OIDC trusted publishing.
 
 ## I-4 - Deliver the secured read-only desktop slice
 
