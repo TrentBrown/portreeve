@@ -61,6 +61,7 @@ test('release workflow runs full and lifecycle gates on every native target', as
   expect(workflow).toContain('- run: bun run release:verify -- --native --lifecycle');
   expect(workflow).toContain('runner: ubuntu-24.04-arm');
   expect(workflow).not.toContain('self-hosted');
+  expect(workflow).toContain('Restore executable artifact modes');
   expect(workflow).toContain('Require public repository for release distribution');
   expect(workflow).toContain('Require npm publishing authority');
   expect(workflow).toContain('Require unpublished npm version');

@@ -64,6 +64,8 @@ jobs:
         with:
           name: portreeve-release
           path: dist/release
+      - name: Restore executable artifact modes
+        run: chmod 755 dist/release/portreeve-v*
       - run: bun run release:verify -- --native --lifecycle
       - if: startsWith(matrix.platform, 'macos-')
         run: bun run release:verify -- --homebrew
