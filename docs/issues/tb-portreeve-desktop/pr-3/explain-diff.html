@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portreeve PR #3 — Release authority preparation</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172033;
+        --muted: #5c667a;
+        --paper: #f7f5ef;
+        --panel: #ffffff;
+        --accent: #315c8c;
+        --accent-soft: #e8f0f8;
+        --ok: #1f7045;
+        --warn: #8a5a12;
+        --line: #d8dce4;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 17px/1.65 ui-serif, Georgia, serif;
+      }
+      main,
+      nav {
+        width: min(980px, calc(100% - 32px));
+        margin: 0 auto;
+      }
+      header {
+        padding: 70px 16px 44px;
+        background: linear-gradient(135deg, #17324f, #315c8c);
+        color: white;
+      }
+      header > div {
+        width: min(980px, 100%);
+        margin: auto;
+      }
+      h1,
+      h2,
+      h3 {
+        line-height: 1.18;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      h1 {
+        max-width: 760px;
+        font-size: clamp(2.3rem, 6vw, 4.5rem);
+        margin: 0 0 18px;
+      }
+      h2 {
+        margin-top: 70px;
+        border-bottom: 2px solid var(--line);
+        padding-bottom: 10px;
+      }
+      h3 {
+        margin-top: 34px;
+      }
+      .dek {
+        max-width: 760px;
+        font-size: 1.2rem;
+        opacity: 0.92;
+      }
+      nav {
+        margin-top: 28px;
+        padding: 18px 24px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+      }
+      nav a {
+        margin-right: 18px;
+        color: var(--accent);
+      }
+      .callout {
+        margin: 26px 0;
+        padding: 18px 22px;
+        border-left: 5px solid var(--accent);
+        background: var(--accent-soft);
+        border-radius: 4px 10px 10px 4px;
+      }
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        align-items: stretch;
+        margin: 30px 0;
+      }
+      .node {
+        position: relative;
+        min-height: 118px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      .node strong {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--accent);
+      }
+      .node:not(:last-child)::after {
+        content: "→";
+        position: absolute;
+        right: -13px;
+        top: 42px;
+        z-index: 2;
+        color: var(--accent);
+        font-size: 1.5rem;
+      }
+      .matrix {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin: 24px 0;
+      }
+      .target {
+        padding: 16px;
+        border-radius: 10px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+      }
+      .target span {
+        color: var(--ok);
+        font-weight: bold;
+      }
+      pre {
+        overflow-x: auto;
+        white-space: pre-wrap;
+        padding: 18px;
+        border-radius: 10px;
+        background: #172033;
+        color: #eff5ff;
+        font: 0.88rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .quiz {
+        margin: 24px 0;
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel);
+      }
+      .quiz button {
+        display: block;
+        width: 100%;
+        margin: 9px 0;
+        padding: 11px 14px;
+        text-align: left;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: white;
+        color: var(--ink);
+        cursor: pointer;
+      }
+      .quiz button:hover {
+        border-color: var(--accent);
+      }
+      .feedback {
+        min-height: 1.5em;
+        margin-top: 12px;
+        font-weight: bold;
+      }
+      footer {
+        margin-top: 80px;
+        padding: 34px 16px;
+        text-align: center;
+        color: var(--muted);
+        border-top: 1px solid var(--line);
+      }
+      @media (max-width: 760px) {
+        .flow {
+          grid-template-columns: 1fr;
+        }
+        .node:not(:last-child)::after {
+          content: "↓";
+          right: 50%;
+          top: auto;
+          bottom: -23px;
+        }
+        .matrix {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <p>Portreeve · PR #3 · pinned diff a3a1518…74023e4</p>
+        <h1>Making the first release path real</h1>
+        <p class="dek">
+          This change turns a plausible release workflow into one that has run
+          successfully on every supported architecture—without publishing a
+          package prematurely.
+        </p>
+      </div>
+    </header>
+
+    <nav aria-label="Table of contents">
+      <strong>Contents:</strong>
+      <a href="#background">Background</a>
+      <a href="#intuition">Intuition</a>
+      <a href="#code">Code</a>
+      <a href="#quiz">Quiz</a>
+    </nav>
+
+    <main>
+      <section id="background">
+        <h2>Background</h2>
+        <h3>The larger system</h3>
+        <p>
+          Portreeve is a per-user authority for development ports. Its compiled
+          CLI can run a server manually, install a managed copy, and delegate
+          supervision to launchd on macOS or <code>systemd --user</code> on
+          Linux. A JavaScript client communicates through the public socket
+          protocol; it does not make privileged in-process calls.
+        </p>
+        <p>
+          A release therefore has more to prove than “Bun compiled four
+          files.” A cross-compiled executable may have the right header and
+          checksum while still failing on its destination OS. Portreeve's
+          release gate executes the complete lifecycle natively: install,
+          start, upgrade, restart, stop, uninstall, purge, and reinstall.
+        </p>
+
+        <div class="flow" aria-label="Release pipeline">
+          <div class="node">
+            <strong>Build</strong>
+            Compile four executables and pack the public npm client.
+          </div>
+          <div class="node">
+            <strong>Transport</strong>
+            Move one immutable artifact bundle between jobs.
+          </div>
+          <div class="node">
+            <strong>Execute</strong>
+            Run the matching binary and native supervisor lifecycle.
+          </div>
+          <div class="node">
+            <strong>Policy</strong>
+            Verify tag, visibility, npm identity, and version availability.
+          </div>
+          <div class="node">
+            <strong>Publish</strong>
+            Create npm and GitHub artifacts only for a release tag.
+          </div>
+        </div>
+
+        <h3>Why the old workflow stopped short</h3>
+        <p>
+          Linux ARM64 depended on a self-hosted runner that did not exist.
+          Publication assumed npm credentials that were not configured. Once a
+          real hosted matrix was run, GitHub artifact transport exposed another
+          property: downloaded files have ordinary <code>0644</code> mode,
+          even when the original was executable.
+        </p>
+        <div class="callout">
+          <strong>Important distinction:</strong> a checksum authenticates file
+          bytes, not Unix metadata. Restoring mode to <code>0755</code> does not
+          change the checksum or weaken binary-format verification.
+        </div>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <p>
+          The central idea is to make every prerequisite observable before the
+          irreversible step. The workflow may build and test on any branch, but
+          publication jobs exist only for a <code>v*</code> tag and only after
+          the policy job proves that the repository is public, npm credentials
+          are valid, and the exact package version is absent.
+        </p>
+
+        <pre>branch dispatch
+  → build
+  → four native lifecycle jobs
+  → stop (no publication)
+
+v0.1.0 tag
+  → build
+  → four native lifecycle jobs
+  → release policy
+  → npm + GitHub publication</pre>
+
+        <p>
+          The Linux purge failure illustrates the same philosophy. The purge
+          guard found systemd-created logs with mode <code>0664</code>. The
+          tempting response would be to relax deletion safety. This change
+          instead fixes creation: Portreeve exclusively pre-creates both logs
+          at <code>0600</code> and places <code>UMask=0077</code> in the unit.
+          The safety rule remains uncompromised.
+        </p>
+
+        <div class="matrix" aria-label="Validated native targets">
+          <div class="target"><strong>macOS ARM64</strong><br /><span>Lifecycle + Homebrew passed</span></div>
+          <div class="target"><strong>macOS x64</strong><br /><span>Lifecycle + Homebrew passed</span></div>
+          <div class="target"><strong>Linux ARM64</strong><br /><span>systemd-user lifecycle passed</span></div>
+          <div class="target"><strong>Linux x64</strong><br /><span>systemd-user lifecycle passed</span></div>
+        </div>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <h3>1. Release workflow</h3>
+        <p>
+          <code>.github/workflows/release.yml</code> replaces the unavailable
+          self-hosted ARM64 selector with <code>ubuntu-24.04-arm</code>. After
+          artifact download, it restores executable modes and then runs the
+          unchanged checksum, format, native server, and lifecycle verifier.
+          GitHub-maintained actions move to their current Node 24-backed majors.
+        </p>
+        <pre>- runner: ubuntu-24.04-arm
+  platform: linux-arm64
+
+- name: Restore executable artifact modes
+  run: chmod 755 dist/release/portreeve-v*</pre>
+
+        <h3>2. Publication policy</h3>
+        <p>
+          The policy job now configures the npm registry, calls
+          <code>npm whoami</code>, and distinguishes the expected
+          “version not found” response from network, authorization, or registry
+          failures. Both publishing jobs depend on this one gate.
+        </p>
+        <pre>if npm view "portreeve@$version" succeeds:
+  refuse: version already exists
+else if the failure is not E404:
+  refuse: registry evidence is unreliable
+else:
+  publication may proceed</pre>
+
+        <h3>3. Private supervisor logs</h3>
+        <p>
+          <code>prepareRuntimeDirectories</code> accepts optional native
+          supervisor log paths. Missing logs are created with exclusive
+          <code>wx</code> semantics and mode <code>0600</code>. Existing paths
+          must be regular, non-symlink files owned by the current user, private
+          from group and other users, and writable by their owner.
+        </p>
+        <p>
+          This is both a lifecycle fix and a security improvement: the native
+          supervisor cannot follow a pre-positioned symbolic link when it opens
+          stdout or stderr.
+        </p>
+
+        <h3>4. Tests and documentation</h3>
+        <p>
+          Tests assert private file creation, refusal to repair permissive
+          files silently, the systemd umask, current action majors, hosted ARM64,
+          npm preflights, and absence of the self-hosted dependency.
+          Installation documentation now describes the bootstrap credential
+          and the planned migration to npm trusted publishing after the package
+          exists.
+        </p>
+
+        <div class="callout">
+          <strong>What this PR does not do:</strong> it creates no tag, npm
+          package, or GitHub Release. The first public publication remains an
+          explicit operator step after merge and npm authentication.
+        </div>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="1">
+          <h3>1. Why is <code>chmod 755</code> safe after artifact download?</h3>
+          <button>It makes GitHub recompute and approve the release checksum.</button>
+          <button>It restores metadata lost in transport without changing verified bytes.</button>
+          <button>It converts a cross-compiled binary into a native executable.</button>
+          <div class="feedback"></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <h3>2. Why did Portreeve pre-create systemd log files?</h3>
+          <button>To make log rotation happen before the server starts.</button>
+          <button>To allow every local user to inspect lifecycle failures.</button>
+          <button>To retain strict purge safety and prevent permissive or symlinked log paths.</button>
+          <div class="feedback"></div>
+        </div>
+        <div class="quiz" data-answer="0">
+          <h3>3. What happens on an untagged manual workflow run?</h3>
+          <button>Build and native verification run; publication jobs are skipped.</button>
+          <button>A draft GitHub Release is created but npm is skipped.</button>
+          <button>Only source tests run because native jobs require a tag.</button>
+          <div class="feedback"></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <h3>4. Why does the first npm release still use a token?</h3>
+          <button>OIDC cannot attach provenance to an unscoped npm package.</button>
+          <button>The npm package must exist before its trusted publisher can be configured.</button>
+          <button>GitHub-hosted ARM64 runners do not support OIDC.</button>
+          <div class="feedback"></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <h3>5. Which result is still intentionally incomplete?</h3>
+          <button>Native Linux ARM64 systemd lifecycle execution.</button>
+          <button>Homebrew installation on macOS Intel.</button>
+          <button>Authenticated public publication and inspection of version 0.1.0.</button>
+          <div class="feedback"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      Generated for the Agentic Development Workflow PR #3 boundary.
+    </footer>
+    <script>
+      document.querySelectorAll(".quiz").forEach((quiz) => {
+        const answer = Number(quiz.dataset.answer);
+        const feedback = quiz.querySelector(".feedback");
+        quiz.querySelectorAll("button").forEach((button, index) => {
+          button.addEventListener("click", () => {
+            const correct = index === answer;
+            feedback.textContent = correct
+              ? "Correct. That is the invariant the PR preserves."
+              : "Not quite. Re-read the corresponding Background or Code section.";
+            feedback.style.color = correct ? "#1f7045" : "#8a5a12";
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

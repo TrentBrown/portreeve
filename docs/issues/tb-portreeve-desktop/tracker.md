@@ -10,21 +10,34 @@
 | # | Criterion (short) | Status | PR | Notes |
 |---|-------------------|--------|----|-------|
 | R1 | Layered lifecycle status | PASS | [#2](https://github.com/TrentBrown/portreeve/pull/2) | Strict schema fixtures, layered manager tests, compiled CLI status, and native macOS x64 supervisor/socket lifecycle pass |
-| R2 | Safe lifecycle mutations | NOT YET | [#2](https://github.com/TrentBrown/portreeve/pull/2) | Contract, refusal, partial-result, no-downgrade, manual-stop, and native LaunchAgent evidence pass; native systemd-user exercise remains in P4 |
+| R2 | Safe lifecycle mutations | PASS | [#3](https://github.com/TrentBrown/portreeve/pull/3) | Contract and refusal evidence from PR #2 plus native lifecycle install/start/upgrade/restart/stop/uninstall/purge/reinstall on macOS ARM64/x64 and systemd-user Linux ARM64/x64 in run 30593716275 |
 | R3 | Complete reset | PASS | [#2](https://github.com/TrentBrown/portreeve/pull/2) | Marker migration, adversarial filesystem, token drift, partial-result, compiled CLI, and native macOS x64 purge/reinstall evidence pass |
 | R4 | Desktop integration | NOT YET | - | Planning pending |
 | R5 | MVP user workflows | NOT YET | - | Planning pending |
 | R6 | Electron security and freshness | NOT YET | - | Planning pending |
 | R7 | Version and update policy | NOT YET | - | Planning pending |
-| R8 | Release identity and native execution | NOT YET | - | Planning pending |
+| R8 | Release identity and native execution | NOT YET | [#3](https://github.com/TrentBrown/portreeve/pull/3) | Four native executable targets, lifecycle matrix, checksums, npm tarball, and Homebrew installation pass; first authenticated npm/GitHub publication and later desktop artifact identity remain |
 
 ## PR Log
 
 ### PR #2 - Lifecycle and reset contracts
 
 - **PR:** [#2](https://github.com/TrentBrown/portreeve/pull/2)
-- **Status:** draft
+- **Status:** merged
 - **Scope:** P1-P3 lifecycle contract and complete-reset prerequisite slice.
 - **Evidence packet:** [pr-2](pr-2/)
 - **Result:** R1 and R3 pass. R2 remains open for native systemd-user
   verification in P4; R4-R8 remain future desktop and release work.
+
+### PR #3 - CLI release authority preparation
+
+- **PR:** [#3](https://github.com/TrentBrown/portreeve/pull/3)
+- **Status:** draft
+- **Scope:** P4 release infrastructure, native matrix completion, and
+  pre-publication safety.
+- **Evidence packet:** [pr-3](pr-3/)
+- **Result:** R2 passes with native launchd and systemd-user lifecycle
+  evidence. R8 advances through four-platform executable and Homebrew
+  verification but remains open until the first CLI/client publication and
+  later desktop identity checks. Independent judge: PASS WITH CONCERNS; code
+  review: PASS with no actionable findings.

@@ -9,7 +9,7 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Finalize layered lifecycle and mutation contracts
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P1, P2
 - **Rubric criteria:** R1, R2
@@ -34,7 +34,7 @@ timeout races `lsof` after killing a PID.
 
 ## I-2 - Implement ownership marking and complete reset
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P3
 - **Rubric criteria:** R3
@@ -58,16 +58,34 @@ verified release artifacts.
 
 ## I-3 - Publish the first CLI/server authority
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1d
 - **Plan steps:** P4
 - **Rubric criteria:** R1, R2, R3, R8
 - **Depends on:** I-1, I-2
-- **PR:** -
+- **PR:** [#3](https://github.com/TrentBrown/portreeve/pull/3)
 
 Extend and pass the release matrix, resolve the recorded repository visibility,
 npm, and native Linux ARM64 prerequisites, then publish and inspect Portreeve
 CLI/server `0.1.0` before desktop packaging consumes it.
+
+**Started 2026-07-30.** PR #2 merged and the repository passed a complete
+history secret scan before becoming public. Current GitHub-hosted
+`ubuntu-24.04-arm` replaces the obsolete self-hosted ARM64 prerequisite.
+Release policy now fails closed on missing npm authority or an already
+published version. The remaining external prerequisite is an authenticated
+first npm publication; after the package exists, publishing can move to
+GitHub Actions OIDC trusted publishing.
+
+**PR-boundary evidence 2026-07-30.** Release workflow run
+[#30593716275](https://github.com/TrentBrown/portreeve/actions/runs/30593716275)
+passed the build and native lifecycle matrix on macOS ARM64/x64 and Linux
+ARM64/x64, plus real Homebrew installation on both macOS architectures.
+GitHub artifact mode loss is repaired before verification, systemd supervision
+now pre-creates private logs and enforces `UMask=0077`, and current
+GitHub-maintained action majors run without Node 20 deprecation warnings. No
+tag, GitHub Release, or npm package was created. I-3 remains in progress until
+the authenticated first publication is completed and inspected.
 
 ## I-4 - Deliver the secured read-only desktop slice
 

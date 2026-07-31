@@ -1,6 +1,6 @@
 // @ts-check
 
-import { chmod, lstat, mkdir } from 'node:fs/promises';
+import { chmod, lstat, mkdir, open } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { OWNERSHIP_MARKER_FILENAME, ensureOwnershipMarker } from './ownership.js';
@@ -36,7 +36,12 @@ export function resolveRuntimePaths(environment = process.env) {
 }
 
 /**
- * @param {{applicationDirectory: string, socketPath: string}} paths
+ * @param {{
+ *   applicationDirectory: string,
+ *   socketPath: string,
+ *   supervisorStandardOutputPath?: string,
+ *   supervisorStandardErrorPath?: string
+ * }} paths
  */
 export async function prepareRuntimeDirectories(paths) {
   await ensurePrivateDirectory(paths.applicationDirectory);
@@ -47,6 +52,14 @@ export async function prepareRuntimeDirectories(paths) {
   const socketDirectory = dirname(paths.socketPath);
   if (socketDirectory !== paths.applicationDirectory) {
     await ensurePrivateDirectory(socketDirectory);
+  }
+  for (const path of [
+    paths.supervisorStandardOutputPath,
+    paths.supervisorStandardErrorPath,
+  ]) {
+    if (path !== undefined) {
+      await ensurePrivateFile(path);
+    }
   }
 }
 
@@ -111,12 +124,64 @@ async function ensurePrivateDirectory(directory) {
 }
 
 /**
+ * Pre-create supervisor logs so native supervisors cannot create them with a
+ * permissive inherited umask or follow an existing symbolic link.
+ *
+ * @param {string} path
+ */
+async function ensurePrivateFile(path) {
+  let information;
+  try {
+    information = await lstat(path);
+  } catch (error) {
+    if (!isMissingFile(error)) {
+      throw error;
+    }
+    let handle;
+    try {
+      handle = await open(path, 'wx', 0o600);
+      await handle.chmod(0o600);
+      information = await handle.stat();
+    } catch (creationError) {
+      if (!hasCode(creationError, 'EEXIST')) {
+        throw creationError;
+      }
+      information = await lstat(path);
+    } finally {
+      await handle?.close();
+    }
+  }
+  if (!information.isFile() || information.isSymbolicLink()) {
+    throw new Error(`Unsafe Portreeve runtime file: ${path}`);
+  }
+  if (typeof process.getuid === 'function' && information.uid !== process.getuid()) {
+    throw new Error(`Portreeve runtime file has another owner: ${path}`);
+  }
+  if ((information.mode & 0o077) !== 0) {
+    throw new Error(
+      `Portreeve runtime file is not private: ${path} (mode ${(information.mode & 0o777).toString(8)})`,
+    );
+  }
+  if ((information.mode & 0o600) !== 0o600) {
+    throw new Error(`Portreeve runtime file lacks owner access: ${path}`);
+  }
+}
+
+/**
  * @param {unknown} error
  */
 function isMissingFile(error) {
+  return hasCode(error, 'ENOENT');
+}
+
+/**
+ * @param {unknown} error
+ * @param {string} code
+ */
+function hasCode(error, code) {
   return (
     error instanceof Error &&
     'code' in error &&
-    /** @type {{code?: string}} */ (error).code === 'ENOENT'
+    /** @type {{code?: string}} */ (error).code === code
   );
 }

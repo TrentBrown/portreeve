@@ -70,15 +70,21 @@ Every advertised OS/architecture combination must pass the complete source
 gate and both native release smokes before publication. Cross-compilation alone
 is not release evidence. Native jobs require Node.js 22, Bun 1.3.14, Git,
 `lsof`, `ps`, Ruby, and a non-root login session. Linux runners must provide a
-working `systemd --user` manager; the Linux ARM64 job is selected with the
-`self-hosted`, `linux`, `ARM64`, and `portreeve-release` labels.
+working `systemd --user` manager. The Linux ARM64 job runs natively on GitHub's
+hosted `ubuntu-24.04-arm` image.
 
-Development may occur while the GitHub repository is private, and branch or
-manual Actions runs still work. Before pushing a release tag, make the
-repository public: GitHub release assets in a private repository require
-authentication and therefore cannot serve as public Homebrew download URLs.
-The release workflow refuses tag publication while repository visibility is
-private.
+Development may occur while a GitHub repository is private, and branch or
+manual Actions runs still work. The Portreeve repository is public before its
+first release because private GitHub release assets require authentication and
+therefore cannot serve as public Homebrew download URLs. The release workflow
+still refuses tag publication if repository visibility becomes private.
+
+The first npm publication requires an `NPM_TOKEN` with authority to create the
+public unscoped `portreeve` package. Release policy verifies npm identity and
+that the exact version is unpublished before either publishing job can start.
+After the package exists, configure `release.yml` as its npm trusted publisher
+and remove the long-lived publish token; subsequent GitHub-hosted publishes can
+use short-lived OIDC credentials and automatic provenance.
 
 On macOS, the explicit `--homebrew` smoke refuses to disturb an existing
 Portreeve formula, installs a temporary checksum-pinned local formula, runs its

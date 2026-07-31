@@ -70,3 +70,24 @@ contract.
   mutable authorization state inside the directory being evaluated.
 - Let Electron delete the directory - rejected because it duplicates the
   safety boundary and makes headless uninstall/reinstall testing inconsistent.
+
+## [3] Use hosted ARM64 and bootstrap npm trust after first publish
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** release workflow, Linux ARM64 native evidence, npm authentication, provenance, release documentation, and P4 completion
+
+Replace the self-hosted Linux ARM64 matrix entry with GitHub's native ubuntu-24.04-arm runner. Keep the first npm publication fail-closed behind an authenticated NPM_TOKEN because npm requires the package to exist before trusted publishing can be configured. After portreeve 0.1.0 exists, configure release.yml as the package's GitHub Actions trusted publisher and remove the long-lived publish token in a follow-up hardening step. The repository is public before publication so GitHub Release/Homebrew URLs and npm provenance are publicly verifiable.
+
+**Triggered by:** P4 prerequisite audit found no self-hosted runner and no npm credentials, while current GitHub and npm capabilities differ from the original release assumptions
+
+**Alternatives considered:**
+
+- Keep a self-hosted ARM64 runner - rejected because GitHub now supplies the
+  required native architecture and no local runner is registered.
+- Use OIDC for the first npm publish - rejected because npm's trust
+  configuration requires an existing package.
+- Publish without npm - rejected because P4 and the approved release channels
+  require the official client package.
