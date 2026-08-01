@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Portreeve</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./renderer.js"></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Local port authority</p>
+        <h1>Portreeve</h1>
+      </div>
+      <button id="refresh" type="button">Refresh</button>
+    </header>
+    <nav aria-label="Primary">
+      <button class="tab active" type="button" data-view="overview">Overview</button>
+      <button class="tab" type="button" data-view="ports">Ports</button>
+    </nav>
+    <main>
+      <p id="notice" class="notice" role="status">Loading Portreeve status…</p>
+      <ul id="errors" class="errors" aria-label="Current errors" hidden></ul>
+      <section id="overview" aria-labelledby="overview-title">
+        <h2 id="overview-title">Overview</h2>
+        <div id="status-cards" class="cards"></div>
+        <article class="artifact-card">
+          <h3>Bundled authority</h3>
+          <dl id="artifact"></dl>
+        </article>
+      </section>
+      <section id="ports" aria-labelledby="ports-title" hidden>
+        <div class="section-heading">
+          <div>
+            <h2 id="ports-title">Ports</h2>
+            <p>Claims and listeners reported by the running authority.</p>
+          </div>
+          <input id="port-filter" type="search" placeholder="Filter ports" />
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Port</th>
+                <th>Status</th>
+                <th>Claim</th>
+                <th>Listeners</th>
+              </tr>
+            </thead>
+            <tbody id="port-rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

@@ -16,7 +16,7 @@
 | R5 | MVP user workflows | NOT YET | - | Planning pending |
 | R6 | Electron security and freshness | NOT YET | - | Planning pending |
 | R7 | Version and update policy | NOT YET | - | Planning pending |
-| R8 | Release identity and native execution | NOT YET | [#3](https://github.com/TrentBrown/portreeve/pull/3) | Four native executable targets, lifecycle matrix, checksums, npm tarball, and Homebrew installation pass; first authenticated npm/GitHub publication and later desktop artifact identity remain |
+| R8 | Release identity and native execution | NOT YET | [#3](https://github.com/TrentBrown/portreeve/pull/3) | Four native executable targets, lifecycle matrix, checksums, npm tarball, and Homebrew installation pass; publication is deliberately deferred and P5-P8 local inputs remain provisional until first npm/GitHub publication and later desktop artifact identity evidence |
 
 ## PR Log
 
@@ -32,7 +32,7 @@
 ### PR #3 - CLI release authority preparation
 
 - **PR:** [#3](https://github.com/TrentBrown/portreeve/pull/3)
-- **Status:** draft
+- **Status:** merged
 - **Scope:** P4 release infrastructure, native matrix completion, and
   pre-publication safety.
 - **Evidence packet:** [pr-3](pr-3/)

@@ -14,11 +14,14 @@
   "type": "module",
   "packageManager": "bun@1.3.14",
   "workspaces": [
+    "apps/*",
     "packages/*"
   ],
   "scripts": {
     "build": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/build.js",
     "check": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" run typecheck && \"$npm_execpath\" run lint && \"$npm_execpath\" run format:check && \"$npm_execpath\" test",
+    "desktop:package": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/package-desktop.js",
+    "desktop:start": "electron apps/desktop",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
@@ -35,8 +38,10 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@electron/packager": "20.0.4",
     "@types/bun": "1.3.14",
     "@types/node": "22.20.1",
+    "electron": "43.2.0",
     "eslint": "10.8.0",
     "globals": "17.8.0",
     "prettier": "3.9.6",

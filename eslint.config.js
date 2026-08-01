@@ -28,4 +28,10 @@ export default [
       'no-console': ['error', { allow: ['error', 'log', 'warn'] }],
     },
   },
+  {
+    files: ['apps/desktop/renderer/**/*.js'],
+    languageOptions: {
+      globals: globals.browser,
+    },
+  },
 ];
