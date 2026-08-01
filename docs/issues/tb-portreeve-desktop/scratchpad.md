@@ -170,7 +170,7 @@ Set Electron's `userData` path to an explicit `Portreeve Desktop` directory bene
 
 ## [8] Keep update discovery fixed, nonblocking, and notification-only
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

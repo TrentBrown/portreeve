@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portreeve PR #6 - Update notifications explained</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f5f1e8;
+        --panel: #fffdf7;
+        --ink: #18201e;
+        --muted: #59645f;
+        --line: #d7d0bf;
+        --accent: #0c6b58;
+        --accent-soft: #dcefe8;
+        --warn: #8a4d00;
+        --code: #17201e;
+        --code-ink: #e8f3ee;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #101513;
+          --panel: #17201d;
+          --ink: #ecf2ed;
+          --muted: #acb8b1;
+          --line: #36443d;
+          --accent: #78d5b8;
+          --accent-soft: #173f35;
+          --warn: #ffc06b;
+          --code: #0b100e;
+          --code-ink: #e8f3ee;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 17px/1.58 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main { max-width: 980px; margin: 0 auto; padding: 56px 24px 96px; }
+      header { border-bottom: 1px solid var(--line); padding-bottom: 28px; }
+      h1 { max-width: 760px; margin: 0 0 12px; font-size: clamp(2rem, 5vw, 3.7rem); line-height: 1.05; letter-spacing: -0.04em; }
+      h2 { margin: 54px 0 14px; font-size: 1.65rem; }
+      h3 { margin: 28px 0 8px; }
+      p, li { max-width: 800px; }
+      .eyebrow { color: var(--accent); font-weight: 750; letter-spacing: .08em; text-transform: uppercase; font-size: .78rem; }
+      .lede { color: var(--muted); font-size: 1.2rem; }
+      .sha { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .84rem; color: var(--muted); overflow-wrap: anywhere; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin: 22px 0; }
+      .card, .callout, details {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        padding: 18px 20px;
+      }
+      .card strong { display: block; color: var(--accent); margin-bottom: 5px; }
+      .flow { display: grid; gap: 8px; margin: 24px 0; }
+      .step { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; }
+      .number { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--bg); font-weight: 800; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; }
+      pre { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--code); color: var(--code-ink); padding: 18px; border-radius: 11px; overflow: auto; }
+      .callout { border-left: 5px solid var(--accent); }
+      .warning { border-left-color: var(--warn); }
+      table { width: 100%; border-collapse: collapse; margin: 18px 0; background: var(--panel); }
+      th, td { padding: 12px; border: 1px solid var(--line); vertical-align: top; text-align: left; }
+      th { color: var(--accent); }
+      details { margin: 12px 0; }
+      summary { cursor: pointer; font-weight: 750; }
+      .answer { margin: 14px 0 0; color: var(--muted); }
+      footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="eyebrow">Portreeve Desktop · PR #6 · P8</div>
+        <h1>Update discovery with deliberately little authority</h1>
+        <p class="lede">
+          The desktop can now tell a developer that a newer release exists, but
+          the network response cannot choose where to navigate, download code,
+          install anything, or interfere with local Portreeve management.
+        </p>
+        <p class="sha">Base e1f05e865fe264b8cdf83828de8fc635481f08d5<br />Head 5a5fba2153aa5f14bf1616d63ef40de4ab51abe6</p>
+      </header>
+
+      <section>
+        <h2>Background</h2>
+        <p>
+          Earlier slices established the desktop's local authority boundary:
+          lifecycle operations go through the exact bundled CLI, inventory goes
+          through the public JavaScript client, and the renderer sees only
+          reduced state. P8 adds one remote concern—whether a newer desktop
+          version exists—without weakening those boundaries.
+        </p>
+        <div class="grid">
+          <div class="card"><strong>One input</strong>A strict JSON manifest containing only schema version and latest desktop version.</div>
+          <div class="card"><strong>One cadence</strong>Every attempt, including a failure, suppresses another check for 24 hours.</div>
+          <div class="card"><strong>One navigation</strong>The compiled GitHub Releases page; neither manifest nor renderer supplies a URL.</div>
+          <div class="card"><strong>Zero mutation</strong>No download, install, restart, service upgrade, or automatic desktop replacement.</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>The intuition</h2>
+        <p>
+          Treat update discovery as an untrusted hint, not an updater. Its only
+          useful statement is “version X appears newer than this desktop.” The
+          main process validates that hint, stores a small reduced result, and
+          lets the renderer present it. Every higher-authority action remains a
+          separate human choice outside the response's control.
+        </p>
+        <div class="flow">
+          <div class="step"><span class="number">1</span><div><strong>Local state first.</strong> Lifecycle and port evidence refreshes and renders before any remote check begins.</div></div>
+          <div class="step"><span class="number">2</span><div><strong>Read the private cache.</strong> A valid result younger than 24 hours means no request at all.</div></div>
+          <div class="step"><span class="number">3</span><div><strong>Fetch one fixed resource.</strong> The request has no query, body, credentials, referrer, installation ID, or project data.</div></div>
+          <div class="step"><span class="number">4</span><div><strong>Bound and validate.</strong> Five-second timeout, redirect refusal, streamed 16 KiB limit, JSON parse, strict schema, and SemVer comparison.</div></div>
+          <div class="step"><span class="number">5</span><div><strong>Reduce every outcome.</strong> The renderer sees only not-checked, current, available, or unavailable plus timestamp/version.</div></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>What changed in code</h2>
+        <h3>Main-process update adapter</h3>
+        <p>
+          <code>apps/desktop/main/update.js</code> owns remote access, the private
+          cache, version comparison, and external navigation. Overlapping callers
+          share one active promise, and cache write failure does not turn a valid
+          check into an application failure.
+        </p>
+        <pre>GET https://raw.githubusercontent.com/TrentBrown/portreeve/main/distribution/desktop-update.json
+
+credentials: omit
+redirect: error
+referrer: none
+timeout: 5 seconds
+maximum body: 16 KiB, enforced while streaming</pre>
+
+        <h3>Independent coordinator publication</h3>
+        <p>
+          The initial <code>coordinator.refresh()</code> remains purely local.
+          Only after it completes does startup fire <code>checkForUpdates()</code>
+          without awaiting it. When discovery settles, the coordinator swaps
+          only the snapshot's update field and publishes again. A failed update
+          cannot label lifecycle or inventory evidence stale.
+        </p>
+
+        <h3>Strict IPC and presentation</h3>
+        <p>
+          Shared schemas define the manifest and four-state reduced result. The
+          preload exposes one named method with no arguments. Main IPC accepts it
+          only from the trusted main frame, rejects additional arguments, and
+          delegates to a coordinator that refuses unless current state is
+          <code>available</code>.
+        </p>
+        <table>
+          <thead><tr><th>State</th><th>Overview behavior</th><th>Download action</th></tr></thead>
+          <tbody>
+            <tr><td>not-checked</td><td>Says discovery has not run</td><td>Hidden</td></tr>
+            <tr><td>current</td><td>Shows the latest published version</td><td>Hidden</td></tr>
+            <tr><td>available</td><td>Names the newer version and says installation is manual</td><td>Fixed Releases page</td></tr>
+            <tr><td>unavailable</td><td>Explicitly says local management is unaffected</td><td>Hidden</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Public contract</h3>
+        <p>
+          <code>distribution/desktop-update.json</code> is the versioned source
+          consumed from <code>main</code>. <code>docs/desktop-updates.md</code>
+          records that release automation may advance it only after the matching
+          signed and notarized desktop artifacts are actually on the Releases page.
+        </p>
+      </section>
+
+      <section>
+        <h2>Safety review</h2>
+        <div class="callout">
+          <strong>Resolved review finding.</strong> The first implementation read
+          the complete body before checking its size. Commit <code>5a5fba2</code>
+          now counts bytes as the stream arrives and cancels immediately after
+          16 KiB; the test proves later chunks are not buffered.
+        </div>
+        <p>
+          The response's authority is intentionally tiny. Even a malformed or
+          malicious manifest can produce only <code>unavailable</code>,
+          <code>current</code>, or <code>available</code>. It cannot introduce a URL,
+          provide executable bytes, call the CLI, or cross the generic shell
+          boundary because no such capability exists.
+        </p>
+        <div class="callout warning">
+          <strong>Evidence limitation.</strong> Until this PR merges, the fixed
+          raw-main manifest is not present. Packaged inspection therefore proved
+          the offline/unavailable path. Deterministic tests cover current,
+          available, malformed, timeout, oversized, cached, fixed-navigation,
+          and rejected-IPC paths. Signing, notarization, x64 execution, and
+          published CLI byte identity remain P9/R8.
+        </div>
+      </section>
+
+      <section>
+        <h2>Verification result</h2>
+        <ul>
+          <li>160 tests, 610 assertions, 0 failures.</li>
+          <li>TypeScript check, ESLint, changed-scope Prettier, and diff whitespace pass.</li>
+          <li>Packaged ARM64 app launched at <code>app://portreeve/index.html</code>.</li>
+          <li>Unavailable discovery left lifecycle and Ports usable and exposed no download button.</li>
+          <li>Persisted state contained only status, timestamp, and latest version with mode 0600.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Check your understanding</h2>
+        <details><summary>1. Why is the download URL not stored in the manifest?</summary><p class="answer">Because the only network-controlled field needed is a version hint. Keeping navigation compile-time fixed prevents remote data from selecting a destination across the Electron privilege boundary.</p></details>
+        <details><summary>2. Why cache failures for the same 24 hours as successes?</summary><p class="answer">The contract is at most one outbound attempt per 24 hours, not one successful attempt. Retrying every launch would violate the privacy and cadence policy and create noisy failure behavior.</p></details>
+        <details><summary>3. What prevents a slow network from delaying local port management?</summary><p class="answer">Startup awaits the initial local coordinator refresh first, then starts update discovery without awaiting it. The coordinator later publishes only the update field.</p></details>
+        <details><summary>4. What was wrong with checking body size after response.text()?</summary><p class="answer">The entire untrusted response had already been buffered, so the nominal limit did not bound memory. The final implementation counts streamed bytes and cancels at the boundary.</p></details>
+        <details><summary>5. Does “available” authorize an upgrade?</summary><p class="answer">No. It enables only a no-argument request to open the fixed Releases page. Desktop installation stays manual, and managed-service upgrade remains a separate confirmed P7 lifecycle action.</p></details>
+      </section>
+
+      <footer>
+        Generated for the pinned PR #6 source boundary. P8/R7 passes; P9/R8
+        public-release integrity remains intentionally open.
+      </footer>
+    </main>
+  </body>
+</html>
