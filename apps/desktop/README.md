@@ -1,9 +1,10 @@
 # Portreeve Desktop engineering slice
 
-This private workspace contains the non-shipping, read-only Electron slice for Portreeve
-Desktop. It displays lifecycle evidence from an exact Portreeve CLI executable and
-global inventory from the official JavaScript client. It does not expose lifecycle
-mutations.
+This private workspace contains the non-shipping Electron MVP for Portreeve Desktop. It
+displays lifecycle evidence from an exact Portreeve CLI executable, global inventory
+from the official JavaScript client, and confirmed lifecycle/reset workflows through a
+narrow named preload API. The CLI remains the authority for every mutation and all
+filesystem deletion safety.
 
 ## Local prerequisites
 

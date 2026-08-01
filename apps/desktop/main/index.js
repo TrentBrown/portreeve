@@ -13,6 +13,7 @@ import { createStateCoordinator } from './coordinator.js';
 import { createInventoryAdapter } from './inventory-adapter.js';
 import { registerDesktopIpc } from './ipc.js';
 import { registerRendererProtocol } from './protocol.js';
+import { desktopUserDataPath } from './user-data.js';
 import {
   bindWindowRefresh,
   browserWindowOptions,
@@ -30,6 +31,8 @@ const diagnose = (...values) => {
 };
 
 diagnose('main-entry');
+
+app.setPath('userData', desktopUserDataPath(app.getPath('appData')));
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -66,7 +69,7 @@ async function startDesktop() {
       });
   diagnose('artifact-verified', artifact.filename);
   const coordinator = createStateCoordinator({
-    artifact,
+    artifact: { ...artifact, desktopVersion: app.getVersion() },
     lifecycle: createLifecycleAdapter({ executablePath: artifact.executablePath }),
     inventory: createInventoryAdapter(new PortreeveClient()),
   });

@@ -21,37 +21,114 @@
     </nav>
     <main>
       <p id="notice" class="notice" role="status">Loading Portreeve status…</p>
+      <section id="operation-result" class="operation-result" aria-live="polite" hidden>
+        <h2>Last operation</h2>
+        <p id="operation-message"></p>
+        <ul id="operation-details"></ul>
+      </section>
       <ul id="errors" class="errors" aria-label="Current errors" hidden></ul>
       <section id="overview" aria-labelledby="overview-title">
         <h2 id="overview-title">Overview</h2>
         <div id="status-cards" class="cards"></div>
-        <article class="artifact-card">
-          <h3>Bundled authority</h3>
-          <dl id="artifact"></dl>
-        </article>
+        <div class="overview-grid">
+          <article class="panel">
+            <h3>Versions and installation</h3>
+            <dl id="versions" class="definitions"></dl>
+          </article>
+          <article class="panel">
+            <h3>Service controls</h3>
+            <p id="action-guidance" class="muted"></p>
+            <div id="service-actions" class="actions"></div>
+          </article>
+        </div>
+        <details class="danger-zone">
+          <summary>Uninstall or reset Portreeve</summary>
+          <div class="danger-content">
+            <section>
+              <h3>Uninstall service</h3>
+              <p>
+                Remove native supervision while preserving claims, history, and
+                settings.
+              </p>
+              <button id="uninstall" type="button">Uninstall service</button>
+            </section>
+            <section>
+              <h3>Delete all data</h3>
+              <p>
+                Preview every path, then type DELETE to remove all service data. Desktop
+                preferences and caches remain separate.
+              </p>
+              <button id="preview-purge" class="danger" type="button">
+                Preview complete reset
+              </button>
+            </section>
+          </div>
+        </details>
       </section>
       <section id="ports" aria-labelledby="ports-title" hidden>
         <div class="section-heading">
           <div>
             <h2 id="ports-title">Ports</h2>
-            <p>Claims and listeners reported by the running authority.</p>
+            <p>Claims and live listeners reported by Portreeve.</p>
           </div>
-          <input id="port-filter" type="search" placeholder="Filter ports" />
+          <input
+            id="port-filter"
+            type="search"
+            aria-label="Filter ports"
+            placeholder="Port, status, project, or service"
+          />
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Port</th>
-                <th>Status</th>
-                <th>Claim</th>
-                <th>Listeners</th>
-              </tr>
-            </thead>
-            <tbody id="port-rows"></tbody>
-          </table>
+        <div class="ports-grid">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Port</th>
+                  <th>Status</th>
+                  <th>Claim</th>
+                  <th>Listeners</th>
+                </tr>
+              </thead>
+              <tbody id="port-rows"></tbody>
+            </table>
+          </div>
+          <aside id="port-detail" class="panel port-detail" aria-live="polite">
+            <h3>Port details</h3>
+            <p class="muted">Select a port to inspect its reduced evidence.</p>
+          </aside>
         </div>
       </section>
     </main>
+
+    <dialog id="confirmation-dialog" aria-labelledby="confirmation-title">
+      <form method="dialog">
+        <h2 id="confirmation-title"></h2>
+        <p id="confirmation-message"></p>
+        <div class="dialog-actions">
+          <button value="cancel">Cancel</button>
+          <button id="confirmation-accept" value="confirm">Confirm</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="purge-dialog" aria-labelledby="purge-title">
+      <form method="dialog">
+        <h2 id="purge-title">Delete all Portreeve data</h2>
+        <p id="purge-summary"></p>
+        <div id="purge-refusals" class="refusals" hidden></div>
+        <div class="path-list-wrap">
+          <p><strong>Exact deletion scope</strong></p>
+          <ul id="purge-paths" class="path-list"></ul>
+        </div>
+        <label for="purge-confirmation">Type <strong>DELETE</strong> to continue</label>
+        <input id="purge-confirmation" type="text" autocomplete="off" />
+        <div class="dialog-actions">
+          <button value="cancel">Cancel</button>
+          <button id="purge-accept" class="danger" value="confirm" disabled>
+            Delete all data
+          </button>
+        </div>
+      </form>
+    </dialog>
   </body>
 </html>

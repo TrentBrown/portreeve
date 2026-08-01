@@ -38,6 +38,8 @@ input {
 h1,
 h2,
 h3,
+h4,
+h5,
 p {
   margin-top: 0;
 }
@@ -50,6 +52,13 @@ h2 {
   font-family: Georgia, serif;
   font-size: 27px;
 }
+h4 {
+  margin: 24px 0 10px;
+}
+h5 {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
 button {
   border: 1px solid #a9b1aa;
   border-radius: 999px;
@@ -59,9 +68,26 @@ button {
   padding: 9px 16px;
 }
 button:hover,
-button:focus-visible {
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible {
   border-color: #24634f;
-  outline: none;
+  outline: 3px solid rgb(36 99 79 / 22%);
+  outline-offset: 2px;
+}
+button:disabled,
+input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+button.primary {
+  border-color: #24634f;
+  background: #24634f;
+  color: white;
+}
+button.danger {
+  border-color: #a23c32;
+  color: #8b2d25;
 }
 nav {
   display: flex;
@@ -84,22 +110,36 @@ nav {
 main {
   padding: 24px 36px 40px;
 }
-.notice {
+.notice,
+.muted {
   color: #65706c;
 }
 .notice.warning {
   color: #8d4d16;
 }
-.errors {
+.errors,
+.operation-result {
   margin: -6px 0 22px;
   border: 1px solid #d9af84;
   border-radius: 10px;
   background: #fff4e7;
   color: #713d12;
-  padding: 12px 18px 12px 36px;
+  padding: 12px 18px;
+}
+.errors {
+  padding-left: 36px;
 }
 .errors li + li {
   margin-top: 5px;
+}
+.operation-result h2 {
+  margin-bottom: 6px;
+  font-family: inherit;
+  font-size: 15px;
+}
+.operation-result p,
+.operation-result ul {
+  margin-bottom: 0;
 }
 .cards {
   display: grid;
@@ -107,8 +147,9 @@ main {
   gap: 14px;
 }
 .status-card,
-.artifact-card,
-.table-wrap {
+.panel,
+.table-wrap,
+.danger-zone {
   border: 1px solid #d6d2c8;
   border-radius: 14px;
   background: #fffdf7;
@@ -128,17 +169,22 @@ main {
   font-size: 20px;
   text-transform: capitalize;
 }
-.artifact-card {
+.overview-grid {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 18px;
   margin-top: 18px;
+}
+.panel {
   padding: 20px;
 }
-.artifact-card dl {
+.definitions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
   margin: 0;
 }
-.artifact-card dl div {
+.definitions div {
   min-width: 0;
 }
 dt {
@@ -150,6 +196,33 @@ dt {
 dd {
   margin: 5px 0 0;
   overflow-wrap: anywhere;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.danger-zone {
+  margin-top: 18px;
+  box-shadow: none;
+}
+.danger-zone summary {
+  cursor: pointer;
+  padding: 17px 20px;
+  font-weight: 700;
+}
+.danger-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 4px 20px 20px;
+}
+.danger-content section {
+  border-top: 1px solid #e4e1d9;
+  padding-top: 18px;
+}
+.danger-content p {
+  color: #65706c;
 }
 .section-heading {
   display: flex;
@@ -165,6 +238,12 @@ input {
   border-radius: 9px;
   background: #fffdf7;
   padding: 9px 12px;
+}
+.ports-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(280px, 2fr);
+  gap: 18px;
+  align-items: start;
 }
 .table-wrap {
   overflow: hidden;
@@ -184,11 +263,102 @@ th {
   font-size: 12px;
   text-transform: uppercase;
 }
+tbody tr {
+  cursor: pointer;
+}
+tbody tr:hover,
+tbody tr.selected {
+  background: #edf5ef;
+}
 tbody tr:last-child td {
   border-bottom: 0;
 }
+.table-link {
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #174a3a;
+  font-weight: 700;
+  padding: 2px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.port-detail {
+  max-height: 62vh;
+  overflow: auto;
+}
+.detail-definitions {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.listener-list article {
+  border-top: 1px solid #e4e1d9;
+  padding-top: 14px;
+}
+.listener-list article + article {
+  margin-top: 18px;
+}
+dialog {
+  width: min(620px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid #b8b2a8;
+  border-radius: 16px;
+  background: #fffdf7;
+  color: inherit;
+  box-shadow: 0 24px 80px rgb(22 33 29 / 30%);
+  padding: 24px;
+}
+dialog::backdrop {
+  background: rgb(20 30 27 / 45%);
+}
+dialog form > input {
+  width: 100%;
+  margin-top: 8px;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: end;
+  gap: 10px;
+  margin-top: 22px;
+}
+.path-list-wrap {
+  margin: 18px 0;
+  border: 1px solid #e0dcd3;
+  border-radius: 10px;
+  padding: 12px;
+}
+.path-list {
+  max-height: 220px;
+  overflow: auto;
+  margin-bottom: 0;
+  padding-left: 24px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.refusals {
+  border: 1px solid #d9af84;
+  border-radius: 9px;
+  background: #fff4e7;
+  color: #713d12;
+  padding: 12px;
+}
+.refusals p:last-child {
+  margin-bottom: 0;
+}
+@media (max-width: 920px) {
+  .overview-grid,
+  .ports-grid {
+    grid-template-columns: 1fr;
+  }
+  .port-detail {
+    max-height: none;
+  }
+}
 @media (max-width: 820px) {
-  .cards {
+  .cards,
+  .danger-content {
     grid-template-columns: repeat(2, 1fr);
   }
 }

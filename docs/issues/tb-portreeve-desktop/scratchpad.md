@@ -133,3 +133,37 @@ Pin Electron 43.2.0 and @electron/packager 20.0.4 in the private desktop workspa
 Use an older Electron line - rejected because the approved macOS 13 floor does not require it and Electron recommends current releases for security fixes.
 Adopt electron-builder now - rejected because P5 needs a local engineering bundle, while signing, notarization, update manifests, and public installers belong to P9.
 Build the UI in a browser-only harness first - rejected because process isolation and IPC are core acceptance boundaries that require Electron from the first slice.
+
+## [6] Keep mutation authority and purge tokens in the main process
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** desktop IPC schemas, preload API, lifecycle adapter, coordinator serialization, reset confirmation, renderer tests, and future multi-window behavior
+
+Expose one named preload method per approved user action rather than a generic command or action-plus-arguments channel. The main process maps each method to fixed CLI arguments, validates the CLI envelope, serializes mutations against refreshes, and immediately refreshes after completion. Purge preview returns only reduced display evidence; its CLI confirmation token remains in main-process memory, is replaced by a newer preview, is consumed before one execution attempt, and never crosses IPC. Purge execution additionally requires the exact typed DELETE value and relies on the CLI to re-preview and refuse drift. Ordinary lifecycle and onboarding results cross IPC only as reduced, runtime-validated outcomes plus the refreshed snapshot.
+
+**Triggered by:** P7 introduces lifecycle mutation and complete-reset capabilities across the untrusted Electron renderer boundary
+
+**Alternatives considered:**
+- Expose a generic mutate action with arbitrary arguments - rejected because it expands renderer authority and weakens IPC allowlisting.
+- Return the purge confirmation token to the renderer - rejected because the renderer does not need it and the approved privilege boundary excludes reusable destructive authorization.
+- Reimplement install, stop, or deletion in Electron - rejected because the CLI is the canonical lifecycle and filesystem safety boundary.
+
+## [7] Separate desktop runtime data from the CLI application home
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Electron startup paths, packaged reset previews, local cache placement, uninstall/reset verification, and cross-platform desktop behavior
+
+Set Electron's `userData` path to an explicit `Portreeve Desktop` directory beneath the platform application-data root before the app becomes ready. The CLI retains exclusive ownership of the marker-bound `Portreeve` application home. Desktop Chromium caches, preferences, and storage must never appear in the CLI deletion tree or prevent an otherwise valid purge preview.
+
+**Triggered by:** packaged P7 verification showed Electron populating the CLI application home and the CLI correctly refusing purge because the ownership marker did not authorize those desktop-created files
+
+**Alternatives considered:**
+- Share one application-data directory - rejected because Electron writes files outside the CLI's ownership and schema contracts.
+- Teach CLI purge to recognize Chromium cache paths - rejected because that would expand destructive authority and couple the service lifecycle to Electron internals.
+- Disable all Electron persistence - rejected because Chromium may still require runtime storage and future desktop preferences/update state need an independently owned location.
