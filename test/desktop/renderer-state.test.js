@@ -67,4 +67,7 @@ test('derives only state-appropriate service actions', () => {
   expect(canUninstall(staleLifecycle)).toBe(false);
   expect(compareVersions('0.2.0', '0.1.9')).toBeGreaterThan(0);
   expect(compareVersions('0.1.0-rc.1', '0.1.0')).toBeLessThan(0);
+  expect(compareVersions('0.1.0-rc.10', '0.1.0-rc.2')).toBeGreaterThan(0);
+  expect(compareVersions('0.1.0-alpha', '0.1.0-1')).toBeGreaterThan(0);
+  expect(compareVersions('0.1.0+desktop.1', '0.1.0+cli.9')).toBe(0);
 });

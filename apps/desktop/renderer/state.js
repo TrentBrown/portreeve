@@ -44,19 +44,44 @@ export function canUninstall(snapshot) {
 
 /** @param {string} left @param {string} right */
 export function compareVersions(left, right) {
-  /** @param {string} value */
-  const parse = (value) => {
-    const [core = '', prerelease] = value.split('-', 2);
-    return { numbers: core.split('.').map(Number), prerelease };
-  };
-  const first = parse(left);
-  const second = parse(right);
+  const first = parseVersion(left);
+  const second = parseVersion(right);
   for (let index = 0; index < 3; index += 1) {
-    const difference = (first.numbers[index] ?? 0) - (second.numbers[index] ?? 0);
-    if (difference !== 0) return difference;
+    const difference = (first.core[index] ?? 0) - (second.core[index] ?? 0);
+    if (difference !== 0) return difference < 0 ? -1 : 1;
   }
-  if (first.prerelease === second.prerelease) return 0;
-  if (first.prerelease === undefined) return 1;
-  if (second.prerelease === undefined) return -1;
-  return first.prerelease.localeCompare(second.prerelease);
+  return comparePrerelease(first.prerelease, second.prerelease);
+}
+
+/** @param {string} value */
+function parseVersion(value) {
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([^+]+))?/.exec(value);
+  if (match === null) throw new TypeError('Invalid semantic version.');
+  return {
+    core: [Number(match[1]), Number(match[2]), Number(match[3])],
+    prerelease: match[4] === undefined ? null : match[4].split('.'),
+  };
+}
+
+/** @param {string[]|null} left @param {string[]|null} right */
+function comparePrerelease(left, right) {
+  if (left === null && right === null) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
+  const length = Math.max(left.length, right.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftPart = left[index];
+    const rightPart = right[index];
+    if (leftPart === undefined) return -1;
+    if (rightPart === undefined) return 1;
+    if (leftPart === rightPart) continue;
+    const leftNumeric = /^\d+$/.test(leftPart);
+    const rightNumeric = /^\d+$/.test(rightPart);
+    if (leftNumeric && rightNumeric) {
+      return Number(leftPart) < Number(rightPart) ? -1 : 1;
+    }
+    if (leftNumeric !== rightNumeric) return leftNumeric ? -1 : 1;
+    return leftPart < rightPart ? -1 : 1;
+  }
+  return 0;
 }
