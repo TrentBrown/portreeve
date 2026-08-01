@@ -122,7 +122,7 @@ evidence for the read-only slice.
 
 ## I-5 - Complete Overview, Ports, and lifecycle workflows
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P7
 - **Rubric criteria:** R2, R3, R5, R6
@@ -144,18 +144,30 @@ desktop-data boundary.
 is undergoing the pinned verification, evaluation, judge, review, and
 explain-diff boundary gates.
 
+**Completed 2026-08-01.** PR #5 merged to `main` at
+`e1f05e865fe264b8cdf83828de8fc635481f08d5`.
+
 ## I-6 - Add version and update notification behavior
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P8
 - **Rubric criteria:** R7
 - **Depends on:** I-4
-- **PR:** -
+- **PR:** [#6](https://github.com/TrentBrown/portreeve/pull/6)
 
 Display independent desktop/bundled/managed/running versions and implement the
 fixed, identifier-free, once-per-24-hour update check with offline-safe failure
 and approved external download navigation.
+
+**Started 2026-08-01.** Delivery branch
+`tb-portreeve-desktop-05-update-notifications` begins from merged PR #5. The
+fixed manifest, persisted cadence, nonblocking collection, and no-argument
+download-page capability are recorded in scratchpad decision 8.
+
+**In review 2026-08-01.** Draft PR #6 contains the complete P8 source slice and
+is undergoing the pinned verification, evaluation, judge, review, and
+explain-diff boundary gates.
 
 ## I-7 - Build and verify native desktop releases
 

@@ -57,6 +57,12 @@ test('reduces lifecycle and inventory evidence before it reaches the renderer', 
   expect(serialized).not.toContain('secretInternalField');
   expect(serialized).not.toContain('managedExecutablePath');
   expect(serialized).not.toContain('socketPath');
+  expect(serialized).not.toContain('github.com');
+  expect(snapshot.update).toEqual({
+    status: 'not-checked',
+    checkedAt: null,
+    latestVersion: null,
+  });
   expect(snapshot.lifecycle?.installation.managedLocation).toBe(
     '/Users/example/.local/portreeve/bin/portreeve',
   );

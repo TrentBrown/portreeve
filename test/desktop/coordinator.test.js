@@ -243,3 +243,59 @@ test('refreshes and publishes evidence after an adapter-level mutation failure',
   expect(published).toBe(1);
   expect(coordinator.current()?.lifecycle?.mode).toBe('supervised');
 });
+
+test('publishes update discovery independently without delaying local refresh', async () => {
+  /** @type {(value: unknown) => void} */
+  let releaseUpdate = () => {};
+  const updateGate = new Promise((resolvePromise) => {
+    releaseUpdate = resolvePromise;
+  });
+  /** @type {any[]} */
+  const published = [];
+  const coordinator = createStateCoordinator({
+    artifact: provisionalArtifact(),
+    lifecycle: {
+      async status() {
+        return lifecycleSnapshot();
+      },
+    },
+    inventory: {
+      async listPorts() {
+        return [];
+      },
+    },
+    updates: {
+      async check() {
+        await updateGate;
+        return {
+          status: 'available',
+          checkedAt: timestamp,
+          latestVersion: '0.2.0',
+        };
+      },
+      async openDownloadPage() {
+        return { schemaVersion: 1, opened: true };
+      },
+    },
+    now: () => new Date(timestamp),
+  });
+  coordinator.subscribe((value) => published.push(value));
+
+  const local = await coordinator.refresh();
+  expect(local.update.status).toBe('not-checked');
+  const checking = coordinator.checkForUpdates();
+  expect((await coordinator.refresh()).lifecycle?.mode).toBe('supervised');
+  expect(coordinator.current()?.update.status).toBe('not-checked');
+  releaseUpdate(undefined);
+  expect(await checking).toEqual({
+    status: 'available',
+    checkedAt: timestamp,
+    latestVersion: '0.2.0',
+  });
+  expect(coordinator.current()?.update.status).toBe('available');
+  expect(published.at(-1)?.update.status).toBe('available');
+  expect(await coordinator.openDownloadPage()).toEqual({
+    schemaVersion: 1,
+    opened: true,
+  });
+});

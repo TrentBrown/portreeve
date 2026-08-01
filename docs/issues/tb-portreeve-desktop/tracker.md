@@ -15,7 +15,7 @@
 | R4 | Desktop integration | PASS | [#4](https://github.com/TrentBrown/portreeve/pull/4) | Packaged application invokes the exact checksum-verified CLI for lifecycle evidence and the official client for inventory through main-process adapters |
 | R5 | MVP user workflows | PASS | [#5](https://github.com/TrentBrown/portreeve/pull/5) | Overview and Ports expose state-aware onboarding, lifecycle, upgrade, uninstall, selected-port evidence, and typed reset-preview workflows through fixed CLI capabilities |
 | R6 | Electron security and freshness | PASS | [#4](https://github.com/TrentBrown/portreeve/pull/4), [#5](https://github.com/TrentBrown/portreeve/pull/5) | Sandboxed local renderer, strict CSP/navigation/permission denial, named main-frame IPC, reduced snapshots, serialized mutations/refresh, token confinement, stale recovery, separate desktop data, and packaged inspection pass |
-| R7 | Version and update policy | NOT YET | - | Planning pending |
+| R7 | Version and update policy | PASS | [#6](https://github.com/TrentBrown/portreeve/pull/6) | Independent version display and fixed identifier-free notification-only update discovery pass with 24-hour persisted throttling, bounded failure handling, fixed external navigation, and packaged offline-safe inspection |
 | R8 | Release identity and native execution | NOT YET | [#3](https://github.com/TrentBrown/portreeve/pull/3) | Four native executable targets, lifecycle matrix, checksums, npm tarball, and Homebrew installation pass; publication is deliberately deferred and P5-P8 local inputs remain provisional until first npm/GitHub publication and later desktop artifact identity evidence |
 
 ## PR Log
@@ -56,10 +56,23 @@
 ### PR #5 - Desktop lifecycle and reset workflows
 
 - **PR:** [#5](https://github.com/TrentBrown/portreeve/pull/5)
-- **Status:** draft
+- **Status:** merged
 - **Scope:** P7 Overview/Ports MVP, onboarding and lifecycle orchestration,
   selected-port details, data-preserving uninstall, and typed complete reset.
 - **Evidence packet:** [pr-5](pr-5/)
 - **Result:** R5 passes. R2, R3, R4, and R6 retain their earlier passes with
   added desktop workflow, mutation serialization, token-confinement, and
   packaged runtime evidence. Update discovery and public release remain P8-P9.
+
+### PR #6 - Privacy-preserving desktop update notifications
+
+- **PR:** [#6](https://github.com/TrentBrown/portreeve/pull/6)
+- **Status:** draft
+- **Scope:** P8 independent version presentation, fixed identifier-free update
+  discovery, persisted 24-hour cadence, nonblocking failure handling, and a
+  fixed download-page capability.
+- **Evidence packet:** [pr-6](pr-6/)
+- **Result:** R7 passes. Update discovery remains notification-only and cannot
+  mutate the desktop or managed service. Public CLI/client publication, signed
+  and notarized ARM64/x64 desktop artifacts, and exact published CLI identity
+  remain P9/R8.

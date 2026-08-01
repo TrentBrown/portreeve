@@ -15,6 +15,7 @@ const channels = Object.freeze({
   uninstall: 'portreeve:desktop:uninstall',
   previewPurge: 'portreeve:desktop:preview-purge',
   executePurge: 'portreeve:desktop:execute-purge',
+  openDownloadPage: 'portreeve:desktop:open-download-page',
 });
 
 function requireSnapshot(value) {
@@ -55,6 +56,18 @@ function requirePurgePreview(value) {
   return value;
 }
 
+function requireOpenDownloadResult(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    value.opened !== true
+  ) {
+    throw new Error('The main process returned an invalid navigation result.');
+  }
+  return value;
+}
+
 contextBridge.exposeInMainWorld(
   'portreeveDesktop',
   Object.freeze({
@@ -79,6 +92,8 @@ contextBridge.exposeInMainWorld(
       requireMutationResult(
         await ipcRenderer.invoke(channels.executePurge, { confirmation }),
       ),
+    openDownloadPage: async () =>
+      requireOpenDownloadResult(await ipcRenderer.invoke(channels.openDownloadPage)),
     subscribe(callback) {
       if (typeof callback !== 'function') {
         throw new TypeError('Snapshot subscriber must be a function.');

@@ -11,6 +11,7 @@ interface Window {
     uninstall(): Promise<any>;
     previewPurge(): Promise<any>;
     executePurge(confirmation: string): Promise<any>;
+    openDownloadPage(): Promise<any>;
     subscribe(callback: (snapshot: any) => void): () => void;
   };
 }

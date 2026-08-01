@@ -1,6 +1,6 @@
 // @ts-check
 
-import { availableActions, canUninstall } from './state.js';
+import { availableActions, canUninstall, updatePresentation } from './state.js';
 
 /** @type {any} */
 let snapshot = null;
@@ -13,6 +13,10 @@ const notice = requiredElement('notice');
 const errors = requiredElement('errors');
 const statusCards = requiredElement('status-cards');
 const versions = requiredElement('versions');
+const updateStatus = requiredElement('update-status');
+const openDownloadPage = /** @type {HTMLButtonElement} */ (
+  requiredElement('open-download-page')
+);
 const serviceActions = requiredElement('service-actions');
 const guidance = requiredElement('action-guidance');
 const portRows = requiredElement('port-rows');
@@ -88,6 +92,14 @@ requiredElement('uninstall').addEventListener('click', async () => {
   await invokeLifecycle('uninstall');
 });
 requiredElement('preview-purge').addEventListener('click', previewPurge);
+openDownloadPage.addEventListener('click', async () => {
+  await runBusy(async () => {
+    await window.portreeveDesktop.openDownloadPage();
+    showOperation('Opened the Portreeve download page.', [
+      'Desktop installation remains manual. Managed-service upgrades require separate confirmation.',
+    ]);
+  });
+});
 filterInput.addEventListener('input', () => {
   filter = filterInput.value.trim().toLowerCase();
   renderPorts();
@@ -131,6 +143,10 @@ function render(next) {
         : 'Local release candidate',
     ),
   );
+  const update = updatePresentation(next.update);
+  updateStatus.textContent = update.message;
+  openDownloadPage.hidden = !update.canOpenDownloadPage;
+  openDownloadPage.disabled = busy || !update.canOpenDownloadPage;
   renderActions();
   renderPorts();
   if (busy) setControlsDisabled(true);

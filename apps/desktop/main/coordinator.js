@@ -5,11 +5,13 @@ import {
   DesktopPurgePreviewSchema,
   DesktopPurgeResultSchema,
   DesktopSnapshotSchema,
+  DesktopUpdateStateSchema,
 } from '../shared/schemas.js';
+import { NOT_CHECKED_UPDATE_STATE } from './update.js';
 import { createDesktopSnapshot } from './view-model.js';
 
 /**
- * @param {{artifact: {source: 'local-release-candidate'|'published', desktopVersion: string, version: string, filename: string, sha256: string}, lifecycle: any, inventory: {listPorts(): Promise<unknown[]>}, now?: () => Date, intervalMilliseconds?: number, schedule?: (callback: () => void, milliseconds: number) => any, cancel?: (timer: any) => void}} options
+ * @param {{artifact: {source: 'local-release-candidate'|'published', desktopVersion: string, version: string, filename: string, sha256: string}, lifecycle: any, inventory: {listPorts(): Promise<unknown[]>}, updates?: {check(): Promise<unknown>, openDownloadPage(): Promise<unknown>}, now?: () => Date, intervalMilliseconds?: number, schedule?: (callback: () => void, milliseconds: number) => any, cancel?: (timer: any) => void}} options
  */
 export function createStateCoordinator(options) {
   const now = options.now ?? (() => new Date());
@@ -22,10 +24,13 @@ export function createStateCoordinator(options) {
   let lastLifecycle = null;
   /** @type {unknown[]} */
   let lastPorts = [];
+  let lastUpdate = DesktopUpdateStateSchema.parse(NOT_CHECKED_UPDATE_STATE);
   /** @type {Promise<unknown>|null} */
   let active = null;
   /** @type {'refresh'|'mutation'|null} */
   let activeKind = null;
+  /** @type {Promise<ReturnType<typeof DesktopUpdateStateSchema.parse>>|null} */
+  let updateActive = null;
   /** @type {any} */
   let timer = null;
   /** @type {Set<(snapshot: ReturnType<typeof createDesktopSnapshot>) => void>} */
@@ -107,6 +112,7 @@ export function createStateCoordinator(options) {
     }
     snapshot = createDesktopSnapshot({
       artifact: options.artifact,
+      update: lastUpdate,
       lifecycle: lastLifecycle,
       ports: lastPorts,
       errors,
@@ -115,8 +121,42 @@ export function createStateCoordinator(options) {
       lastSuccessfulAt:
         errors.length === 0 ? observedAt : (snapshot?.lastSuccessfulAt ?? null),
     });
-    for (const subscriber of subscribers) subscriber(snapshot);
+    publish(snapshot);
     return snapshot;
+  }
+
+  function checkForUpdates() {
+    if (updateActive !== null) return updateActive;
+    if (options.updates === undefined) return Promise.resolve(lastUpdate);
+    const operation = options.updates.check().then(
+      (value) => DesktopUpdateStateSchema.parse(value),
+      () =>
+        DesktopUpdateStateSchema.parse({
+          status: 'unavailable',
+          checkedAt: now().toISOString(),
+          latestVersion: null,
+        }),
+    );
+    updateActive = operation;
+    /** @param {ReturnType<typeof DesktopUpdateStateSchema.parse>} value */
+    const settle = (value) => {
+      lastUpdate = value;
+      if (snapshot !== null) {
+        snapshot = DesktopSnapshotSchema.parse({ ...snapshot, update: lastUpdate });
+        publish(snapshot);
+      }
+      if (updateActive === operation) updateActive = null;
+      return value;
+    };
+    return operation.then(settle, (error) => {
+      if (updateActive === operation) updateActive = null;
+      throw error;
+    });
+  }
+
+  /** @param {ReturnType<typeof createDesktopSnapshot>} value */
+  function publish(value) {
+    for (const subscriber of subscribers) subscriber(value);
   }
 
   /**
@@ -143,6 +183,7 @@ export function createStateCoordinator(options) {
 
   return Object.freeze({
     refresh,
+    checkForUpdates,
     current: () => snapshot,
     /** @param {(snapshot: ReturnType<typeof createDesktopSnapshot>) => void} subscriber */
     subscribe(subscriber) {
@@ -214,6 +255,15 @@ export function createStateCoordinator(options) {
           snapshot: finalSnapshot,
         });
       });
+    },
+    async openDownloadPage() {
+      if (options.updates === undefined || lastUpdate.status !== 'available') {
+        throw desktopCoordinatorError(
+          'desktop_update_not_available',
+          'No newer Portreeve Desktop release is currently available.',
+        );
+      }
+      return options.updates.openDownloadPage();
     },
     start() {
       this.startPolling();
