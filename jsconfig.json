@@ -16,5 +16,12 @@
     "target": "ES2024",
     "types": ["bun", "node"]
   },
-  "include": ["packages/**/*.js", "scripts/**/*.js", "src/**/*.js", "test/**/*.js"]
+  "include": [
+    "apps/**/*.js",
+    "apps/**/*.d.ts",
+    "packages/**/*.js",
+    "scripts/**/*.js",
+    "src/**/*.js",
+    "test/**/*.js"
+  ]
 }

@@ -58,7 +58,7 @@ verified release artifacts.
 
 ## I-3 - Publish the first CLI/server authority
 
-- **Status:** in-progress
+- **Status:** blocked
 - **Estimate:** 1d
 - **Plan steps:** P4
 - **Rubric criteria:** R1, R2, R3, R8
@@ -87,19 +87,35 @@ GitHub-maintained action majors run without Node 20 deprecation warnings. No
 tag, GitHub Release, or npm package was created. I-3 remains in progress until
 the authenticated first publication is completed and inspected.
 
+**Deferred 2026-08-01.** Keep the npm account's hardware-key protection and
+defer the one-time authenticated first publication. P4 remains open; when work
+resumes, publish and inspect `0.1.0`, configure npm Trusted Publishing for
+`release.yml`, and remove any bootstrap token. This blocks P9 and public
+desktop distribution but not the non-shipping P5-P8 engineering slices.
+
 ## I-4 - Deliver the secured read-only desktop slice
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P5, P6
 - **Rubric criteria:** R4, R6
-- **Depends on:** I-3
-- **PR:** -
+- **Depends on:** I-1, I-2
+- **PR:** [#4](https://github.com/TrentBrown/portreeve/pull/4)
 
 Create the Electron workspace and hardened process boundary, verify and bundle
-the exact published CLI, integrate lifecycle status plus public-client
+the checksummed local CLI release candidate as an explicitly provisional
+non-shipping input, integrate lifecycle status plus the workspace client
 inventory, and implement serialized refresh, reduced view models, and stale
-evidence.
+evidence. Exact published-artifact identity remains deferred to I-7.
+
+**Started 2026-08-01.** The delivery branch begins with the approved
+publication deferral recorded in scratchpad decision 4. Local release-candidate
+inputs must remain explicit and checksummed; they cannot satisfy R8 or enter a
+public desktop release.
+
+**In review 2026-08-01.** PR #4 implements P5-P6 and carries the formal
+verification, spec evaluation, judge, security review, and packaged runtime
+evidence for the read-only slice.
 
 ## I-5 - Complete Overview, Ports, and lifecycle workflows
 
@@ -133,12 +149,13 @@ and approved external download navigation.
 - **Estimate:** 2d
 - **Plan steps:** P9
 - **Rubric criteria:** R4, R5, R6, R7, R8
-- **Depends on:** I-5, I-6
+- **Depends on:** I-3, I-5, I-6
 - **PR:** -
 
-Produce separate macOS ARM64/x64 artifacts with hardened runtime, Developer ID
-signing, notarization, exact nested CLI identity, release manifests, and native
-packaged lifecycle smokes.
+Complete the standalone `0.1.0` publication and npm Trusted Publishing
+transition, then produce separate macOS ARM64/x64 artifacts with hardened
+runtime, Developer ID signing, notarization, exact published nested CLI
+identity, release manifests, and native packaged lifecycle smokes.
 
 ## I-8 - Complete feature-final evidence
 

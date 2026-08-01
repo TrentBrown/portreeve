@@ -91,3 +91,45 @@ Replace the self-hosted Linux ARM64 matrix entry with GitHub's native ubuntu-24.
   configuration requires an existing package.
 - Publish without npm - rejected because P4 and the approved release channels
   require the official client package.
+
+## [4] Defer first publication without blocking non-shipping desktop development
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** P4-P9 sequencing, npm authentication, desktop artifact inputs, issue dependencies, release identity evidence, and public release gates
+
+Keep the npm account's hardware-key protection and defer the first npm/GitHub publication. Continue the non-shipping P5-P8 desktop engineering work against the checksummed locally built 0.1.0 release-candidate executable and the workspace JavaScript client. This provisional input may satisfy engineering tests but cannot satisfy published-artifact identity. I-3 remains open, and P9 plus every public desktop release remain blocked until 0.1.0 is published, inspected, and npm trusted publishing is configured for release.yml. After publication, replace the provisional input with the exact downloaded architecture-specific artifact and verify its checksum and byte identity before native packaging.
+
+**Triggered by:** The first npm publish requires awkward interactive or bootstrap-token authentication, while trusted publishing becomes available only after the package exists
+
+**Alternatives considered:**
+
+- Remove hardware-key or 2FA protection and store username/password in GitHub -
+  rejected because npm publishing still requires 2FA or a publishing token,
+  primary credentials do not belong in CI, and OIDC removes the recurring
+  need.
+- Stop all desktop work until publication - rejected because P5-P8
+  architecture, security, state, and UI work can be verified against a
+  checksummed local release candidate without claiming release identity.
+- Publish GitHub artifacts without the npm client - rejected because the
+  approved P4 channels include the official client package and partial
+  publication would complicate release recovery.
+
+## [5] Pin Electron 43 and Electron Packager 20 for the engineering slice
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** workspace lockfile, desktop runtime, Chromium and Node security surface, packaging scripts, macOS support, CI, and future signing/notarization work
+
+Pin Electron 43.2.0 and @electron/packager 20.0.4 in the private desktop workspace. Electron 43 is the current stable release and supplies a current Chromium/Node security baseline; Electron Packager provides the minimal non-shipping application bundle needed for P5 without committing to the P9 signing/notarization toolchain. Keep renderer sandboxing, context isolation, Node integration, navigation, permissions, IPC, and local content restrictions explicit in code and tests rather than relying only on Electron defaults.
+
+**Triggered by:** P5 introduces the first desktop runtime and packaging dependencies
+
+**Alternatives considered:**
+Use an older Electron line - rejected because the approved macOS 13 floor does not require it and Electron recommends current releases for security fixes.
+Adopt electron-builder now - rejected because P5 needs a local engineering bundle, while signing, notarization, update manifests, and public installers belong to P9.
+Build the UI in a browser-only harness first - rejected because process isolation and IPC are core acceptance boundaries that require Electron from the first slice.

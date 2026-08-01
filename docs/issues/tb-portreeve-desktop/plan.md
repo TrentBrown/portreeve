@@ -19,10 +19,12 @@ Deliver the feature as four sequential integration slices while keeping the
 feature record cumulative:
 
 1. finalize and harden the first public CLI lifecycle and purge contracts;
-2. publish and natively verify the standalone CLI/server authority;
-3. build the secured read-only Electron engineering slice against the exact
-   published executable; and
-4. complete the desktop mutations, update notification, packaging, and native
+2. prepare and natively verify the standalone CLI/server authority, deferring
+   its first publication when npm authentication is unavailable;
+3. build the secured, non-shipping Electron engineering slices against a
+   checksummed local release candidate; and
+4. publish the standalone authority, replace the provisional desktop input
+   with its exact published executable, then complete packaging and native
    release proof.
 
 Each later delivery branch begins from updated `main` after the preceding PR
@@ -106,11 +108,14 @@ operating system is part of the requirement.
   with separately versioned metadata and pinned Electron/build dependencies.
   Create a normal sandboxed, context-isolated, Node-disabled window using only
   packaged local content, strict CSP, denied navigation/new windows, and
-  allowlisted external links. Bundle the architecture-matching, already
-  published CLI artifact after checksum verification. Expose a narrow
-  runtime-validated preload surface for snapshot retrieval and refresh
-  subscription; use the exact CLI for lifecycle status and the official client
-  for global inventory. **Code areas:** root workspace/tooling,
+  allowlisted external links. For this non-shipping slice, bundle the
+  architecture-matching, checksummed local `0.1.0` release candidate and record
+  its provisional identity. Expose a narrow runtime-validated preload surface
+  for snapshot retrieval and refresh subscription; use the exact bundled CLI
+  for lifecycle status and the workspace copy of the official client for
+  global inventory. Provisional artifacts do not satisfy published-artifact
+  identity and may not be used for a public desktop release. **Code areas:**
+  root workspace/tooling,
   `apps/desktop/main/`, `apps/desktop/preload/`,
   `apps/desktop/renderer/`, desktop packaging inputs and tests.
   **Verification:** Electron configuration/security assertions, bundled-path
@@ -162,13 +167,16 @@ operating system is part of the requirement.
   clock tests, malformed/offline manifest tests, external-link allowlist tests,
   and proof that discovery performs no mutation. **Advances:** R7.
 
-- **P9. Produce separate signed/notarized native desktop artifacts with exact
-  CLI identity.** Build macOS 13+ ARM64 and x64 applications separately with
-  hardened runtime and Developer ID signing. Consume the matching published
-  CLI artifact without rebuild, patch, combination, or independent re-signing;
-  record both product versions and source artifact identity in the desktop
-  manifest; and verify the nested executable checksum before packaging, after
-  application signing, and after notarization. **Code areas:** desktop build
+- **P9. Publish the standalone authority and produce separate signed/notarized
+  native desktop artifacts with exact CLI identity.** Complete P4 by publishing
+  and inspecting the GitHub Release and npm client, then configure
+  `release.yml` as the npm trusted publisher. Build macOS 13+ ARM64 and x64
+  applications separately with hardened runtime and Developer ID signing.
+  Replace every provisional desktop input with the matching downloaded
+  published CLI artifact without rebuild, patch, combination, or independent
+  re-signing; record both product versions and source artifact identity in the
+  desktop manifest; and verify the nested executable checksum before packaging,
+  after application signing, and after notarization. **Code areas:** desktop build
   configuration, entitlements, packaging/release scripts, CI workflows,
   manifests, distribution documentation. **Verification:** architecture and
   deployment-target inspection, codesign verification, notarization/stapling,

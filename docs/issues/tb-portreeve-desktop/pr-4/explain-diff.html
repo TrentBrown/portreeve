@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #4 explained — Portreeve Desktop read-only slice</title>
+    <style>
+      :root {
+        color: #19302c;
+        background: #f4f0e7;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        line-height: 1.58;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      header, main { width: min(1080px, calc(100% - 36px)); margin: auto; }
+      header { padding: 56px 0 28px; }
+      h1, h2, h3 { font-family: Georgia, serif; line-height: 1.16; }
+      h1 { margin: 8px 0 16px; font-size: clamp(2.2rem, 6vw, 4.6rem); }
+      h2 { margin-top: 56px; font-size: 2rem; }
+      h3 { margin-top: 0; }
+      .eyebrow { color: #497266; font-size: .78rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+      .lede { max-width: 780px; color: #40534e; font-size: 1.18rem; }
+      nav { display: flex; flex-wrap: wrap; gap: 10px; margin: 26px 0; }
+      nav a { border: 1px solid #b8c4bd; border-radius: 999px; color: #245749; padding: 7px 13px; text-decoration: none; }
+      .callout, .card, .flow, .quiz { border: 1px solid #d4d2c8; border-radius: 16px; background: #fffdf8; box-shadow: 0 12px 35px rgb(32 52 45 / 7%); }
+      .callout { margin: 24px 0; border-left: 6px solid #2b765f; padding: 18px 22px; }
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .card { padding: 20px; }
+      .card p:last-child { margin-bottom: 0; }
+      .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 14px; margin: 24px 0; padding: 22px; }
+      .node { border-radius: 12px; background: #edf5f1; padding: 15px; text-align: center; }
+      .arrow { color: #2b765f; font-size: 1.6rem; font-weight: 800; }
+      pre { overflow-x: auto; border-radius: 12px; background: #152a26; color: #e8f4ef; padding: 18px; white-space: pre-wrap; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .boundary { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .trusted { border-top: 5px solid #28715a; }
+      .untrusted { border-top: 5px solid #b76928; }
+      .quiz { margin: 18px 0; padding: 20px; }
+      .answers { display: grid; gap: 9px; }
+      .answers button { border: 1px solid #aebbb4; border-radius: 10px; background: white; color: inherit; cursor: pointer; padding: 11px 13px; text-align: left; }
+      .answers button:hover { border-color: #28715a; }
+      .feedback { min-height: 1.5em; margin: 12px 0 0; font-weight: 650; }
+      .correct { color: #176040; }
+      .incorrect { color: #9a402d; }
+      footer { margin-top: 60px; border-top: 1px solid #d4d2c8; color: #65736f; padding: 24px 0 50px; }
+      @media (max-width: 760px) {
+        .grid, .boundary { grid-template-columns: 1fr; }
+        .flow { grid-template-columns: 1fr; }
+        .arrow { transform: rotate(90deg); text-align: center; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="eyebrow">Portreeve · PR #4 · Pinned diff b4f88ab..a01bcef</div>
+      <h1>A desktop window with a deliberately narrow waist</h1>
+      <p class="lede">
+        This change does not yet make Portreeve a desktop-managed service. It
+        proves the more important prerequisite: a packaged Electron application
+        can observe the existing authority without becoming a second authority,
+        weakening process isolation, or inventing another integration contract.
+      </p>
+      <nav aria-label="Table of contents">
+        <a href="#background">Background</a>
+        <a href="#intuition">Intuition</a>
+        <a href="#code">Code</a>
+        <a href="#safety">Safety edges</a>
+        <a href="#quiz">Quiz</a>
+      </nav>
+    </header>
+    <main>
+      <section id="background">
+        <h2>Background</h2>
+        <p>
+          Portreeve is a per-user service that coordinates development TCP
+          ports. Its durable registry is useful, but the truth about a live
+          listener still comes from operating-system evidence. Before this PR,
+          operators used the CLI and JavaScript client. A desktop interface was
+          planned, but Electron introduces a new security boundary: the page a
+          user sees must not inherit the authority of the Node-powered main
+          process.
+        </p>
+        <div class="grid">
+          <article class="card">
+            <h3>CLI contract</h3>
+            <p><code>portreeve status --json</code> returns layered installation, supervisor, and socket evidence.</p>
+          </article>
+          <article class="card">
+            <h3>Client contract</h3>
+            <p>The official JavaScript client reads global claim and listener inventory through the private socket protocol.</p>
+          </article>
+          <article class="card">
+            <h3>Desktop contract</h3>
+            <p>The renderer receives only a smaller display schema. It never receives the executable path, socket path, command line, or storage handle.</p>
+          </article>
+        </div>
+        <div class="callout">
+          <strong>Release boundary:</strong> the embedded CLI is a checksummed
+          local 0.1.0 candidate. The UI says “not for distribution.” Signing,
+          notarization, x64 proof, and published-byte identity remain later work.
+        </div>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition: translate evidence; do not pass authority</h2>
+        <p>
+          Imagine the CLI reports a socket path, a process record containing a
+          private command line, and a claim rooted in a long workspace path.
+          The window needs only “socket unhealthy,” listener PID 9191, and the
+          workspace basename. The main process therefore acts like a customs
+          checkpoint: validate the original record, remove privileged fields,
+          validate the reduced record, and only then cross IPC.
+        </p>
+        <div class="flow" role="img" aria-label="Evidence flows through adapters and a reducer into the renderer">
+          <div class="node"><strong>CLI + official client</strong><br />privileged, detailed evidence</div>
+          <div class="arrow">→</div>
+          <div class="node"><strong>Main process</strong><br />validate, coordinate, redact</div>
+          <div class="arrow">→</div>
+          <div class="node"><strong>Renderer</strong><br />strict read-only snapshot</div>
+        </div>
+        <pre><code>Raw listener:
+  command: "bun serve --token private-value"
+  executable: "/private/toolchains/bun"
+  workspaceRoot: "/Users/example/Code/caregiver-worktree"
+
+Renderer listener:
+  pid: 9191
+  verified: true
+  workspaceName: "caregiver-worktree"</code></pre>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <div class="boundary">
+          <article class="card trusted">
+            <h3>Trusted side</h3>
+            <p><code>artifact.js</code> selects one OS/architecture manifest entry and verifies its safe filename and SHA-256.</p>
+            <p><code>cli-adapter.js</code> spawns that exact path with no shell, bounded output, and a timeout.</p>
+            <p><code>coordinator.js</code> coalesces refreshes and retains last-known layer data when either source fails.</p>
+          </article>
+          <article class="card untrusted">
+            <h3>Untrusted side</h3>
+            <p><code>preload/index.cjs</code> exposes only get, refresh, and subscribe.</p>
+            <p><code>renderer.js</code> renders Overview and Ports without Node access or arbitrary IPC.</p>
+            <p>The local page sees a strict desktop schema, never raw protocol or CLI objects.</p>
+          </article>
+        </div>
+
+        <h3>1. Establish a local-only Electron boundary</h3>
+        <p>
+          The BrowserWindow enables sandboxing and context isolation while
+          disabling Node, workers with Node, subframe Node, webviews, insecure
+          content, and experimental features. A custom <code>app://</code>
+          handler serves only real HTML, CSS, and JavaScript files beneath the
+          renderer root. It rejects malformed paths, traversal, and symlink
+          escapes, and attaches a restrictive Content Security Policy.
+        </p>
+
+        <h3>2. Use the existing public seams</h3>
+        <p>
+          Lifecycle status comes from the exact embedded executable. Inventory
+          comes from <code>PortreeveClient</code>. Static tests guard against
+          accidental imports from server/storage layers and against generic
+          shells or PATH lookup. This is important architecturally: the desktop
+          remains a consumer of Portreeve rather than a privileged fork of it.
+        </p>
+
+        <h3>3. Serialize freshness</h3>
+        <p>
+          A single in-flight promise coalesces simultaneous refresh requests.
+          The coordinator polls every five seconds only while the window is
+          visible, stops on hide or minimize, and refreshes on focus or restore.
+          If one source fails, its last successful evidence remains on screen,
+          visibly marked stale beside a current redacted error.
+        </p>
+
+        <h3>4. Package the proof without claiming a release</h3>
+        <p>
+          The packaging script detects physical Mac architecture, bundles the
+          main process, copies the renderer and preload, and adds the exact
+          checksummed CLI as a resource. The resulting ARM64 app is unsigned
+          engineering evidence. This separation lets UI and security work
+          continue while npm's first publication remains deferred.
+        </p>
+      </section>
+
+      <section id="safety">
+        <h2>Safety edges proved by the slice</h2>
+        <div class="grid">
+          <article class="card"><h3>No race between refreshes</h3><p>Focus, polling, and a manual refresh share the same in-flight promise.</p></article>
+          <article class="card"><h3>No stale PID authority</h3><p>PIDs are displayed evidence only. The desktop does not mutate or kill processes in this slice.</p></article>
+          <article class="card"><h3>No secret echo</h3><p>Adapter parse failures use fixed messages, and coordinator errors redact upstream message text.</p></article>
+          <article class="card"><h3>No arbitrary navigation</h3><p>New windows and webviews are denied; navigation is pinned to the one local renderer URL.</p></article>
+          <article class="card"><h3>No provisional release claim</h3><p>The candidate's origin and checksum are shown, alongside an explicit non-distribution label.</p></article>
+          <article class="card"><h3>No hidden background polling</h3><p>Hide and minimize stop the timer; focus and restore collect fresh evidence.</p></article>
+        </div>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="1">
+          <h3>1. Why does lifecycle status use the CLI while inventory uses the client?</h3>
+          <div class="answers">
+            <button>The CLI is faster, while the client is only available in development.</button>
+            <button>Those are the established public contracts for lifecycle and socket inventory respectively.</button>
+            <button>Electron cannot import lifecycle schemas from the workspace.</button>
+          </div><p class="feedback"></p>
+        </div>
+        <div class="quiz" data-answer="2">
+          <h3>2. What prevents two focus/poll refreshes from running concurrently?</h3>
+          <div class="answers">
+            <button>The renderer disables its Refresh button for five seconds.</button>
+            <button>Electron automatically serializes IPC invocation handlers.</button>
+            <button>The coordinator returns the existing in-flight promise until collection settles.</button>
+          </div><p class="feedback"></p>
+        </div>
+        <div class="quiz" data-answer="0">
+          <h3>3. Why is a workspace basename sent instead of the full workspace root?</h3>
+          <div class="answers">
+            <button>It supplies useful claim context while reducing privileged path disclosure.</button>
+            <button>The protocol does not contain a workspace root.</button>
+            <button>Electron cannot serialize absolute paths through IPC.</button>
+          </div><p class="feedback"></p>
+        </div>
+        <div class="quiz" data-answer="2">
+          <h3>4. What makes the current package unsuitable for public distribution?</h3>
+          <div class="answers">
+            <button>It uses vanilla JavaScript rather than TypeScript.</button>
+            <button>Its renderer uses a custom local protocol rather than a file URL.</button>
+            <button>It embeds a provisional candidate and lacks x64, signing, notarization, and published-byte evidence.</button>
+          </div><p class="feedback"></p>
+        </div>
+        <div class="quiz" data-answer="1">
+          <h3>5. What happens when inventory fails after a successful refresh?</h3>
+          <div class="answers">
+            <button>The whole snapshot is replaced by an empty current success.</button>
+            <button>Last-known inventory remains, the snapshot is stale, and a redacted current error is shown.</button>
+            <button>The renderer receives the raw socket exception for troubleshooting.</button>
+          </div><p class="feedback"></p>
+        </div>
+      </section>
+      <footer>
+        Formal explanation for PR #4, generated from the pinned source diff
+        <code>b4f88abf6536ccdbfb28a525fe401b3b0a547f54..a01bcef31bc442a423b3cf7bcc99cf3c2897691c</code>.
+      </footer>
+    </main>
+    <script>
+      for (const quiz of document.querySelectorAll('.quiz')) {
+        const expected = Number(quiz.dataset.answer);
+        const feedback = quiz.querySelector('.feedback');
+        [...quiz.querySelectorAll('button')].forEach((button, index) => {
+          button.addEventListener('click', () => {
+            const correct = index === expected;
+            feedback.className = `feedback ${correct ? 'correct' : 'incorrect'}`;
+            feedback.textContent = correct
+              ? 'Correct — that preserves the intended authority boundary.'
+              : 'Not quite. Revisit the boundary and freshness sections above.';
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
