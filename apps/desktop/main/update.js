@@ -83,10 +83,7 @@ export function createUpdateAdapter(options) {
         });
         if (!response.ok)
           throw new Error(`Update manifest returned ${response.status}.`);
-        const text = await response.text();
-        if (new TextEncoder().encode(text).byteLength > MAXIMUM_MANIFEST_BYTES) {
-          throw new Error('Update manifest is too large.');
-        }
+        const text = await readLimitedText(response, MAXIMUM_MANIFEST_BYTES);
         const manifest = DesktopUpdateManifestSchema.parse(JSON.parse(text));
         result = DesktopUpdateStateSchema.parse({
           status:
@@ -129,6 +126,38 @@ export function createUpdateAdapter(options) {
       });
     },
   });
+}
+
+/** @param {Response} response @param {number} maximumBytes */
+async function readLimitedText(response, maximumBytes) {
+  const declaredLength = response.headers.get('content-length');
+  if (
+    declaredLength !== null &&
+    Number.isFinite(Number(declaredLength)) &&
+    Number(declaredLength) > maximumBytes
+  ) {
+    throw new Error('Update manifest is too large.');
+  }
+  if (response.body === null) return '';
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let received = 0;
+  let text = '';
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      received += chunk.value.byteLength;
+      if (received > maximumBytes) {
+        await reader.cancel('Update manifest is too large.');
+        throw new Error('Update manifest is too large.');
+      }
+      text += decoder.decode(chunk.value, { stream: true });
+    }
+    return text + decoder.decode();
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 /** @param {string} checkedAt @param {Date} observedAt */

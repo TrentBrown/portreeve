@@ -174,6 +174,39 @@ test('bounds a hanging update request and reduces it to unavailable', async () =
   }
 });
 
+test('rejects an oversized streamed manifest before buffering the remainder', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'portreeve-update-size-'));
+  const statePath = join(root, 'update-state.json');
+  let chunks = 0;
+  let canceled = false;
+  try {
+    const adapter = createUpdateAdapter({
+      desktopVersion: '0.1.0',
+      statePath,
+      fetch: async () =>
+        new Response(
+          new ReadableStream({
+            pull(controller) {
+              chunks += 1;
+              controller.enqueue(new Uint8Array(9_000));
+              if (chunks === 10) controller.close();
+            },
+            cancel() {
+              canceled = true;
+            },
+          }),
+        ),
+      now: () => new Date(timestamp),
+      openExternal: async () => {},
+    });
+    expect((await adapter.check()).status).toBe('unavailable');
+    expect(chunks).toBeGreaterThanOrEqual(2);
+    expect(canceled).toBe(true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('recovers from invalid persisted state and refuses navigation without an update', async () => {
   const root = await mkdtemp(join(tmpdir(), 'portreeve-update-invalid-'));
   const statePath = join(root, 'update-state.json');
