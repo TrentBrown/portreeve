@@ -95,7 +95,7 @@ desktop distribution but not the non-shipping P5-P8 engineering slices.
 
 ## I-4 - Deliver the secured read-only desktop slice
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P5, P6
 - **Rubric criteria:** R4, R6
@@ -117,14 +117,17 @@ public desktop release.
 verification, spec evaluation, judge, security review, and packaged runtime
 evidence for the read-only slice.
 
+**Completed 2026-08-01.** PR #4 merged to `main` at
+`75c463705bb5ff96b9c4bb411789959e3e81c7ac`.
+
 ## I-5 - Complete Overview, Ports, and lifecycle workflows
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P7
 - **Rubric criteria:** R2, R3, R5, R6
 - **Depends on:** I-4
-- **PR:** -
+- **PR:** [#5](https://github.com/TrentBrown/portreeve/pull/5)
 
 Build the two-view renderer and its accessible onboarding, ordinary lifecycle,
 upgrade, uninstall, manual-server stop, inventory search/filter/detail, and
@@ -136,6 +139,10 @@ mutation and reset authority boundary is recorded in scratchpad decision 6.
 Packaged reset verification found and corrected an Electron `userData` collision
 with the CLI application home; scratchpad decision 7 records the separate
 desktop-data boundary.
+
+**In review 2026-08-01.** Draft PR #5 contains the complete P7 source slice and
+is undergoing the pinned verification, evaluation, judge, review, and
+explain-diff boundary gates.
 
 ## I-6 - Add version and update notification behavior
 

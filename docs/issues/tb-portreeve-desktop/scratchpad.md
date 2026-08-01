@@ -136,7 +136,7 @@ Build the UI in a browser-only harness first - rejected because process isolatio
 
 ## [6] Keep mutation authority and purge tokens in the main process
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -153,7 +153,7 @@ Expose one named preload method per approved user action rather than a generic c
 
 ## [7] Separate desktop runtime data from the CLI application home
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
