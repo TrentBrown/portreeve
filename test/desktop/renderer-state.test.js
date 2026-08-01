@@ -3,6 +3,7 @@
 import { expect, test } from 'bun:test';
 import {
   availableActions,
+  canUninstall,
   compareVersions,
 } from '../../apps/desktop/renderer/state.js';
 import { createDesktopSnapshot } from '../../apps/desktop/main/view-model.js';
@@ -44,23 +45,26 @@ test('derives only state-appropriate service actions', () => {
   const ambiguous = snapshotWith({ mode: 'ambiguous' });
 
   expect(availableActions(absent)).toEqual(['installAndStart']);
+  expect(canUninstall(absent)).toBe(false);
   expect(availableActions(stopped)).toEqual(['start', 'upgrade']);
   expect(availableActions(snapshotWith({}))).toEqual(['stop', 'restart']);
+  expect(canUninstall(snapshotWith({}))).toBe(true);
   expect(availableActions(manual)).toEqual(['stopManual']);
+  expect(canUninstall(manual)).toBe(false);
   expect(availableActions(ambiguous)).toEqual([]);
-  expect(
-    availableActions({
-      ...stopped,
-      errors: [
-        {
-          source: 'lifecycle',
-          code: 'offline',
-          message: 'Unavailable.',
-          observedAt: timestamp,
-        },
-      ],
-    }),
-  ).toEqual([]);
+  const staleLifecycle = {
+    ...stopped,
+    errors: [
+      {
+        source: 'lifecycle',
+        code: 'offline',
+        message: 'Unavailable.',
+        observedAt: timestamp,
+      },
+    ],
+  };
+  expect(availableActions(staleLifecycle)).toEqual([]);
+  expect(canUninstall(staleLifecycle)).toBe(false);
   expect(compareVersions('0.2.0', '0.1.9')).toBeGreaterThan(0);
   expect(compareVersions('0.1.0-rc.1', '0.1.0')).toBeLessThan(0);
 });

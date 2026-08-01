@@ -31,6 +31,17 @@ export function availableActions(snapshot) {
   return actions;
 }
 
+/** @param {any} snapshot */
+export function canUninstall(snapshot) {
+  const lifecycle = snapshot.lifecycle;
+  return (
+    lifecycle !== null &&
+    lifecycle.installation.state === 'installed' &&
+    !['manual', 'ambiguous'].includes(lifecycle.mode) &&
+    !snapshot.errors.some((/** @type {any} */ { source }) => source === 'lifecycle')
+  );
+}
+
 /** @param {string} left @param {string} right */
 export function compareVersions(left, right) {
   /** @param {string} value */

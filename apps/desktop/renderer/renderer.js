@@ -1,6 +1,6 @@
 // @ts-check
 
-import { availableActions } from './state.js';
+import { availableActions, canUninstall } from './state.js';
 
 /** @type {any} */
 let snapshot = null;
@@ -133,7 +133,7 @@ function render(next) {
   );
   renderActions();
   renderPorts();
-  setControlsDisabled(busy);
+  if (busy) setControlsDisabled(true);
 }
 
 function renderActions() {
@@ -165,11 +165,7 @@ function renderActions() {
   );
   guidance.textContent = actionGuidance(snapshot.lifecycle, actions);
   const uninstall = /** @type {HTMLButtonElement} */ (requiredElement('uninstall'));
-  uninstall.disabled =
-    busy ||
-    snapshot.lifecycle?.installation.state !== 'installed' ||
-    ['manual', 'ambiguous'].includes(snapshot.lifecycle.mode) ||
-    snapshot.errors.some((/** @type {any} */ error) => error.source === 'lifecycle');
+  uninstall.disabled = busy || !canUninstall(snapshot);
 }
 
 /** @param {string} name */
