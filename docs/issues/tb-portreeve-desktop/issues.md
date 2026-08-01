@@ -95,12 +95,12 @@ desktop distribution but not the non-shipping P5-P8 engineering slices.
 
 ## I-4 - Deliver the secured read-only desktop slice
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P5, P6
 - **Rubric criteria:** R4, R6
 - **Depends on:** I-1, I-2
-- **PR:** -
+- **PR:** [#4](https://github.com/TrentBrown/portreeve/pull/4)
 
 Create the Electron workspace and hardened process boundary, verify and bundle
 the checksummed local CLI release candidate as an explicitly provisional
@@ -112,6 +112,10 @@ evidence. Exact published-artifact identity remains deferred to I-7.
 publication deferral recorded in scratchpad decision 4. Local release-candidate
 inputs must remain explicit and checksummed; they cannot satisfy R8 or enter a
 public desktop release.
+
+**In review 2026-08-01.** PR #4 implements P5-P6 and carries the formal
+verification, spec evaluation, judge, security review, and packaged runtime
+evidence for the read-only slice.
 
 ## I-5 - Complete Overview, Ports, and lifecycle workflows
 
