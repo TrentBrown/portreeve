@@ -63,3 +63,9 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
   expect(source).toContain('new PortreeveClient()');
   expect(source).toContain('executablePath: artifact.executablePath');
 });
+
+test('sets a distinct Electron user-data root before startup', async () => {
+  const source = await readFile('apps/desktop/main/index.js', 'utf8');
+  expect(source).toContain("app.setPath('userData'");
+  expect(source).toContain("app.getPath('appData')");
+});

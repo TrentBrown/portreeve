@@ -23,15 +23,43 @@ test('reduces lifecycle and inventory evidence before it reaches the renderer', 
       project: 'caregiver',
       service: 'website',
       workspaceName: 'caregiver-secret-worktree',
+      mode: 'sticky',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      lastUsedAt: timestamp,
+      assignmentExpiresAt: null,
     },
-    listeners: [{ pid: 9191, verified: true, reason: 'verified' }],
+    run: {
+      state: 'confirmed',
+      rootPid: 8181,
+      confirmedAt: timestamp,
+      releasedAt: null,
+    },
+    listeners: [
+      {
+        pid: 9191,
+        names: ['*:4173'],
+        verified: true,
+        reason: 'verified',
+        lineage: [9191],
+        process: {
+          parentPid: 8181,
+          uid: 501,
+          startTime: timestamp,
+          executableName: 'bun',
+          workingDirectory: '/Users/example/Code/caregiver-secret-worktree',
+        },
+      },
+    ],
   });
   const serialized = JSON.stringify(snapshot);
-  expect(serialized).not.toContain('/Users/example');
   expect(serialized).not.toContain('super-secret-value');
   expect(serialized).not.toContain('secretInternalField');
   expect(serialized).not.toContain('managedExecutablePath');
   expect(serialized).not.toContain('socketPath');
+  expect(snapshot.lifecycle?.installation.managedLocation).toBe(
+    '/Users/example/.local/portreeve/bin/portreeve',
+  );
 });
 
 test('represents absent, manual, supervised, and incompatible lifecycle states', () => {

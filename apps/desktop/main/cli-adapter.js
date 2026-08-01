@@ -1,31 +1,57 @@
 // @ts-check
 
 import { spawn } from 'node:child_process';
-import { LifecycleStatusSchema } from '../../../src/supervision/schemas.js';
+import {
+  LifecycleMutationResultSchema,
+  LifecycleStatusSchema,
+} from '../../../src/supervision/schemas.js';
+import {
+  PurgePreviewSchema,
+  PurgeResultSchema,
+} from '../../../src/supervision/purge.js';
 
 /**
  * @param {{executablePath: string, run?: typeof runExecutable}} options
  */
 export function createLifecycleAdapter(options) {
   const run = options.run ?? runExecutable;
+  /** @type {string|null} */
+  let purgeToken = null;
+
+  /** @param {string} operation */
+  const mutate = async (operation) => {
+    purgeToken = null;
+    const envelope = await invokeJson(
+      run,
+      options.executablePath,
+      [operation, '--json'],
+      'lifecycle',
+    );
+    if (!('result' in envelope)) {
+      throw desktopAdapterError(
+        'invalid_lifecycle_envelope',
+        'Portreeve returned an unsupported lifecycle envelope.',
+      );
+    }
+    const parsed = LifecycleMutationResultSchema.safeParse(envelope.result);
+    if (!parsed.success || parsed.data.operation !== operation) {
+      throw desktopAdapterError(
+        'invalid_lifecycle_result',
+        'Portreeve returned an unsupported lifecycle result.',
+      );
+    }
+    return parsed.data;
+  };
+
   return Object.freeze({
     async status() {
-      const result = await run(options.executablePath, ['status', '--json']);
-      let envelope;
-      try {
-        envelope = JSON.parse(result.stdout);
-      } catch {
-        throw desktopAdapterError(
-          'invalid_lifecycle_json',
-          'Portreeve returned invalid lifecycle data.',
-        );
-      }
-      if (
-        typeof envelope !== 'object' ||
-        envelope === null ||
-        envelope.version !== 1 ||
-        !('status' in envelope)
-      ) {
+      const envelope = await invokeJson(
+        run,
+        options.executablePath,
+        ['status', '--json'],
+        'lifecycle',
+      );
+      if (!('status' in envelope)) {
         throw desktopAdapterError(
           'invalid_lifecycle_envelope',
           'Portreeve returned an unsupported lifecycle envelope.',
@@ -40,7 +66,110 @@ export function createLifecycleAdapter(options) {
       }
       return parsed.data;
     },
+    install: () => mutate('install'),
+    start: () => mutate('start'),
+    stop: () => mutate('stop'),
+    stopManual: () => mutate('stop-manual'),
+    restart: () => mutate('restart'),
+    uninstall: () => mutate('uninstall'),
+    async previewPurge() {
+      purgeToken = null;
+      const envelope = await invokeJson(
+        run,
+        options.executablePath,
+        ['purge', '--dry-run', '--json'],
+        'purge',
+        30_000,
+      );
+      if (!('preview' in envelope)) {
+        throw desktopAdapterError(
+          'invalid_purge_envelope',
+          'Portreeve returned an unsupported purge preview.',
+        );
+      }
+      const parsed = PurgePreviewSchema.safeParse(envelope.preview);
+      if (!parsed.success) {
+        throw desktopAdapterError(
+          'invalid_purge_preview',
+          'Portreeve returned an unsupported purge preview.',
+        );
+      }
+      purgeToken = parsed.data.confirmationToken;
+      return {
+        allowed: parsed.data.allowed,
+        root: parsed.data.root,
+        paths: parsed.data.paths.map(({ path, type, size }) => ({ path, type, size })),
+        refused: parsed.data.refused,
+      };
+    },
+    async executePurge() {
+      const token = purgeToken;
+      purgeToken = null;
+      if (token === null) {
+        throw desktopAdapterError(
+          'purge_preview_required',
+          'A fresh purge preview is required before deletion.',
+        );
+      }
+      const envelope = await invokeJson(
+        run,
+        options.executablePath,
+        ['purge', '--confirm', token, '--json'],
+        'purge',
+        30_000,
+      );
+      if (!('result' in envelope)) {
+        throw desktopAdapterError(
+          'invalid_purge_envelope',
+          'Portreeve returned an unsupported purge result.',
+        );
+      }
+      const parsed = PurgeResultSchema.safeParse(envelope.result);
+      if (!parsed.success || parsed.data.confirmationToken !== token) {
+        throw desktopAdapterError(
+          'invalid_purge_result',
+          'Portreeve returned an unsupported purge result.',
+        );
+      }
+      return {
+        outcome: parsed.data.outcome,
+        removed: parsed.data.removed,
+        retained: parsed.data.retained,
+        missing: parsed.data.missing,
+        refused: parsed.data.refused,
+      };
+    },
+    clearPurgePreview() {
+      purgeToken = null;
+    },
   });
+}
+
+/**
+ * @param {typeof runExecutable} run
+ * @param {string} executablePath
+ * @param {string[]} arguments_
+ * @param {'lifecycle'|'purge'} kind
+ * @param {number} [timeoutMilliseconds]
+ */
+async function invokeJson(run, executablePath, arguments_, kind, timeoutMilliseconds) {
+  const result = await run(executablePath, arguments_, timeoutMilliseconds);
+  let envelope;
+  try {
+    envelope = JSON.parse(result.stdout);
+  } catch {
+    throw desktopAdapterError(
+      `invalid_${kind}_json`,
+      `Portreeve returned invalid ${kind} data.`,
+    );
+  }
+  if (typeof envelope !== 'object' || envelope === null || envelope.version !== 1) {
+    throw desktopAdapterError(
+      `invalid_${kind}_envelope`,
+      `Portreeve returned an unsupported ${kind} envelope.`,
+    );
+  }
+  return /** @type {Record<string, unknown>} */ (envelope);
 }
 
 /**

@@ -119,7 +119,7 @@ evidence for the read-only slice.
 
 ## I-5 - Complete Overview, Ports, and lifecycle workflows
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P7
 - **Rubric criteria:** R2, R3, R5, R6
@@ -129,6 +129,13 @@ evidence for the read-only slice.
 Build the two-view renderer and its accessible onboarding, ordinary lifecycle,
 upgrade, uninstall, manual-server stop, inventory search/filter/detail, and
 typed-confirmed complete-reset flows with packaged end-to-end tests.
+
+**Started 2026-08-01.** Delivery branch
+`tb-portreeve-desktop-04-lifecycle-workflows` begins from merged PR #4. The
+mutation and reset authority boundary is recorded in scratchpad decision 6.
+Packaged reset verification found and corrected an Electron `userData` collision
+with the CLI application home; scratchpad decision 7 records the separate
+desktop-data boundary.
 
 ## I-6 - Add version and update notification behavior
 
