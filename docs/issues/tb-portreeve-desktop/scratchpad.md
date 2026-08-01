@@ -167,3 +167,43 @@ Set Electron's `userData` path to an explicit `Portreeve Desktop` directory bene
 - Share one application-data directory - rejected because Electron writes files outside the CLI's ownership and schema contracts.
 - Teach CLI purge to recognize Chromium cache paths - rejected because that would expand destructive authority and couple the service lifecycle to Electron internals.
 - Disable all Electron persistence - rejected because Chromium may still require runtime storage and future desktop preferences/update state need an independently owned location.
+
+## [8] Keep update discovery fixed, nonblocking, and notification-only
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** desktop network behavior, public update-manifest schema,
+local desktop persistence, coordinator snapshots, renderer IPC, external
+navigation, release publishing, and privacy verification
+
+Check one constant raw-GitHub manifest URL at application launch through a
+dedicated main-process adapter. The strict version-1 manifest contains only
+the latest desktop semantic version; the approved download page is a separate
+compile-time constant and never comes from network data or renderer arguments.
+Persist only the check timestamp and reduced result beneath the separate
+Portreeve Desktop user-data root. A valid cached result suppresses all network
+activity for 24 hours, including after an unavailable or malformed response.
+
+Update discovery runs independently after the initial local lifecycle and port
+snapshot, so a slow or failed request cannot delay local management. The
+renderer receives only `not-checked`, `current`, `available`, or `unavailable`
+state plus the check time and latest version. It may invoke one named,
+no-argument operation that opens the fixed GitHub Releases page only while an
+update is available. Discovery never downloads, installs, restarts, or upgrades
+anything.
+
+**Triggered by:** P8 resolves the approved but previously implementation-level
+release-manifest, cadence-persistence, and external-navigation boundaries.
+
+**Alternatives considered:**
+
+- Put a release/download URL in the manifest - rejected because network data
+  does not need to control navigation and a fixed page is easier to audit.
+- Await update discovery inside ordinary state refresh - rejected because a
+  remote dependency could delay or block local Portreeve management.
+- Retry every launch after failures - rejected because the explicit policy is
+  at most one outbound check per 24 hours, not one successful check.
+- Expose a generic open-external URL operation - rejected because it would let
+  the renderer select navigation targets across the privilege boundary.

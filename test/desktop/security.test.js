@@ -52,16 +52,20 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
     'apps/desktop/main/index.js',
     'apps/desktop/main/cli-adapter.js',
     'apps/desktop/main/inventory-adapter.js',
+    'apps/desktop/main/update.js',
     'apps/desktop/preload/index.cjs',
   ];
   const source = (await Promise.all(files.map((file) => readFile(file, 'utf8')))).join(
     '\n',
   );
   expect(source).not.toMatch(/src\/(?:server|storage)|sqlite|openDatabase/i);
-  expect(source).not.toMatch(/shell\.open|exec\(|execSync\(/);
+  expect(source).not.toMatch(/(?<!\.)\bexec(?:Sync)?\s*\(/);
+  expect(source.match(/shell\.openExternal/g)).toHaveLength(1);
   expect(source).toContain('shell: false');
   expect(source).toContain('new PortreeveClient()');
   expect(source).toContain('executablePath: artifact.executablePath');
+  expect(source).toContain('openDownloadPage: async () =>');
+  expect(source).not.toContain('openDownloadPage: async (url) =>');
 });
 
 test('sets a distinct Electron user-data root before startup', async () => {

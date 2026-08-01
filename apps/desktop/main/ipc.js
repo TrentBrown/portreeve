@@ -2,6 +2,7 @@
 
 import {
   DesktopLifecycleActionResultSchema,
+  DesktopOpenDownloadResultSchema,
   DesktopPurgeExecutionRequestSchema,
   DesktopPurgePreviewSchema,
   DesktopPurgeResultSchema,
@@ -29,7 +30,7 @@ export function isTrustedRenderer(event) {
  *     stopService(): Promise<unknown>, stopManual(): Promise<unknown>,
  *     restartService(): Promise<unknown>, upgrade(): Promise<unknown>,
  *     uninstall(): Promise<unknown>, previewPurge(): Promise<unknown>,
- *     executePurge(): Promise<unknown>
+ *     executePurge(): Promise<unknown>, openDownloadPage(): Promise<unknown>
  *   },
  *   windows: () => Electron.BrowserWindow[]
  * }} options
@@ -77,6 +78,18 @@ export function registerDesktopIpc(options) {
     DesktopPurgeExecutionRequestSchema.parse(request);
     return DesktopPurgeResultSchema.parse(await options.coordinator.executePurge());
   });
+  options.ipcMain.handle(
+    IPC_CHANNELS.openDownloadPage,
+    async (event, ...arguments_) => {
+      requireTrusted(event);
+      if (arguments_.length > 0) {
+        throw new Error('Download-page navigation does not accept arguments.');
+      }
+      return DesktopOpenDownloadResultSchema.parse(
+        await options.coordinator.openDownloadPage(),
+      );
+    },
+  );
   return options.coordinator.subscribe((snapshot) => {
     const parsed = DesktopSnapshotSchema.parse(snapshot);
     for (const window of options.windows()) {

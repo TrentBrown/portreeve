@@ -202,6 +202,17 @@ dd {
   flex-wrap: wrap;
   gap: 10px;
 }
+.update-notice {
+  margin-top: 18px;
+  border-top: 1px solid #e4e1d9;
+  padding-top: 16px;
+}
+.update-notice h4 {
+  margin: 0 0 8px;
+}
+.update-notice p {
+  color: #65706c;
+}
 .danger-zone {
   margin-top: 18px;
   box-shadow: none;

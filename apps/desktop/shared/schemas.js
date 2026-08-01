@@ -7,6 +7,41 @@ const SemanticVersionSchema = z
   .string()
   .regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/);
 
+export const DesktopUpdateManifestSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    desktopVersion: SemanticVersionSchema,
+  })
+  .strict();
+
+export const DesktopUpdateStateSchema = z.discriminatedUnion('status', [
+  z
+    .object({
+      status: z.literal('not-checked'),
+      checkedAt: z.null(),
+      latestVersion: z.null(),
+    })
+    .strict(),
+  z
+    .object({
+      status: z.literal('unavailable'),
+      checkedAt: TimestampSchema,
+      latestVersion: z.null(),
+    })
+    .strict(),
+  z
+    .object({
+      status: z.enum(['current', 'available']),
+      checkedAt: TimestampSchema,
+      latestVersion: SemanticVersionSchema,
+    })
+    .strict(),
+]);
+
+export const DesktopOpenDownloadResultSchema = z
+  .object({ schemaVersion: z.literal(1), opened: z.literal(true) })
+  .strict();
+
 export const DesktopSnapshotSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -22,6 +57,7 @@ export const DesktopSnapshotSchema = z
         sha256: z.string().regex(/^[a-f0-9]{64}$/),
       })
       .strict(),
+    update: DesktopUpdateStateSchema,
     lifecycle: z
       .object({
         observedAt: TimestampSchema,
@@ -235,4 +271,5 @@ export const IPC_CHANNELS = Object.freeze({
   uninstall: 'portreeve:desktop:uninstall',
   previewPurge: 'portreeve:desktop:preview-purge',
   executePurge: 'portreeve:desktop:execute-purge',
+  openDownloadPage: 'portreeve:desktop:open-download-page',
 });

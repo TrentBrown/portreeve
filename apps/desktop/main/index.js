@@ -2,7 +2,7 @@
 
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { app, BrowserWindow, ipcMain, protocol, session } from 'electron';
+import { app, BrowserWindow, ipcMain, protocol, session, shell } from 'electron';
 import { PortreeveClient } from 'portreeve';
 import {
   resolveBundledReleaseCandidate,
@@ -13,7 +13,8 @@ import { createStateCoordinator } from './coordinator.js';
 import { createInventoryAdapter } from './inventory-adapter.js';
 import { registerDesktopIpc } from './ipc.js';
 import { registerRendererProtocol } from './protocol.js';
-import { desktopUserDataPath } from './user-data.js';
+import { createUpdateAdapter } from './update.js';
+import { desktopUpdateStatePath, desktopUserDataPath } from './user-data.js';
 import {
   bindWindowRefresh,
   browserWindowOptions,
@@ -72,6 +73,11 @@ async function startDesktop() {
     artifact: { ...artifact, desktopVersion: app.getVersion() },
     lifecycle: createLifecycleAdapter({ executablePath: artifact.executablePath }),
     inventory: createInventoryAdapter(new PortreeveClient()),
+    updates: createUpdateAdapter({
+      desktopVersion: app.getVersion(),
+      statePath: desktopUpdateStatePath(app.getPath('userData')),
+      openExternal: (url) => shell.openExternal(url),
+    }),
   });
   registerDesktopIpc({
     ipcMain,
@@ -89,6 +95,7 @@ async function startDesktop() {
   await window.loadURL(RENDERER_URL);
   diagnose('renderer-loaded');
   await coordinator.refresh();
+  void coordinator.checkForUpdates();
   if (window.isVisible() && !window.isMinimized()) coordinator.start();
 }
 

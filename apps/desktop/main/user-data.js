@@ -11,3 +11,8 @@ import { join } from 'node:path';
 export function desktopUserDataPath(appDataPath) {
   return join(appDataPath, 'Portreeve Desktop');
 }
+
+/** @param {string} userDataPath */
+export function desktopUpdateStatePath(userDataPath) {
+  return join(userDataPath, 'update-state.json');
+}

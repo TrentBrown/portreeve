@@ -2,9 +2,10 @@
 
 import { basename } from 'node:path';
 import { DesktopSnapshotSchema } from '../shared/schemas.js';
+import { NOT_CHECKED_UPDATE_STATE } from './update.js';
 
 /**
- * @param {{artifact: {source: 'local-release-candidate'|'published', desktopVersion: string, version: string, filename: string, sha256: string}, lifecycle: unknown, ports: unknown[], errors?: unknown[], refreshedAt: string, stale?: boolean, lastSuccessfulAt?: string|null}} input
+ * @param {{artifact: {source: 'local-release-candidate'|'published', desktopVersion: string, version: string, filename: string, sha256: string}, update?: unknown, lifecycle: unknown, ports: unknown[], errors?: unknown[], refreshedAt: string, stale?: boolean, lastSuccessfulAt?: string|null}} input
  */
 export function createDesktopSnapshot(input) {
   const lifecycle = /** @type {any} */ (input.lifecycle);
@@ -20,6 +21,7 @@ export function createDesktopSnapshot(input) {
       filename: input.artifact.filename,
       sha256: input.artifact.sha256,
     },
+    update: input.update ?? NOT_CHECKED_UPDATE_STATE,
     lifecycle:
       lifecycle === null
         ? null

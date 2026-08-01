@@ -5,6 +5,7 @@ import {
   availableActions,
   canUninstall,
   compareVersions,
+  updatePresentation,
 } from '../../apps/desktop/renderer/state.js';
 import { createDesktopSnapshot } from '../../apps/desktop/main/view-model.js';
 import { lifecycleSnapshot, provisionalArtifact, timestamp } from './fixtures.js';
@@ -70,4 +71,17 @@ test('derives only state-appropriate service actions', () => {
   expect(compareVersions('0.1.0-rc.10', '0.1.0-rc.2')).toBeGreaterThan(0);
   expect(compareVersions('0.1.0-alpha', '0.1.0-1')).toBeGreaterThan(0);
   expect(compareVersions('0.1.0+desktop.1', '0.1.0+cli.9')).toBe(0);
+});
+
+test('presents update discovery without implying automatic installation', () => {
+  expect(updatePresentation({ status: 'available', latestVersion: '0.2.0' })).toEqual({
+    message:
+      'Portreeve Desktop 0.2.0 is available. Downloading the desktop remains a separate, manual action.',
+    canOpenDownloadPage: true,
+  });
+  expect(updatePresentation({ status: 'unavailable', latestVersion: null })).toEqual({
+    message:
+      'Update information is unavailable. Local Portreeve management is unaffected.',
+    canOpenDownloadPage: false,
+  });
 });

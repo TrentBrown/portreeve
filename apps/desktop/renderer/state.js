@@ -42,6 +42,33 @@ export function canUninstall(snapshot) {
   );
 }
 
+/** @param {any} update */
+export function updatePresentation(update) {
+  if (update.status === 'available') {
+    return {
+      message: `Portreeve Desktop ${update.latestVersion} is available. Downloading the desktop remains a separate, manual action.`,
+      canOpenDownloadPage: true,
+    };
+  }
+  if (update.status === 'current') {
+    return {
+      message: `Portreeve Desktop is current. Latest published version: ${update.latestVersion}.`,
+      canOpenDownloadPage: false,
+    };
+  }
+  if (update.status === 'unavailable') {
+    return {
+      message:
+        'Update information is unavailable. Local Portreeve management is unaffected.',
+      canOpenDownloadPage: false,
+    };
+  }
+  return {
+    message: 'Update information has not been checked yet.',
+    canOpenDownloadPage: false,
+  };
+}
+
 /** @param {string} left @param {string} right */
 export function compareVersions(left, right) {
   const first = parseVersion(left);

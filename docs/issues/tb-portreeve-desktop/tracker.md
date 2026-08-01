@@ -56,7 +56,7 @@
 ### PR #5 - Desktop lifecycle and reset workflows
 
 - **PR:** [#5](https://github.com/TrentBrown/portreeve/pull/5)
-- **Status:** draft
+- **Status:** merged
 - **Scope:** P7 Overview/Ports MVP, onboarding and lifecycle orchestration,
   selected-port details, data-preserving uninstall, and typed complete reset.
 - **Evidence packet:** [pr-5](pr-5/)

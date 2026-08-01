@@ -6,6 +6,12 @@ from the official JavaScript client, and confirmed lifecycle/reset workflows thr
 narrow named preload API. The CLI remains the authority for every mutation and all
 filesystem deletion safety.
 
+Update discovery is separately notification-only. The main process checks the strict
+fixed manifest documented in [`docs/desktop-updates.md`](../../docs/desktop-updates.md)
+at most once per 24 hours, persists only the reduced check result under the desktop
+user-data root, and never lets network data or renderer arguments choose an external
+URL. A failed or slow check cannot delay local lifecycle or port management.
+
 ## Local prerequisites
 
 Use the repository-pinned Bun version and build the local `0.1.0` release candidate
