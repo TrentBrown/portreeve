@@ -169,6 +169,14 @@ test('reconciles durable claims with complete live listener evidence', async () 
       ({ port }) => port,
     ),
   ).toEqual([20_000, 20_001]);
+  expect(
+    (await inventory.list({ component: 'active', endpoint: 'default' })).map(
+      ({ port }) => port,
+    ),
+  ).toEqual([20_002]);
+  expect((await inventory.list({ service: 'active' })).map(({ port }) => port)).toEqual(
+    [20_002],
+  );
   expect((await inventory.inspect(20_005)).classification).toBe('available');
   registry.close();
 });

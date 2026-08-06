@@ -33,12 +33,47 @@ export const ClientCompatibilitySchema = z.object({
   requiredCapabilities: z.array(z.string().min(1)).default([]),
 });
 
-export const ClaimIdentitySchema = z.object({
-  project: z.string().trim().min(1).max(128),
-  workspaceRoot: z.string().min(1),
-  service: z.string().trim().min(1).max(128),
-  transport: z.literal('tcp'),
-});
+const IdentityNameSchema = z.string().trim().min(1).max(128);
+
+export const ClaimIdentitySchema = z
+  .object({
+    project: IdentityNameSchema,
+    workspaceRoot: z.string().min(1),
+    service: IdentityNameSchema.optional(),
+    component: IdentityNameSchema.optional(),
+    endpoint: IdentityNameSchema.optional(),
+    transport: z.literal('tcp'),
+  })
+  .superRefine(({ component, service }, context) => {
+    if (component === undefined && service === undefined) {
+      context.addIssue({
+        code: 'custom',
+        message: 'claim identity requires component or service',
+        path: ['component'],
+      });
+    }
+    if (component !== undefined && service !== undefined && component !== service) {
+      context.addIssue({
+        code: 'custom',
+        message: 'service and component must match when both are provided',
+        path: ['service'],
+      });
+    }
+  })
+  .transform(({ component, endpoint, project, service, transport, workspaceRoot }) => {
+    const canonicalComponent = component ?? service;
+    if (canonicalComponent === undefined) {
+      throw new Error('claim identity normalization failed');
+    }
+    return {
+      project,
+      workspaceRoot,
+      service: canonicalComponent,
+      component: canonicalComponent,
+      endpoint: endpoint ?? 'default',
+      transport,
+    };
+  });
 
 export const ClaimModeSchema = z.enum(['sticky', 'ephemeral']);
 export const ReplacementPolicySchema = z.enum([
@@ -61,6 +96,119 @@ export const AllocationIntentSchema = z
       message: 'preferredPort and exactPort are mutually exclusive',
     },
   );
+
+const StackNameSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .refine((value) => value === value.trim(), {
+    message: 'stack names must not begin or end with whitespace',
+  });
+const StackAllocationSchema = z
+  .object({
+    preferredPort: PortSchema.optional(),
+    exactPort: PortSchema.optional(),
+  })
+  .strict()
+  .refine(
+    ({ exactPort, preferredPort }) =>
+      exactPort === undefined || preferredPort === undefined,
+    { message: 'preferredPort and exactPort are mutually exclusive' },
+  );
+const StackDockerEndpointSchema = z.object({ containerPort: PortSchema }).strict();
+const StackEndpointDefinitionSchema = z
+  .object({
+    transport: z.literal('tcp').default('tcp'),
+    publish: z.boolean().default(true),
+    required: z.boolean().default(true),
+    allocation: StackAllocationSchema.default({}),
+    docker: StackDockerEndpointSchema.optional(),
+  })
+  .strict();
+const StackDependencyDefinitionSchema = z
+  .object({
+    component: StackNameSchema,
+    endpoint: StackNameSchema.default('default'),
+    required: z.boolean().default(true),
+  })
+  .strict();
+const StackDockerComponentSchema = z.object({ service: StackNameSchema }).strict();
+const StackComponentDefinitionSchema = z
+  .object({
+    endpoints: z.record(StackNameSchema, StackEndpointDefinitionSchema).default({}),
+    dependencies: z
+      .record(StackNameSchema, StackDependencyDefinitionSchema)
+      .default({}),
+    docker: StackDockerComponentSchema.optional(),
+  })
+  .strict();
+
+export const StackDefinitionSchema = z
+  .object({
+    version: z.literal(1),
+    project: StackNameSchema,
+    components: z
+      .record(StackNameSchema, StackComponentDefinitionSchema)
+      .refine((components) => Object.keys(components).length > 0, {
+        message: 'a stack definition requires at least one component',
+      }),
+  })
+  .strict()
+  .superRefine(({ components }, context) => {
+    for (const [consumerName, component] of Object.entries(components)) {
+      for (const [alias, dependency] of Object.entries(component.dependencies)) {
+        const provider = components[dependency.component];
+        if (provider === undefined) {
+          context.addIssue({
+            code: 'custom',
+            message: `dependency ${alias} references unknown component ${dependency.component}`,
+            path: ['components', consumerName, 'dependencies', alias, 'component'],
+          });
+          continue;
+        }
+        if (provider.endpoints[dependency.endpoint] === undefined) {
+          context.addIssue({
+            code: 'custom',
+            message: `dependency ${alias} references unknown endpoint ${dependency.component}.${dependency.endpoint}`,
+            path: ['components', consumerName, 'dependencies', alias, 'endpoint'],
+          });
+        }
+      }
+      for (const [endpointName, endpoint] of Object.entries(component.endpoints)) {
+        if (endpoint.docker !== undefined && component.docker === undefined) {
+          context.addIssue({
+            code: 'custom',
+            message: `endpoint ${endpointName} has a Docker port but component ${consumerName} has no Docker service`,
+            path: ['components', consumerName, 'endpoints', endpointName, 'docker'],
+          });
+        }
+      }
+    }
+  });
+
+export const StackRecordSchema = z.object({
+  id: IdentifierSchema,
+  project: StackNameSchema,
+  workspaceRoot: z.string().min(1),
+  currentRevision: z.string().regex(/^[a-f0-9]{64}$/),
+  definition: StackDefinitionSchema,
+  createdAt: TimestampSchema,
+  updatedAt: TimestampSchema,
+  lastUsedAt: TimestampSchema,
+});
+
+export const StackApplyRequestSchema = z.object({
+  client: ClientCompatibilitySchema,
+  workspaceRoot: z.string().min(1),
+  definition: StackDefinitionSchema,
+});
+
+export const StackApplyResponseSchema = z.object({
+  changed: z.boolean(),
+  stack: StackRecordSchema,
+});
+
+export const StackListSchema = z.array(StackRecordSchema);
 
 export const AcquireRequestSchema = z.object({
   client: ClientCompatibilitySchema,

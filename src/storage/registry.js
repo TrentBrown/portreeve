@@ -2,6 +2,7 @@
 
 import { Database } from 'bun:sqlite';
 import { randomUUID } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import {
   ClaimRecordSchema,
@@ -17,6 +18,8 @@ import {
   ClaimModeSchema,
   IdentifierSchema,
   PortSchema,
+  StackDefinitionSchema,
+  StackRecordSchema,
   TimestampSchema,
 } from '../protocol/schemas.js';
 import { applyMigrations } from './migrations.js';
@@ -27,7 +30,8 @@ const ClaimRowSchema = z.object({
   id: IdentifierSchema,
   project: z.string(),
   workspace_root: z.string(),
-  service: z.string(),
+  component: z.string(),
+  endpoint: z.string(),
   transport: z.literal('tcp'),
   mode: ClaimModeSchema,
   assigned_port: PortSchema.nullable(),
@@ -60,6 +64,17 @@ const RunRowSchema = z.object({
   root_fingerprint_json: z.string().nullable(),
   confirmed_at: TimestampSchema,
   released_at: TimestampSchema.nullable(),
+});
+
+const StackRowSchema = z.object({
+  id: IdentifierSchema,
+  project: z.string(),
+  workspace_root: z.string(),
+  current_revision: z.string().regex(/^[a-f0-9]{64}$/),
+  definition_json: z.string(),
+  created_at: TimestampSchema,
+  updated_at: TimestampSchema,
+  last_used_at: TimestampSchema,
 });
 
 export class RegistryError extends Error {
@@ -105,13 +120,15 @@ export class Registry {
         `SELECT * FROM claims
          WHERE project = $project
            AND workspace_root = $workspaceRoot
-           AND service = $service
+           AND component = $component
+           AND endpoint = $endpoint
            AND transport = $transport`,
       )
       .get({
         project: parsed.project,
         workspaceRoot: parsed.workspaceRoot,
-        service: parsed.service,
+        component: parsed.component,
+        endpoint: parsed.endpoint,
         transport: parsed.transport,
       });
 
@@ -149,11 +166,11 @@ export class Registry {
       this.database
         .query(
           `INSERT INTO claims (
-             id, project, workspace_root, service, transport, mode,
+             id, project, workspace_root, component, endpoint, transport, mode,
              assigned_port, preferred_port, exact_port, assignment_expires_at,
              created_at, updated_at, last_used_at
            ) VALUES (
-             $id, $project, $workspaceRoot, $service, $transport, $mode,
+             $id, $project, $workspaceRoot, $component, $endpoint, $transport, $mode,
              NULL, $preferredPort, $exactPort, NULL,
              $timestamp, $timestamp, $timestamp
            )`,
@@ -162,7 +179,8 @@ export class Registry {
           id: id,
           project: identity.project,
           workspaceRoot: identity.workspaceRoot,
-          service: identity.service,
+          component: identity.component,
+          endpoint: identity.endpoint,
           transport: identity.transport,
           mode: mode,
           preferredPort: preferredPort,
@@ -202,9 +220,327 @@ export class Registry {
 
   listClaims() {
     return this.database
-      .query('SELECT * FROM claims ORDER BY project, workspace_root, service')
+      .query(
+        'SELECT * FROM claims ORDER BY project, workspace_root, component, endpoint',
+      )
       .all()
       .map(claimFromRow);
+  }
+
+  /**
+   * @param {{project?: string, workspaceRoot?: string}} [filters]
+   */
+  listStacks(filters = {}) {
+    const clauses = [];
+    /** @type {Record<string, string>} */
+    const parameters = {};
+    if (filters.project !== undefined) {
+      clauses.push('stacks.project = $project');
+      parameters.project = filters.project;
+    }
+    if (filters.workspaceRoot !== undefined) {
+      clauses.push('stacks.workspace_root = $workspaceRoot');
+      parameters.workspaceRoot = filters.workspaceRoot;
+    }
+    const where = clauses.length === 0 ? '' : `WHERE ${clauses.join(' AND ')}`;
+    return this.database
+      .query(
+        `SELECT stacks.*, stack_definition_revisions.definition_json
+         FROM stacks
+         JOIN stack_definition_revisions
+           ON stack_definition_revisions.stack_id = stacks.id
+          AND stack_definition_revisions.revision = stacks.current_revision
+         ${where}
+         ORDER BY stacks.project, stacks.workspace_root`,
+      )
+      .all(parameters)
+      .map(stackFromRow);
+  }
+
+  /** @param {string} stackId */
+  getStack(stackId) {
+    const id = IdentifierSchema.parse(stackId);
+    const row = this.database
+      .query(
+        `SELECT stacks.*, stack_definition_revisions.definition_json
+         FROM stacks
+         JOIN stack_definition_revisions
+           ON stack_definition_revisions.stack_id = stacks.id
+          AND stack_definition_revisions.revision = stacks.current_revision
+         WHERE stacks.id = $id`,
+      )
+      .get({ id });
+    return row === null ? null : stackFromRow(row);
+  }
+
+  /**
+   * @param {{
+   *   project: string,
+   *   workspaceRoot: string,
+   *   revision: string,
+   *   definitionJson: string,
+   *   definition: unknown
+   * }} input
+   * @param {Date} [now]
+   */
+  applyStackDefinition(input, now = new Date()) {
+    const definition = StackDefinitionSchema.parse(input.definition);
+    const project = z.string().min(1).parse(input.project);
+    const workspaceRoot = z.string().min(1).parse(input.workspaceRoot);
+    const revision = z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .parse(input.revision);
+    const definitionJson = z.string().min(1).parse(input.definitionJson);
+    if (definition.project !== project) {
+      throw new RegistryError(
+        'invalid_input',
+        'Stack definition project does not match the requested project.',
+        { project, definitionProject: definition.project },
+      );
+    }
+    const persistedDefinition = StackDefinitionSchema.parse(JSON.parse(definitionJson));
+    if (!isDeepStrictEqual(definition, persistedDefinition)) {
+      throw new RegistryError(
+        'invalid_input',
+        'Normalized stack definition JSON does not match the definition.',
+      );
+    }
+    const timestamp = toTimestamp(now);
+    let stackId = '';
+    let changed = false;
+
+    const apply = this.database.transaction(() => {
+      const existing = /** @type {{id: string, current_revision: string}|null} */ (
+        this.database
+          .query(
+            `SELECT id, current_revision FROM stacks
+             WHERE project = $project AND workspace_root = $workspaceRoot`,
+          )
+          .get({ project, workspaceRoot })
+      );
+      stackId = existing?.id ?? randomUUID();
+      changed = existing === null || existing.current_revision !== revision;
+      if (!changed) return;
+
+      const endpointClaims = [];
+      for (const [component, componentDefinition] of Object.entries(
+        definition.components,
+      )) {
+        for (const [endpoint, endpointDefinition] of Object.entries(
+          componentDefinition.endpoints,
+        )) {
+          if (!endpointDefinition.publish) continue;
+          const identity = ClaimIdentitySchema.parse({
+            project,
+            workspaceRoot,
+            component,
+            endpoint,
+            transport: endpointDefinition.transport,
+          });
+          const row = this.database
+            .query(
+              `SELECT * FROM claims
+               WHERE project = $project
+                 AND workspace_root = $workspaceRoot
+                 AND component = $component
+                 AND endpoint = $endpoint
+                 AND transport = $transport`,
+            )
+            .get({
+              project,
+              workspaceRoot,
+              component,
+              endpoint,
+              transport: identity.transport,
+            });
+          const claim = row === null ? null : claimFromRow(row);
+          if (claim !== null && claim.mode !== 'sticky') {
+            throw new RegistryError(
+              'conflict',
+              `Stack endpoint ${component}.${endpoint} matches an ephemeral claim.`,
+              { claimId: claim.id, component, endpoint, reason: 'claim_mode' },
+            );
+          }
+          const exactPort = endpointDefinition.allocation.exactPort ?? null;
+          const preferredPort = endpointDefinition.allocation.preferredPort ?? null;
+          if (
+            claim?.assignedPort !== null &&
+            claim?.assignedPort !== undefined &&
+            exactPort !== null &&
+            claim.assignedPort !== exactPort
+          ) {
+            throw new RegistryError(
+              'conflict',
+              `Stack endpoint ${component}.${endpoint} requires port ${exactPort}, but its claim is assigned ${claim.assignedPort}.`,
+              {
+                claimId: claim.id,
+                component,
+                endpoint,
+                assignedPort: claim.assignedPort,
+                exactPort,
+                reason: 'exact_port_mismatch',
+              },
+            );
+          }
+          if (exactPort !== null) {
+            const assigned = /** @type {{id: string}|null} */ (
+              this.database
+                .query(
+                  `SELECT id FROM claims
+                   WHERE transport = 'tcp'
+                     AND assigned_port = $exactPort
+                     AND id != $claimId`,
+                )
+                .get({ exactPort, claimId: claim?.id ?? '' })
+            );
+            if (assigned !== null) {
+              throw new RegistryError(
+                'conflict',
+                `Exact port ${exactPort} is assigned to another claim.`,
+                { exactPort, claimId: assigned.id, reason: 'port_assigned' },
+              );
+            }
+          }
+          endpointClaims.push({
+            identity,
+            claim,
+            component,
+            endpoint,
+            preferredPort,
+            exactPort,
+          });
+        }
+      }
+
+      if (existing === null) {
+        this.database
+          .query(
+            `INSERT INTO stacks (
+               id, project, workspace_root, current_revision,
+               created_at, updated_at, last_used_at
+             ) VALUES (
+               $id, $project, $workspaceRoot, $revision,
+               $timestamp, $timestamp, $timestamp
+             )`,
+          )
+          .run({
+            id: stackId,
+            project,
+            workspaceRoot,
+            revision,
+            timestamp,
+          });
+      } else {
+        this.database
+          .query(
+            `UPDATE stacks
+             SET current_revision = $revision,
+                 updated_at = $timestamp,
+                 last_used_at = $timestamp
+             WHERE id = $stackId`,
+          )
+          .run({ stackId, revision, timestamp });
+      }
+
+      this.database
+        .query(
+          `INSERT INTO stack_definition_revisions (
+             stack_id, revision, definition_json, created_at
+           ) VALUES ($stackId, $revision, $definitionJson, $timestamp)
+           ON CONFLICT (stack_id, revision) DO NOTHING`,
+        )
+        .run({ stackId, revision, definitionJson, timestamp });
+
+      this.database
+        .query('DELETE FROM stack_endpoint_claims WHERE stack_id = $stackId')
+        .run({ stackId });
+      for (const endpointClaim of endpointClaims) {
+        let claimId = endpointClaim.claim?.id;
+        if (claimId === undefined) {
+          claimId = randomUUID();
+          this.database
+            .query(
+              `INSERT INTO claims (
+                 id, project, workspace_root, component, endpoint, transport, mode,
+                 assigned_port, preferred_port, exact_port, assignment_expires_at,
+                 created_at, updated_at, last_used_at
+               ) VALUES (
+                 $id, $project, $workspaceRoot, $component, $endpoint, $transport,
+                 'sticky', NULL, $preferredPort, $exactPort, NULL,
+                 $timestamp, $timestamp, $timestamp
+               )`,
+            )
+            .run({
+              id: claimId,
+              project,
+              workspaceRoot,
+              component: endpointClaim.component,
+              endpoint: endpointClaim.endpoint,
+              transport: endpointClaim.identity.transport,
+              preferredPort: endpointClaim.preferredPort,
+              exactPort: endpointClaim.exactPort,
+              timestamp,
+            });
+          this.#appendHistory(
+            'claim.created',
+            'claim',
+            claimId,
+            {
+              identity: endpointClaim.identity,
+              mode: 'sticky',
+              preferredPort: endpointClaim.preferredPort,
+              exactPort: endpointClaim.exactPort,
+              source: 'stack-definition',
+            },
+            timestamp,
+          );
+        } else {
+          this.database
+            .query(
+              `UPDATE claims
+               SET preferred_port = $preferredPort,
+                   exact_port = $exactPort,
+                   updated_at = $timestamp,
+                   last_used_at = $timestamp
+               WHERE id = $claimId`,
+            )
+            .run({
+              claimId,
+              preferredPort: endpointClaim.preferredPort,
+              exactPort: endpointClaim.exactPort,
+              timestamp,
+            });
+        }
+        this.database
+          .query(
+            `INSERT INTO stack_endpoint_claims (
+               stack_id, component, endpoint, claim_id
+             ) VALUES ($stackId, $component, $endpoint, $claimId)`,
+          )
+          .run({
+            stackId,
+            component: endpointClaim.component,
+            endpoint: endpointClaim.endpoint,
+            claimId,
+          });
+      }
+
+      this.#appendHistory(
+        existing === null ? 'stack.created' : 'stack.definition.applied',
+        'stack',
+        stackId,
+        { project, workspaceRoot, revision },
+        timestamp,
+      );
+    });
+    apply.immediate();
+
+    const stack = this.getStack(stackId);
+    if (stack === null) {
+      throw new RegistryError('internal', `Stack ${stackId} disappeared after apply.`);
+    }
+    return { changed, stack };
   }
 
   /**
@@ -1128,7 +1464,9 @@ function claimFromRow(row) {
     identity: {
       project: parsed.project,
       workspaceRoot: parsed.workspace_root,
-      service: parsed.service,
+      service: parsed.component,
+      component: parsed.component,
+      endpoint: parsed.endpoint,
       transport: parsed.transport,
     },
     mode: parsed.mode,
@@ -1177,6 +1515,23 @@ function runFromRow(row) {
         : parseJsonObject(parsed.root_fingerprint_json),
     confirmedAt: parsed.confirmed_at,
     releasedAt: parsed.released_at,
+  });
+}
+
+/**
+ * @param {unknown} row
+ */
+function stackFromRow(row) {
+  const parsed = StackRowSchema.parse(row);
+  return StackRecordSchema.parse({
+    id: parsed.id,
+    project: parsed.project,
+    workspaceRoot: parsed.workspace_root,
+    currentRevision: parsed.current_revision,
+    definition: StackDefinitionSchema.parse(JSON.parse(parsed.definition_json)),
+    createdAt: parsed.created_at,
+    updatedAt: parsed.updated_at,
+    lastUsedAt: parsed.last_used_at,
   });
 }
 

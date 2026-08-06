@@ -58,6 +58,8 @@ export function inventoryEntry() {
         project: 'caregiver',
         workspaceRoot: '/Users/example/Code/caregiver-secret-worktree',
         service: 'website',
+        component: 'website',
+        endpoint: 'default',
         transport: 'tcp',
       },
       mode: 'sticky',

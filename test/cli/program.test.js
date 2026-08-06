@@ -45,6 +45,7 @@ describe('Portreeve CLI', () => {
       'restart',
       'ports',
       'claims',
+      'stacks',
       'config',
       'history',
       'logs',
@@ -56,6 +57,13 @@ describe('Portreeve CLI', () => {
       'reassign',
       'delete',
       'prune',
+    ]);
+    const stacks = program.commands.find((command) => command.name() === 'stacks');
+    expect(stacks?.commands.map((command) => command.name())).toEqual([
+      'apply',
+      'list',
+      'show',
+      'status',
     ]);
   });
 });

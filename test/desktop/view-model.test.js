@@ -22,6 +22,8 @@ test('reduces lifecycle and inventory evidence before it reaches the renderer', 
     claim: {
       project: 'caregiver',
       service: 'website',
+      component: 'website',
+      endpoint: 'default',
       workspaceName: 'caregiver-secret-worktree',
       mode: 'sticky',
       createdAt: timestamp,

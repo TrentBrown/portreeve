@@ -3,11 +3,23 @@ export declare const PORTREEVE_PROTOCOL_RANGE: Readonly<{
   maximum: 1;
 }>;
 
-export interface ClaimIdentity {
+export interface ClaimIdentityBase {
+  project: string;
+  workspaceRoot: string;
+  endpoint?: string;
+  transport?: 'tcp';
+}
+
+export type ClaimIdentity = ClaimIdentityBase &
+  ({ service: string; component?: string } | { component: string; service?: string });
+
+export interface CanonicalClaimIdentity {
   project: string;
   workspaceRoot: string;
   service: string;
-  transport?: 'tcp';
+  component: string;
+  endpoint: string;
+  transport: 'tcp';
 }
 
 export interface AcquireOptions {
@@ -69,7 +81,7 @@ export interface InventoryEntry {
 
 export interface ClaimRecord {
   id: string;
-  identity: Required<ClaimIdentity>;
+  identity: CanonicalClaimIdentity;
   mode: 'sticky' | 'ephemeral';
   assignedPort: number | null;
   preferredPort: number | null;
@@ -88,6 +100,53 @@ export interface ClaimPruneResult {
   }>;
   deletedClaimIds: string[];
   skipped: Array<{ claimId: string; reason: string }>;
+}
+
+export interface StackAllocationDefinition {
+  preferredPort?: number;
+  exactPort?: number;
+}
+
+export interface StackEndpointDefinition {
+  transport?: 'tcp';
+  publish?: boolean;
+  required?: boolean;
+  allocation?: StackAllocationDefinition;
+  docker?: { containerPort: number };
+}
+
+export interface StackDependencyDefinition {
+  component: string;
+  endpoint?: string;
+  required?: boolean;
+}
+
+export interface StackComponentDefinition {
+  endpoints?: Record<string, StackEndpointDefinition>;
+  dependencies?: Record<string, StackDependencyDefinition>;
+  docker?: { service: string };
+}
+
+export interface StackDefinition {
+  version: 1;
+  project: string;
+  components: Record<string, StackComponentDefinition>;
+}
+
+export interface StackRecord {
+  id: string;
+  project: string;
+  workspaceRoot: string;
+  currentRevision: string;
+  definition: StackDefinition;
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt: string;
+}
+
+export interface StackApplyResult {
+  changed: boolean;
+  stack: StackRecord;
 }
 
 export interface HistoryEvent {
@@ -153,9 +212,20 @@ export declare class PortreeveClient {
     project?: string;
     workspace?: string;
     service?: string;
+    component?: string;
+    endpoint?: string;
     port?: number;
   }): Promise<InventoryEntry[]>;
   inspectPort(port: number): Promise<InventoryEntry>;
+  applyStack(request: {
+    workspaceRoot: string;
+    definition: StackDefinition;
+  }): Promise<StackApplyResult>;
+  listStacks(filters?: {
+    project?: string;
+    workspaceRoot?: string;
+  }): Promise<StackRecord[]>;
+  getStack(stackId: string): Promise<StackRecord>;
   listClaims(): Promise<ClaimRecord[]>;
   getClaim(claimId: string): Promise<ClaimRecord>;
   reassignClaim(

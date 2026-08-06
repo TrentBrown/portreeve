@@ -33,6 +33,8 @@ export class InventoryService {
    *   project?: string,
    *   workspace?: string,
    *   service?: string,
+   *   component?: string,
+   *   endpoint?: string,
    *   port?: number
    * }} [filters]
    */
@@ -135,7 +137,16 @@ export class InventoryService {
       ) {
         return false;
       }
-      return filters.service === undefined || identity?.service === filters.service;
+      if (filters.service !== undefined && identity?.component !== filters.service) {
+        return false;
+      }
+      if (
+        filters.component !== undefined &&
+        identity?.component !== filters.component
+      ) {
+        return false;
+      }
+      return filters.endpoint === undefined || identity?.endpoint === filters.endpoint;
     });
   }
 
