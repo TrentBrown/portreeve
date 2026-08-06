@@ -155,6 +155,17 @@ test('confirms one mixed process and Docker activation from fresh provider evide
     classification: 'docker-managed',
     docker: { containers: [{ id: containerId }] },
   });
+  await expect(
+    coordinationService.begin({
+      client: dockerClient,
+      generationId: prepared.generation.id,
+      bindings: { api: 'docker' },
+    }),
+  ).rejects.toMatchObject({
+    code: 'conflict',
+    details: { reason: 'active_run' },
+  });
+  expect(registry.getStackGeneration(prepared.generation.id)?.state).toBe('valid');
   registry.close();
 });
 

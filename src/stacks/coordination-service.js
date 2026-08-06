@@ -284,7 +284,7 @@ export class StackCoordinationService {
       const inventory = await this.inventoryService.inspect(endpoint.port);
       if (inventory.listeners.length === 0) continue;
       if (
-        inventory.classification === 'verified' &&
+        ['verified', 'docker-managed'].includes(inventory.classification) &&
         inventory.run?.claimId === endpoint.claimId
       ) {
         throw new RegistryError(
