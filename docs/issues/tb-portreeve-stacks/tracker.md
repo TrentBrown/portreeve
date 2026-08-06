@@ -49,3 +49,16 @@ Append PR boundary entries here.
   Independent judge: PASS WITH CONCERNS; code review: PASS with no remaining findings.
   The one lifecycle-status failure is the unchanged installed-launchd baseline accepted
   with PR #7.
+
+### PR #9 - Scoped dependency and sandbox discovery
+
+- **PR:** [#9](https://github.com/TrentBrown/portreeve/pull/9)
+- **Status:** draft
+- **Scope:** P4 component-scoped own and dependency resolution, distinct host and
+  Docker-network facts, launcher-rendered sandbox gateway views, deterministic redacted
+  discovery documents, atomic private file replacement, stale-aware JavaScript reading,
+  and matching protocol/client/CLI/documentation surfaces.
+- **Result:** Pending PR-boundary verification, specification evaluation, independent
+  judge, and code review. R4 is implemented; R7 advances through
+  `stack-discovery-v1` and remains open for Docker, recovery and pruning, and desktop
+  work.

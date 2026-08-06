@@ -57,12 +57,12 @@ human review and merge.
 
 ## I-3 - Deliver dependency resolution and sandbox discovery
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P4
 - **Rubric criteria:** R4, R7
 - **Depends on:** I-2
-- **PR:** -
+- **PR:** [#9](https://github.com/TrentBrown/portreeve/pull/9)
 
 Resolve scoped dependency aliases and host/Docker/sandbox address views from one
 generation, generate redacted activation-scoped discovery documents, and add the
@@ -70,6 +70,11 @@ JavaScript snapshot reader and stale-plan safeguards.
 
 **Started 2026-08-06.** Sequential delivery branch
 `tb-portreeve-stacks-03-discovery` begins from merged `main` at `ca7b552`.
+
+**In review 2026-08-06.** Draft PR #9 contains P4's scoped dependency resolution,
+separate host and Docker-network facts, redacted launcher-rendered sandbox documents,
+strict stale-aware JavaScript reading, atomic file publication, and matching protocol,
+client, CLI, and documentation surfaces.
 
 ## I-4 - Add Docker evidence and mixed activations
 
