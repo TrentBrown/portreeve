@@ -27,8 +27,8 @@ complete and independently capability-gated; the full criterion remains open for
 I-3. The broad suite's one lifecycle-status failure reproduces at the base SHA and
 awaits human acknowledgment in the PR boundary.
 
-**Merged 2026-08-06.** PR #7 merged to `main` as `13db683`; the documented
-base-only lifecycle test condition was accepted through human review and merge.
+**Merged 2026-08-06.** PR #7 merged to `main` as `13db683`; the documented base-only
+lifecycle test condition was accepted through human review and merge.
 
 ## I-2 - Implement generations and process-backed activations
 
@@ -43,8 +43,8 @@ Add complete immutable allocation generations, exclusive activation attempts, at
 batch leases, process-backed endpoint confirmation, required/optional outcomes, and the
 corresponding protocol, client, CLI, and history surfaces.
 
-**Started 2026-08-06.** Sequential delivery branch
-`tb-portreeve-stacks-02-activations` begins from merged `main` at `13db683`.
+**Started 2026-08-06.** Sequential delivery branch `tb-portreeve-stacks-02-activations`
+begins from merged `main` at `13db683`.
 
 **In review 2026-08-06.** Draft PR #8 contains P3's immutable generations,
 process-backed activations, atomic batch leases, public coordination surfaces, and

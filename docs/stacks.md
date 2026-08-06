@@ -67,10 +67,10 @@ portreeve stacks prepare STACK_ID --json
 ```
 
 Preparation is durable and does not start a lease deadline. Exact ports fail without a
-partial generation. Preferred ports fall back through the configured automatic range.
-If fresh listener evidence shows that an assigned port was taken by another owner, the
-old generation becomes stale and the launcher must prepare again before deriving
-environment variables or Compose overrides.
+partial generation. Preferred ports fall back through the configured automatic range. If
+fresh listener evidence shows that an assigned port was taken by another owner, the old
+generation becomes stale and the launcher must prepare again before deriving environment
+variables or Compose overrides.
 
 When the launcher is ready to start providers, begin one activation:
 
@@ -80,16 +80,16 @@ portreeve stacks begin GENERATION_ID --json
 
 Beginning atomically creates pending leases for all non-skipped endpoints. Only one
 activation may be live for a canonical worktree. The JSON response contains private
-lease tokens; keep them out of source control and process arguments. Use a mode-0600 JSON
-file with `stacks renew --leases-file`, or the JavaScript client, to renew the whole
-pending batch during startup.
+lease tokens; keep them out of source control and process arguments. Use a mode-0600
+JSON file with `stacks renew --leases-file`, or the JavaScript client, to renew the
+whole pending batch during startup.
 
 Providers bind their assigned ports and confirm individually with fresh process-tree
 evidence. Required endpoints must confirm. Optional endpoints may be named with
 `--skip-endpoint component.endpoint`; after all required endpoints confirm, a skipped or
 failed optional endpoint makes the activation `degraded`. A required dependency on an
-optional provider endpoint must promote it with
-`--required-endpoint component.endpoint` for that activation.
+optional provider endpoint must promote it with `--required-endpoint component.endpoint`
+for that activation.
 
 Activation states are `starting`, `confirmed`, `degraded`, `failed`, and `ended`.
 Endpoint states are `leased`, `confirmed`, `skipped`, `failed`, and `released`.

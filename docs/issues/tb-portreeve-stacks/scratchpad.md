@@ -107,11 +107,29 @@ narrower character set.
 
 **Confidence:** HIGH
 
-**Blast Radius:** SQLite schema v4, stack allocation and activation services, existing lease confirmation and expiry transactions, server routes, official client, CLI, and public declarations
+**Blast Radius:** SQLite schema v4, stack allocation and activation services, existing
+lease confirmation and expiry transactions, server routes, official client, CLI, and
+public declarations
 
-Add immutable stack_generations and stack_generation_endpoints snapshots plus stack_activations and stack_activation_endpoints coordination records. Continue using canonical claims as port-assignment authority and the existing leases and runs tables as operating-system ownership authority. Beginning an activation inserts every selected pending lease and its activation linkage in one immediate transaction; lease tokens are returned only in the begin response. Renewal validates every supplied token before extending the batch. Process confirmation reuses fresh listener and lineage inspection, then confirms the underlying lease and updates the activation endpoint in the same registry transaction. Lease expiry and abandonment update activation endpoint and aggregate activation state. Standalone acquire, confirm, abandon, and release remain unchanged.
+Add immutable stack_generations and stack_generation_endpoints snapshots plus
+stack_activations and stack_activation_endpoints coordination records. Continue using
+canonical claims as port-assignment authority and the existing leases and runs tables as
+operating-system ownership authority. Beginning an activation inserts every selected
+pending lease and its activation linkage in one immediate transaction; lease tokens are
+returned only in the begin response. Renewal validates every supplied token before
+extending the batch. Process confirmation reuses fresh listener and lineage inspection,
+then confirms the underlying lease and updates the activation endpoint in the same
+registry transaction. Lease expiry and abandonment update activation endpoint and
+aggregate activation state. Standalone acquire, confirm, abandon, and release remain
+unchanged.
 
-**Triggered by:** P3 requires immutable generations, batch activation leases, renewal, endpoint outcomes, and process-backed confirmation without breaking standalone allocation
+**Triggered by:** P3 requires immutable generations, batch activation leases, renewal,
+endpoint outcomes, and process-backed confirmation without breaking standalone
+allocation
 
-**Alternatives considered:**
-Create a separate stack-only lease and run system - rejected because it would duplicate port and ownership authority; add activation fields directly to canonical claim identity - rejected because generations and activations have different lifetimes; create endpoint leases one at a time through the existing public acquire path - rejected because partial activation leasing violates AC2; hold open bound sockets in the daemon - rejected by the approved process-owned binding model
+**Alternatives considered:** Create a separate stack-only lease and run system -
+rejected because it would duplicate port and ownership authority; add activation fields
+directly to canonical claim identity - rejected because generations and activations have
+different lifetimes; create endpoint leases one at a time through the existing public
+acquire path - rejected because partial activation leasing violates AC2; hold open bound
+sockets in the daemon - rejected by the approved process-owned binding model

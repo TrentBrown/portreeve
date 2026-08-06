@@ -105,10 +105,10 @@ coordination state, not application readiness.
 The `PortreeveClient` exposes `health`, `acquire`, `confirm`, `abandon`, `release`,
 `listPorts`, `inspectPort`, `reclaimPort`, `unsafeEvictPort`, `listClaims`, `getClaim`,
 `reassignClaim`, `deleteClaim`, `pruneClaims`, `applyStack`, `listStacks`, `getStack`,
-`prepareStack`, `beginStackActivation`, `getStackActivation`,
-`renewStackActivation`, `confirmStackEndpoint`, `abandonStackEndpoint`,
-`skipStackEndpoint`, `getStackGeneration`, `endStackActivation`, `getConfig`,
-`setConfig`, `history`, `logs`, and `stopServer`.
+`prepareStack`, `beginStackActivation`, `getStackActivation`, `renewStackActivation`,
+`confirmStackEndpoint`, `abandonStackEndpoint`, `skipStackEndpoint`,
+`getStackGeneration`, `endStackActivation`, `getConfig`, `setConfig`, `history`, `logs`,
+and `stopServer`.
 
 Construct it with `{ socketPath }` only when overriding the per-user default. Failures
 reject with `PortreeveClientError`, whose stable fields are `code`, optional HTTP
