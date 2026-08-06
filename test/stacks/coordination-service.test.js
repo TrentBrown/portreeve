@@ -125,11 +125,12 @@ function harness() {
 
 test('prepares one immutable generation and reuses it while its evidence remains valid', async () => {
   const { registry, service, stack } = harness();
-  const first = await service.prepare({ client, stackId: stack.id });
-  const second = await service.prepare({ client, stackId: stack.id });
+  const [first, second] = await Promise.all([
+    service.prepare({ client, stackId: stack.id }),
+    service.prepare({ client, stackId: stack.id }),
+  ]);
 
-  expect(first.reused).toBe(false);
-  expect(second.reused).toBe(true);
+  expect([first.reused, second.reused].sort()).toEqual([false, true]);
   expect(second.generation).toEqual(first.generation);
   expect(first.generation.endpoints.map(({ port }) => port)).toEqual([43100, 43101]);
   expect(
