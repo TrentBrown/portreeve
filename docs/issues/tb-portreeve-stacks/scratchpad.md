@@ -103,7 +103,7 @@ narrower character set.
 
 ## [5] Keep stack coordination as overlays on canonical claims and leases
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

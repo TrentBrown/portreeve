@@ -276,6 +276,13 @@ test('fails an activation and cancels its remaining leases when a required endpo
   expect(activation.state).toBe('failed');
   expect(activation.endpoints.every(({ state }) => state === 'failed')).toBe(true);
   expect(registry.listPendingLeases()).toEqual([]);
+  expect(
+    registry.listHistory().filter(({ eventType }) => eventType === 'lease.abandoned'),
+  ).toHaveLength(2);
+  expect(registry.listHistory().at(-1)).toMatchObject({
+    eventType: 'stack.activation.state_changed',
+    payload: { from: 'starting', to: 'failed' },
+  });
   registry.close();
 });
 

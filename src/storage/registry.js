@@ -2206,6 +2206,16 @@ export class Registry {
         required === 1 && ['failed', 'skipped', 'released'].includes(state),
     );
     if (requiredFailed) {
+      const cancelledLeases = this.database
+        .query(
+          `SELECT lease_id, port FROM stack_activation_endpoints
+           WHERE activation_id = $activationId AND state = 'leased'
+             AND lease_id IS NOT NULL`,
+        )
+        .all({ activationId })
+        .map((row) =>
+          z.object({ lease_id: IdentifierSchema, port: PortSchema }).parse(row),
+        );
       this.database
         .query(
           `UPDATE leases
@@ -2217,6 +2227,19 @@ export class Registry {
            )`,
         )
         .run({ timestamp, activationId });
+      for (const lease of cancelledLeases) {
+        this.#appendHistory(
+          'lease.abandoned',
+          'lease',
+          lease.lease_id,
+          {
+            reason: 'activation-failed',
+            activationId,
+            port: lease.port,
+          },
+          timestamp,
+        );
+      }
       this.database
         .query(
           `UPDATE stack_activation_endpoints
@@ -2251,6 +2274,15 @@ export class Registry {
          WHERE id = $activationId`,
       )
       .run({ state, timestamp, activationId });
+    if (current.state !== state) {
+      this.#appendHistory(
+        'stack.activation.state_changed',
+        'stack-activation',
+        activationId,
+        { from: current.state, to: state },
+        timestamp,
+      );
+    }
   }
 
   /**
