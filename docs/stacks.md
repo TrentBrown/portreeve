@@ -37,9 +37,9 @@ The checked-in definition is `portreeve.stack.json` at the worktree root:
 The schema is strict. Unknown fields are rejected. Component and endpoint names are
 stable logical identities. An omitted dependency endpoint means `default`. Endpoint
 defaults are TCP, published, and required. Use `publish: false` for an endpoint that
-Portreeve should understand but should not assign a host port; a dependency cannot target
-an unpublished endpoint. `preferredPort` permits later fallback allocation; `exactPort`
-does not. They are mutually exclusive.
+Portreeve should understand but should not assign a host port; a dependency cannot
+target an unpublished endpoint. `preferredPort` permits later fallback allocation;
+`exactPort` does not. They are mutually exclusive.
 
 Docker metadata is declarative coordination metadata only. An endpoint with a Docker
 container port must belong to a component with a Docker service. Docker inspection,

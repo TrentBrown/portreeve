@@ -129,8 +129,7 @@ import { PortreeveClient, writeEndpointSnapshot } from 'portreeve';
 
 const snapshot = await client.createStackEndpointSnapshot(activation.id, {
   component: 'website',
-  gatewayHost:
-    process.platform === 'darwin' ? 'host.docker.internal' : '172.17.0.1',
+  gatewayHost: process.platform === 'darwin' ? 'host.docker.internal' : '172.17.0.1',
 });
 await writeEndpointSnapshot('/private/runtime/endpoints.json', snapshot);
 ```

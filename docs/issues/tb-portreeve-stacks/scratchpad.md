@@ -156,7 +156,8 @@ definition drift, and ended or failed activations. The official client writes sn
 by atomic same-directory replacement and reads an explicit path or
 `PORTREEVE_ENDPOINTS_FILE` with optional expected generation and activation checks.
 
-**Triggered by:** P4 introduces the first public dependency-resolution and sandbox-discovery contract
+**Triggered by:** P4 introduces the first public dependency-resolution and
+sandbox-discovery contract
 
 **Alternatives considered:** Return the whole generation - rejected because it violates
 component isolation; expose the daemon socket to sandboxes - rejected because it grants

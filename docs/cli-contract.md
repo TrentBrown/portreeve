@@ -56,8 +56,8 @@ output.
 | `stacks generation`                                | `{ "version": 1, "generation": { ... } }`                                   |
 | `stacks abandon` / `stacks skip`                   | `{ "version": 1, "activation": { ... } }`                                   |
 | `stacks end`                                       | `{ "version": 1, "result": { "changed": true, "activation": { ... } } }`    |
-| `stacks resolve`                                   | `{ "version": 1, "resolution": { ... } }`                                     |
-| `stacks snapshot`                                  | `{ "version": 1, "result": { "filename": "...", "snapshot": { ... } } }` |
+| `stacks resolve`                                   | `{ "version": 1, "resolution": { ... } }`                                   |
+| `stacks snapshot`                                  | `{ "version": 1, "result": { "filename": "...", "snapshot": { ... } } }`    |
 | `config get`                                       | `{ "version": 1, "settings": { ... } }` or `{ "version": 1, "value": ... }` |
 | `config set`                                       | `{ "version": 1, "settings": { ... } }`                                     |
 | `history`                                          | `{ "version": 1, "events": [ ... ] }`                                       |
@@ -98,9 +98,9 @@ Docker-network address facts are separate; neither represents application health
 `stacks snapshot <activation-id> --component NAME --gateway-host HOST --file PATH`
 requests a redacted activation-scoped sandbox document and atomically replaces `PATH`
 with mode `0600`. The gateway is supplied by the trusted launcher—for example,
-`host.docker.internal` on macOS Docker Desktop or a launcher-discovered bridge address on
-Linux. Portreeve does not infer or verify sandbox topology. Mount the resulting document
-read-only and never mount the Portreeve control socket into the sandbox.
+`host.docker.internal` on macOS Docker Desktop or a launcher-discovered bridge address
+on Linux. Portreeve does not infer or verify sandbox topology. Mount the resulting
+document read-only and never mount the Portreeve control socket into the sandbox.
 
 ## Prune consent
 

@@ -59,6 +59,5 @@ Append PR boundary entries here.
   discovery documents, atomic private file replacement, stale-aware JavaScript reading,
   and matching protocol/client/CLI/documentation surfaces.
 - **Result:** Pending PR-boundary verification, specification evaluation, independent
-  judge, and code review. R4 is implemented; R7 advances through
-  `stack-discovery-v1` and remains open for Docker, recovery and pruning, and desktop
-  work.
+  judge, and code review. R4 is implemented; R7 advances through `stack-discovery-v1`
+  and remains open for Docker, recovery and pruning, and desktop work.

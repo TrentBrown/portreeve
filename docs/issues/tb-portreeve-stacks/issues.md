@@ -68,8 +68,8 @@ Resolve scoped dependency aliases and host/Docker/sandbox address views from one
 generation, generate redacted activation-scoped discovery documents, and add the
 JavaScript snapshot reader and stale-plan safeguards.
 
-**Started 2026-08-06.** Sequential delivery branch
-`tb-portreeve-stacks-03-discovery` begins from merged `main` at `ca7b552`.
+**Started 2026-08-06.** Sequential delivery branch `tb-portreeve-stacks-03-discovery`
+begins from merged `main` at `ca7b552`.
 
 **In review 2026-08-06.** Draft PR #9 contains P4's scoped dependency resolution,
 separate host and Docker-network facts, redacted launcher-rendered sandbox documents,
