@@ -1,9 +1,7 @@
 # Issues - tb-portreeve-stacks
 
-**Feature:** `tb-portreeve-stacks`
-**Spec:** [`spec.md`](spec.md)
-**Plan:** [`plan.md`](plan.md)
-**Created:** 2026-08-06
+**Feature:** `tb-portreeve-stacks` **Spec:** [`spec.md`](spec.md) **Plan:**
+[`plan.md`](plan.md) **Created:** 2026-08-06
 
 Operational task breakdown derived from the plan.
 
@@ -17,12 +15,12 @@ Operational task breakdown derived from the plan.
 - **PR:** -
 
 Migrate service identities without data loss, add strict version-1 definition
-normalization and content-addressed revisions, persist stack registration, and
-expose compatible apply and inspection contracts through the server, client,
-CLI, inventory, and desktop port model.
+normalization and content-addressed revisions, persist stack registration, and expose
+compatible apply and inspection contracts through the server, client, CLI, inventory,
+and desktop port model.
 
-**Started 2026-08-06.** The exact feature branch carries the first delivery
-slice after design, specification, and plan approval.
+**Started 2026-08-06.** The exact feature branch carries the first delivery slice after
+design, specification, and plan approval.
 
 ## I-2 - Implement generations and process-backed activations
 
@@ -33,9 +31,9 @@ slice after design, specification, and plan approval.
 - **Depends on:** I-1
 - **PR:** -
 
-Add complete immutable allocation generations, exclusive activation attempts,
-atomic batch leases, process-backed endpoint confirmation, required/optional
-outcomes, and the corresponding protocol, client, CLI, and history surfaces.
+Add complete immutable allocation generations, exclusive activation attempts, atomic
+batch leases, process-backed endpoint confirmation, required/optional outcomes, and the
+corresponding protocol, client, CLI, and history surfaces.
 
 ## I-3 - Deliver dependency resolution and sandbox discovery
 
@@ -46,9 +44,9 @@ outcomes, and the corresponding protocol, client, CLI, and history surfaces.
 - **Depends on:** I-2
 - **PR:** -
 
-Resolve scoped dependency aliases and host/Docker/sandbox address views from
-one generation, generate redacted activation-scoped discovery documents, and
-add the JavaScript snapshot reader and stale-plan safeguards.
+Resolve scoped dependency aliases and host/Docker/sandbox address views from one
+generation, generate redacted activation-scoped discovery documents, and add the
+JavaScript snapshot reader and stale-plan safeguards.
 
 ## I-4 - Add Docker evidence and mixed activations
 
@@ -60,8 +58,8 @@ add the JavaScript snapshot reader and stale-plan safeguards.
 - **PR:** -
 
 Implement the trusted Docker CLI adapter, activation labels and fresh inspect
-verification, mixed process/container confirmation, capability degradation,
-and unconditional refusal to signal Docker-managed host listeners.
+verification, mixed process/container confirmation, capability degradation, and
+unconditional refusal to signal Docker-managed host listeners.
 
 ## I-5 - Complete activation recovery and safe stack pruning
 
@@ -73,8 +71,8 @@ and unconditional refusal to signal Docker-managed host listeners.
 - **PR:** -
 
 Reconcile launcher loss and surviving providers from fresh evidence, implement
-evidence-gated activation ending, and add missing-worktree stack pruning with
-preview, consent, revalidation, no-reclamation, and history retention.
+evidence-gated activation ending, and add missing-worktree stack pruning with preview,
+consent, revalidation, no-reclamation, and history retention.
 
 ## I-6 - Add the desktop Stacks experience and failure details
 
@@ -85,10 +83,9 @@ preview, consent, revalidation, no-reclamation, and history retention.
 - **Depends on:** I-1, I-2, I-3, I-4, I-5
 - **PR:** -
 
-Build the approved desktop inspection and safe coordination workflows across
-the main/preload/renderer boundary, preserve serialized fresh evidence, and
-surface actionable lifecycle and stack errors without granting orchestration
-authority.
+Build the approved desktop inspection and safe coordination workflows across the
+main/preload/renderer boundary, preserve serialized fresh evidence, and surface
+actionable lifecycle and stack errors without granting orchestration authority.
 
 ## I-7 - Complete integrated verification and feature evidence
 
@@ -99,7 +96,6 @@ authority.
 - **Depends on:** I-3, I-5, I-6
 - **PR:** -
 
-Finish public documentation and representative examples, run mixed-stack and
-legacy end-to-end matrices on supported native environments and the packaged
-desktop, execute every workflow gate, and preserve the feature-final evidence
-and completion report.
+Finish public documentation and representative examples, run mixed-stack and legacy
+end-to-end matrices on supported native environments and the packaged desktop, execute
+every workflow gate, and preserve the feature-final evidence and completion report.
