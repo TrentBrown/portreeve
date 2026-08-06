@@ -27,6 +27,7 @@ test('npm tarball contains only the public client and works from Node', async ()
       'package.json',
       'src/client.js',
       'src/constants.js',
+      'src/discovery.js',
       'src/index.d.ts',
       'src/index.js',
       'src/version.js',

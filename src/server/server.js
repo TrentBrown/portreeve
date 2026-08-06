@@ -47,7 +47,11 @@ import {
   StackConfirmEndpointRequestSchema,
   StackEndActivationRequestSchema,
   StackEndActivationResponseSchema,
+  StackEndpointSnapshotSchema,
   StackGenerationSchema,
+  StackResolutionSchema,
+  StackResolveRequestSchema,
+  StackSnapshotRequestSchema,
   StackAbandonEndpointRequestSchema,
   StackSkipEndpointRequestSchema,
   UnsafeEvictionRequestSchema,
@@ -58,6 +62,7 @@ import { InventoryService } from '../reconciliation/inventory.js';
 import { ReclamationService } from '../reclamation/service.js';
 import { RegistryError } from '../storage/registry.js';
 import { StackCoordinationService } from '../stacks/coordination-service.js';
+import { StackDiscoveryService } from '../stacks/discovery-service.js';
 import { StackDefinitionService } from '../stacks/service.js';
 
 /**
@@ -69,6 +74,7 @@ import { StackDefinitionService } from '../stacks/service.js';
  *   administrationService?: AdministrationService,
  *   stackDefinitionService?: StackDefinitionService,
  *   stackCoordinationService?: StackCoordinationService,
+ *   stackDiscoveryService?: StackDiscoveryService,
  *   diagnosticLog?: import('../observability/diagnostic-log.js').DiagnosticLog,
  *   mode?: 'manual' | 'supervised'
  * }} options
@@ -100,6 +106,12 @@ export async function startPortreeveServer(options) {
       registry: options.allocationService.registry,
       allocationService: options.allocationService,
       inventoryService,
+    });
+  const stackDiscoveryService =
+    options.stackDiscoveryService ??
+    new StackDiscoveryService({
+      registry: options.allocationService.registry,
+      coordinationService: stackCoordinationService,
     });
   const diagnosticLog = options.diagnosticLog;
   let stopped = false;
@@ -138,6 +150,7 @@ export async function startPortreeveServer(options) {
         administrationService,
         stackDefinitionService,
         stackCoordinationService,
+        stackDiscoveryService,
         diagnosticLog,
         options.mode ?? 'manual',
         () => {
@@ -171,6 +184,7 @@ export async function startPortreeveServer(options) {
  * @param {AdministrationService} administrationService
  * @param {StackDefinitionService} stackDefinitionService
  * @param {StackCoordinationService} stackCoordinationService
+ * @param {StackDiscoveryService} stackDiscoveryService
  * @param {import('../observability/diagnostic-log.js').DiagnosticLog | undefined} diagnosticLog
  * @param {'manual' | 'supervised'} mode
  * @param {() => void} requestStop
@@ -183,6 +197,7 @@ async function handleRequest(
   administrationService,
   stackDefinitionService,
   stackCoordinationService,
+  stackDiscoveryService,
   diagnosticLog,
   mode,
   requestStop,
@@ -359,6 +374,34 @@ async function handleRequest(
           ),
         ),
       );
+    }
+    const activationDiscovery = pathname.match(
+      /^\/v1\/stack-activations\/([0-9a-f-]+)\/(resolve|snapshot)$/,
+    );
+    if (activationDiscovery !== null) {
+      const activationId = IdentifierSchema.parse(activationDiscovery[1]);
+      switch (activationDiscovery[2]) {
+        case 'resolve':
+          return success(
+            requestId,
+            StackResolutionSchema.parse(
+              stackDiscoveryService.resolve(
+                activationId,
+                StackResolveRequestSchema.parse(body),
+              ),
+            ),
+          );
+        case 'snapshot':
+          return success(
+            requestId,
+            StackEndpointSnapshotSchema.parse(
+              stackDiscoveryService.snapshot(
+                activationId,
+                StackSnapshotRequestSchema.parse(body),
+              ),
+            ),
+          );
+      }
     }
     const activationMutation = pathname.match(
       /^\/v1\/stack-activations\/([0-9a-f-]+)\/(renew|confirm|abandon|skip|end)$/,

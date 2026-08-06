@@ -72,6 +72,7 @@ Version 1 capabilities are:
 - `lifecycle-control-v1`
 - `stack-definitions-v1`
 - `stack-activations-v1`
+- `stack-discovery-v1`
 
 ## Allocation workflow
 
@@ -130,29 +131,31 @@ policy.
 
 ## Inventory and administration
 
-| Method and path                           | Purpose                                                                                                                              |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /v1/ports`                           | List claimed and/or listening ports; accepts classification, claimed, listening, project, workspace, service, and port query filters |
-| `GET /v1/ports/{port}`                    | Inspect one port with complete listener and ownership evidence                                                                       |
-| `POST /v1/ports/{port}/reclaim`           | Evidence-bound normal reclaim with `client`, `policy`, and `dryRun`                                                                  |
-| `POST /v1/ports/{port}/unsafe-evict`      | Exact-port unsafe eviction; requires `unsafeAnyOwner: true` for that operation                                                       |
-| `GET /v1/claims`                          | List durable claims                                                                                                                  |
-| `GET /v1/claims/{claimId}`                | Read one claim                                                                                                                       |
-| `POST /v1/claims/{claimId}/reassign`      | Assign an idle claim a new preferred or exact port                                                                                   |
-| `POST /v1/claims/{claimId}/delete`        | Delete an idle, listener-free claim                                                                                                  |
-| `POST /v1/claims/prune`                   | Find or delete old missing-workspace claims using `olderThanMilliseconds` and `dryRun`                                               |
-| `GET /v1/stacks`                          | List applied stack definitions; accepts project and canonical `workspaceRoot` filters                                                |
-| `GET /v1/stacks/{stackId}`                | Read one applied stack and its normalized current definition                                                                         |
-| `POST /v1/stacks/apply`                   | Validate and atomically apply a definition; requires `stack-definitions-v1`                                                          |
-| `POST /v1/stacks/{stackId}/prepare`       | Create or reuse a complete immutable allocation generation; requires `stack-activations-v1`                                          |
-| `POST /v1/stack-activations/begin`        | Create one activation and atomically lease its selected endpoints                                                                    |
-| `GET /v1/stack-activations/{id}`          | Inspect activation and endpoint states without returning lease tokens                                                                |
-| `GET /v1/stack-generations/{id}`          | Inspect one immutable allocation generation                                                                                          |
-| `POST /v1/stack-activations/{id}/renew`   | Validate and renew a batch of pending activation leases                                                                              |
-| `POST /v1/stack-activations/{id}/confirm` | Confirm one process-backed endpoint using fresh listener and lineage evidence                                                        |
-| `POST /v1/stack-activations/{id}/abandon` | Fail one pending endpoint; a required failure cancels the remaining pending batch                                                    |
-| `POST /v1/stack-activations/{id}/skip`    | Skip one optional pending endpoint                                                                                                   |
-| `POST /v1/stack-activations/{id}/end`     | End only after fresh evidence shows confirmed process listeners have stopped                                                         |
+| Method and path                            | Purpose                                                                                                                              |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /v1/ports`                            | List claimed and/or listening ports; accepts classification, claimed, listening, project, workspace, service, and port query filters |
+| `GET /v1/ports/{port}`                     | Inspect one port with complete listener and ownership evidence                                                                       |
+| `POST /v1/ports/{port}/reclaim`            | Evidence-bound normal reclaim with `client`, `policy`, and `dryRun`                                                                  |
+| `POST /v1/ports/{port}/unsafe-evict`       | Exact-port unsafe eviction; requires `unsafeAnyOwner: true` for that operation                                                       |
+| `GET /v1/claims`                           | List durable claims                                                                                                                  |
+| `GET /v1/claims/{claimId}`                 | Read one claim                                                                                                                       |
+| `POST /v1/claims/{claimId}/reassign`       | Assign an idle claim a new preferred or exact port                                                                                   |
+| `POST /v1/claims/{claimId}/delete`         | Delete an idle, listener-free claim                                                                                                  |
+| `POST /v1/claims/prune`                    | Find or delete old missing-workspace claims using `olderThanMilliseconds` and `dryRun`                                               |
+| `GET /v1/stacks`                           | List applied stack definitions; accepts project and canonical `workspaceRoot` filters                                                |
+| `GET /v1/stacks/{stackId}`                 | Read one applied stack and its normalized current definition                                                                         |
+| `POST /v1/stacks/apply`                    | Validate and atomically apply a definition; requires `stack-definitions-v1`                                                          |
+| `POST /v1/stacks/{stackId}/prepare`        | Create or reuse a complete immutable allocation generation; requires `stack-activations-v1`                                          |
+| `POST /v1/stack-activations/begin`         | Create one activation and atomically lease its selected endpoints                                                                    |
+| `GET /v1/stack-activations/{id}`           | Inspect activation and endpoint states without returning lease tokens                                                                |
+| `GET /v1/stack-generations/{id}`           | Inspect one immutable allocation generation                                                                                          |
+| `POST /v1/stack-activations/{id}/renew`    | Validate and renew a batch of pending activation leases                                                                              |
+| `POST /v1/stack-activations/{id}/confirm`  | Confirm one process-backed endpoint using fresh listener and lineage evidence                                                        |
+| `POST /v1/stack-activations/{id}/abandon`  | Fail one pending endpoint; a required failure cancels the remaining pending batch                                                    |
+| `POST /v1/stack-activations/{id}/skip`     | Skip one optional pending endpoint                                                                                                   |
+| `POST /v1/stack-activations/{id}/end`      | End only after fresh evidence shows confirmed process listeners have stopped                                                         |
+| `POST /v1/stack-activations/{id}/resolve`  | Resolve one consumer's own endpoints and declared dependencies from its activation generation; requires `stack-discovery-v1`         |
+| `POST /v1/stack-activations/{id}/snapshot` | Render one redacted sandbox discovery document using a launcher-supplied gateway; requires `stack-discovery-v1`                      |
 
 Inventory classifications are `available`, `verified`, `idle`, `pending`, `unclaimed`,
 `conflicting`, and `mixed`. A live PID alone never establishes ownership; Portreeve
@@ -193,6 +196,28 @@ back. Separately, required endpoints must confirm; optional endpoints may be ski
 fail, producing a `degraded` activation after all required endpoints confirm. Required
 endpoint failure or expiry fails the activation and cancels its other unconfirmed
 leases. See [Stack definitions and activation](stacks.md).
+
+## Stack dependency discovery
+
+Resolution accepts `client` and one consumer `component`. The activation selects exactly
+one immutable generation; failed, ended, stale, or definition-drifted activations refuse
+discovery. The response contains the definition revision, generation ID, activation ID,
+consumer name, and two separate maps:
+
+- `own` contains only the consumer's published endpoints.
+- `dependencies` contains only aliases declared by that consumer.
+
+Every entry identifies its canonical provider component and endpoint and supplies the
+allocated host-publication address. `dockerNetwork` is either the definition's Docker
+service and fixed container port or `null`; it is an address fact, not container
+ownership evidence. Circular dependency references are valid because every address is
+drawn from the same precomputed generation.
+
+Snapshot rendering additionally accepts `gatewayHost`. It returns a strict
+`schemaVersion: 1` document whose addresses use that launcher-supplied host and the
+generation's allocated host ports. It excludes worktree paths, claims, leases, tokens,
+runs, PIDs, Docker identifiers, socket paths, and mutation authority. Portreeve
+validates but does not discover or independently verify the gateway.
 
 ## Settings and observability
 

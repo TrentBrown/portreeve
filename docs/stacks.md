@@ -37,8 +37,9 @@ The checked-in definition is `portreeve.stack.json` at the worktree root:
 The schema is strict. Unknown fields are rejected. Component and endpoint names are
 stable logical identities. An omitted dependency endpoint means `default`. Endpoint
 defaults are TCP, published, and required. Use `publish: false` for an endpoint that
-Portreeve should understand but should not assign a host port. `preferredPort` permits
-later fallback allocation; `exactPort` does not. They are mutually exclusive.
+Portreeve should understand but should not assign a host port; a dependency cannot
+target an unpublished endpoint. `preferredPort` permits later fallback allocation;
+`exactPort` does not. They are mutually exclusive.
 
 Docker metadata is declarative coordination metadata only. An endpoint with a Docker
 container port must belong to a component with a Docker service. Docker inspection,
@@ -103,3 +104,40 @@ reused for the next attempt.
 launcher has stopped its providers, `stacks end` takes fresh listener evidence and
 refuses to end while any confirmed process endpoint is still listening. Ending never
 signals or stops the provider itself.
+
+## Resolve dependencies and publish sandbox discovery
+
+Dependencies are address references, not startup-order edges. Portreeve resolves each
+consumer from one activation generation and returns two non-overlapping maps: its own
+published endpoints and its declared dependency aliases. It never reveals unrelated
+components. Circular address references are permitted because every address was prepared
+before activation.
+
+```sh
+portreeve stacks resolve ACTIVATION_ID --component website --json
+```
+
+Each resolved endpoint contains the host publication plus a nullable Docker-network
+fact. The host fact is always the generation's loopback allocation. A Docker-network
+fact exists only when the checked-in provider component declares a Docker service and
+that endpoint declares a fixed container port. These are address facts, not application
+health or Docker ownership evidence.
+
+A trusted launcher may render and atomically write a sandbox-only document:
+
+```sh
+portreeve stacks snapshot ACTIVATION_ID \
+  --component website \
+  --gateway-host host.docker.internal \
+  --file /private/runtime/endpoints.json
+```
+
+The launcher chooses the platform gateway. Portreeve substitutes it for loopback while
+retaining the allocated host ports, but does not claim that gateway as an independently
+owned listener. The strict document contains only revision, generation, activation,
+consumer, and scoped TCP addresses. It excludes worktree paths, claims, lease tokens,
+runs, process and Docker identifiers, the daemon socket, and mutation authority.
+
+Mount the file read-only instead of exposing Portreeve's socket. The official JavaScript
+reader accepts an explicit path or `PORTREEVE_ENDPOINTS_FILE` and can reject a document
+whose expected generation or activation no longer matches.

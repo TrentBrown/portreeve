@@ -229,6 +229,31 @@ export class PortreeveClient {
     );
   }
 
+  /** @param {string} activationId @param {string} component */
+  async resolveStackEndpoints(activationId, component) {
+    await this.#requireCapabilities(['stack-discovery-v1']);
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/stack-activations/${activationId}/resolve`,
+      withClient({ component }, ['stack-discovery-v1']),
+    );
+  }
+
+  /**
+   * @param {string} activationId
+   * @param {{component: string, gatewayHost: string}} options
+   */
+  async createStackEndpointSnapshot(activationId, options) {
+    await this.#requireCapabilities(['stack-discovery-v1']);
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/stack-activations/${activationId}/snapshot`,
+      withClient(options, ['stack-discovery-v1']),
+    );
+  }
+
   /** @param {string[]} requiredCapabilities */
   async #requireCapabilities(requiredCapabilities) {
     const health = await this.health();

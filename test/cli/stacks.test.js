@@ -1,7 +1,15 @@
 // @ts-check
 
 import { expect, test } from 'bun:test';
-import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { AllocationService } from '../../src/allocation/service.js';
@@ -128,6 +136,48 @@ test('stack commands share definition discovery and versioned JSON contracts', a
     expect(begunDocument.activation.state).toBe('starting');
     expect(begunDocument.leases).toHaveLength(1);
     const activationId = begunDocument.activation.id;
+    const resolved = await runCli(
+      [
+        'stacks',
+        'resolve',
+        activationId,
+        '--component',
+        'api',
+        '--socket',
+        socketPath,
+        '--json',
+      ],
+      workspaceRoot,
+    );
+    expect(resolved.exitCode, resolved.stderr).toBe(0);
+    expect(JSON.parse(resolved.stdout)).toMatchObject({
+      resolution: { component: 'api', own: { http: { component: 'api' } } },
+    });
+    const snapshotFile = join(directory, 'sandbox', 'endpoints.json');
+    const snapshotted = await runCli(
+      [
+        'stacks',
+        'snapshot',
+        activationId,
+        '--component',
+        'api',
+        '--gateway-host',
+        'host.docker.internal',
+        '--file',
+        snapshotFile,
+        '--socket',
+        socketPath,
+        '--json',
+      ],
+      workspaceRoot,
+    );
+    expect(snapshotted.exitCode, snapshotted.stderr).toBe(0);
+    expect(JSON.parse(await readFile(snapshotFile, 'utf8'))).toMatchObject({
+      activationId,
+      component: 'api',
+      own: { http: { address: { host: 'host.docker.internal' } } },
+    });
+    expect((await stat(snapshotFile)).mode & 0o777).toBe(0o600);
     const credentialFile = join(directory, 'lease.json');
     await writeFile(
       credentialFile,
