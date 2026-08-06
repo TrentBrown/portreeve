@@ -8,7 +8,7 @@ appended to `decisions.md`.
 
 ## [1] Rebuild claims table for canonical endpoint identity
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -33,7 +33,7 @@ and history preservation.
 
 ## [2] Normalize legacy service input to one canonical identity
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -56,7 +56,7 @@ because disagreement would make identity ambiguous.
 
 ## [3] Content-address definitions and advertise registration separately
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -80,7 +80,7 @@ prevents a safe independently testable migration and registration slice.
 
 ## [4] Reject ambiguous names and hash with locale-independent ordering
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

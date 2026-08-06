@@ -7,12 +7,12 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Establish canonical identities and stack definitions
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 3d
 - **Plan steps:** P1, P2
 - **Rubric criteria:** R1, R5, R7
 - **Depends on:** none
-- **PR:** -
+- **PR:** [#7](https://github.com/TrentBrown/portreeve/pull/7)
 
 Migrate service identities without data loss, add strict version-1 definition
 normalization and content-addressed revisions, persist stack registration, and expose
@@ -21,6 +21,11 @@ and desktop port model.
 
 **Started 2026-08-06.** The exact feature branch carries the first delivery slice after
 design, specification, and plan approval.
+
+**In review 2026-08-06.** R1 and R5 pass. The definition-registration portion of R7 is
+complete and independently capability-gated; the full criterion remains open for I-2 and
+I-3. The broad suite's one lifecycle-status failure reproduces at the base SHA and
+awaits human acknowledgment in the PR boundary.
 
 ## I-2 - Implement generations and process-backed activations
 
