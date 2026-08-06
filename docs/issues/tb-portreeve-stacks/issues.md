@@ -32,12 +32,12 @@ base-only lifecycle test condition was accepted through human review and merge.
 
 ## I-2 - Implement generations and process-backed activations
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 3d
 - **Plan steps:** P3
 - **Rubric criteria:** R2, R7
 - **Depends on:** I-1
-- **PR:** -
+- **PR:** [#8](https://github.com/TrentBrown/portreeve/pull/8)
 
 Add complete immutable allocation generations, exclusive activation attempts, atomic
 batch leases, process-backed endpoint confirmation, required/optional outcomes, and the
@@ -45,6 +45,11 @@ corresponding protocol, client, CLI, and history surfaces.
 
 **Started 2026-08-06.** Sequential delivery branch
 `tb-portreeve-stacks-02-activations` begins from merged `main` at `13db683`.
+
+**In review 2026-08-06.** Draft PR #8 contains P3's immutable generations,
+process-backed activations, atomic batch leases, public coordination surfaces, and
+focused verification. R2 is implemented for the process-backed scope; R7 advances
+through the complete `stack-activations-v1` surface and remains open for P4-P7.
 
 ## I-3 - Deliver dependency resolution and sandbox discovery
 
