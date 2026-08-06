@@ -62,8 +62,11 @@ const RunRowSchema = z.object({
   lease_id: IdentifierSchema,
   port: PortSchema,
   state: z.enum(['confirmed', 'released']),
-  root_pid: z.number().int().positive(),
+  binding_kind: z.enum(['process', 'docker']),
+  root_pid: z.number().int().positive().nullable(),
   root_fingerprint_json: z.string().nullable(),
+  container_id: z.string().nullable(),
+  provider_evidence_json: z.string().nullable(),
   confirmed_at: TimestampSchema,
   released_at: TimestampSchema.nullable(),
 });
@@ -989,6 +992,7 @@ export class Registry {
    *   generationId: string,
    *   requiredEndpoints: string[],
    *   skippedEndpoints: string[],
+   *   bindings: Record<string, 'process' | 'docker'>,
    *   expiresAt: string
    * }} input
    * @param {Date} [now]
@@ -997,6 +1001,9 @@ export class Registry {
     const generationId = IdentifierSchema.parse(input.generationId);
     const requiredEndpoints = new Set(input.requiredEndpoints);
     const skippedEndpoints = new Set(input.skippedEndpoints);
+    const bindings = z
+      .record(z.string(), z.enum(['process', 'docker']))
+      .parse(input.bindings);
     const expiresAt = TimestampSchema.parse(input.expiresAt);
     const timestamp = toTimestamp(now);
     const activationId = randomUUID();
@@ -1103,6 +1110,7 @@ export class Registry {
       for (const endpoint of generation.endpoints) {
         const key = `${endpoint.component}\u0000${endpoint.endpoint}`;
         const required = endpoint.required || requiredEndpoints.has(key);
+        const bindingKind = bindings[endpoint.component] ?? 'process';
         if (skippedEndpoints.has(key)) {
           this.database
             .query(
@@ -1111,7 +1119,7 @@ export class Registry {
                  binding_kind, state, lease_id, run_id, failure_reason, updated_at
                ) VALUES (
                  $activationId, $component, $endpoint, $claimId, $port, $required,
-                 'process', 'skipped', NULL, NULL, 'caller-skipped', $timestamp
+                 $bindingKind, 'skipped', NULL, NULL, 'caller-skipped', $timestamp
                )`,
             )
             .run({
@@ -1121,6 +1129,7 @@ export class Registry {
               claimId: endpoint.claimId,
               port: endpoint.port,
               required: required ? 1 : 0,
+              bindingKind,
               timestamp,
             });
           continue;
@@ -1153,7 +1162,7 @@ export class Registry {
                binding_kind, state, lease_id, run_id, failure_reason, updated_at
              ) VALUES (
                $activationId, $component, $endpoint, $claimId, $port, $required,
-               'process', 'leased', $leaseId, NULL, NULL, $timestamp
+               $bindingKind, 'leased', $leaseId, NULL, NULL, $timestamp
              )`,
           )
           .run({
@@ -1163,6 +1172,7 @@ export class Registry {
             claimId: endpoint.claimId,
             port: endpoint.port,
             required: required ? 1 : 0,
+            bindingKind,
             leaseId,
             timestamp,
           });
@@ -1574,11 +1584,12 @@ export class Registry {
       this.database
         .query(
           `INSERT INTO runs (
-             id, claim_id, lease_id, port, state, root_pid,
-             root_fingerprint_json, confirmed_at, released_at
+             id, claim_id, lease_id, port, state, binding_kind, root_pid,
+             root_fingerprint_json, container_id, provider_evidence_json,
+             confirmed_at, released_at
            ) VALUES (
-             $id, $claimId, $leaseId, $port, 'confirmed', $rootPid,
-             $rootFingerprint, $timestamp, NULL
+             $id, $claimId, $leaseId, $port, 'confirmed', 'process', $rootPid,
+             $rootFingerprint, NULL, NULL, $timestamp, NULL
            )`,
         )
         .run({
@@ -1647,6 +1658,137 @@ export class Registry {
     const run = this.getRun(runId);
     if (run === null) {
       throw new RegistryError('internal', `Run ${runId} was not persisted.`);
+    }
+    return run;
+  }
+
+  /**
+   * @param {{
+   *   leaseId: string,
+   *   token: string,
+   *   containerId: string,
+   *   providerEvidence: Record<string, unknown>,
+   *   activationId: string
+   * }} input
+   * @param {Date} [now]
+   */
+  confirmDockerLease(input, now = new Date()) {
+    const leaseId = IdentifierSchema.parse(input.leaseId);
+    const activationId = IdentifierSchema.parse(input.activationId);
+    const containerId = z
+      .string()
+      .regex(/^[a-f0-9]{12,64}$/u)
+      .parse(input.containerId);
+    const providerEvidence = z
+      .record(z.string(), z.unknown())
+      .parse(input.providerEvidence);
+    const timestamp = toTimestamp(now);
+    const runId = randomUUID();
+
+    const confirm = this.database.transaction(() => {
+      const lease = this.getLease(leaseId);
+      if (lease === null) {
+        throw new RegistryError('not_found', `Lease ${leaseId} was not found.`);
+      }
+      this.#assertPendingLease(lease, input.token, now);
+      const endpoint = this.database
+        .query(
+          `SELECT 1 FROM stack_activation_endpoints endpoint
+           JOIN stack_activations activation ON activation.id = endpoint.activation_id
+           WHERE endpoint.activation_id = $activationId
+             AND endpoint.lease_id = $leaseId
+             AND endpoint.binding_kind = 'docker'
+             AND endpoint.state = 'leased'
+             AND activation.state = 'starting'`,
+        )
+        .get({ activationId, leaseId });
+      if (endpoint === null) {
+        throw new RegistryError(
+          'conflict',
+          `Lease ${leaseId} is not Docker-confirmable for activation ${activationId}.`,
+        );
+      }
+      const claim = this.getClaim(lease.claimId);
+      if (claim === null) {
+        throw new RegistryError(
+          'internal',
+          `Claim ${lease.claimId} disappeared before Docker confirmation.`,
+        );
+      }
+      const settings = this.getSettings();
+      this.database
+        .query(
+          `UPDATE leases SET state = 'confirmed', updated_at = $timestamp
+           WHERE id = $leaseId AND state = 'pending'`,
+        )
+        .run({ timestamp, leaseId });
+      this.database
+        .query(
+          `UPDATE claims
+           SET assigned_port = $port, assignment_expires_at = $assignmentExpiresAt,
+               updated_at = $timestamp, last_used_at = $timestamp
+           WHERE id = $claimId`,
+        )
+        .run({
+          port: lease.port,
+          assignmentExpiresAt:
+            claim.mode === 'ephemeral'
+              ? new Date(
+                  now.getTime() + settings.ephemeralAssignmentTtlMilliseconds,
+                ).toISOString()
+              : null,
+          timestamp,
+          claimId: lease.claimId,
+        });
+      this.database
+        .query(
+          `INSERT INTO runs (
+             id, claim_id, lease_id, port, state, binding_kind, root_pid,
+             root_fingerprint_json, container_id, provider_evidence_json,
+             confirmed_at, released_at
+           ) VALUES (
+             $id, $claimId, $leaseId, $port, 'confirmed', 'docker', NULL,
+             NULL, $containerId, $providerEvidence, $timestamp, NULL
+           )`,
+        )
+        .run({
+          id: runId,
+          claimId: lease.claimId,
+          leaseId,
+          port: lease.port,
+          containerId,
+          providerEvidence: JSON.stringify(providerEvidence),
+          timestamp,
+        });
+      this.database
+        .query(
+          `UPDATE stack_activation_endpoints
+           SET state = 'confirmed', run_id = $runId,
+               failure_reason = NULL, updated_at = $timestamp
+           WHERE activation_id = $activationId AND lease_id = $leaseId
+             AND binding_kind = 'docker' AND state = 'leased'`,
+        )
+        .run({ runId, timestamp, activationId, leaseId });
+      this.#refreshStackActivationState(activationId, timestamp);
+      this.#appendHistory(
+        'lease.confirmed',
+        'lease',
+        leaseId,
+        {
+          runId,
+          claimId: lease.claimId,
+          port: lease.port,
+          bindingKind: 'docker',
+          containerId,
+          activationId,
+        },
+        timestamp,
+      );
+    });
+    confirm.immediate();
+    const run = this.getRun(runId);
+    if (run === null) {
+      throw new RegistryError('internal', `Docker run ${runId} was not persisted.`);
     }
     return run;
   }
@@ -2468,11 +2610,17 @@ function runFromRow(row) {
     leaseId: parsed.lease_id,
     port: parsed.port,
     state: parsed.state,
+    bindingKind: parsed.binding_kind,
     rootPid: parsed.root_pid,
     rootFingerprint:
       parsed.root_fingerprint_json === null
         ? null
         : parseJsonObject(parsed.root_fingerprint_json),
+    containerId: parsed.container_id,
+    providerEvidence:
+      parsed.provider_evidence_json === null
+        ? null
+        : parseJsonObject(parsed.provider_evidence_json),
     confirmedAt: parsed.confirmed_at,
     releasedAt: parsed.released_at,
   });

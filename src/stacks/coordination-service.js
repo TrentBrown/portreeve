@@ -1,7 +1,14 @@
 // @ts-check
 
 import { addMilliseconds } from '../allocation/time.js';
+import { DockerCliAdapter } from '../docker/adapter.js';
+import {
+  assertDockerEvidence,
+  expectedDockerLabels,
+  verifyDockerEvidence,
+} from '../docker/evidence.js';
 import { detectEphemeralPortRange } from '../platform/ephemeral-ports.js';
+import { CAPABILITIES, DOCKER_CAPABILITY } from '../protocol/constants.js';
 import {
   StackAbandonEndpointRequestSchema,
   StackActivationSchema,
@@ -29,6 +36,7 @@ export class StackCoordinationService {
    *   registry: import('../storage/registry.js').Registry,
    *   allocationService: import('../allocation/service.js').AllocationService,
    *   inventoryService?: InventoryService,
+   *   dockerAdapter?: import('../docker/adapter.js').DockerEvidenceAdapter,
    *   detectEphemeralRange?: typeof detectEphemeralPortRange,
    *   now?: () => Date
    * }} options
@@ -37,12 +45,14 @@ export class StackCoordinationService {
     registry,
     allocationService,
     inventoryService = new InventoryService({ registry }),
+    dockerAdapter = new DockerCliAdapter(),
     detectEphemeralRange = detectEphemeralPortRange,
     now = () => new Date(),
   }) {
     this.registry = registry;
     this.allocationService = allocationService;
     this.inventoryService = inventoryService;
+    this.dockerAdapter = dockerAdapter;
     this.detectEphemeralRange = detectEphemeralRange;
     this.now = now;
   }
@@ -186,7 +196,11 @@ export class StackCoordinationService {
   /** @param {unknown} input */
   async begin(input) {
     const request = StackBeginActivationRequestSchema.parse(input);
-    assertCompatible(request.client);
+    if (Object.values(request.bindings).includes('docker')) {
+      await this.#assertDockerAvailable(request.client);
+    } else {
+      assertCompatible(request.client);
+    }
     const now = this.now();
     this.registry.expirePendingLeases(now);
     const generation = this.registry.getStackGeneration(request.generationId);
@@ -202,6 +216,39 @@ export class StackCoordinationService {
         'internal',
         `Stack ${generation.stackId} disappeared before activation.`,
       );
+    }
+    for (const [component, bindingKind] of Object.entries(request.bindings)) {
+      const definition = stack.definition.components[component];
+      if (definition === undefined) {
+        throw new RegistryError(
+          'invalid_input',
+          `Activation binding names unknown component ${component}.`,
+          { component, reason: 'binding_component_unknown' },
+        );
+      }
+      if (bindingKind !== 'docker') continue;
+      if (definition.docker === undefined) {
+        throw new RegistryError(
+          'invalid_input',
+          `Component ${component} has no Docker service definition.`,
+          { component, reason: 'docker_definition_missing' },
+        );
+      }
+      for (const endpoint of generation.endpoints.filter(
+        (candidate) => candidate.component === component,
+      )) {
+        if (definition.endpoints[endpoint.endpoint]?.docker === undefined) {
+          throw new RegistryError(
+            'invalid_input',
+            `Docker component ${component} lacks container-port data for ${endpoint.endpoint}.`,
+            {
+              component,
+              endpoint: endpoint.endpoint,
+              reason: 'docker_endpoint_definition_missing',
+            },
+          );
+        }
+      }
     }
     const promoted = new Set(request.requiredEndpoints.map(endpointKey));
     for (const [consumer, component] of Object.entries(stack.definition.components)) {
@@ -268,17 +315,53 @@ export class StackCoordinationService {
       now,
       this.registry.getSettings().leaseTtlMilliseconds,
     ).toISOString();
-    return StackBeginActivationResponseSchema.parse(
-      this.registry.beginStackActivation(
-        {
-          generationId: generation.id,
-          requiredEndpoints: request.requiredEndpoints.map(endpointKey),
-          skippedEndpoints: request.skippedEndpoints.map(endpointKey),
-          expiresAt,
-        },
-        now,
-      ),
+    const begun = this.registry.beginStackActivation(
+      {
+        generationId: generation.id,
+        requiredEndpoints: request.requiredEndpoints.map(endpointKey),
+        skippedEndpoints: request.skippedEndpoints.map(endpointKey),
+        bindings: request.bindings,
+        expiresAt,
+      },
+      now,
     );
+    return StackBeginActivationResponseSchema.parse({
+      activation: begun.activation,
+      leases: begun.leases.map((lease) => {
+        const activationEndpoint = begun.activation.endpoints.find(
+          (candidate) =>
+            candidate.component === lease.component &&
+            candidate.endpoint === lease.endpoint,
+        );
+        const bindingKind = activationEndpoint?.bindingKind ?? 'process';
+        const component = stack.definition.components[lease.component];
+        const endpoint = component?.endpoints[lease.endpoint];
+        const docker =
+          bindingKind === 'docker' &&
+          component?.docker !== undefined &&
+          endpoint?.docker !== undefined
+            ? {
+                service: component.docker.service,
+                containerPort: endpoint.docker.containerPort,
+                requiredLabels: expectedDockerLabels({
+                  stackId: stack.id,
+                  component: lease.component,
+                  definitionRevision: generation.revision,
+                  generationId: generation.id,
+                  activationId: begun.activation.id,
+                  endpoints: Object.fromEntries(
+                    Object.entries(component.endpoints).flatMap(([name, definition]) =>
+                      definition.publish && definition.docker !== undefined
+                        ? [[name, definition.docker.containerPort]]
+                        : [],
+                    ),
+                  ),
+                }),
+              }
+            : null;
+        return { ...lease, bindingKind, docker };
+      }),
+    });
   }
 
   /** @param {string} activationId @param {unknown} input */
@@ -302,9 +385,132 @@ export class StackCoordinationService {
   /** @param {string} activationId @param {unknown} input */
   async confirm(activationId, input) {
     const request = StackConfirmEndpointRequestSchema.parse(input);
-    assertCompatible(request.client);
-    await this.allocationService.confirmForActivation(request, activationId);
+    if (request.bindingKind === 'docker') {
+      await this.#confirmDocker(activationId, request);
+    } else {
+      assertCompatible(request.client);
+      const activation = this.get(activationId);
+      const endpoint = activation.endpoints.find(
+        (candidate) => candidate.leaseId === request.leaseId,
+      );
+      if (endpoint?.bindingKind !== 'process') {
+        throw new RegistryError(
+          'conflict',
+          `Lease ${request.leaseId} is not process-backed.`,
+          { leaseId: request.leaseId, reason: 'binding_kind_mismatch' },
+        );
+      }
+      await this.allocationService.confirmForActivation(request, activationId);
+    }
     return this.get(activationId);
+  }
+
+  /**
+   * @param {string} activationId
+   * @param {Extract<import('zod').infer<typeof StackConfirmEndpointRequestSchema>, {bindingKind: 'docker'}>} request
+   */
+  async #confirmDocker(activationId, request) {
+    await this.#assertDockerAvailable(request.client);
+    const activation = this.get(activationId);
+    const endpoint = activation.endpoints.find(
+      (candidate) => candidate.leaseId === request.leaseId,
+    );
+    if (endpoint?.bindingKind !== 'docker') {
+      throw new RegistryError(
+        'conflict',
+        `Lease ${request.leaseId} is not Docker-backed.`,
+        { leaseId: request.leaseId, reason: 'binding_kind_mismatch' },
+      );
+    }
+    const generation = this.getGeneration(activation.generationId);
+    const stack = this.registry.getStack(activation.stackId);
+    const component = stack?.definition.components[endpoint.component];
+    const endpointDefinition = component?.endpoints[endpoint.endpoint];
+    if (
+      stack === null ||
+      component?.docker === undefined ||
+      endpointDefinition?.docker === undefined
+    ) {
+      throw new RegistryError(
+        'conflict',
+        `Docker definition for ${endpoint.component}.${endpoint.endpoint} is unavailable.`,
+        { reason: 'docker_definition_missing' },
+      );
+    }
+    const inspected = await this.dockerAdapter.inspect(request.containerId);
+    if (inspected.status !== 'ok') {
+      throw new RegistryError(
+        inspected.status === 'unavailable' ? 'unavailable' : 'conflict',
+        `Container ${request.containerId} could not be freshly inspected.`,
+        { containerId: request.containerId, reason: inspected.reason },
+      );
+    }
+    const endpoints = Object.fromEntries(
+      Object.entries(component.endpoints).flatMap(([name, definition]) =>
+        definition.publish && definition.docker !== undefined
+          ? [[name, definition.docker.containerPort]]
+          : [],
+      ),
+    );
+    const expectedLabels = expectedDockerLabels({
+      stackId: stack.id,
+      component: endpoint.component,
+      definitionRevision: generation.revision,
+      generationId: generation.id,
+      activationId: activation.id,
+      endpoints,
+    });
+    const verification = verifyDockerEvidence({
+      container: inspected.container,
+      expectedLabels,
+      endpoint: endpoint.endpoint,
+      containerPort: endpointDefinition.docker.containerPort,
+      hostPort: endpoint.port,
+    });
+    assertDockerEvidence(verification, request.containerId);
+    const listeners = await this.allocationService.inspectListeners(endpoint.port);
+    if (listeners.length === 0) {
+      throw new RegistryError(
+        'conflict',
+        `Docker publication ${endpoint.port} has no fresh host listener.`,
+        { port: endpoint.port, reason: 'listener_missing' },
+      );
+    }
+    this.registry.confirmDockerLease(
+      {
+        leaseId: request.leaseId,
+        token: request.leaseToken,
+        containerId: inspected.container.id,
+        providerEvidence: {
+          expectedLabels,
+          endpoint: endpoint.endpoint,
+          containerPort: endpointDefinition.docker.containerPort,
+          hostPort: endpoint.port,
+        },
+        activationId,
+      },
+      this.now(),
+    );
+  }
+
+  /** @param {{protocol: {minimum: number, maximum: number}, requiredCapabilities: string[]}} client */
+  async #assertDockerAvailable(client) {
+    const availability = await this.dockerAdapter.availability();
+    const availableCapabilities = availability.available
+      ? [...CAPABILITIES, DOCKER_CAPABILITY]
+      : CAPABILITIES;
+    const result = negotiateCompatibility(
+      client.protocol,
+      [...new Set([...client.requiredCapabilities, CAPABILITY, DOCKER_CAPABILITY])],
+      availableCapabilities,
+    );
+    if (!result.compatible) {
+      throw new RegistryError(
+        availability.available ? 'incompatible_protocol' : 'unavailable',
+        'Docker evidence is not available for this Portreeve server.',
+        { ...result, docker: availability },
+      );
+    }
   }
 
   /** @param {string} activationId @param {unknown} input */
@@ -412,7 +618,7 @@ export class StackCoordinationService {
       const inventory = await this.inventoryService.inspect(endpoint.port);
       if (inventory.listeners.length === 0) continue;
       if (
-        inventory.classification !== 'verified' ||
+        !['verified', 'docker-managed'].includes(inventory.classification) ||
         inventory.run?.claimId !== endpoint.claimId
       ) {
         return false;

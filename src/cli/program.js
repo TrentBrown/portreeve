@@ -33,6 +33,7 @@ import {
   abandonStackEndpointCommand,
   applyStackCommand,
   beginStackActivationCommand,
+  confirmDockerStackEndpointCommand,
   confirmStackEndpointCommand,
   endStackActivationCommand,
   listStacksCommand,
@@ -275,6 +276,10 @@ export function createProgram() {
       '--skip-endpoint <component.endpoint...>',
       'skip optional endpoints; JSON objects preserve names containing dots',
     )
+    .option(
+      '--docker-component <name...>',
+      'bind named components through Docker for this activation',
+    )
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output including private lease tokens')
     .action(beginStackActivationCommand);
@@ -309,6 +314,17 @@ export function createProgram() {
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output')
     .action(confirmStackEndpointCommand);
+
+  stacks
+    .command('confirm-docker <activation-id>')
+    .description(
+      'Confirm one Docker endpoint with fresh listener and container evidence',
+    )
+    .requiredOption('--lease-file <path>', 'private JSON lease credential')
+    .requiredOption('--container-id <id>', 'Docker container ID lookup key')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(confirmDockerStackEndpointCommand);
 
   stacks
     .command('abandon <activation-id>')

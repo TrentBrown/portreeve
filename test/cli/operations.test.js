@@ -41,11 +41,20 @@ async function fixture() {
 
 /**
  * @param {string[]} arguments_
+ * @param {string} home
  */
-async function runCli(arguments_) {
+async function runCliWithHome(arguments_, home) {
   const child = Bun.spawn(
     [process.execPath, resolve('src/cli/main.js'), ...arguments_],
-    { stdout: 'pipe', stderr: 'pipe' },
+    {
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: {
+        ...process.env,
+        HOME: home,
+        XDG_CONFIG_HOME: join(home, '.config'),
+      },
+    },
   );
   const [exitCode, stdout, stderr] = await Promise.all([
     child.exited,
@@ -70,6 +79,8 @@ async function unusedPort() {
 
 test('operational commands expose stable JSON and exit-code contracts', async () => {
   const { directory, socketPath, server, client } = await fixture();
+  const runCli = (/** @type {string[]} */ arguments_) =>
+    runCliWithHome(arguments_, directory);
 
   const status = await runCli(['status', '--socket', socketPath, '--json']);
   expect(status.exitCode, status.stderr).toBe(0);

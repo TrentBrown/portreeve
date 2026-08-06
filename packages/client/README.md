@@ -35,3 +35,10 @@ For sandbox discovery, a trusted host launcher can call `createStackEndpointSnap
 atomically publish it with `writeEndpointSnapshot`, and mount only that redacted JSON
 file. Sandboxed code reads an explicit file or `PORTREEVE_ENDPOINTS_FILE` with
 `readEndpointSnapshot`; it never needs the Portreeve control socket.
+
+For a Docker-backed stack component, pass `bindings: { api: 'docker' }` to
+`beginStackActivation`. Its leases contain the Compose service, container port, and
+exact Portreeve labels for the trusted launcher. After publishing the allocated host
+port, call `confirmStackEndpoint` with `bindingKind: 'docker'` and the exact container
+ID. The client uses the same HTTP/JSON socket protocol and preflights the optional
+`docker-evidence-v1` capability; it never invokes Docker or Compose directly.

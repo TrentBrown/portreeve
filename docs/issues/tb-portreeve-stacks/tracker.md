@@ -53,7 +53,7 @@ Append PR boundary entries here.
 ### PR #9 - Scoped dependency and sandbox discovery
 
 - **PR:** [#9](https://github.com/TrentBrown/portreeve/pull/9)
-- **Status:** ready for human review
+- **Status:** merged
 - **Scope:** P4 component-scoped own and dependency resolution, distinct host and
   Docker-network facts, launcher-rendered sandbox gateway views, deterministic redacted
   discovery documents, atomic private file replacement, stale-aware JavaScript reading,

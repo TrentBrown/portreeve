@@ -120,8 +120,9 @@ export class ReclamationService {
         : null;
     /**
      * @param {{
-     *   outcome: 'already-free' | 'would-terminate' | 'terminated' | 'refused' | 'timeout',
-     *   reason: string | null
+     *   outcome: 'already-free' | 'would-terminate' | 'terminated' | 'refused' | 'timeout' | 'launcher-action-required',
+     *   reason: string | null,
+     *   launcherAction?: {kind: 'docker', action: 'stop-container', containerIds: string[]} | null
      * }} completion
      */
     const complete = (completion) => {
@@ -151,9 +152,17 @@ export class ReclamationService {
       });
     }
     if (!initial.valid) {
+      const containerIds = initial.entry.docker?.containers.map(({ id }) => id) ?? [];
       return complete({
-        outcome: 'refused',
+        outcome:
+          initial.reason === 'docker-managed-listener'
+            ? 'launcher-action-required'
+            : 'refused',
         reason: initial.reason,
+        launcherAction:
+          containerIds.length === 0
+            ? null
+            : { kind: 'docker', action: 'stop-container', containerIds },
       });
     }
     if (options.policy === 'never') {
@@ -284,6 +293,9 @@ export class ReclamationService {
    */
   async #snapshot(port, requireOwnership) {
     const entry = await this.inventoryService.inspect(port);
+    if ((entry.docker?.containers?.length ?? 0) > 0) {
+      return { valid: false, reason: 'docker-managed-listener', entry };
+    }
     const unobservable = entry.listeners.some(
       ({ process }) => !ProcessFingerprintSchema.safeParse(process).success,
     );
@@ -464,8 +476,9 @@ export class ReclamationService {
    * @param {Array<import('zod').infer<typeof import('../protocol/schemas.js').ListenerEvidenceSchema>>} targets
    * @param {Array<{pid: number, signal: 'SIGTERM' | 'SIGKILL', at: string}>} signals
    * @param {{
-   *   outcome: 'already-free' | 'would-terminate' | 'terminated' | 'refused' | 'timeout',
-   *   reason: string | null
+   *   outcome: 'already-free' | 'would-terminate' | 'terminated' | 'refused' | 'timeout' | 'launcher-action-required',
+   *   reason: string | null,
+   *   launcherAction?: {kind: 'docker', action: 'stop-container', containerIds: string[]} | null
    * }} completion
    */
   #complete(options, operationId, targets, signals, completion) {
@@ -477,6 +490,7 @@ export class ReclamationService {
       dryRun: options.dryRun,
       outcome: completion.outcome,
       reason: completion.reason,
+      launcherAction: completion.launcherAction ?? null,
       targets,
       signals,
     });

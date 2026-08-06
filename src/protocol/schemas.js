@@ -296,6 +296,14 @@ export const StackActivationLeaseSchema = z.object({
   leaseToken: LeaseTokenSchema,
   port: PortSchema,
   expiresAt: TimestampSchema,
+  bindingKind: z.enum(['process', 'docker']),
+  docker: z
+    .object({
+      service: StackNameSchema,
+      containerPort: PortSchema,
+      requiredLabels: z.record(z.string(), z.string()),
+    })
+    .nullable(),
 });
 
 export const StackBeginActivationRequestSchema = z.object({
@@ -303,6 +311,7 @@ export const StackBeginActivationRequestSchema = z.object({
   generationId: IdentifierSchema,
   requiredEndpoints: z.array(StackEndpointReferenceSchema).default([]),
   skippedEndpoints: z.array(StackEndpointReferenceSchema).default([]),
+  bindings: z.record(StackNameSchema, z.enum(['process', 'docker'])).default({}),
 });
 
 export const StackBeginActivationResponseSchema = z.object({
@@ -332,12 +341,31 @@ export const StackRenewActivationResponseSchema = z.object({
   ),
 });
 
-export const StackConfirmEndpointRequestSchema = z.object({
-  client: ClientCompatibilitySchema,
-  leaseId: IdentifierSchema,
-  leaseToken: LeaseTokenSchema,
-  rootPid: z.number().int().positive(),
-});
+const StackProcessConfirmationSchema = z
+  .object({
+    client: ClientCompatibilitySchema,
+    leaseId: IdentifierSchema,
+    leaseToken: LeaseTokenSchema,
+    bindingKind: z.literal('process').optional(),
+    rootPid: z.number().int().positive(),
+  })
+  .strict()
+  .transform((value) => ({ ...value, bindingKind: /** @type {const} */ ('process') }));
+
+const StackDockerConfirmationSchema = z
+  .object({
+    client: ClientCompatibilitySchema,
+    leaseId: IdentifierSchema,
+    leaseToken: LeaseTokenSchema,
+    bindingKind: z.literal('docker'),
+    containerId: z.string().regex(/^[a-f0-9]{12,64}$/u),
+  })
+  .strict();
+
+export const StackConfirmEndpointRequestSchema = z.union([
+  StackProcessConfirmationSchema,
+  StackDockerConfirmationSchema,
+]);
 
 export const StackAbandonEndpointRequestSchema = z.object({
   client: ClientCompatibilitySchema,
@@ -498,6 +526,7 @@ export const InventoryClassificationSchema = z.enum([
   'unclaimed',
   'conflicting',
   'mixed',
+  'docker-managed',
 ]);
 
 export const OwnershipEvidenceSchema = z.object({
@@ -522,6 +551,26 @@ export const InventoryEntrySchema = z.object({
   claim: z.record(z.string(), z.unknown()).nullable(),
   lease: z.record(z.string(), z.unknown()).nullable(),
   run: z.record(z.string(), z.unknown()).nullable(),
+  docker: z
+    .object({
+      available: z.boolean(),
+      reason: z.string().nullable(),
+      containers: z.array(
+        z.object({
+          id: z.string(),
+          running: z.boolean(),
+          labels: z.record(z.string(), z.string()),
+          ports: z.array(
+            z.object({
+              containerPort: PortSchema,
+              hostIp: z.string(),
+              hostPort: PortSchema,
+            }),
+          ),
+        }),
+      ),
+    })
+    .nullable(),
   listeners: z.array(ListenerEvidenceSchema),
 });
 
@@ -659,8 +708,16 @@ export const ReclamationResultSchema = z.object({
     'terminated',
     'refused',
     'timeout',
+    'launcher-action-required',
   ]),
   reason: z.string().min(1).nullable(),
+  launcherAction: z
+    .object({
+      kind: z.literal('docker'),
+      action: z.literal('stop-container'),
+      containerIds: z.array(z.string().regex(/^[a-f0-9]{12,64}$/u)).min(1),
+    })
+    .nullable(),
   targets: z.array(ListenerEvidenceSchema),
   signals: z.array(ReclamationSignalSchema),
 });
@@ -714,12 +771,16 @@ export const PORTREEVE_HEALTH = Object.freeze({
  * @param {{minimum: number, maximum: number}} clientRange
  * @param {readonly string[]} requiredCapabilities
  */
-export function negotiateCompatibility(clientRange, requiredCapabilities) {
+export function negotiateCompatibility(
+  clientRange,
+  requiredCapabilities,
+  availableCapabilities = CAPABILITIES,
+) {
   const range = ProtocolRangeSchema.parse(clientRange);
   const overlap =
     range.minimum <= PROTOCOL_RANGE.maximum && range.maximum >= PROTOCOL_RANGE.minimum;
   const missingCapabilities = requiredCapabilities.filter(
-    (capability) => !CAPABILITIES.includes(capability),
+    (capability) => !availableCapabilities.includes(capability),
   );
 
   return Object.freeze({

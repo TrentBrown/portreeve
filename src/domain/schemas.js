@@ -50,17 +50,29 @@ export const LeaseRecordSchema = z.object({
 
 export const RunStateSchema = z.enum(['confirmed', 'released']);
 
-export const RunRecordSchema = z.object({
-  id: IdentifierSchema,
-  claimId: IdentifierSchema,
-  leaseId: IdentifierSchema,
-  port: PortSchema,
-  state: RunStateSchema,
-  rootPid: z.number().int().positive(),
-  rootFingerprint: z.record(z.string(), z.unknown()).nullable(),
-  confirmedAt: TimestampSchema,
-  releasedAt: TimestampSchema.nullable(),
-});
+export const RunRecordSchema = z
+  .object({
+    id: IdentifierSchema,
+    claimId: IdentifierSchema,
+    leaseId: IdentifierSchema,
+    port: PortSchema,
+    state: RunStateSchema,
+    bindingKind: z.enum(['process', 'docker']),
+    rootPid: z.number().int().positive().nullable(),
+    rootFingerprint: z.record(z.string(), z.unknown()).nullable(),
+    containerId: z.string().min(12).max(64).nullable(),
+    providerEvidence: z.record(z.string(), z.unknown()).nullable(),
+    confirmedAt: TimestampSchema,
+    releasedAt: TimestampSchema.nullable(),
+  })
+  .superRefine((run, context) => {
+    if (run.bindingKind === 'process' && run.rootPid === null) {
+      context.addIssue({ code: 'custom', message: 'process runs require rootPid' });
+    }
+    if (run.bindingKind === 'docker' && run.containerId === null) {
+      context.addIssue({ code: 'custom', message: 'docker runs require containerId' });
+    }
+  });
 
 export const HistoryEventSchema = z.object({
   id: IdentifierSchema,

@@ -72,10 +72,21 @@ export interface InventoryEntry {
     | 'pending'
     | 'unclaimed'
     | 'conflicting'
-    | 'mixed';
+    | 'mixed'
+    | 'docker-managed';
   claim: Record<string, unknown> | null;
   lease: Record<string, unknown> | null;
   run: Record<string, unknown> | null;
+  docker: {
+    available: boolean;
+    reason: string | null;
+    containers: Array<{
+      id: string;
+      running: boolean;
+      labels: Record<string, string>;
+      ports: Array<{ containerPort: number; hostIp: string; hostPort: number }>;
+    }>;
+  } | null;
   listeners: Array<Record<string, unknown>>;
 }
 
@@ -208,6 +219,12 @@ export interface StackActivationLease {
   leaseToken: string;
   port: number;
   expiresAt: string;
+  bindingKind: 'process' | 'docker';
+  docker: {
+    service: string;
+    containerPort: number;
+    requiredLabels: Record<string, string>;
+  } | null;
 }
 
 export interface StackBeginActivationResult {
@@ -277,8 +294,19 @@ export interface ReclamationResult {
   port: number;
   policy: 'never' | 'graceful' | 'force-after-grace';
   dryRun: boolean;
-  outcome: 'already-free' | 'would-terminate' | 'terminated' | 'refused' | 'timeout';
+  outcome:
+    | 'already-free'
+    | 'would-terminate'
+    | 'terminated'
+    | 'refused'
+    | 'timeout'
+    | 'launcher-action-required';
   reason: string | null;
+  launcherAction: {
+    kind: 'docker';
+    action: 'stop-container';
+    containerIds: string[];
+  } | null;
   targets: Array<Record<string, unknown>>;
   signals: Array<{
     pid: number;
@@ -340,6 +368,7 @@ export declare class PortreeveClient {
     options?: {
       requiredEndpoints?: StackEndpointReference[];
       skippedEndpoints?: StackEndpointReference[];
+      bindings?: Record<string, 'process' | 'docker'>;
     },
   ): Promise<StackBeginActivationResult>;
   getStackActivation(activationId: string): Promise<StackActivation>;
@@ -353,7 +382,19 @@ export declare class PortreeveClient {
   }>;
   confirmStackEndpoint(
     activationId: string,
-    evidence: { leaseId: string; leaseToken: string; rootPid: number },
+    evidence:
+      | {
+          leaseId: string;
+          leaseToken: string;
+          bindingKind?: 'process';
+          rootPid: number;
+        }
+      | {
+          leaseId: string;
+          leaseToken: string;
+          bindingKind: 'docker';
+          containerId: string;
+        },
   ): Promise<StackActivation>;
   abandonStackEndpoint(
     activationId: string,

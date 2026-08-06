@@ -22,7 +22,8 @@ afterEach(async () => {
   }
 });
 
-async function startFixture() {
+/** @param {{dockerAdapter?: import('../../src/docker/adapter.js').DockerEvidenceAdapter}} [options] */
+async function startFixture(options = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'portreeve-server-'));
   const socketPath = join(directory, 'runtime', 'portreeve.sock');
   const databasePath = join(directory, 'data', 'registry.sqlite');
@@ -35,6 +36,9 @@ async function startFixture() {
   const server = await startPortreeveServer({
     socketPath,
     allocationService,
+    ...(options.dockerAdapter === undefined
+      ? {}
+      : { dockerAdapter: options.dockerAdapter }),
   });
   cleanups.push(async () => {
     await server.stop();
@@ -292,6 +296,94 @@ test('prepares and confirms a process-backed activation through the official cli
     expect(ended).toMatchObject({
       changed: true,
       activation: { state: 'ended' },
+    });
+  } finally {
+    listener?.stop(true);
+  }
+});
+
+test('advertises and confirms Docker evidence through the official socket client', async () => {
+  const containerId = 'd'.repeat(64);
+  /** @type {null | {id: string, running: boolean, labels: Readonly<Record<string, string>>, ports: Array<{containerPort: number, hostIp: string, hostPort: number}>}} */
+  let container = null;
+  /** @type {import('../../src/docker/adapter.js').DockerEvidenceAdapter} */
+  const dockerAdapter = {
+    availability: async () => ({ available: true, reason: null }),
+    inspect: async (id) =>
+      id === containerId && container !== null
+        ? { status: 'ok', reason: null, container }
+        : { status: 'missing', reason: 'container-missing', container: null },
+    findPublishedPort: async (port) => ({
+      available: true,
+      reason: null,
+      containers:
+        container?.ports.some((binding) => binding.hostPort === port) === true
+          ? [container]
+          : [],
+    }),
+  };
+  const { socketPath } = await startFixture({ dockerAdapter });
+  const client = new PortreeveClient({ socketPath });
+  const workspaceRoot = await mkdtemp(join(tmpdir(), 'portreeve-docker-activation-'));
+  cleanups.push(() => rm(workspaceRoot, { force: true, recursive: true }));
+  const exactPort = await unusedPort();
+  /** @type {Bun.Server<undefined> | undefined} */
+  let listener;
+
+  try {
+    expect((await client.health()).capabilities).toContain('docker-evidence-v1');
+    const applied = await client.applyStack({
+      workspaceRoot,
+      definition: {
+        version: 1,
+        project: 'docker-client',
+        components: {
+          api: {
+            docker: { service: 'api' },
+            endpoints: {
+              http: {
+                allocation: { exactPort },
+                docker: { containerPort: 3000 },
+              },
+            },
+          },
+        },
+      },
+    });
+    const prepared = await client.prepareStack(applied.stack.id);
+    const begun = await client.beginStackActivation(prepared.generation.id, {
+      bindings: { api: 'docker' },
+    });
+    const lease = begun.leases[0];
+    if (lease?.docker === null || lease === undefined) {
+      throw new Error('Expected a Docker activation lease.');
+    }
+    container = {
+      id: containerId,
+      running: true,
+      labels: lease.docker.requiredLabels,
+      ports: [{ containerPort: 3000, hostIp: '127.0.0.1', hostPort: exactPort }],
+    };
+    listener = Bun.serve({
+      port: exactPort,
+      hostname: '127.0.0.1',
+      fetch() {
+        return new Response('docker publication fixture');
+      },
+    });
+    const activation = await client.confirmStackEndpoint(begun.activation.id, {
+      leaseId: lease.leaseId,
+      leaseToken: lease.leaseToken,
+      bindingKind: 'docker',
+      containerId,
+    });
+    expect(activation).toMatchObject({
+      state: 'confirmed',
+      endpoints: [{ bindingKind: 'docker', state: 'confirmed' }],
+    });
+    expect(await client.inspectPort(exactPort)).toMatchObject({
+      classification: 'docker-managed',
+      docker: { containers: [{ id: containerId }] },
     });
   } finally {
     listener?.stop(true);

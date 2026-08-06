@@ -10,6 +10,7 @@ export class InventoryService {
    *   registry: import('../storage/registry.js').Registry,
    *   inspectListeners?: typeof inspectAllTcpListeners,
    *   verifyLineage?: typeof verifyProcessLineage,
+   *   dockerAdapter?: Pick<import('../docker/adapter.js').DockerEvidenceAdapter, 'findPublishedPort'> | null,
    *   now?: () => Date
    * }} dependencies
    */
@@ -17,11 +18,13 @@ export class InventoryService {
     registry,
     inspectListeners = inspectAllTcpListeners,
     verifyLineage = verifyProcessLineage,
+    dockerAdapter = null,
     now = () => new Date(),
   }) {
     this.registry = registry;
     this.inspectListeners = inspectListeners;
     this.verifyLineage = verifyLineage;
+    this.dockerAdapter = dockerAdapter;
     this.now = now;
   }
 
@@ -67,6 +70,10 @@ export class InventoryService {
             null;
           const portListeners = listeners.filter((listener) => listener.port === port);
           const ownership = await this.#ownership(run, portListeners);
+          const docker =
+            this.dockerAdapter === null || portListeners.length === 0
+              ? null
+              : publicDockerEvidence(await this.dockerAdapter.findPublishedPort(port));
 
           return {
             port,
@@ -77,6 +84,7 @@ export class InventoryService {
               run,
               listeners: portListeners,
               ownership,
+              docker,
             }),
             claim,
             lease:
@@ -97,6 +105,7 @@ export class InventoryService {
                     confirmedListenerFingerprints:
                       this.registry.listListenerFingerprintsForRun(run.id),
                   },
+            docker,
             listeners: portListeners.map((listener, index) => ({
               ...listener,
               ownership: ownership[index] ?? {
@@ -163,6 +172,7 @@ export class InventoryService {
         claim: null,
         lease: null,
         run: null,
+        docker: null,
         listeners: [],
       }
     );
@@ -201,10 +211,14 @@ export class InventoryService {
  *   lease: unknown,
  *   run: unknown,
  *   listeners: unknown[],
- *   ownership: Array<{verified: boolean}>
+ *   ownership: Array<{verified: boolean}>,
+ *   docker: null | {containers: unknown[]}
  * }} evidence
  */
-function classify({ claim, lease, run, listeners, ownership }) {
+function classify({ claim, lease, run, listeners, ownership, docker }) {
+  if ((docker?.containers?.length ?? 0) > 0) {
+    return 'docker-managed';
+  }
   if (claim === null && lease === null && listeners.length > 0) {
     return 'unclaimed';
   }
@@ -225,4 +239,19 @@ function classify({ claim, lease, run, listeners, ownership }) {
     return listeners.length === 0 ? 'idle' : 'conflicting';
   }
   return listeners.length === 0 ? 'available' : 'unclaimed';
+}
+
+/** @param {Awaited<ReturnType<import('../docker/adapter.js').DockerEvidenceAdapter['findPublishedPort']>>} evidence */
+function publicDockerEvidence(evidence) {
+  return {
+    ...evidence,
+    containers: evidence.containers.map((container) => ({
+      ...container,
+      labels: Object.fromEntries(
+        Object.entries(container.labels).filter(([key]) =>
+          key.startsWith('com.trentbrown.portreeve.'),
+        ),
+      ),
+    })),
+  };
 }

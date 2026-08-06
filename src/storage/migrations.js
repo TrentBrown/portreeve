@@ -255,6 +255,53 @@ export const MIGRATIONS = Object.freeze([
       );
     `,
   }),
+  Object.freeze({
+    version: 5,
+    name: 'docker-provider-evidence',
+    rebuildsForeignKeyTable: true,
+    sql: `
+      CREATE TABLE runs_next (
+        id TEXT PRIMARY KEY,
+        claim_id TEXT NOT NULL REFERENCES claims(id) ON DELETE RESTRICT,
+        lease_id TEXT NOT NULL UNIQUE REFERENCES leases(id) ON DELETE RESTRICT,
+        port INTEGER NOT NULL CHECK (port BETWEEN 1 AND 65535),
+        state TEXT NOT NULL CHECK (state IN ('confirmed', 'released')),
+        binding_kind TEXT NOT NULL CHECK (binding_kind IN ('process', 'docker')),
+        root_pid INTEGER CHECK (root_pid IS NULL OR root_pid > 0),
+        root_fingerprint_json TEXT,
+        container_id TEXT,
+        provider_evidence_json TEXT,
+        confirmed_at TEXT NOT NULL,
+        released_at TEXT,
+        CHECK (
+          (binding_kind = 'process' AND root_pid IS NOT NULL AND container_id IS NULL)
+          OR
+          (binding_kind = 'docker' AND root_pid IS NULL AND container_id IS NOT NULL)
+        )
+      );
+
+      INSERT INTO runs_next (
+        id, claim_id, lease_id, port, state, binding_kind, root_pid,
+        root_fingerprint_json, container_id, provider_evidence_json,
+        confirmed_at, released_at
+      )
+      SELECT
+        id, claim_id, lease_id, port, state, 'process', root_pid,
+        root_fingerprint_json, NULL, NULL, confirmed_at, released_at
+      FROM runs;
+
+      DROP TABLE runs;
+      ALTER TABLE runs_next RENAME TO runs;
+
+      CREATE UNIQUE INDEX runs_confirmed_claim
+        ON runs (claim_id)
+        WHERE state = 'confirmed';
+
+      CREATE INDEX runs_confirmed_container
+        ON runs (container_id)
+        WHERE state = 'confirmed' AND binding_kind = 'docker';
+    `,
+  }),
 ]);
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.at(-1)?.version ?? 0;

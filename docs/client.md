@@ -96,6 +96,36 @@ await client.confirmStackEndpoint(begun.activation.id, {
 });
 ```
 
+Docker leases expose `bindingKind`, `docker.service`, `docker.containerPort`, and
+`docker.requiredLabels`. Apply those labels through the trusted launcher, publish the
+allocated loopback port, then confirm with `{ leaseId, leaseToken, bindingKind:
+"docker", containerId }`. The client preflights `docker-evidence-v1`; Docker absence
+does not affect process-only calls.
+
+```js
+const begun = await client.beginStackActivation(generation.id, {
+  bindings: { api: 'docker' },
+});
+const lease = begun.leases.find(
+  ({ component, endpoint }) => component === 'api' && endpoint === 'http',
+);
+const containerId = await launcher.startContainer({
+  service: lease.docker.service,
+  labels: lease.docker.requiredLabels,
+  publish: {
+    host: '127.0.0.1',
+    hostPort: lease.port,
+    containerPort: lease.docker.containerPort,
+  },
+});
+await client.confirmStackEndpoint(begun.activation.id, {
+  leaseId: lease.leaseId,
+  leaseToken: lease.leaseToken,
+  bindingKind: 'docker',
+  containerId,
+});
+```
+
 Preparation never starts project processes, and the client does not own startup order,
 health checks, or Docker Compose. `getStackActivation(id)` reports network-ownership
 coordination state, not application readiness.
