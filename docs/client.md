@@ -51,7 +51,9 @@ New integrations should use `component` and `endpoint`.
 as the CLI and returns `{ changed, stack }`. `listStacks(filters)` and
 `getStack(stackId)` inspect the normalized stored definition and its content-addressed
 current revision. These methods coordinate definitions and claims only; they do not
-start project processes or run Docker Compose.
+start project processes or run Docker Compose. Before applying, the client checks server
+health for `stack-definitions-v1`; an older daemon fails explicitly with
+`incompatible_protocol` before mutation.
 
 ```js
 const result = await client.applyStack({

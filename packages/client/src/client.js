@@ -91,6 +91,7 @@ export class PortreeveClient {
    */
   async applyStack(request) {
     const workspaceRoot = await canonicalWorkspaceRoot(request.workspaceRoot);
+    await this.#requireCapabilities(['stack-definitions-v1']);
     return requestJson(
       this.socketPath,
       'POST',
@@ -113,6 +114,28 @@ export class PortreeveClient {
   /** @param {string} stackId */
   async getStack(stackId) {
     return requestJson(this.socketPath, 'GET', `/v1/stacks/${stackId}`);
+  }
+
+  /** @param {string[]} requiredCapabilities */
+  async #requireCapabilities(requiredCapabilities) {
+    const health = await this.health();
+    const serverCapabilities = health.capabilities;
+    const missingCapabilities = requiredCapabilities.filter(
+      (capability) => !serverCapabilities.includes(capability),
+    );
+    if (missingCapabilities.length > 0) {
+      throw new PortreeveClientError(
+        `Portreeve does not support the required capabilities: ${missingCapabilities.join(', ')}.`,
+        {
+          code: 'incompatible_protocol',
+          details: {
+            requiredCapabilities,
+            missingCapabilities,
+            serverCapabilities,
+          },
+        },
+      );
+    }
   }
 
   /**

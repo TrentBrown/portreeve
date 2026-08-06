@@ -126,6 +126,33 @@ test('rejects incompatible clients before allocation mutation', async () => {
   expect(registry.findClaim(claim('future'))).toBeNull();
 });
 
+test('official client refuses a stack apply when an old server lacks the capability', async () => {
+  const workspaceRoot = await mkdtemp(join(tmpdir(), 'portreeve-old-server-'));
+  cleanups.push(() => rm(workspaceRoot, { force: true, recursive: true }));
+  const client = new PortreeveClient({ socketPath: '/not-used' });
+  client.health = async () => ({
+    softwareVersion: '0.0.1',
+    protocol: { minimum: 1, maximum: 1 },
+    capabilities: ['two-phase-allocation-v1'],
+    pid: 1,
+    mode: 'manual',
+  });
+
+  await expect(
+    client.applyStack({
+      workspaceRoot,
+      definition: {
+        version: 1,
+        project: 'caregiver',
+        components: { api: {} },
+      },
+    }),
+  ).rejects.toMatchObject({
+    code: 'incompatible_protocol',
+    details: { missingCapabilities: ['stack-definitions-v1'] },
+  });
+});
+
 test('applies and inspects a stack definition through the official client', async () => {
   const { socketPath, registry } = await startFixture();
   const client = new PortreeveClient({ socketPath });
