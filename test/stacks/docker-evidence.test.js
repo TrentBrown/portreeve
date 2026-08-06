@@ -293,6 +293,51 @@ test('normal reclamation and unsafe eviction never signal Docker-managed listene
   registry.close();
 });
 
+test('unsafe eviction refuses a persisted Docker run when fresh discovery is unavailable', async () => {
+  const registry = openRegistry();
+  const target = {
+    ...listener(43231, 601),
+    ownership: { verified: false, reason: 'docker-run', lineage: [] },
+  };
+  /** @type {Array<[number, 'SIGTERM' | 'SIGKILL']>} */
+  const signals = [];
+  const reclamation = new ReclamationService({
+    registry,
+    inventoryService: /** @type {any} */ ({
+      inspect: async () => ({
+        port: 43231,
+        transport: 'tcp',
+        classification: 'conflicting',
+        claim: null,
+        lease: null,
+        run: { bindingKind: 'docker', containerId },
+        docker: null,
+        listeners: [target],
+      }),
+    }),
+    signalProcess: (pid, signal) => signals.push([pid, signal]),
+  });
+
+  expect(
+    await reclamation.unsafeEvict(43231, {
+      client: {
+        ...definitionClient,
+        requiredCapabilities: ['reclamation-v1'],
+      },
+      unsafeAnyOwner: true,
+      policy: 'force-after-grace',
+      dryRun: false,
+    }),
+  ).toMatchObject({
+    outcome: 'refused',
+    reason: 'docker-evidence-unavailable',
+    launcherAction: null,
+    signals: [],
+  });
+  expect(signals).toEqual([]);
+  registry.close();
+});
+
 /** @param {number} port @param {number} pid */
 function listener(port, pid) {
   return {

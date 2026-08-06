@@ -390,6 +390,41 @@ test('advertises and confirms Docker evidence through the official socket client
   }
 });
 
+test('omits unavailable Docker capability without impairing process-only inventory', async () => {
+  const { socketPath } = await startFixture({
+    dockerAdapter: {
+      availability: async () => ({
+        available: false,
+        reason: 'docker-executable-unavailable',
+      }),
+      inspect: async () => ({
+        status: 'unavailable',
+        reason: 'docker-executable-unavailable',
+        container: null,
+      }),
+      findPublishedPort: async () => {
+        throw new Error('Unavailable Docker discovery must not run for inventory.');
+      },
+    },
+  });
+  const client = new PortreeveClient({ socketPath });
+  const listener = Bun.serve({
+    port: 0,
+    fetch: () => new Response('process-only'),
+  });
+
+  try {
+    expect((await client.health()).capabilities).not.toContain('docker-evidence-v1');
+    if (listener.port === undefined) throw new Error('Listener did not expose a port.');
+    expect(await client.inspectPort(listener.port)).toMatchObject({
+      classification: 'unclaimed',
+      docker: null,
+    });
+  } finally {
+    listener.stop(true);
+  }
+});
+
 test('acquires, binds, confirms, releases, and reuses a sticky assignment', async () => {
   const { socketPath, registry } = await startFixture();
   const client = new PortreeveClient({ socketPath });

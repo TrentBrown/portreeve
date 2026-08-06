@@ -97,7 +97,7 @@ export async function startPortreeveServer(options) {
     options.inventoryService ??
     new InventoryService({
       registry: options.allocationService.registry,
-      dockerAdapter,
+      dockerAdapter: dockerAvailability.available ? dockerAdapter : null,
     });
   const reclamationService =
     options.reclamationService ??

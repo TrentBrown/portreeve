@@ -118,11 +118,7 @@ export class DockerCliAdapter {
   /** @param {number} requestedPort */
   async findPublishedPort(requestedPort) {
     const port = PortSchema.parse(requestedPort);
-    const listed = await this.runner(this.executable, [
-      'ps',
-      '--quiet',
-      '--no-trunc',
-    ]);
+    const listed = await this.runner(this.executable, ['ps', '--quiet', '--no-trunc']);
     if (listed.code !== 0) {
       return Object.freeze({
         available: false,

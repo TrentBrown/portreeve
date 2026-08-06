@@ -296,6 +296,9 @@ export class ReclamationService {
     if ((entry.docker?.containers?.length ?? 0) > 0) {
       return { valid: false, reason: 'docker-managed-listener', entry };
     }
+    if (entry.run?.bindingKind === 'docker') {
+      return { valid: false, reason: 'docker-evidence-unavailable', entry };
+    }
     const unobservable = entry.listeners.some(
       ({ process }) => !ProcessFingerprintSchema.safeParse(process).success,
     );
