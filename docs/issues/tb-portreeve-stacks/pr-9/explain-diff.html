@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portreeve PR #9 — Scoped Stack Discovery</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17231f;
+        --muted: #596963;
+        --paper: #f7f2e8;
+        --panel: #fffdf8;
+        --green: #17624b;
+        --green-soft: #e2eee8;
+        --gold: #b66b24;
+        --gold-soft: #fff0dc;
+        --line: #d9d2c4;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font:
+          17px/1.65 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+      }
+      header {
+        padding: 64px max(24px, calc((100vw - 1040px) / 2));
+        background: linear-gradient(140deg, #113f33, #17624b 60%, #29785f);
+        color: white;
+      }
+      header p {
+        max-width: 780px;
+        color: #e8f3ef;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: Georgia, 'Times New Roman', serif;
+        line-height: 1.18;
+      }
+      h1 {
+        margin: 8px 0 16px;
+        font-size: clamp(2.5rem, 7vw, 4.8rem);
+      }
+      h2 {
+        margin-top: 0;
+        font-size: clamp(1.8rem, 4vw, 2.8rem);
+      }
+      h3 {
+        margin-top: 1.7em;
+      }
+      main {
+        width: min(1040px, calc(100% - 36px));
+        margin: 32px auto 72px;
+      }
+      section,
+      nav {
+        margin: 24px 0;
+        padding: clamp(24px, 5vw, 48px);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--panel);
+        box-shadow: 0 10px 30px rgb(35 46 40 / 8%);
+      }
+      nav ol {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 28px;
+        margin: 0;
+      }
+      a {
+        color: var(--green);
+        text-underline-offset: 3px;
+      }
+      code,
+      pre {
+        font-family: 'SFMono-Regular', Consolas, monospace;
+      }
+      code {
+        padding: 0.1em 0.3em;
+        border-radius: 4px;
+        background: #eee9df;
+        font-size: 0.9em;
+      }
+      pre {
+        overflow: auto;
+        padding: 20px;
+        border-radius: 12px;
+        background: #14231f;
+        color: #eef6f2;
+        white-space: pre-wrap;
+        font-size: 0.87rem;
+      }
+      .eyebrow {
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        font-weight: 750;
+      }
+      .pin {
+        display: inline-block;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        padding: 8px 12px;
+        border: 1px solid #7fb29f;
+        border-radius: 8px;
+        background: rgb(255 255 255 / 12%);
+        font-family: 'SFMono-Regular', Consolas, monospace;
+        font-size: 0.78rem;
+      }
+      .callout {
+        margin: 24px 0;
+        padding: 18px 20px;
+        border-left: 5px solid var(--gold);
+        border-radius: 8px;
+        background: var(--gold-soft);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 14px;
+        margin: 24px 0;
+      }
+      .card {
+        padding: 19px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: white;
+      }
+      .card b {
+        display: block;
+        color: var(--green);
+      }
+      .card p {
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: 0.93rem;
+      }
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(120px, 1fr));
+        gap: 10px;
+        margin: 28px 0;
+      }
+      .step {
+        position: relative;
+        padding: 18px 12px;
+        border-radius: 11px;
+        background: var(--green-soft);
+        text-align: center;
+      }
+      .step:not(:last-child)::after {
+        content: '→';
+        position: absolute;
+        right: -13px;
+        top: 40%;
+        z-index: 2;
+        color: var(--green);
+        font-weight: 900;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        font-size: 0.93rem;
+      }
+      th,
+      td {
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        color: var(--green);
+      }
+      details {
+        margin: 13px 0;
+        padding: 15px 18px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: white;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 750;
+      }
+      @media (max-width: 760px) {
+        .flow {
+          grid-template-columns: 1fr;
+        }
+        .step:not(:last-child)::after {
+          content: '↓';
+          right: 50%;
+          top: auto;
+          bottom: -18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="eyebrow">Portreeve · PR #9 · P4 / I-3</div>
+      <h1>Scoped stack discovery</h1>
+      <p>
+        One activation can now tell one component where its own endpoints and declared
+        dependencies live—without giving a sandbox Portreeve's control socket, lease
+        credentials, process evidence, or visibility into unrelated services.
+      </p>
+      <div class="pin">
+        ca7b552e4aaf0690b80c554aa20afff7576c40b2 →
+        fcb75bfcf7cc93af5f1f412e6c55bd4dcbed2811
+      </div>
+    </header>
+    <main>
+      <nav aria-label="Contents">
+        <ol>
+          <li><a href="#why">Why this slice exists</a></li>
+          <li><a href="#model">Mental model</a></li>
+          <li><a href="#code">Code tour</a></li>
+          <li><a href="#safety">Safety boundary</a></li>
+          <li><a href="#verify">Verification</a></li>
+          <li><a href="#quiz">Check your understanding</a></li>
+        </ol>
+      </nav>
+
+      <section id="why">
+        <h2>Why this slice exists</h2>
+        <p>
+          PR #8 gave a worktree one immutable generation of allocated ports and one
+          activation. That solved coordinated allocation, but a consumer still needed a
+          safe answer to: “Which addresses may I use?” PR #9 supplies that answer while
+          keeping project startup and Docker topology under launcher control.
+        </p>
+        <div class="callout">
+          <strong>The key inversion</strong>
+          Portreeve publishes scoped address facts. A project launcher decides start
+          order, supplies the sandbox gateway, writes the runtime file, and mounts it
+          read-only. Portreeve does not become a general process orchestrator.
+        </div>
+      </section>
+
+      <section id="model">
+        <h2>The mental model</h2>
+        <div class="flow" aria-label="Discovery flow">
+          <div class="step"><b>Activation</b><small>selects one generation</small></div>
+          <div class="step">
+            <b>Component</b><small>sets the visibility scope</small>
+          </div>
+          <div class="step"><b>Resolve</b><small>own + dependency facts</small></div>
+          <div class="step"><b>Render</b><small>launcher gateway view</small></div>
+          <div class="step"><b>Read</b><small>strict sandbox document</small></div>
+        </div>
+        <div class="grid">
+          <div class="card">
+            <b>Host publication</b>
+            <p>The generation's allocated loopback host and port.</p>
+          </div>
+          <div class="card">
+            <b>Docker network</b>
+            <p>
+              A nullable service name and container port from the checked-in definition.
+            </p>
+          </div>
+          <div class="card">
+            <b>Sandbox gateway</b>
+            <p>A launcher-supplied host token paired with the allocated host port.</p>
+          </div>
+        </div>
+        <p>
+          These views are deliberately not collapsed. An allocated host port is not
+          container evidence, and a gateway address is not listener ownership evidence.
+        </p>
+      </section>
+
+      <section id="code">
+        <h2>Code tour</h2>
+        <h3>1. Strict public shapes</h3>
+        <p>
+          <code>src/protocol/schemas.js</code> introduces strict schemas for resolution,
+          snapshots, and gateway input. Definitions now reject dependencies on
+          unpublished endpoints because immutable generations contain only published
+          addresses.
+        </p>
+        <pre><code>{
+  schemaVersion: 1,
+  definitionRevision,
+  generationId,
+  activationId,
+  component: "website",
+  own: { http: { component, endpoint, host, dockerNetwork } },
+  dependencies: { backend: { component, endpoint, host, dockerNetwork } }
+}</code></pre>
+
+        <h3>2. One activation, one scope</h3>
+        <p>
+          <code>src/stacks/discovery-service.js</code> loads the activation, derives its
+          generation, verifies the generation still matches the current definition, and
+          maps only the consumer's published endpoints and declared aliases. Failed or
+          ended activations cannot publish discovery.
+        </p>
+
+        <h3>3. Two socket operations</h3>
+        <p>
+          The server exposes <code>POST .../resolve</code> and
+          <code>POST .../snapshot</code>. The official client preflights the independent
+          <code>stack-discovery-v1</code> capability before invoking either route, so an
+          older daemon fails clearly instead of partially interpreting a new request.
+        </p>
+
+        <h3>4. A dependency-free runtime reader</h3>
+        <p>
+          <code>packages/client/src/discovery.js</code> writes through a private
+          same-directory temporary file and atomic rename. Its reader accepts an
+          explicit path or <code>PORTREEVE_ENDPOINTS_FILE</code>, caps input at 1 MiB,
+          rejects unknown fields, and can require an expected revision, generation,
+          activation, or component.
+        </p>
+        <pre><code>const endpoints = await readEndpointSnapshot(undefined, {
+  generationId: expectedGeneration,
+  component: "website"
+});
+
+fetch(`http://${endpoints.dependencies.backend.address.host}` +
+      `:${endpoints.dependencies.backend.address.port}/health`);</code></pre>
+
+        <h3>5. Commander commands</h3>
+        <pre><code>portreeve stacks resolve &lt;activation-id&gt; --component website --json
+
+portreeve stacks snapshot &lt;activation-id&gt; \
+  --component website \
+  --gateway-host host.docker.internal \
+  --file .portreeve/runtime/endpoints.json</code></pre>
+      </section>
+
+      <section id="safety">
+        <h2>Safety boundary</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Snapshot includes</th>
+              <th>Snapshot excludes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Definition revision</td>
+              <td>Worktree and stack paths</td>
+            </tr>
+            <tr>
+              <td>Generation and activation IDs</td>
+              <td>Claim, lease, and run records</td>
+            </tr>
+            <tr>
+              <td>Consumer component</td>
+              <td>Lease tokens and process evidence</td>
+            </tr>
+            <tr>
+              <td>Canonical provider identity</td>
+              <td>Docker/container identifiers</td>
+            </tr>
+            <tr>
+              <td>Scoped TCP addresses</td>
+              <td>Daemon socket and mutation authority</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          The result is useful inside a sandbox but intentionally powerless. It can tell
+          code where to connect; it cannot allocate, reclaim, confirm, stop, or inspect
+          anything through Portreeve.
+        </p>
+      </section>
+
+      <section id="verify">
+        <h2>Verification and remaining work</h2>
+        <p>
+          The focused matrix passed 41 tests with 181 assertions. The broad matrix
+          passed 192 tests with 742 assertions and retained one accepted, unrelated
+          launchd-state failure. Typecheck, lint, strict changed-file formatting, build,
+          compiled CLI help, and all branch-document validators passed.
+        </p>
+        <div class="grid">
+          <div class="card">
+            <b>Now complete</b>
+            <p>R4 discovery isolation.</p>
+          </div>
+          <div class="card">
+            <b>Next</b>
+            <p>P5 Docker ownership evidence and mixed activations.</p>
+          </div>
+          <div class="card">
+            <b>Later</b>
+            <p>P6 recovery/pruning and P7 desktop support.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="quiz">
+        <h2>Check your understanding</h2>
+        <p>Open each question to compare your answer.</p>
+        <details>
+          <summary>1. Why does resolution start from an activation ID?</summary>
+          <p>
+            It structurally selects exactly one immutable generation and prevents mixing
+            addresses from different startup attempts.
+          </p>
+        </details>
+        <details>
+          <summary>
+            2. Is the Docker-network address proof that a container is running?
+          </summary>
+          <p>
+            No. It is a definition-derived service name and container port. Fresh Docker
+            ownership evidence belongs to P5.
+          </p>
+        </details>
+        <details>
+          <summary>3. Why does the launcher supply the sandbox gateway?</summary>
+          <p>
+            The launcher owns sandbox and Docker topology. Portreeve validates the token
+            but does not pretend to discover or verify that network.
+          </p>
+        </details>
+        <details>
+          <summary>4. What lets a consumer detect a stale snapshot?</summary>
+          <p>
+            The document carries revision, generation, activation, and component
+            identity, and the reader can require expected values for all four.
+          </p>
+        </details>
+        <details>
+          <summary>5. What authority does the sandbox document grant?</summary>
+          <p>
+            None beyond read-only addresses. It contains no daemon socket, lease token,
+            process evidence, or mutation operation.
+          </p>
+        </details>
+      </section>
+    </main>
+  </body>
+</html>

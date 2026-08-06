@@ -5,16 +5,16 @@
 
 ## Rubric Status
 
-| #   | Criterion (short)           | Status  | PR     | Notes                                                      |
-| --- | --------------------------- | ------- | ------ | ---------------------------------------------------------- |
-| R1  | Definition and identity     | PASS    | #7     | Strict canonical definitions and revisions                 |
-| R2  | Allocation and activation   | PASS    | #8     | P3 complete for process-backed activations                 |
-| R3  | Ownership confirmation      | NOT YET | -      | Planned for P5 / I-4                                       |
-| R4  | Discovery isolation         | NOT YET | -      | Planned for P4 / I-3                                       |
-| R5  | Compatibility and migration | PASS    | #7     | Legacy aliases and relational migration pass               |
-| R6  | Safety and recovery         | NOT YET | -      | Planned for P5-P6 / I-4-I-5                                |
-| R7  | Client, CLI, and protocol   | NOT YET | #7, #8 | Definition and activation surfaces delivered; P4-P7 remain |
-| R8  | Desktop                     | NOT YET | -      | Planned for P7 / I-6                                       |
+| #   | Criterion (short)           | Status  | PR    | Notes                                                         |
+| --- | --------------------------- | ------- | ----- | ------------------------------------------------------------- |
+| R1  | Definition and identity     | PASS    | #7    | Strict canonical definitions and revisions                    |
+| R2  | Allocation and activation   | PASS    | #8    | P3 complete for process-backed activations                    |
+| R3  | Ownership confirmation      | NOT YET | -     | Planned for P5 / I-4                                          |
+| R4  | Discovery isolation         | PASS    | #9    | Scoped, redacted, generation-aware discovery                  |
+| R5  | Compatibility and migration | PASS    | #7    | Legacy aliases and relational migration pass                  |
+| R6  | Safety and recovery         | NOT YET | -     | Planned for P5-P6 / I-4-I-5                                   |
+| R7  | Client, CLI, and protocol   | NOT YET | #7-#9 | Definition, activation, and discovery delivered; P5-P7 remain |
+| R8  | Desktop                     | NOT YET | -     | Planned for P7 / I-6                                          |
 
 ## PR Log
 
@@ -53,11 +53,14 @@ Append PR boundary entries here.
 ### PR #9 - Scoped dependency and sandbox discovery
 
 - **PR:** [#9](https://github.com/TrentBrown/portreeve/pull/9)
-- **Status:** draft
+- **Status:** ready for human review
 - **Scope:** P4 component-scoped own and dependency resolution, distinct host and
   Docker-network facts, launcher-rendered sandbox gateway views, deterministic redacted
   discovery documents, atomic private file replacement, stale-aware JavaScript reading,
   and matching protocol/client/CLI/documentation surfaces.
-- **Result:** Pending PR-boundary verification, specification evaluation, independent
-  judge, and code review. R4 is implemented; R7 advances through `stack-discovery-v1`
-  and remains open for Docker, recovery and pruning, and desktop work.
+- **Evidence packet:** [pr-9](pr-9/)
+- **Result:** R4 passes. R7 advances through the independently capability-gated
+  `stack-discovery-v1` surface and remains open for Docker, recovery and pruning, and
+  desktop work. Independent judge: PASS WITH CONCERNS; code review: PASS with no
+  findings. The broad suite's one lifecycle-status failure is the unchanged
+  installed-launchd baseline accepted with PRs #7 and #8.

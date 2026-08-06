@@ -136,7 +136,7 @@ sockets in the daemon - rejected by the approved process-owned binding model
 
 ## [6] Keep discovery scoped, deterministic, and authority-free
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

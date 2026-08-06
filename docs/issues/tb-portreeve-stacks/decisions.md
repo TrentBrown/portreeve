@@ -141,3 +141,37 @@ acquire path - rejected because partial activation leasing violates AC2; hold op
 sockets in the daemon - rejected by the approved process-owned binding model
 
 **Promoted:** 2026-08-06. PR: #8.
+
+---
+
+## Keep discovery scoped, deterministic, and authority-free
+
+**Confidence:** HIGH
+
+**Blast Radius:** Stack discovery schemas and service, protocol routes, official client
+and declarations, CLI, runtime snapshot files, and sandbox security boundary
+
+Resolve one consumer component against one immutable generation and activation. Return
+separate own-endpoint and declared-dependency maps so aliases cannot collide with
+endpoint names. Each entry carries canonical provider identity plus host publication
+facts and a nullable Docker-network address derived only from the checked-in definition.
+Generate a separate version-1 sandbox document by replacing each host address with a
+validated launcher-supplied gateway while retaining the allocated host port. The
+document contains only revision, generation, activation, consumer, and scoped TCP
+addresses; it excludes stack and worktree paths, claims, leases, runs, Docker
+identifiers, socket paths, and all mutation authority. Reject stale generations,
+definition drift, and ended or failed activations. The official client writes snapshots
+by atomic same-directory replacement and reads an explicit path or
+`PORTREEVE_ENDPOINTS_FILE` with optional expected generation and activation checks.
+
+**Triggered by:** P4 introduces the first public dependency-resolution and
+sandbox-discovery contract
+
+**Alternatives considered:** Return the whole generation - rejected because it violates
+component isolation; expose the daemon socket to sandboxes - rejected because it grants
+mutation and reclamation authority; let Portreeve discover a platform gateway - rejected
+because the trusted launcher owns sandbox topology; merge aliases and own endpoints into
+one map - rejected because names can collide; include all address views in the sandbox
+file - rejected because the sandbox needs only its rendered view
+
+**Promoted:** 2026-08-06. PR: #9.
