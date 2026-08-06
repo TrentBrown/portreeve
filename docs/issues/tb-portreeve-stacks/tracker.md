@@ -37,12 +37,15 @@ Append PR boundary entries here.
 ### PR #8 - Immutable generations and process-backed activations
 
 - **PR:** [#8](https://github.com/TrentBrown/portreeve/pull/8)
-- **Status:** draft
+- **Status:** ready for review
 - **Scope:** P3 complete immutable allocation generations, exact/preferred allocation,
   exclusive process-backed activations, atomic renewable endpoint leases,
   required/optional outcomes, evidence-backed confirmation and ending, and matching
   protocol/client/CLI/documentation surfaces.
-- **Result:** Pending PR-boundary verification, specification evaluation, independent
-  judge, and code review. R2 is implemented for the process-backed scope. R7 advances
-  through `stack-activations-v1` and remains open for dependency discovery, Docker,
-  recovery/pruning, and desktop work.
+- **Evidence packet:** [pr-8](pr-8/)
+- **Result:** R2 passes for the complete process-backed activation scope. R7 advances
+  through the independently capability-gated `stack-activations-v1` surface and remains
+  open for dependency discovery, Docker, recovery and pruning, and desktop work.
+  Independent judge: PASS WITH CONCERNS; code review: PASS with no remaining findings.
+  The one lifecycle-status failure is the unchanged installed-launchd baseline accepted
+  with PR #7.
