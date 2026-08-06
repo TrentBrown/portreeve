@@ -215,6 +215,45 @@ export interface StackBeginActivationResult {
   leases: StackActivationLease[];
 }
 
+export interface StackAddress {
+  transport: 'tcp';
+  host: string;
+  port: number;
+}
+
+export interface StackResolvedEndpoint {
+  component: string;
+  endpoint: string;
+  host: StackAddress;
+  dockerNetwork: StackAddress | null;
+}
+
+export interface StackResolution {
+  schemaVersion: 1;
+  definitionRevision: string;
+  generationId: string;
+  activationId: string;
+  component: string;
+  own: Record<string, StackResolvedEndpoint>;
+  dependencies: Record<string, StackResolvedEndpoint>;
+}
+
+export interface StackSnapshotEndpoint {
+  component: string;
+  endpoint: string;
+  address: StackAddress;
+}
+
+export interface StackEndpointSnapshot {
+  schemaVersion: 1;
+  definitionRevision: string;
+  generationId: string;
+  activationId: string;
+  component: string;
+  own: Record<string, StackSnapshotEndpoint>;
+  dependencies: Record<string, StackSnapshotEndpoint>;
+}
+
 export interface HistoryEvent {
   id: string;
   eventType: string;
@@ -332,6 +371,14 @@ export declare class PortreeveClient {
     changed: boolean;
     activation: StackActivation;
   }>;
+  resolveStackEndpoints(
+    activationId: string,
+    component: string,
+  ): Promise<StackResolution>;
+  createStackEndpointSnapshot(
+    activationId: string,
+    options: { component: string; gatewayHost: string },
+  ): Promise<StackEndpointSnapshot>;
   listClaims(): Promise<ClaimRecord[]>;
   getClaim(claimId: string): Promise<ClaimRecord>;
   reassignClaim(
@@ -391,3 +438,17 @@ export declare class PortreeveClient {
 
 export declare function defaultSocketPath(): string;
 export declare function canonicalWorkspaceRoot(projectPath: string): Promise<string>;
+export declare function parseEndpointSnapshot(input: unknown): StackEndpointSnapshot;
+export declare function readEndpointSnapshot(
+  filename?: string,
+  expected?: {
+    definitionRevision?: string;
+    generationId?: string;
+    activationId?: string;
+    component?: string;
+  },
+): Promise<StackEndpointSnapshot>;
+export declare function writeEndpointSnapshot(
+  filename: string,
+  snapshot: StackEndpointSnapshot,
+): Promise<string>;

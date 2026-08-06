@@ -7,7 +7,9 @@ import {
   HealthResponseSchema,
   PORTREEVE_HEALTH,
   StackBeginActivationRequestSchema,
+  StackDefinitionSchema,
   StackRenewActivationRequestSchema,
+  StackSnapshotRequestSchema,
   UnsafeEvictionRequestSchema,
   negotiateCompatibility,
   successEnvelopeSchema,
@@ -142,6 +144,28 @@ describe('protocol schemas', () => {
         leases: [],
       }),
     ).toThrow();
+  });
+
+  test('rejects unpublished dependency targets and unsafe sandbox gateway hosts', () => {
+    expect(() =>
+      StackDefinitionSchema.parse({
+        version: 1,
+        project: 'caregiver',
+        components: {
+          api: { endpoints: { private: { publish: false } } },
+          website: {
+            dependencies: { backend: { component: 'api', endpoint: 'private' } },
+          },
+        },
+      }),
+    ).toThrow('references unpublished endpoint');
+    expect(() =>
+      StackSnapshotRequestSchema.parse({
+        client,
+        component: 'website',
+        gatewayHost: 'host.docker.internal/path',
+      }),
+    ).toThrow('must not contain whitespace or slashes');
   });
 
   test('keeps configuration updates on the explicit settings contract', () => {

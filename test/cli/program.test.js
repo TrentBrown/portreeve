@@ -73,6 +73,8 @@ describe('Portreeve CLI', () => {
       'abandon',
       'skip',
       'end',
+      'resolve',
+      'snapshot',
     ]);
   });
 });

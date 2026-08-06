@@ -32,7 +32,7 @@ lifecycle test condition was accepted through human review and merge.
 
 ## I-2 - Implement generations and process-backed activations
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 3d
 - **Plan steps:** P3
 - **Rubric criteria:** R2, R7
@@ -51,9 +51,13 @@ process-backed activations, atomic batch leases, public coordination surfaces, a
 focused verification. R2 is implemented for the process-backed scope; R7 advances
 through the complete `stack-activations-v1` surface and remains open for P4-P7.
 
+**Merged 2026-08-06.** PR #8 merged to `main` as `ca7b552`; its process-backed
+activation contract and documented installed-launchd baseline were accepted through
+human review and merge.
+
 ## I-3 - Deliver dependency resolution and sandbox discovery
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P4
 - **Rubric criteria:** R4, R7
@@ -63,6 +67,9 @@ through the complete `stack-activations-v1` surface and remains open for P4-P7.
 Resolve scoped dependency aliases and host/Docker/sandbox address views from one
 generation, generate redacted activation-scoped discovery documents, and add the
 JavaScript snapshot reader and stale-plan safeguards.
+
+**Started 2026-08-06.** Sequential delivery branch
+`tb-portreeve-stacks-03-discovery` begins from merged `main` at `ca7b552`.
 
 ## I-4 - Add Docker evidence and mixed activations
 

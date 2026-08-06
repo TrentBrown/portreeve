@@ -25,6 +25,8 @@ test('protocol documentation covers every public endpoint', async () => {
     '/v1/leases/{leaseId}/confirm',
     '/v1/leases/{leaseId}/abandon',
     '/v1/runs/{runId}/release',
+    '/v1/stack-activations/{id}/resolve',
+    '/v1/stack-activations/{id}/snapshot',
   ]) {
     expect(protocol).toContain(endpoint);
   }

@@ -5,6 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 import {
   PortreeveClient,
   canonicalWorkspaceRoot,
+  writeEndpointSnapshot,
 } from '../../../packages/client/src/index.js';
 import {
   IdentifierSchema,
@@ -205,6 +206,48 @@ export async function endStackActivationCommand(activationIdArgument, options) {
   ]);
 }
 
+/**
+ * @param {string} activationIdArgument
+ * @param {{component: string, socket?: string, json?: boolean}} options
+ */
+export async function resolveStackEndpointsCommand(activationIdArgument, options) {
+  const resolution = await clientFor(options.socket).resolveStackEndpoints(
+    IdentifierSchema.parse(activationIdArgument),
+    options.component,
+  );
+  renderOutput(options.json ?? false, 'resolution', resolution, [
+    `Activation: ${resolution.activationId}`,
+    `Generation: ${resolution.generationId}`,
+    `Component: ${resolution.component}`,
+    ...Object.entries(resolution.own).map(
+      ([endpoint, value]) =>
+        `own.${endpoint}  ${formatAddress(value.host)}${formatDockerAddress(value.dockerNetwork)}`,
+    ),
+    ...Object.entries(resolution.dependencies).map(
+      ([alias, value]) =>
+        `dependency.${alias} -> ${value.component}.${value.endpoint}  ${formatAddress(value.host)}${formatDockerAddress(value.dockerNetwork)}`,
+    ),
+  ]);
+}
+
+/**
+ * @param {string} activationIdArgument
+ * @param {{component: string, gatewayHost: string, file: string, socket?: string, json?: boolean}} options
+ */
+export async function snapshotStackEndpointsCommand(activationIdArgument, options) {
+  const snapshot = await clientFor(options.socket).createStackEndpointSnapshot(
+    IdentifierSchema.parse(activationIdArgument),
+    { component: options.component, gatewayHost: options.gatewayHost },
+  );
+  const filename = await writeEndpointSnapshot(options.file, snapshot);
+  renderOutput(options.json ?? false, 'result', { filename, snapshot }, [
+    `Wrote endpoint snapshot ${filename}.`,
+    `Activation: ${snapshot.activationId}`,
+    `Generation: ${snapshot.generationId}`,
+    `Component: ${snapshot.component}`,
+  ]);
+}
+
 /** @param {{project?: string, workspace?: string, socket?: string, json?: boolean}} options */
 export async function stackStatusCommand(options) {
   const workspaceRoot = await canonicalWorkspaceRoot(
@@ -257,6 +300,16 @@ function renderActivation(activation, json) {
 /** @param {import('../../../packages/client/src/index.js').StackRecord} stack */
 function stackLabel(stack) {
   return `${stack.project}/${stack.workspaceRoot}`;
+}
+
+/** @param {{transport: 'tcp', host: string, port: number}} address */
+function formatAddress(address) {
+  return `${address.host}:${address.port}`;
+}
+
+/** @param {{transport: 'tcp', host: string, port: number} | null} address */
+function formatDockerAddress(address) {
+  return address === null ? '' : `  docker ${formatAddress(address)}`;
 }
 
 /** @param {string | undefined} socketPath */

@@ -155,6 +155,12 @@ test('official client refuses a stack apply when an old server lacks the capabil
     code: 'incompatible_protocol',
     details: { missingCapabilities: ['stack-activations-v1'] },
   });
+  await expect(
+    client.resolveStackEndpoints(crypto.randomUUID(), 'api'),
+  ).rejects.toMatchObject({
+    code: 'incompatible_protocol',
+    details: { missingCapabilities: ['stack-discovery-v1'] },
+  });
 });
 
 test('applies and inspects a stack definition through the official client', async () => {
@@ -227,6 +233,32 @@ test('prepares and confirms a process-backed activation through the official cli
     const prepared = await client.prepareStack(applied.stack.id);
     const begun = await client.beginStackActivation(prepared.generation.id, {
       skippedEndpoints: [{ component: 'api', endpoint: 'metrics' }],
+    });
+    expect(
+      await client.resolveStackEndpoints(begun.activation.id, 'api'),
+    ).toMatchObject({
+      activationId: begun.activation.id,
+      generationId: prepared.generation.id,
+      component: 'api',
+      own: {
+        http: {
+          component: 'api',
+          endpoint: 'http',
+          host: { host: '127.0.0.1', port: exactPort },
+          dockerNetwork: null,
+        },
+      },
+    });
+    expect(
+      await client.createStackEndpointSnapshot(begun.activation.id, {
+        component: 'api',
+        gatewayHost: 'host.docker.internal',
+      }),
+    ).toMatchObject({
+      activationId: begun.activation.id,
+      generationId: prepared.generation.id,
+      component: 'api',
+      own: { http: { address: { host: 'host.docker.internal', port: exactPort } } },
     });
     const lease = begun.leases[0];
     if (lease === undefined) throw new Error('Expected an activation lease.');

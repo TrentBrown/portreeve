@@ -38,10 +38,12 @@ import {
   listStacksCommand,
   prepareStackCommand,
   renewStackActivationCommand,
+  resolveStackEndpointsCommand,
   showStackCommand,
   showStackActivationCommand,
   showStackGenerationCommand,
   skipStackEndpointCommand,
+  snapshotStackEndpointsCommand,
   stackStatusCommand,
 } from './commands/stacks.js';
 
@@ -335,6 +337,24 @@ export function createProgram() {
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output')
     .action(endStackActivationCommand);
+
+  stacks
+    .command('resolve <activation-id>')
+    .description('Resolve one component own endpoints and declared dependencies')
+    .requiredOption('--component <name>', 'consumer component name')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(resolveStackEndpointsCommand);
+
+  stacks
+    .command('snapshot <activation-id>')
+    .description('Write one redacted sandbox endpoint discovery document atomically')
+    .requiredOption('--component <name>', 'sandbox consumer component name')
+    .requiredOption('--gateway-host <host>', 'launcher-rendered sandbox gateway host')
+    .requiredOption('--file <path>', 'destination JSON document')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(snapshotStackEndpointsCommand);
 
   const config = program
     .command('config')

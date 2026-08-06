@@ -166,10 +166,17 @@ export const StackDefinitionSchema = z
           });
           continue;
         }
-        if (provider.endpoints[dependency.endpoint] === undefined) {
+        const providerEndpoint = provider.endpoints[dependency.endpoint];
+        if (providerEndpoint === undefined) {
           context.addIssue({
             code: 'custom',
             message: `dependency ${alias} references unknown endpoint ${dependency.component}.${dependency.endpoint}`,
+            path: ['components', consumerName, 'dependencies', alias, 'endpoint'],
+          });
+        } else if (!providerEndpoint.publish) {
+          context.addIssue({
+            code: 'custom',
+            message: `dependency ${alias} references unpublished endpoint ${dependency.component}.${dependency.endpoint}`,
             path: ['components', consumerName, 'dependencies', alias, 'endpoint'],
           });
         }
@@ -353,6 +360,80 @@ export const StackEndActivationResponseSchema = z.object({
   changed: z.boolean(),
   activation: StackActivationSchema,
 });
+
+const StackNetworkHostSchema = z
+  .string()
+  .min(1)
+  .max(253)
+  .refine((value) => value === value.trim(), {
+    message: 'network hosts must not begin or end with whitespace',
+  });
+
+export const StackAddressSchema = z
+  .object({
+    transport: z.literal('tcp'),
+    host: StackNetworkHostSchema,
+    port: PortSchema,
+  })
+  .strict();
+
+export const StackResolvedEndpointSchema = z
+  .object({
+    component: StackNameSchema,
+    endpoint: StackNameSchema,
+    host: StackAddressSchema,
+    dockerNetwork: StackAddressSchema.nullable(),
+  })
+  .strict();
+
+export const StackResolutionSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    definitionRevision: z.string().regex(/^[a-f0-9]{64}$/),
+    generationId: IdentifierSchema,
+    activationId: IdentifierSchema,
+    component: StackNameSchema,
+    own: z.record(StackNameSchema, StackResolvedEndpointSchema),
+    dependencies: z.record(StackNameSchema, StackResolvedEndpointSchema),
+  })
+  .strict();
+
+export const StackResolveRequestSchema = z
+  .object({
+    client: ClientCompatibilitySchema,
+    component: StackNameSchema,
+  })
+  .strict();
+
+export const StackSnapshotEndpointSchema = z
+  .object({
+    component: StackNameSchema,
+    endpoint: StackNameSchema,
+    address: StackAddressSchema,
+  })
+  .strict();
+
+export const StackEndpointSnapshotSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    definitionRevision: z.string().regex(/^[a-f0-9]{64}$/),
+    generationId: IdentifierSchema,
+    activationId: IdentifierSchema,
+    component: StackNameSchema,
+    own: z.record(StackNameSchema, StackSnapshotEndpointSchema),
+    dependencies: z.record(StackNameSchema, StackSnapshotEndpointSchema),
+  })
+  .strict();
+
+export const StackSnapshotRequestSchema = z
+  .object({
+    client: ClientCompatibilitySchema,
+    component: StackNameSchema,
+    gatewayHost: StackNetworkHostSchema.refine((value) => !/[\s/]/u.test(value), {
+      message: 'sandbox gateway hosts must not contain whitespace or slashes',
+    }),
+  })
+  .strict();
 
 export const AcquireRequestSchema = z.object({
   client: ClientCompatibilitySchema,

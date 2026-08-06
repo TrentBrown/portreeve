@@ -37,7 +37,7 @@ Append PR boundary entries here.
 ### PR #8 - Immutable generations and process-backed activations
 
 - **PR:** [#8](https://github.com/TrentBrown/portreeve/pull/8)
-- **Status:** ready for review
+- **Status:** merged
 - **Scope:** P3 complete immutable allocation generations, exact/preferred allocation,
   exclusive process-backed activations, atomic renewable endpoint leases,
   required/optional outcomes, evidence-backed confirmation and ending, and matching

@@ -72,6 +72,7 @@ Version 1 capabilities are:
 - `lifecycle-control-v1`
 - `stack-definitions-v1`
 - `stack-activations-v1`
+- `stack-discovery-v1`
 
 ## Allocation workflow
 
@@ -153,6 +154,8 @@ policy.
 | `POST /v1/stack-activations/{id}/abandon` | Fail one pending endpoint; a required failure cancels the remaining pending batch                                                    |
 | `POST /v1/stack-activations/{id}/skip`    | Skip one optional pending endpoint                                                                                                   |
 | `POST /v1/stack-activations/{id}/end`     | End only after fresh evidence shows confirmed process listeners have stopped                                                         |
+| `POST /v1/stack-activations/{id}/resolve` | Resolve one consumer's own endpoints and declared dependencies from its activation generation; requires `stack-discovery-v1`          |
+| `POST /v1/stack-activations/{id}/snapshot` | Render one redacted sandbox discovery document using a launcher-supplied gateway; requires `stack-discovery-v1`                       |
 
 Inventory classifications are `available`, `verified`, `idle`, `pending`, `unclaimed`,
 `conflicting`, and `mixed`. A live PID alone never establishes ownership; Portreeve
@@ -193,6 +196,28 @@ back. Separately, required endpoints must confirm; optional endpoints may be ski
 fail, producing a `degraded` activation after all required endpoints confirm. Required
 endpoint failure or expiry fails the activation and cancels its other unconfirmed
 leases. See [Stack definitions and activation](stacks.md).
+
+## Stack dependency discovery
+
+Resolution accepts `client` and one consumer `component`. The activation selects exactly
+one immutable generation; failed, ended, stale, or definition-drifted activations refuse
+discovery. The response contains the definition revision, generation ID, activation ID,
+consumer name, and two separate maps:
+
+- `own` contains only the consumer's published endpoints.
+- `dependencies` contains only aliases declared by that consumer.
+
+Every entry identifies its canonical provider component and endpoint and supplies the
+allocated host-publication address. `dockerNetwork` is either the definition's Docker
+service and fixed container port or `null`; it is an address fact, not container
+ownership evidence. Circular dependency references are valid because every address is
+drawn from the same precomputed generation.
+
+Snapshot rendering additionally accepts `gatewayHost`. It returns a strict
+`schemaVersion: 1` document whose addresses use that launcher-supplied host and the
+generation's allocated host ports. It excludes worktree paths, claims, leases, tokens,
+runs, PIDs, Docker identifiers, socket paths, and mutation authority. Portreeve validates
+but does not discover or independently verify the gateway.
 
 ## Settings and observability
 

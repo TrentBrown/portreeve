@@ -108,11 +108,49 @@ The `PortreeveClient` exposes `health`, `acquire`, `confirm`, `abandon`, `releas
 `prepareStack`, `beginStackActivation`, `getStackActivation`, `renewStackActivation`,
 `confirmStackEndpoint`, `abandonStackEndpoint`, `skipStackEndpoint`,
 `getStackGeneration`, `endStackActivation`, `getConfig`, `setConfig`, `history`, `logs`,
-and `stopServer`.
+`resolveStackEndpoints`, `createStackEndpointSnapshot`, and `stopServer`.
 
 Construct it with `{ socketPath }` only when overriding the per-user default. Failures
 reject with `PortreeveClientError`, whose stable fields are `code`, optional HTTP
 `status`, `requestId`, `retryable`, and `details`.
+
+## Dependency and sandbox discovery
+
+`resolveStackEndpoints(activationId, component)` returns only that component's own
+published endpoints and declared dependency aliases. Host publication and optional
+Docker-network facts remain separate, and all facts come from the activation's one
+immutable generation.
+
+The trusted launcher can request a redacted sandbox document, then replace a private
+runtime file atomically:
+
+```js
+import { PortreeveClient, writeEndpointSnapshot } from 'portreeve';
+
+const snapshot = await client.createStackEndpointSnapshot(activation.id, {
+  component: 'website',
+  gatewayHost:
+    process.platform === 'darwin' ? 'host.docker.internal' : '172.17.0.1',
+});
+await writeEndpointSnapshot('/private/runtime/endpoints.json', snapshot);
+```
+
+Sandbox consumers import `readEndpointSnapshot`. It reads an explicit path or
+`PORTREEVE_ENDPOINTS_FILE`, rejects unknown fields and documents larger than 1 MiB, and
+can compare expected revision, generation, activation, or component identity:
+
+```js
+import { readEndpointSnapshot } from 'portreeve';
+
+const endpoints = await readEndpointSnapshot(undefined, {
+  generationId: expectedGeneration,
+  component: 'website',
+});
+```
+
+The snapshot contains no Portreeve socket or mutation credential. Mount it read-only in
+the sandbox; the host launcher remains responsible for selecting the correct gateway and
+replacing the document when activation identity changes.
 
 Migrated services should fail loudly on `code === "unavailable"`. They must not fall
 back to legacy probing or silently start/install Portreeve.

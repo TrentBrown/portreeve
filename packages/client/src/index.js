@@ -7,3 +7,8 @@ export {
   canonicalWorkspaceRoot,
   defaultSocketPath,
 } from './client.js';
+export {
+  parseEndpointSnapshot,
+  readEndpointSnapshot,
+  writeEndpointSnapshot,
+} from './discovery.js';

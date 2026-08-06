@@ -30,3 +30,8 @@ process.once('SIGTERM', async () => {
 ```
 
 See the repository's `docs/client.md` and `docs/protocol.md` for the complete contract.
+
+For sandbox discovery, a trusted host launcher can call `createStackEndpointSnapshot`,
+atomically publish it with `writeEndpointSnapshot`, and mount only that redacted JSON
+file. Sandboxed code reads an explicit file or `PORTREEVE_ENDPOINTS_FILE` with
+`readEndpointSnapshot`; it never needs the Portreeve control socket.
