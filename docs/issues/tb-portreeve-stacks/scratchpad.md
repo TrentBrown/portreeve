@@ -77,3 +77,26 @@ harmless key ordering would create drift; advertise one broad stacks-v1 capabili
 rejected because it would overstate incomplete activation and Docker behavior; defer all
 public stack endpoints until the whole feature is complete - rejected because it
 prevents a safe independently testable migration and registration slice.
+
+## [4] Reject ambiguous names and hash with locale-independent ordering
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Version-1 stack definition validation and cross-platform revision
+identity
+
+Require every stack name to already be trimmed instead of transforming it, so component,
+endpoint, and dependency record keys cannot silently collide. Sort canonical JSON keys
+with JavaScript UTF-16 relational ordering rather than localeCompare, making the same
+normalized definition hash identically across supported runtimes and operating systems.
+
+**Triggered by:** Boundary review demonstrated that transformed record keys can collide
+and localeCompare can vary with runtime locale data.
+
+**Alternatives considered:** Trim record keys - rejected because api and a
+whitespace-padded api can collapse silently; keep localeCompare - rejected because
+canonical content addressing cannot depend on host locale or ICU data; restrict all
+names to an ASCII regex now - deferred because the approved contract did not require a
+narrower character set.

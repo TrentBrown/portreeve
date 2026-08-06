@@ -97,7 +97,13 @@ export const AllocationIntentSchema = z
     },
   );
 
-const StackNameSchema = z.string().trim().min(1).max(128);
+const StackNameSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .refine((value) => value === value.trim(), {
+    message: 'stack names must not begin or end with whitespace',
+  });
 const StackAllocationSchema = z
   .object({
     preferredPort: PortSchema.optional(),

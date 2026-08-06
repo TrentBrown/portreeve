@@ -102,4 +102,12 @@ test('rejects unknown fields and broken dependency or Docker references', () => 
   expect(() => StackDefinitionSchema.parse(missingEndpoint)).toThrow(
     'unknown endpoint',
   );
+
+  expect(() =>
+    StackDefinitionSchema.parse({
+      version: 1,
+      project: 'caregiver',
+      components: { api: {}, ' api ': {} },
+    }),
+  ).toThrow('must not begin or end with whitespace');
 });

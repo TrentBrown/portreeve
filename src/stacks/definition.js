@@ -36,7 +36,19 @@ function sortJson(value) {
   }
   return Object.fromEntries(
     Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => compareJsonKeys(left, right))
       .map(([key, child]) => [key, sortJson(child)]),
   );
+}
+
+/**
+ * Compare UTF-16 strings without depending on the host locale or ICU data.
+ *
+ * @param {string} left
+ * @param {string} right
+ */
+function compareJsonKeys(left, right) {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
 }
