@@ -131,11 +131,15 @@ export class PortreeveClient {
    * @param {string} generationId
    * @param {{
    *   requiredEndpoints?: Array<{component: string, endpoint?: string}>,
-   *   skippedEndpoints?: Array<{component: string, endpoint?: string}>
+   *   skippedEndpoints?: Array<{component: string, endpoint?: string}>,
+   *   bindings?: Record<string, 'process' | 'docker'>
    * }} [options]
    */
   async beginStackActivation(generationId, options = {}) {
-    await this.#requireCapabilities(['stack-activations-v1']);
+    const capabilities = Object.values(options.bindings ?? {}).includes('docker')
+      ? ['stack-activations-v1', 'docker-evidence-v1']
+      : ['stack-activations-v1'];
+    await this.#requireCapabilities(capabilities);
     return requestJson(
       this.socketPath,
       'POST',
@@ -145,8 +149,9 @@ export class PortreeveClient {
           generationId,
           requiredEndpoints: options.requiredEndpoints ?? [],
           skippedEndpoints: options.skippedEndpoints ?? [],
+          bindings: options.bindings ?? {},
         },
-        ['stack-activations-v1'],
+        capabilities,
       ),
     );
   }
@@ -178,14 +183,19 @@ export class PortreeveClient {
 
   /**
    * @param {string} activationId
-   * @param {{leaseId: string, leaseToken: string, rootPid: number}} evidence
+   * @param {{leaseId: string, leaseToken: string, bindingKind?: 'process', rootPid: number} | {leaseId: string, leaseToken: string, bindingKind: 'docker', containerId: string}} evidence
    */
   async confirmStackEndpoint(activationId, evidence) {
+    const capabilities =
+      evidence.bindingKind === 'docker'
+        ? ['stack-activations-v1', 'docker-evidence-v1']
+        : ['stack-activations-v1'];
+    await this.#requireCapabilities(capabilities);
     return requestJson(
       this.socketPath,
       'POST',
       `/v1/stack-activations/${activationId}/confirm`,
-      withClient(evidence, ['stack-activations-v1']),
+      withClient(evidence, capabilities),
     );
   }
 

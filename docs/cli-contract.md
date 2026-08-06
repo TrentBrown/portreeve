@@ -52,7 +52,7 @@ output.
 | `stacks list`                                      | `{ "version": 1, "stacks": [ ... ] }`                                       |
 | `stacks show` / `stacks status`                    | `{ "version": 1, "stack": { ... } }`                                        |
 | `stacks prepare` / `stacks begin` / `stacks renew` | `{ "version": 1, "result": { ... } }`                                       |
-| `stacks activation` / `stacks confirm`             | `{ "version": 1, "activation": { ... } }`                                   |
+| `stacks activation` / `stacks confirm` / `stacks confirm-docker` | `{ "version": 1, "activation": { ... } }`                       |
 | `stacks generation`                                | `{ "version": 1, "generation": { ... } }`                                   |
 | `stacks abandon` / `stacks skip`                   | `{ "version": 1, "activation": { ... } }`                                   |
 | `stacks end`                                       | `{ "version": 1, "result": { "changed": true, "activation": { ... } } }`    |
@@ -81,15 +81,25 @@ private lease tokens only in JSON mode. `--required-endpoint component.endpoint`
 promotes an optional endpoint; `--skip-endpoint component.endpoint` skips one. When
 either name itself contains a dot, pass a JSON object such as
 `--required-endpoint '{"component":"api.v2","endpoint":"http.internal"}'`.
+Use `--docker-component NAME` once per component that the trusted launcher will run in
+Docker. The returned leases identify their `bindingKind`; Docker leases also include the
+Compose service, container port, and exact Portreeve labels the launcher must apply.
 
 Renewal reads a JSON credential array from `--leases-file`. Confirm, abandon, and skip
 read one `{ "leaseId", "leaseToken" }` object from `--lease-file`, keeping tokens out of
-the process argument list. Confirm also requires `--root-pid`. Launchers should create
+the process argument list. Process confirmation also requires `--root-pid`. Launchers should create
 credential files with mode `0600`, remove them after use, and use
 `stacks activation <activation-id>` or `stacks generation <generation-id>` for
-token-free inspection. After the launcher stops providers, `stacks end <activation-id>`
+token-free inspection. For Docker-backed leases, use `stacks confirm-docker` with the
+same credential file and `--container-id`; Portreeve freshly verifies the running
+container, exact labels, loopback publication, and host listener. After the launcher
+stops providers, `stacks end <activation-id>`
 refuses while fresh listener evidence still observes a confirmed endpoint and never
 signals the provider.
+
+When port inventory identifies a Docker-published listener, `ports reclaim` and
+`ports unsafe-evict` return `launcher-action-required` with exact container IDs. They
+never signal Docker Desktop, the Docker daemon, or its port-forwarding processes.
 
 `stacks resolve <activation-id> --component NAME` emits only the component's own
 published endpoints and declared dependency aliases. Host-publication and optional

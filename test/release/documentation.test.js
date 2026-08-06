@@ -73,3 +73,24 @@ test('release workflow runs full and lifecycle gates on every native target', as
   expect(workflow).toContain('Require unpublished npm version');
   expect(workflow.match(/needs: release-policy/gu)).toHaveLength(2);
 });
+
+test('public documentation explains Docker evidence without transferring launcher authority', async () => {
+  const [protocol, stacks, safety, client, cli, migration] = await Promise.all(
+    [
+      'protocol.md',
+      'stacks.md',
+      'safety.md',
+      'client.md',
+      'cli-contract.md',
+      'migration.md',
+    ].map((filename) => readFile(resolve('docs', filename), 'utf8')),
+  );
+
+  expect(protocol).toContain('docker-evidence-v1');
+  expect(stacks).toContain('confirm-docker');
+  expect(client).toContain("bindings: { api: 'docker' }");
+  expect(cli).toContain('--docker-component');
+  expect(migration).toContain('process-only allocation');
+  expect(safety).toContain('never signal Docker Desktop');
+  expect(safety).toContain('trusted launcher');
+});

@@ -24,6 +24,17 @@ evidence refuses normal reclamation.
 after the grace period and another successful revalidation. Replacement
 processes are never inherited as targets.
 
+Docker-backed endpoints use a separate evidence path. Confirmation requires a fresh
+container inspection by exact container ID, a running container, exact Portreeve labels
+for the stack revision/generation/activation, an exact `127.0.0.1` host-to-container
+TCP publication, and a fresh host listener. A stored container ID is only a lookup key,
+not proof. Portreeve does not infer Docker ownership from process ancestry.
+
+Normal reclamation and `ports unsafe-evict` never signal Docker Desktop, the Docker
+daemon, or a Docker port-forwarding process. They return a structured launcher action
+containing the freshly observed container IDs; the trusted launcher remains responsible
+for stopping or recreating containers.
+
 `ports unsafe-evict` is a separate escape hatch. It requires literal
 `--unsafe-any-owner` consent for that invocation, still binds its plan to the
 observed process fingerprint, and supports `--dry-run`. It can terminate an

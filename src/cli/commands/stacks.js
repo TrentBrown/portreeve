@@ -84,7 +84,7 @@ export async function prepareStackCommand(stackIdArgument, options) {
 
 /**
  * @param {string} generationIdArgument
- * @param {{requiredEndpoint?: string[], skipEndpoint?: string[], socket?: string, json?: boolean}} options
+ * @param {{requiredEndpoint?: string[], skipEndpoint?: string[], dockerComponent?: string[], socket?: string, json?: boolean}} options
  */
 export async function beginStackActivationCommand(generationIdArgument, options) {
   const result = await clientFor(options.socket).beginStackActivation(
@@ -92,6 +92,9 @@ export async function beginStackActivationCommand(generationIdArgument, options)
     {
       requiredEndpoints: (options.requiredEndpoint ?? []).map(parseEndpointReference),
       skippedEndpoints: (options.skipEndpoint ?? []).map(parseEndpointReference),
+      bindings: Object.fromEntries(
+        (options.dockerComponent ?? []).map((component) => [component, 'docker']),
+      ),
     },
   );
   renderOutput(
@@ -102,7 +105,7 @@ export async function beginStackActivationCommand(generationIdArgument, options)
       `Began activation ${result.activation.id} in state ${result.activation.state}.`,
       ...result.leases.map(
         (lease) =>
-          `${lease.component}.${lease.endpoint}  ${lease.port}  lease ${lease.leaseId} expires ${lease.expiresAt}`,
+          `${lease.component}.${lease.endpoint}  ${lease.port}  ${lease.bindingKind}  lease ${lease.leaseId} expires ${lease.expiresAt}`,
       ),
       options.json
         ? ''
@@ -164,6 +167,23 @@ export async function confirmStackEndpointCommand(activationIdArgument, options)
     {
       ...credential,
       rootPid: parsePositiveInteger(options.rootPid, '--root-pid'),
+    },
+  );
+  renderActivation(activation, options.json ?? false);
+}
+
+/**
+ * @param {string} activationIdArgument
+ * @param {{leaseFile: string, containerId: string, socket?: string, json?: boolean}} options
+ */
+export async function confirmDockerStackEndpointCommand(activationIdArgument, options) {
+  const credential = await readLeaseCredential(options.leaseFile);
+  const activation = await clientFor(options.socket).confirmStackEndpoint(
+    IdentifierSchema.parse(activationIdArgument),
+    {
+      ...credential,
+      bindingKind: 'docker',
+      containerId: options.containerId,
     },
   );
   renderActivation(activation, options.json ?? false);

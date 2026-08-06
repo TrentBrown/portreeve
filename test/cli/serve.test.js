@@ -27,13 +27,23 @@ test('serve blocks, handles SIGTERM, and removes its socket', async () => {
       }
     }
     expect(healthy).toBe(true);
-    expect(await client.logs({ limit: 10 })).toEqual([
-      expect.objectContaining({
-        level: 'info',
-        component: 'server',
-        message: 'Portreeve server started.',
-      }),
-    ]);
+    const logs = await client.logs({ limit: 10 });
+    expect(logs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          level: 'info',
+          component: 'server',
+          message: 'Portreeve server started.',
+        }),
+      ]),
+    );
+    expect(logs.find(({ component }) => component === 'docker')).toMatchObject({
+      level: expect.stringMatching(/^(info|warn)$/u),
+      component: 'docker',
+      message: expect.stringMatching(
+        /^Docker evidence capability is (?:available|unavailable)\.$/u,
+      ),
+    });
 
     const lsof = Bun.spawn(
       ['lsof', '-nP', '-a', '-p', String(child.pid), '-iTCP', '-sTCP:LISTEN', '-Fpcn'],

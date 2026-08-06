@@ -224,7 +224,144 @@ test('stack commands share definition discovery and versioned JSON contracts', a
     registry.close();
     await rm(directory, { force: true, recursive: true });
   }
+}, 15_000);
+
+test('stack CLI begins and confirms a Docker-backed component', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'pr-dcli-'));
+  const workspaceRoot = join(directory, 'worktree');
+  const socketPath = join(directory, 'runtime', 'portreeve.sock');
+  const applicationDirectory = join(directory, 'data');
+  const containerId = 'e'.repeat(64);
+  const port = await unusedPort();
+  /** @type {null | {id: string, running: boolean, labels: Readonly<Record<string, string>>, ports: Array<{containerPort: number, hostIp: string, hostPort: number}>}} */
+  let container = null;
+  /** @type {Bun.Server<undefined> | undefined} */
+  let listener;
+  await mkdir(workspaceRoot);
+  await prepareRuntimeDirectories({ applicationDirectory, socketPath });
+  const registry = openRegistry(join(applicationDirectory, 'registry.sqlite'));
+  const server = await startPortreeveServer({
+    socketPath,
+    allocationService: new AllocationService({ registry }),
+    dockerAdapter: {
+      availability: async () => ({ available: true, reason: null }),
+      inspect: async (id) =>
+        id === containerId && container !== null
+          ? { status: 'ok', reason: null, container }
+          : { status: 'missing', reason: 'container-missing', container: null },
+      findPublishedPort: async (requestedPort) => ({
+        available: true,
+        reason: null,
+        containers:
+          container?.ports.some(({ hostPort }) => hostPort === requestedPort) === true
+            ? [container]
+            : [],
+      }),
+    },
+  });
+  await writeFile(
+    join(workspaceRoot, 'portreeve.stack.json'),
+    JSON.stringify({
+      version: 1,
+      project: 'cli-docker-stack',
+      components: {
+        api: {
+          docker: { service: 'api' },
+          endpoints: {
+            http: {
+              allocation: { exactPort: port },
+              docker: { containerPort: 3000 },
+            },
+          },
+        },
+      },
+    }),
+  );
+
+  try {
+    const applied = await runCli(
+      ['stacks', 'apply', '--socket', socketPath, '--json'],
+      workspaceRoot,
+    );
+    expect(applied.exitCode, applied.stderr).toBe(0);
+    const stackId = JSON.parse(applied.stdout).result.stack.id;
+    const prepared = await runCli(
+      ['stacks', 'prepare', stackId, '--socket', socketPath, '--json'],
+      workspaceRoot,
+    );
+    const generationId = JSON.parse(prepared.stdout).result.generation.id;
+    const begun = await runCli(
+      [
+        'stacks',
+        'begin',
+        generationId,
+        '--docker-component',
+        'api',
+        '--socket',
+        socketPath,
+        '--json',
+      ],
+      workspaceRoot,
+    );
+    expect(begun.exitCode, begun.stderr).toBe(0);
+    const begunResult = JSON.parse(begun.stdout).result;
+    const lease = begunResult.leases[0];
+    expect(lease).toMatchObject({
+      bindingKind: 'docker',
+      docker: { service: 'api', containerPort: 3000 },
+    });
+    container = {
+      id: containerId,
+      running: true,
+      labels: lease.docker.requiredLabels,
+      ports: [{ containerPort: 3000, hostIp: '127.0.0.1', hostPort: port }],
+    };
+    listener = Bun.serve({
+      hostname: '127.0.0.1',
+      port,
+      fetch: () => new Response('Docker CLI fixture'),
+    });
+    const credentialFile = join(directory, 'docker-lease.json');
+    await writeFile(
+      credentialFile,
+      JSON.stringify({ leaseId: lease.leaseId, leaseToken: lease.leaseToken }),
+      { mode: 0o600 },
+    );
+    const confirmed = await runCli(
+      [
+        'stacks',
+        'confirm-docker',
+        begunResult.activation.id,
+        '--lease-file',
+        credentialFile,
+        '--container-id',
+        containerId,
+        '--socket',
+        socketPath,
+        '--json',
+      ],
+      workspaceRoot,
+    );
+    expect(confirmed.exitCode, confirmed.stderr).toBe(0);
+    expect(JSON.parse(confirmed.stdout).activation).toMatchObject({
+      state: 'confirmed',
+      endpoints: [{ bindingKind: 'docker', state: 'confirmed' }],
+    });
+  } finally {
+    listener?.stop(true);
+    await server.stop();
+    registry.close();
+    await rm(directory, { force: true, recursive: true });
+  }
 });
+
+async function unusedPort() {
+  const probe = Bun.serve({ port: 0, fetch: () => new Response('probe') });
+  const port = probe.port;
+  probe.stop(true);
+  if (port === undefined) throw new Error('TCP probe did not expose a port.');
+  return port;
+}
 
 /**
  * @param {string[]} arguments_

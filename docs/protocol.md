@@ -73,6 +73,7 @@ Version 1 capabilities are:
 - `stack-definitions-v1`
 - `stack-activations-v1`
 - `stack-discovery-v1`
+- `docker-evidence-v1` when the configured host Docker CLI and daemon are available
 
 ## Allocation workflow
 
@@ -150,7 +151,7 @@ policy.
 | `GET /v1/stack-activations/{id}`           | Inspect activation and endpoint states without returning lease tokens                                                                |
 | `GET /v1/stack-generations/{id}`           | Inspect one immutable allocation generation                                                                                          |
 | `POST /v1/stack-activations/{id}/renew`    | Validate and renew a batch of pending activation leases                                                                              |
-| `POST /v1/stack-activations/{id}/confirm`  | Confirm one process-backed endpoint using fresh listener and lineage evidence                                                        |
+| `POST /v1/stack-activations/{id}/confirm`  | Confirm one process or Docker endpoint using binding-appropriate fresh evidence                                                       |
 | `POST /v1/stack-activations/{id}/abandon`  | Fail one pending endpoint; a required failure cancels the remaining pending batch                                                    |
 | `POST /v1/stack-activations/{id}/skip`     | Skip one optional pending endpoint                                                                                                   |
 | `POST /v1/stack-activations/{id}/end`      | End only after fresh evidence shows confirmed process listeners have stopped                                                         |
@@ -158,8 +159,9 @@ policy.
 | `POST /v1/stack-activations/{id}/snapshot` | Render one redacted sandbox discovery document using a launcher-supplied gateway; requires `stack-discovery-v1`                      |
 
 Inventory classifications are `available`, `verified`, `idle`, `pending`, `unclaimed`,
-`conflicting`, and `mixed`. A live PID alone never establishes ownership; Portreeve
-compares fresh listener, process-start, executable, and lineage evidence.
+`conflicting`, `mixed`, and `docker-managed`. A live PID alone never establishes
+ownership; Portreeve compares fresh listener and binding-appropriate process or Docker
+evidence.
 
 ## Stack definitions
 
@@ -175,19 +177,24 @@ updates the stack's current revision without changing an existing port assignmen
 
 Preparation accepts `client` and the path-selected `stackId`. It returns `reused` and a
 generation whose endpoint-to-port plan never changes. Preparation does not create
-leases. Beginning accepts `generationId`, optional `requiredEndpoints`, and optional
-`skippedEndpoints`; omitted endpoint names normalize to `default`. It refuses a stale
-definition revision or another live activation for the same canonical worktree.
+leases. Beginning accepts `generationId`, optional `requiredEndpoints`, optional
+`skippedEndpoints`, and component-keyed `bindings`. Omitted bindings default to
+`process`; `docker` requires complete Docker definition data and the dynamically
+advertised `docker-evidence-v1` capability. It refuses a stale definition revision or
+another live activation for the same canonical worktree.
 
 The begin response contains an activation plus a private token for every newly leased
-endpoint. Tokens are not returned by later inspection. Renewal accepts a non-empty array
-of `{ leaseId, leaseToken }` and validates the complete batch before extending any
+endpoint. Tokens are not returned by later inspection. Each lease identifies its
+binding kind; Docker leases also return the service, container port, and exact
+Portreeve labels the launcher must apply. Renewal accepts a non-empty array of
+`{ leaseId, leaseToken }` and validates the complete batch before extending any
 deadline. Confirm, abandon, and skip accept one lease credential. Process confirmation
-also requires `rootPid` and uses the same fresh listener/process-lineage authority as
-standalone confirmation.
+requires `rootPid` and fresh lineage evidence. Docker confirmation requires
+`bindingKind: "docker"` and a container ID lookup key, then freshly verifies running
+state, exact labels, loopback host/container publication, and an `lsof` listener.
 
 End accepts only `client`. It refuses while leases remain pending or fresh inspection
-still observes a confirmed process endpoint listener. It does not signal providers.
+still observes a confirmed endpoint listener. It does not signal providers.
 Successful ending releases the activation's run records and returns
 `{ changed, activation }`; repeated ending is idempotent.
 

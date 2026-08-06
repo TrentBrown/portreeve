@@ -6,6 +6,7 @@ import { createConnection } from 'node:net';
 import { z } from 'zod';
 import { AdministrationService } from '../administration/service.js';
 import { ServerSettingsSchema } from '../domain/settings.js';
+import { CAPABILITIES, DOCKER_CAPABILITY } from '../protocol/constants.js';
 import {
   AbandonRequestSchema,
   AcquireRequestSchema,
@@ -75,6 +76,7 @@ import { StackDefinitionService } from '../stacks/service.js';
  *   stackDefinitionService?: StackDefinitionService,
  *   stackCoordinationService?: StackCoordinationService,
  *   stackDiscoveryService?: StackDiscoveryService,
+ *   dockerAdapter?: import('../docker/adapter.js').DockerEvidenceAdapter | null,
  *   diagnosticLog?: import('../observability/diagnostic-log.js').DiagnosticLog,
  *   mode?: 'manual' | 'supervised'
  * }} options
@@ -82,9 +84,21 @@ import { StackDefinitionService } from '../stacks/service.js';
 export async function startPortreeveServer(options) {
   await removeStaleSocket(options.socketPath);
 
+  const dockerAdapter = options.dockerAdapter ?? null;
+  const dockerAvailability =
+    dockerAdapter === null
+      ? { available: false, reason: 'docker-adapter-not-configured' }
+      : await dockerAdapter.availability();
+  const capabilities = dockerAvailability.available
+    ? Object.freeze([...CAPABILITIES, DOCKER_CAPABILITY])
+    : CAPABILITIES;
+
   const inventoryService =
     options.inventoryService ??
-    new InventoryService({ registry: options.allocationService.registry });
+    new InventoryService({
+      registry: options.allocationService.registry,
+      dockerAdapter: dockerAvailability.available ? dockerAdapter : null,
+    });
   const reclamationService =
     options.reclamationService ??
     new ReclamationService({
@@ -106,6 +120,7 @@ export async function startPortreeveServer(options) {
       registry: options.allocationService.registry,
       allocationService: options.allocationService,
       inventoryService,
+      ...(dockerAdapter === null ? {} : { dockerAdapter }),
     });
   const stackDiscoveryService =
     options.stackDiscoveryService ??
@@ -151,6 +166,7 @@ export async function startPortreeveServer(options) {
         stackDefinitionService,
         stackCoordinationService,
         stackDiscoveryService,
+        capabilities,
         diagnosticLog,
         options.mode ?? 'manual',
         () => {
@@ -166,6 +182,15 @@ export async function startPortreeveServer(options) {
   writeDiagnostic(diagnosticLog, 'info', 'server', 'Portreeve server started.', {
     pid: process.pid,
   });
+  writeDiagnostic(
+    diagnosticLog,
+    dockerAvailability.available ? 'info' : 'warn',
+    'docker',
+    dockerAvailability.available
+      ? 'Docker evidence capability is available.'
+      : 'Docker evidence capability is unavailable.',
+    { reason: dockerAvailability.reason },
+  );
 
   return Object.freeze({
     socketPath: options.socketPath,
@@ -185,6 +210,7 @@ export async function startPortreeveServer(options) {
  * @param {StackDefinitionService} stackDefinitionService
  * @param {StackCoordinationService} stackCoordinationService
  * @param {StackDiscoveryService} stackDiscoveryService
+ * @param {readonly string[]} capabilities
  * @param {import('../observability/diagnostic-log.js').DiagnosticLog | undefined} diagnosticLog
  * @param {'manual' | 'supervised'} mode
  * @param {() => void} requestStop
@@ -198,6 +224,7 @@ async function handleRequest(
   stackDefinitionService,
   stackCoordinationService,
   stackDiscoveryService,
+  capabilities,
   diagnosticLog,
   mode,
   requestStop,
@@ -210,6 +237,7 @@ async function handleRequest(
     if (request.method === 'GET' && pathname === '/v1/health') {
       return success(requestId, {
         ...PORTREEVE_HEALTH,
+        capabilities,
         pid: process.pid,
         mode,
       });

@@ -2,6 +2,7 @@
 
 import { chmod } from 'node:fs/promises';
 import { AllocationService } from '../../allocation/service.js';
+import { DockerCliAdapter } from '../../docker/adapter.js';
 import { DiagnosticLog } from '../../observability/diagnostic-log.js';
 import {
   prepareRuntimeDirectories,
@@ -37,6 +38,9 @@ export async function serveCommand(options) {
     server = await startPortreeveServer({
       socketPath: paths.socketPath,
       allocationService,
+      dockerAdapter: new DockerCliAdapter({
+        executable: process.env.PORTREEVE_DOCKER_EXECUTABLE ?? 'docker',
+      }),
       diagnosticLog,
       mode: process.env.PORTREEVE_SUPERVISED === '1' ? 'supervised' : 'manual',
     });

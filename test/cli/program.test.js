@@ -70,6 +70,7 @@ describe('Portreeve CLI', () => {
       'generation',
       'renew',
       'confirm',
+      'confirm-docker',
       'abandon',
       'skip',
       'end',

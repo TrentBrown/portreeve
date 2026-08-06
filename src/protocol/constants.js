@@ -20,6 +20,8 @@ export const CAPABILITIES = Object.freeze([
   'stack-discovery-v1',
 ]);
 
+export const DOCKER_CAPABILITY = 'docker-evidence-v1';
+
 export const EXIT_CODES = Object.freeze({
   success: 0,
   stateDifference: 10,

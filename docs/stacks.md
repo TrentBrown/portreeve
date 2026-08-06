@@ -41,10 +41,9 @@ Portreeve should understand but should not assign a host port; a dependency cann
 target an unpublished endpoint. `preferredPort` permits later fallback allocation;
 `exactPort` does not. They are mutually exclusive.
 
-Docker metadata is declarative coordination metadata only. An endpoint with a Docker
-container port must belong to a component with a Docker service. Docker inspection,
-ownership evidence, and mixed process/container activations are introduced by the later
-activation protocol; applying a definition never runs Docker.
+Docker metadata is declarative coordination metadata. An endpoint with a Docker
+container port must belong to a component with a Docker service. Applying a definition
+never runs Docker; it supplies the facts later used by activation evidence.
 
 Run `portreeve stacks apply` from anywhere in the worktree, or pass `--file`. The CLI
 and JavaScript client send the same definition over the private socket. Portreeve
@@ -79,14 +78,31 @@ When the launcher is ready to start providers, begin one activation:
 portreeve stacks begin GENERATION_ID --json
 ```
 
+Add `--docker-component api` for each component the launcher will place in Docker.
+Omitted components remain process-backed, so an activation may mix both kinds. Docker
+selection is per activation and does not change logical endpoint identity.
+
 Beginning atomically creates pending leases for all non-skipped endpoints. Only one
 activation may be live for a canonical worktree. The JSON response contains private
 lease tokens; keep them out of source control and process arguments. Use a mode-0600
 JSON file with `stacks renew --leases-file`, or the JavaScript client, to renew the
 whole pending batch during startup.
 
-Providers bind their assigned ports and confirm individually with fresh process-tree
-evidence. Required endpoints must confirm. Optional endpoints may be named with
+Providers bind their assigned ports and confirm individually. Process endpoints use
+fresh process-tree evidence. Each Docker lease includes the exact required labels;
+after the launcher starts the labeled container and publishes
+`127.0.0.1:HOST_PORT:CONTAINER_PORT`, it confirms with:
+
+```sh
+portreeve stacks confirm-docker ACTIVATION_ID \
+  --lease-file .portreeve/private/api-http.json \
+  --container-id CONTAINER_ID
+```
+
+The container ID is only a lookup key. Portreeve freshly verifies running state, every
+stack/component/revision/generation/activation/endpoint label, the exact publication,
+and a live `lsof` listener. It never applies process lineage to Docker's backend.
+Required endpoints must confirm. Optional endpoints may be named with
 `--skip-endpoint component.endpoint`; after all required endpoints confirm, a skipped or
 failed optional endpoint makes the activation `degraded`. A required dependency on an
 optional provider endpoint must promote it with `--required-endpoint component.endpoint`
@@ -102,8 +118,14 @@ reused for the next attempt.
 
 `stacks generation` and `stacks activation` provide token-free inspection. After the
 launcher has stopped its providers, `stacks end` takes fresh listener evidence and
-refuses to end while any confirmed process endpoint is still listening. Ending never
+refuses to end while any confirmed endpoint is still listening. Ending never
 signals or stops the provider itself.
+
+If Docker is absent or inaccessible, health omits `docker-evidence-v1`; process-only
+activations continue normally. Inventory marks fresh Docker publications as
+`docker-managed`. Both normal reclamation and `unsafe-evict` return
+`launcher-action-required` with the container IDs and send no process signal. The
+trusted launcher stops the container and retries.
 
 ## Resolve dependencies and publish sandbox discovery
 

@@ -41,3 +41,22 @@ portreeve claims prune --dry-run
 
 Then run the interactive command or use `--yes` in explicit noninteractive
 automation.
+
+## Migrating a stack component to Docker evidence
+
+Docker support is also incremental and may be mixed with ordinary process-backed
+components in one activation:
+
+1. Add the component's Compose service and each published endpoint's container port to
+   `portreeve.stack.json`.
+2. Begin the activation with that component selected as Docker-backed. The CLI form is
+   `stacks begin GENERATION_ID --docker-component api`.
+3. Have the trusted launcher apply every `requiredLabels` value and publish the returned
+   host port on `127.0.0.1` to the returned container port.
+4. Confirm with the exact container ID. Do not pass a PID for a Docker-backed endpoint.
+5. Keep container start, stop, health, and Compose ownership in the launcher. Portreeve
+   coordinates endpoint identity and verifies evidence; it does not orchestrate Docker.
+
+If Docker or its daemon is unavailable, `docker-evidence-v1` is not advertised and a
+Docker-backed begin or confirm fails explicitly. Existing process-only allocation and
+stack activations continue to work.

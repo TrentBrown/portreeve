@@ -6,7 +6,9 @@ import {
   ConfigSetRequestSchema,
   HealthResponseSchema,
   PORTREEVE_HEALTH,
+  ReclamationResultSchema,
   StackBeginActivationRequestSchema,
+  StackConfirmEndpointRequestSchema,
   StackDefinitionSchema,
   StackRenewActivationRequestSchema,
   StackSnapshotRequestSchema,
@@ -137,6 +139,7 @@ describe('protocol schemas', () => {
       generationId,
       requiredEndpoints: [{ component: 'api', endpoint: 'default' }],
       skippedEndpoints: [{ component: 'api', endpoint: 'metrics' }],
+      bindings: {},
     });
     expect(() =>
       StackRenewActivationRequestSchema.parse({
@@ -144,6 +147,58 @@ describe('protocol schemas', () => {
         leases: [],
       }),
     ).toThrow();
+  });
+
+  test('distinguishes process and Docker activation confirmations', () => {
+    const leaseId = crypto.randomUUID();
+    const leaseToken = 't'.repeat(43);
+    expect(
+      StackConfirmEndpointRequestSchema.parse({
+        client,
+        leaseId,
+        leaseToken,
+        rootPid: 42,
+      }),
+    ).toMatchObject({ bindingKind: 'process', rootPid: 42 });
+    expect(
+      StackConfirmEndpointRequestSchema.parse({
+        client,
+        leaseId,
+        leaseToken,
+        bindingKind: 'docker',
+        containerId: 'a'.repeat(64),
+      }),
+    ).toMatchObject({ bindingKind: 'docker', containerId: 'a'.repeat(64) });
+    expect(() =>
+      StackConfirmEndpointRequestSchema.parse({
+        client,
+        leaseId,
+        leaseToken,
+        bindingKind: 'docker',
+        rootPid: 42,
+      }),
+    ).toThrow();
+  });
+
+  test('accepts a structured launcher action for Docker reclamation', () => {
+    expect(
+      ReclamationResultSchema.parse({
+        operationId: crypto.randomUUID(),
+        operation: 'reclaim',
+        port: 43210,
+        policy: 'graceful',
+        dryRun: false,
+        outcome: 'launcher-action-required',
+        reason: 'docker-managed-listener',
+        launcherAction: {
+          kind: 'docker',
+          action: 'stop-container',
+          containerIds: ['b'.repeat(64)],
+        },
+        targets: [],
+        signals: [],
+      }),
+    ).toMatchObject({ outcome: 'launcher-action-required' });
   });
 
   test('rejects unpublished dependency targets and unsafe sandbox gateway hosts', () => {
@@ -201,6 +256,13 @@ describe('protocol schemas', () => {
       negotiatedProtocol: null,
       missingCapabilities: ['future-capability'],
     });
+    expect(
+      negotiateCompatibility(
+        { minimum: 1, maximum: 1 },
+        ['docker-evidence-v1'],
+        ['docker-evidence-v1'],
+      ),
+    ).toMatchObject({ compatible: true, missingCapabilities: [] });
   });
 
   test('requires the stable protocol envelope', () => {

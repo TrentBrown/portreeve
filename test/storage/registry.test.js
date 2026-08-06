@@ -40,7 +40,7 @@ describe('SQLite registry', () => {
     const createdAt = new Date('2026-07-30T12:00:00.000Z');
     const first = openRegistry(filename);
 
-    expect(first.schemaVersion()).toBe(4);
+    expect(first.schemaVersion()).toBe(5);
     const claim = first.insertClaim(
       {
         identity: identity(),
@@ -52,7 +52,7 @@ describe('SQLite registry', () => {
     first.close();
 
     const second = openRegistry(filename);
-    expect(second.schemaVersion()).toBe(4);
+    expect(second.schemaVersion()).toBe(5);
     expect(second.findClaim(identity())).toEqual(claim);
     expect(second.listHistory().map(({ eventType }) => eventType)).toEqual([
       'claim.created',
@@ -118,7 +118,7 @@ describe('SQLite registry', () => {
     database.close();
 
     const registry = openRegistry(filename);
-    expect(registry.schemaVersion()).toBe(4);
+    expect(registry.schemaVersion()).toBe(5);
     expect(registry.getClaim('11111111-1111-4111-8111-111111111111')).toMatchObject({
       identity: {
         service: 'website',
