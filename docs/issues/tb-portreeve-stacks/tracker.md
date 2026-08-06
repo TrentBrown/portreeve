@@ -23,7 +23,7 @@ Append PR boundary entries here.
 ### PR #7 - Canonical endpoint identity and stack definitions
 
 - **PR:** [#7](https://github.com/TrentBrown/portreeve/pull/7)
-- **Status:** draft
+- **Status:** merged
 - **Scope:** P1-P2 claim identity migration, strict stack definitions, content-addressed
   revisions, atomic registration, compatible claims, protocol/client/CLI surfaces, and
   desktop inventory facts.
@@ -32,4 +32,4 @@ Append PR boundary entries here.
   surface but remains open for activation and discovery. Independent judge: PASS WITH
   CONCERNS; code review: PASS with no remaining findings. One lifecycle-status test
   failure reproduces on the pinned base under this account's installed launchd state and
-  awaits human acknowledgment.
+  was accepted through human review and merge.

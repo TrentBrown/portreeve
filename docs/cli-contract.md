@@ -51,6 +51,11 @@ output.
 | `stacks apply`                               | `{ "version": 1, "result": { "changed": true, "stack": { ... } } }`         |
 | `stacks list`                                | `{ "version": 1, "stacks": [ ... ] }`                                       |
 | `stacks show` / `stacks status`              | `{ "version": 1, "stack": { ... } }`                                        |
+| `stacks prepare` / `stacks begin` / `stacks renew` | `{ "version": 1, "result": { ... } }`                               |
+| `stacks activation` / `stacks confirm`       | `{ "version": 1, "activation": { ... } }`                                   |
+| `stacks generation`                          | `{ "version": 1, "generation": { ... } }`                                   |
+| `stacks abandon` / `stacks skip`             | `{ "version": 1, "activation": { ... } }`                                   |
+| `stacks end`                                 | `{ "version": 1, "result": { "changed": true, "activation": { ... } } }` |
 | `config get`                                 | `{ "version": 1, "settings": { ... } }` or `{ "version": 1, "value": ... }` |
 | `config set`                                 | `{ "version": 1, "settings": { ... } }`                                     |
 | `history`                                    | `{ "version": 1, "events": [ ... ] }`                                       |
@@ -67,6 +72,19 @@ content is an ordinary state difference and exits `10`; changed content exits `0
 canonical worktree and accepts the same disambiguating options. `stacks show <stack-id>`
 reads a stack directly. These commands never start or stop project services or
 containers.
+
+`stacks prepare <stack-id>` creates or reuses an immutable endpoint allocation.
+`stacks begin <generation-id>` atomically leases the activation endpoints and emits
+private lease tokens only in JSON mode. `--required-endpoint component.endpoint`
+promotes an optional endpoint; `--skip-endpoint component.endpoint` skips one.
+
+Renewal reads a JSON credential array from `--leases-file`. Confirm, abandon, and skip
+read one `{ "leaseId", "leaseToken" }` object from `--lease-file`, keeping tokens out of
+the process argument list. Confirm also requires `--root-pid`. Launchers should create
+credential files with mode `0600`, remove them after use, and use `stacks activation
+<activation-id>` or `stacks generation <generation-id>` for token-free inspection.
+After the launcher stops providers, `stacks end <activation-id>` refuses while fresh
+listener evidence still observes a confirmed endpoint and never signals the provider.
 
 ## Prune consent
 

@@ -71,6 +71,7 @@ Version 1 capabilities are:
 - `observability-v1`
 - `lifecycle-control-v1`
 - `stack-definitions-v1`
+- `stack-activations-v1`
 
 ## Allocation workflow
 
@@ -143,6 +144,15 @@ policy.
 | `GET /v1/stacks`                     | List applied stack definitions; accepts project and canonical `workspaceRoot` filters                                                |
 | `GET /v1/stacks/{stackId}`           | Read one applied stack and its normalized current definition                                                                         |
 | `POST /v1/stacks/apply`              | Validate and atomically apply a definition; requires `stack-definitions-v1`                                                          |
+| `POST /v1/stacks/{stackId}/prepare`  | Create or reuse a complete immutable allocation generation; requires `stack-activations-v1`                                         |
+| `POST /v1/stack-activations/begin`   | Create one activation and atomically lease its selected endpoints                                                                    |
+| `GET /v1/stack-activations/{id}`     | Inspect activation and endpoint states without returning lease tokens                                                                |
+| `GET /v1/stack-generations/{id}`     | Inspect one immutable allocation generation                                                                                           |
+| `POST /v1/stack-activations/{id}/renew` | Validate and renew a batch of pending activation leases                                                                            |
+| `POST /v1/stack-activations/{id}/confirm` | Confirm one process-backed endpoint using fresh listener and lineage evidence                                                    |
+| `POST /v1/stack-activations/{id}/abandon` | Fail one pending endpoint; a required failure cancels the remaining pending batch                                                |
+| `POST /v1/stack-activations/{id}/skip` | Skip one optional pending endpoint                                                                                                  |
+| `POST /v1/stack-activations/{id}/end` | End only after fresh evidence shows confirmed process listeners have stopped                                                        |
 
 Inventory classifications are `available`, `verified`, `idle`, `pending`, `unclaimed`,
 `conflicting`, and `mixed`. A live PID alone never establishes ownership; Portreeve
@@ -157,6 +167,32 @@ stores that immutable revision, and links each published component endpoint to i
 sticky claim. Reapplying equivalent JSON returns `changed: false`; changed content
 updates the stack's current revision without changing an existing port assignment. See
 [Stack definitions](stacks.md).
+
+## Stack generations and activations
+
+Preparation accepts `client` and the path-selected `stackId`. It returns `reused` and a
+generation whose endpoint-to-port plan never changes. Preparation does not create
+leases. Beginning accepts `generationId`, optional `requiredEndpoints`, and optional
+`skippedEndpoints`; omitted endpoint names normalize to `default`. It refuses a stale
+definition revision or another live activation for the same canonical worktree.
+
+The begin response contains an activation plus a private token for every newly leased
+endpoint. Tokens are not returned by later inspection. Renewal accepts a non-empty
+array of `{ leaseId, leaseToken }` and validates the complete batch before extending any
+deadline. Confirm, abandon, and skip accept one lease credential. Process confirmation
+also requires `rootPid` and uses the same fresh listener/process-lineage authority as
+standalone confirmation.
+
+End accepts only `client`. It refuses while leases remain pending or fresh inspection
+still observes a confirmed process endpoint listener. It does not signal providers.
+Successful ending releases the activation's run records and returns `{ changed,
+activation }`; repeated ending is idempotent.
+
+`exactPort` is a preparation constraint and never falls back. `preferredPort` may fall
+back. Separately, required endpoints must confirm; optional endpoints may be skipped or
+fail, producing a `degraded` activation after all required endpoints confirm. Required
+endpoint failure or expiry fails the activation and cancels its other unconfirmed
+leases. See [Stack definitions and activation](stacks.md).
 
 ## Settings and observability
 

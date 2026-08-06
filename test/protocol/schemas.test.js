@@ -6,6 +6,8 @@ import {
   ConfigSetRequestSchema,
   HealthResponseSchema,
   PORTREEVE_HEALTH,
+  StackBeginActivationRequestSchema,
+  StackRenewActivationRequestSchema,
   UnsafeEvictionRequestSchema,
   negotiateCompatibility,
   successEnvelopeSchema,
@@ -118,6 +120,28 @@ describe('protocol schemas', () => {
       policy: 'force-after-grace',
       dryRun: true,
     });
+  });
+
+  test('normalizes activation endpoint shorthand and validates renewal credentials', () => {
+    const generationId = crypto.randomUUID();
+    expect(
+      StackBeginActivationRequestSchema.parse({
+        client,
+        generationId,
+        requiredEndpoints: [{ component: 'api' }],
+        skippedEndpoints: [{ component: 'api', endpoint: 'metrics' }],
+      }),
+    ).toMatchObject({
+      generationId,
+      requiredEndpoints: [{ component: 'api', endpoint: 'default' }],
+      skippedEndpoints: [{ component: 'api', endpoint: 'metrics' }],
+    });
+    expect(() =>
+      StackRenewActivationRequestSchema.parse({
+        client,
+        leases: [],
+      }),
+    ).toThrow();
   });
 
   test('keeps configuration updates on the explicit settings contract', () => {

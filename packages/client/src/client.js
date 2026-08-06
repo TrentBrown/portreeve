@@ -116,6 +116,119 @@ export class PortreeveClient {
     return requestJson(this.socketPath, 'GET', `/v1/stacks/${stackId}`);
   }
 
+  /** @param {string} stackId */
+  async prepareStack(stackId) {
+    await this.#requireCapabilities(['stack-activations-v1']);
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/stacks/${stackId}/prepare`,
+      withClient({ stackId }, ['stack-activations-v1']),
+    );
+  }
+
+  /**
+   * @param {string} generationId
+   * @param {{
+   *   requiredEndpoints?: Array<{component: string, endpoint?: string}>,
+   *   skippedEndpoints?: Array<{component: string, endpoint?: string}>
+   * }} [options]
+   */
+  async beginStackActivation(generationId, options = {}) {
+    await this.#requireCapabilities(['stack-activations-v1']);
+    return requestJson(
+      this.socketPath,
+      'POST',
+      '/v1/stack-activations/begin',
+      withClient(
+        {
+          generationId,
+          requiredEndpoints: options.requiredEndpoints ?? [],
+          skippedEndpoints: options.skippedEndpoints ?? [],
+        },
+        ['stack-activations-v1'],
+      ),
+    );
+  }
+
+  /** @param {string} activationId */
+  async getStackActivation(activationId) {
+    await this.#requireCapabilities(['stack-activations-v1']);
+    return requestJson(this.socketPath, 'GET', `/v1/stack-activations/${activationId}`);
+  }
+
+  /** @param {string} generationId */
+  async getStackGeneration(generationId) {
+    await this.#requireCapabilities(['stack-activations-v1']);
+    return requestJson(this.socketPath, 'GET', `/v1/stack-generations/${generationId}`);
+  }
+
+  /**
+   * @param {string} activationId
+   * @param {Array<{leaseId: string, leaseToken: string}>} leases
+   */
+  async renewStackActivation(activationId, leases) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/stack-activations/${activationId}/renew`,
+      withClient({ leases }, ['stack-activations-v1']),
+    );
+  }
+
+  /**
+   * @param {string} activationId
+   * @param {{leaseId: string, leaseToken: string, rootPid: number}} evidence
+   */
+  async confirmStackEndpoint(activationId, evidence) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/stack-activations/${activationId}/confirm`,
+      withClient(evidence, ['stack-activations-v1']),
+    );
+  }
+
+  /**
+   * @param {string} activationId
+   * @param {{
+   *   leaseId: string,
+   *   leaseToken: string,
+   *   reason: 'address-in-use' | 'startup-error' | 'client-cancelled'
+   * }} evidence
+   */
+  async abandonStackEndpoint(activationId, evidence) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/stack-activations/${activationId}/abandon`,
+      withClient(evidence, ['stack-activations-v1']),
+    );
+  }
+
+  /**
+   * @param {string} activationId
+   * @param {{leaseId: string, leaseToken: string}} evidence
+   */
+  async skipStackEndpoint(activationId, evidence) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/stack-activations/${activationId}/skip`,
+      withClient(evidence, ['stack-activations-v1']),
+    );
+  }
+
+  /** @param {string} activationId */
+  async endStackActivation(activationId) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/stack-activations/${activationId}/end`,
+      withClient({}, ['stack-activations-v1']),
+    );
+  }
+
   /** @param {string[]} requiredCapabilities */
   async #requireCapabilities(requiredCapabilities) {
     const health = await this.health();

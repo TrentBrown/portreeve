@@ -183,6 +183,78 @@ export const MIGRATIONS = Object.freeze([
       );
     `,
   }),
+  Object.freeze({
+    version: 4,
+    name: 'stack-generations-and-activations',
+    sql: `
+      CREATE TABLE stack_generations (
+        id TEXT PRIMARY KEY,
+        stack_id TEXT NOT NULL REFERENCES stacks(id) ON DELETE CASCADE,
+        revision TEXT NOT NULL,
+        state TEXT NOT NULL CHECK (state IN ('valid', 'stale')),
+        created_at TEXT NOT NULL,
+        invalidated_at TEXT,
+        FOREIGN KEY (stack_id, revision)
+          REFERENCES stack_definition_revisions(stack_id, revision)
+          ON DELETE RESTRICT
+      );
+
+      CREATE INDEX stack_generations_stack_revision
+        ON stack_generations (stack_id, revision, created_at DESC);
+
+      CREATE TABLE stack_generation_endpoints (
+        generation_id TEXT NOT NULL
+          REFERENCES stack_generations(id) ON DELETE CASCADE,
+        claim_id TEXT NOT NULL REFERENCES claims(id) ON DELETE RESTRICT,
+        component TEXT NOT NULL,
+        endpoint TEXT NOT NULL,
+        transport TEXT NOT NULL CHECK (transport = 'tcp'),
+        host TEXT NOT NULL CHECK (host = '127.0.0.1'),
+        port INTEGER NOT NULL CHECK (port BETWEEN 1 AND 65535),
+        required INTEGER NOT NULL CHECK (required IN (0, 1)),
+        PRIMARY KEY (generation_id, component, endpoint),
+        UNIQUE (generation_id, port)
+      );
+
+      CREATE TABLE stack_activations (
+        id TEXT PRIMARY KEY,
+        stack_id TEXT NOT NULL REFERENCES stacks(id) ON DELETE CASCADE,
+        generation_id TEXT NOT NULL
+          REFERENCES stack_generations(id) ON DELETE RESTRICT,
+        state TEXT NOT NULL
+          CHECK (state IN ('starting', 'confirmed', 'degraded', 'failed', 'ended')),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        confirmed_at TEXT,
+        ended_at TEXT
+      );
+
+      CREATE UNIQUE INDEX stack_activations_one_live_per_stack
+        ON stack_activations (stack_id)
+        WHERE state IN ('starting', 'confirmed', 'degraded');
+
+      CREATE INDEX stack_activations_generation
+        ON stack_activations (generation_id, created_at DESC);
+
+      CREATE TABLE stack_activation_endpoints (
+        activation_id TEXT NOT NULL
+          REFERENCES stack_activations(id) ON DELETE CASCADE,
+        component TEXT NOT NULL,
+        endpoint TEXT NOT NULL,
+        claim_id TEXT NOT NULL REFERENCES claims(id) ON DELETE RESTRICT,
+        port INTEGER NOT NULL CHECK (port BETWEEN 1 AND 65535),
+        required INTEGER NOT NULL CHECK (required IN (0, 1)),
+        binding_kind TEXT NOT NULL CHECK (binding_kind IN ('process', 'docker')),
+        state TEXT NOT NULL
+          CHECK (state IN ('leased', 'confirmed', 'skipped', 'failed', 'released')),
+        lease_id TEXT UNIQUE REFERENCES leases(id) ON DELETE RESTRICT,
+        run_id TEXT UNIQUE REFERENCES runs(id) ON DELETE RESTRICT,
+        failure_reason TEXT,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (activation_id, component, endpoint)
+      );
+    `,
+  }),
 ]);
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.at(-1)?.version ?? 0;

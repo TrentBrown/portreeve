@@ -7,7 +7,7 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Establish canonical identities and stack definitions
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 3d
 - **Plan steps:** P1, P2
 - **Rubric criteria:** R1, R5, R7
@@ -27,9 +27,12 @@ complete and independently capability-gated; the full criterion remains open for
 I-3. The broad suite's one lifecycle-status failure reproduces at the base SHA and
 awaits human acknowledgment in the PR boundary.
 
+**Merged 2026-08-06.** PR #7 merged to `main` as `13db683`; the documented
+base-only lifecycle test condition was accepted through human review and merge.
+
 ## I-2 - Implement generations and process-backed activations
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 3d
 - **Plan steps:** P3
 - **Rubric criteria:** R2, R7
@@ -39,6 +42,9 @@ awaits human acknowledgment in the PR boundary.
 Add complete immutable allocation generations, exclusive activation attempts, atomic
 batch leases, process-backed endpoint confirmation, required/optional outcomes, and the
 corresponding protocol, client, CLI, and history surfaces.
+
+**Started 2026-08-06.** Sequential delivery branch
+`tb-portreeve-stacks-02-activations` begins from merged `main` at `13db683`.
 
 ## I-3 - Deliver dependency resolution and sandbox discovery
 
