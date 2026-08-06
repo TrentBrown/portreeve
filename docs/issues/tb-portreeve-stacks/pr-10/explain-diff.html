@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portreeve PR #10 — Docker evidence and mixed activations</title>
+    <style>
+      :root {
+        --ink: #182522;
+        --muted: #5f706c;
+        --paper: #f5f0e7;
+        --card: #fffdf8;
+        --line: #d9d0c2;
+        --green: #17694f;
+        --green-soft: #dceee5;
+        --orange: #a24f18;
+        --orange-soft: #f9e5d5;
+        --red: #9f352e;
+        --shadow: 0 14px 35px rgba(43, 54, 49, 0.09);
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: linear-gradient(145deg, #e9eee9 0, var(--paper) 28rem);
+        font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main { width: min(1080px, calc(100% - 32px)); margin: 0 auto 80px; }
+      header { padding: 68px 0 38px; }
+      .eyebrow { color: var(--green); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+      h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; line-height: 1.13; }
+      h1 { max-width: 850px; margin: 12px 0 18px; font-size: clamp(2.6rem, 7vw, 5.3rem); }
+      h2 { margin-top: 0; font-size: clamp(2rem, 4vw, 3rem); }
+      h3 { font-size: 1.35rem; }
+      .lede { max-width: 790px; color: var(--muted); font-size: 1.22rem; }
+      nav, section {
+        margin: 24px 0;
+        padding: clamp(24px, 4vw, 48px);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: rgba(255, 253, 248, .94);
+        box-shadow: var(--shadow);
+      }
+      nav ol { display: flex; flex-wrap: wrap; gap: 10px; padding: 0; list-style: none; }
+      nav a { display: block; padding: 8px 13px; color: var(--green); background: var(--green-soft); border-radius: 999px; text-decoration: none; font-weight: 700; }
+      .callout { margin: 24px 0; padding: 18px 20px; border-left: 5px solid var(--orange); background: var(--orange-soft); border-radius: 8px; }
+      .callout strong { color: var(--orange); }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+      .box { padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+      .box .tag { color: var(--green); font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+      .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; align-items: stretch; margin: 26px 0; }
+      .node { position: relative; min-height: 128px; padding: 15px; border: 2px solid var(--line); border-radius: 15px; background: white; }
+      .node:not(:last-child)::after { content: "→"; position: absolute; right: -17px; top: 42px; z-index: 2; color: var(--green); font-size: 1.5rem; font-weight: 900; }
+      .node b { display: block; margin-bottom: 7px; color: var(--green); }
+      .danger { border-color: #e1a19c; background: #fff6f5; }
+      .safe { border-color: #8bc5ad; background: #f4fcf8; }
+      code { padding: 2px 5px; border-radius: 5px; background: #edf0ed; font: .92em ui-monospace, SFMono-Regular, Menlo, monospace; }
+      pre { overflow-x: auto; padding: 18px; color: #eaf4ef; background: #17231f; border-radius: 13px; white-space: pre-wrap; font: .88rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 11px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+      th { color: var(--green); }
+      .quiz { margin: 28px 0; padding: 20px; border: 1px solid var(--line); border-radius: 15px; }
+      .choices { display: grid; gap: 8px; }
+      button { padding: 11px 14px; border: 1px solid #abb9b4; border-radius: 9px; color: var(--ink); background: white; text-align: left; cursor: pointer; }
+      button:hover { border-color: var(--green); background: var(--green-soft); }
+      button.correct { color: #0e513c; border-color: #55a585; background: var(--green-soft); }
+      button.incorrect { color: var(--red); border-color: #cf7f79; background: #fbe4e2; }
+      .feedback { min-height: 1.6em; margin-top: 10px; font-weight: 700; }
+      .fine { color: var(--muted); font-size: .9rem; }
+      @media (max-width: 790px) {
+        .flow { grid-template-columns: 1fr; }
+        .node:not(:last-child)::after { content: "↓"; right: auto; top: auto; left: 48%; bottom: -24px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="eyebrow">Portreeve · PR #10 · P5 / I-4</div>
+        <h1>Trust the container evidence, not Docker’s shared PID</h1>
+        <p class="lede">This change lets one stack activation mix ordinary host processes and Docker containers. Portreeve still owns endpoint identity and port allocation; the project launcher still owns Compose and container lifecycle.</p>
+        <p class="fine">Pinned source: f16addf7…885ffc5c</p>
+      </header>
+
+      <nav aria-label="Table of contents">
+        <strong>Contents</strong>
+        <ol><li><a href="#background">Background</a></li><li><a href="#intuition">Intuition</a></li><li><a href="#code">Code walkthrough</a></li><li><a href="#safety">Safety cases</a></li><li><a href="#quiz">Quiz</a></li></ol>
+      </nav>
+
+      <section id="background">
+        <h2>Background</h2>
+        <p>A Portreeve activation starts from one immutable generation: every published component endpoint already has a claim and an allocated host port. Before this PR, every endpoint was confirmed by finding a live listener and proving that it belonged to a submitted root process. That model works for Bun, Node, or any ordinary process tree.</p>
+        <div class="grid">
+          <div class="box"><div class="tag">Durable</div><h3>Claim</h3><p>The stable identity: project, canonical worktree, component, endpoint, and TCP.</p></div>
+          <div class="box"><div class="tag">Immutable plan</div><h3>Generation</h3><p>One coherent assignment of host ports for every published endpoint.</p></div>
+          <div class="box"><div class="tag">One launch attempt</div><h3>Activation</h3><p>Short-lived leases become confirmed process or Docker runs.</p></div>
+        </div>
+        <p>Docker breaks the process-tree proof. On macOS, <code>lsof</code> often shows a Docker Desktop backend. On Linux it may show a proxy or daemon-related listener. Either process can serve several containers. Killing it to reclaim one port could disrupt unrelated work.</p>
+        <div class="callout"><strong>The central constraint:</strong> a PID observed on a Docker-published port is evidence that the host port is listening, but it is not evidence of which container owns the publication.</div>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <p>The solution is not to abandon <code>lsof</code>. It is to combine two independent views. Host listener evidence says “the allocated address is live.” Fresh Docker inspection says “this exact running container carries this activation’s identity and publishes this host port to this declared container port.” Both must agree.</p>
+        <div class="flow" aria-label="Docker confirmation sequence">
+          <div class="node"><b>1 · Begin</b>Launcher selects <code>api</code> as Docker-backed.</div>
+          <div class="node"><b>2 · Lease</b>Portreeve returns port, container port, service, and exact labels.</div>
+          <div class="node"><b>3 · Launch</b>Launcher applies labels and publishes only the allocated loopback port.</div>
+          <div class="node"><b>4 · Inspect</b>Portreeve checks running state, labels, mapping, and host listener.</div>
+          <div class="node"><b>5 · Confirm</b>One Docker-typed run is committed transactionally.</div>
+        </div>
+        <pre>{
+  "bindingKind": "docker",
+  "port": 43210,
+  "docker": {
+    "service": "api",
+    "containerPort": 3000,
+    "requiredLabels": {
+      "com.trentbrown.portreeve.component": "api",
+      "com.trentbrown.portreeve.activation-id": "activation-123",
+      "com.trentbrown.portreeve.endpoints": "{\"http\":3000}"
+    }
+  }
+}</pre>
+        <p>The container ID submitted later is deliberately weak: it is only the key used for a fresh <code>docker inspect</code>. A stale ID cannot confirm anything by itself.</p>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <h3>1. Provider-typed persistence</h3>
+        <p>Schema migration 5 rebuilds <code>runs</code> with a <code>binding_kind</code>. A process run requires a root PID and forbids a container ID; a Docker run requires a container ID and forbids a root PID. Existing rows migrate as process runs without losing assignment or history data.</p>
+        <h3>2. A small Docker adapter</h3>
+        <p><code>DockerCliAdapter</code> invokes the host’s configured <code>docker</code> CLI. It normalizes only running state, labels, and TCP publications. Inventory finds an exact host port by freshly inspecting running containers; the live smoke removed an unreliable Docker CLI publication filter.</p>
+        <h3>3. Dynamic capability and mixed begin</h3>
+        <p>The server advertises <code>docker-evidence-v1</code> only when the Docker daemon answers at startup. A begin request may choose Docker by component; omitted components remain process-backed. Docker absence leaves process-only allocation and activations intact.</p>
+        <h3>4. Two confirmation unions</h3>
+        <pre>// Existing shorthand remains process-backed
+{ leaseId, leaseToken, rootPid }
+
+// Docker is explicit and carries no PID
+{ leaseId, leaseToken, bindingKind: "docker", containerId }</pre>
+        <p>The Docker path recomputes required labels from durable stack and activation state, inspects the container, verifies <code>127.0.0.1:hostPort → containerPort/tcp</code>, checks a fresh host listener, and commits the run in one registry transaction.</p>
+        <h3>5. Client and CLI</h3>
+        <p>The official JavaScript client still uses the same HTTP/JSON Unix socket. It preflights Docker capability for Docker-only calls. Commander adds <code>--docker-component</code> to begin and a separate <code>stacks confirm-docker</code> command so PID and container evidence cannot be accidentally mixed.</p>
+      </section>
+
+      <section id="safety">
+        <h2>Safety cases</h2>
+        <div class="grid">
+          <div class="box safe"><div class="tag">Fresh match</div><h3>Return launcher action</h3><p>Inventory returns the exact freshly observed container ID. Reclamation says <code>launcher-action-required</code> and emits no signals.</p></div>
+          <div class="box danger"><div class="tag">Docker unavailable</div><h3>Refuse conservatively</h3><p>If storage says the active run is Docker-backed but Docker cannot be inspected, even unsafe eviction refuses. A stored ID is not returned as fresh authority.</p></div>
+          <div class="box safe"><div class="tag">Docker absent at startup</div><h3>Keep process paths working</h3><p>The capability is omitted and Docker discovery is not attached to ordinary inventory. Process-only stacks behave as before.</p></div>
+        </div>
+        <div class="callout"><strong>Authority stays outside Portreeve:</strong> the structured action is information for the trusted launcher. Portreeve does not execute <code>docker stop</code>, run Compose, or assert application readiness.</div>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="2"><h3>1. Why is Docker’s <code>lsof</code> PID insufficient for confirmation?</h3><div class="choices"><button>A. Docker processes never expose start times.</button><button>B. <code>lsof</code> cannot report TCP listeners created by Docker.</button><button>C. The observed backend or proxy may be shared by several containers.</button><button>D. Container PIDs are always in a different user account.</button></div><div class="feedback"></div></div>
+        <div class="quiz" data-answer="1"><h3>2. What does the submitted container ID prove?</h3><div class="choices"><button>A. It proves the container owns the claim until explicitly released.</button><button>B. Nothing by itself; it selects the container for fresh inspection.</button><button>C. It proves the host publication but not the container port.</button><button>D. It replaces the activation lease token for Docker calls.</button></div><div class="feedback"></div></div>
+        <div class="quiz" data-answer="3"><h3>3. Docker is absent when Portreeve starts. What happens?</h3><div class="choices"><button>A. The server refuses all stack preparation.</button><button>B. Health advertises Docker but confirmation returns a retryable warning.</button><button>C. Inventory assumes every unobservable listener is Docker-managed.</button><button>D. Docker capability is omitted; process-only operations continue.</button></div><div class="feedback"></div></div>
+        <div class="quiz" data-answer="0"><h3>4. What may <code>unsafe-evict</code> do to a Docker-managed listener?</h3><div class="choices"><button>A. Return a launcher action and send no process signal.</button><button>B. SIGTERM the Docker backend, but never SIGKILL it.</button><button>C. Stop the exact container after checking its labels.</button><button>D. Signal the proxy only when <code>unsafeAnyOwner</code> is present.</button></div><div class="feedback"></div></div>
+        <div class="quiz" data-answer="2"><h3>5. Why store Docker runs in the existing run model?</h3><div class="choices"><button>A. To let Docker containers inherit process lineage.</button><button>B. To avoid keeping activation endpoint outcomes after confirmation.</button><button>C. To preserve one canonical claim-exclusivity and active-provider model.</button><button>D. To let Portreeve restart containers after launcher failure.</button></div><div class="feedback"></div></div>
+      </section>
+    </main>
+    <script>
+      document.querySelectorAll('.quiz').forEach((quiz) => {
+        const correct = Number(quiz.dataset.answer);
+        const feedback = quiz.querySelector('.feedback');
+        quiz.querySelectorAll('button').forEach((button, index) => {
+          button.addEventListener('click', () => {
+            quiz.querySelectorAll('button').forEach((candidate, candidateIndex) => {
+              candidate.classList.toggle('correct', candidateIndex === correct);
+              candidate.classList.toggle('incorrect', candidateIndex === index && index !== correct);
+            });
+            feedback.textContent = index === correct ? 'Correct — that preserves the evidence and authority boundaries.' : 'Not quite. Review the highlighted answer and the safety cases above.';
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -168,7 +168,7 @@ file - rejected because the sandbox needs only its rendered view
 
 ## [7] Model Docker runs as provider evidence and make reclamation launcher-only
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

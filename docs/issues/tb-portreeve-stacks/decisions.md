@@ -175,3 +175,20 @@ one map - rejected because names can collide; include all address views in the s
 file - rejected because the sandbox needs only its rendered view
 
 **Promoted:** 2026-08-06. PR: #9.
+
+---
+
+## Model Docker runs as provider evidence and make reclamation launcher-only
+
+**Confidence:** HIGH
+
+**Blast Radius:** SQLite schema v5, activation begin and confirmation contracts, Docker CLI adapter, inventory classification, reclamation results, official client, and CLI
+
+Select process or Docker binding per component at activation begin, defaulting to process. Return Docker leases with the exact required Portreeve label set. A Docker confirmation uses the container ID only as a lookup key, then requires fresh running state, exact stack/component/revision/generation/activation/endpoint labels, an exact 127.0.0.1 host-to-container TCP publication, and a fresh lsof listener. Persist the confirmed run with binding_kind=docker, a nullable process PID, container identity, and the expected evidence contract. Inventory redacts non-Portreeve labels. Any freshly identified Docker-managed listener makes both normal reclamation and unsafe eviction return launcher-action-required with exact container IDs and zero signals.
+
+**Triggered by:** P5 must confirm Docker publications without inventing process lineage or allowing Docker backend PIDs to be signaled
+
+**Alternatives considered:**
+Treat the Docker backend PID as the run root - rejected because it can be shared across containers; store Docker confirmation only on the activation endpoint - rejected because claim exclusivity and inventory need one canonical active-run model; let unsafeAnyOwner kill the backend - rejected because exact-port intent cannot safely authorize terminating shared Docker infrastructure; expose all inspected container labels - rejected because unrelated labels may carry private metadata
+
+**Promoted:** 2026-08-06. PR: #10.

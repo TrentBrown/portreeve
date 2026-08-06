@@ -9,11 +9,11 @@
 | --- | --------------------------- | ------- | ----- | ------------------------------------------------------------- |
 | R1  | Definition and identity     | PASS    | #7    | Strict canonical definitions and revisions                    |
 | R2  | Allocation and activation   | PASS    | #8    | P3 complete for process-backed activations                    |
-| R3  | Ownership confirmation      | NOT YET | -     | Planned for P5 / I-4                                          |
+| R3  | Ownership confirmation      | PASS    | #10   | Mixed process/Docker evidence and capability behavior pass    |
 | R4  | Discovery isolation         | PASS    | #9    | Scoped, redacted, generation-aware discovery                  |
 | R5  | Compatibility and migration | PASS    | #7    | Legacy aliases and relational migration pass                  |
 | R6  | Safety and recovery         | NOT YET | -     | Planned for P5-P6 / I-4-I-5                                   |
-| R7  | Client, CLI, and protocol   | NOT YET | #7-#9 | Definition, activation, and discovery delivered; P5-P7 remain |
+| R7  | Client, CLI, and protocol   | NOT YET | #7-#10 | Definition through Docker evidence delivered; P6-P7 remain   |
 | R8  | Desktop                     | NOT YET | -     | Planned for P7 / I-6                                          |
 
 ## PR Log
@@ -64,3 +64,19 @@ Append PR boundary entries here.
   desktop work. Independent judge: PASS WITH CONCERNS; code review: PASS with no
   findings. The broad suite's one lifecycle-status failure is the unchanged
   installed-launchd baseline accepted with PRs #7 and #8.
+
+### PR #10 - Docker evidence and mixed activations
+
+- **PR:** [#10](https://github.com/TrentBrown/portreeve/pull/10)
+- **Status:** ready for human review
+- **Scope:** P5 dynamic `docker-evidence-v1` capability, per-component process/Docker
+  placement, exact activation labels, fresh container and host-publication confirmation,
+  schema-v5 Docker run evidence, Docker-managed inventory, launcher-only reclamation,
+  and matching official client, CLI, diagnostics, and documentation surfaces.
+- **Evidence packet:** [pr-10](pr-10/)
+- **Result:** R3 passes. R6 advances through unconditional Docker process-signal refusal
+  but remains open for P6 recovery and pruning. R7 advances through the independently
+  capability-gated Docker surface and remains open for P6-P7. Independent judge: PASS
+  WITH CONCERNS; code review: PASS with no remaining findings. The pinned Bun 1.3.14
+  gate passes all 206 tests, and a temporary real Docker Desktop container completed the
+  full apply/prepare/begin/confirm/inventory path before being removed.

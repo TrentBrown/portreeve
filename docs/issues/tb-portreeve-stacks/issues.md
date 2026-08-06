@@ -82,12 +82,12 @@ through human review and merge.
 
 ## I-4 - Add Docker evidence and mixed activations
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P5
 - **Rubric criteria:** R3, R6
 - **Depends on:** I-2
-- **PR:** -
+- **PR:** [#10](https://github.com/TrentBrown/portreeve/pull/10)
 
 Implement the trusted Docker CLI adapter, activation labels and fresh inspect
 verification, mixed process/container confirmation, capability degradation, and
@@ -95,6 +95,12 @@ unconditional refusal to signal Docker-managed host listeners.
 
 **Started 2026-08-06.** Sequential delivery branch
 `tb-portreeve-stacks-04-docker-evidence` begins from merged `main` at `f16addf`.
+
+**Implementation complete 2026-08-06.** PR #10 adds dynamic Docker capability
+advertisement, per-component mixed activation bindings, exact label and publication
+evidence, schema-v5 Docker run persistence, Docker-managed inventory, launcher-only
+reclamation results, official client and CLI surfaces, and a real Docker Desktop
+end-to-end activation smoke. Awaiting human review and merge.
 
 ## I-5 - Complete activation recovery and safe stack pruning
 
