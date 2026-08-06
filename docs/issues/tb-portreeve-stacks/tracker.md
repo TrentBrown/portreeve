@@ -5,16 +5,16 @@
 
 ## Rubric Status
 
-| #   | Criterion (short)           | Status  | PR  | Notes                                          |
-| --- | --------------------------- | ------- | --- | ---------------------------------------------- |
-| R1  | Definition and identity     | PASS    | #7  | Strict canonical definitions and revisions     |
-| R2  | Allocation and activation   | PASS    | #8  | P3 complete for process-backed activations     |
-| R3  | Ownership confirmation      | NOT YET | -   | Planned for P5 / I-4                           |
-| R4  | Discovery isolation         | NOT YET | -   | Planned for P4 / I-3                           |
-| R5  | Compatibility and migration | PASS    | #7  | Legacy aliases and relational migration pass   |
-| R6  | Safety and recovery         | NOT YET | -   | Planned for P5-P6 / I-4-I-5                    |
+| #   | Criterion (short)           | Status  | PR     | Notes                                                      |
+| --- | --------------------------- | ------- | ------ | ---------------------------------------------------------- |
+| R1  | Definition and identity     | PASS    | #7     | Strict canonical definitions and revisions                 |
+| R2  | Allocation and activation   | PASS    | #8     | P3 complete for process-backed activations                 |
+| R3  | Ownership confirmation      | NOT YET | -      | Planned for P5 / I-4                                       |
+| R4  | Discovery isolation         | NOT YET | -      | Planned for P4 / I-3                                       |
+| R5  | Compatibility and migration | PASS    | #7     | Legacy aliases and relational migration pass               |
+| R6  | Safety and recovery         | NOT YET | -      | Planned for P5-P6 / I-4-I-5                                |
 | R7  | Client, CLI, and protocol   | NOT YET | #7, #8 | Definition and activation surfaces delivered; P4-P7 remain |
-| R8  | Desktop                     | NOT YET | -   | Planned for P7 / I-6                           |
+| R8  | Desktop                     | NOT YET | -      | Planned for P7 / I-6                                       |
 
 ## PR Log
 
