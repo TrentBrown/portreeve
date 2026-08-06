@@ -150,6 +150,14 @@ test('begins atomically, confirms required process evidence, and degrades for a 
 
   expect(begun.activation.state).toBe('starting');
   expect(begun.leases).toHaveLength(1);
+  expect(
+    registry.listHistory().filter(({ eventType }) => eventType === 'lease.acquired'),
+  ).toEqual([
+    expect.objectContaining({
+      entityId: begun.leases[0]?.leaseId,
+      payload: expect.objectContaining({ activationId: begun.activation.id }),
+    }),
+  ]);
   const lease = begun.leases[0];
   if (lease === undefined) throw new Error('Expected required endpoint lease.');
   listening.add(lease.port);
@@ -336,6 +344,12 @@ test('refuses to end around a live listener and ends after fresh evidence shows 
     leaseToken: lease.leaseToken,
     rootPid: 4242,
   });
+  const confirmedRunId = activation.endpoints.find(
+    ({ state }) => state === 'confirmed',
+  )?.runId;
+  if (confirmedRunId === null || confirmedRunId === undefined) {
+    throw new Error('Expected confirmed endpoint run.');
+  }
 
   expect(service.end(activation.id, { client })).rejects.toMatchObject({
     code: 'conflict',
@@ -346,6 +360,13 @@ test('refuses to end around a live listener and ends after fresh evidence shows 
     changed: true,
     activation: { state: 'ended' },
   });
+  expect(registry.listHistory()).toContainEqual(
+    expect.objectContaining({
+      eventType: 'run.released',
+      entityId: confirmedRunId,
+      payload: { activationId: activation.id },
+    }),
+  );
   expect(await service.end(activation.id, { client })).toMatchObject({
     changed: false,
     activation: { state: 'ended' },

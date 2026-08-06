@@ -267,11 +267,11 @@ export function createProgram() {
     .description('Begin one exclusive activation and atomically lease its endpoints')
     .option(
       '--required-endpoint <component.endpoint...>',
-      'promote optional endpoints to required for this activation',
+      'promote optional endpoints; JSON objects preserve names containing dots',
     )
     .option(
       '--skip-endpoint <component.endpoint...>',
-      'skip optional endpoints when beginning this activation',
+      'skip optional endpoints; JSON objects preserve names containing dots',
     )
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output including private lease tokens')

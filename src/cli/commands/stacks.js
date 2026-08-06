@@ -6,7 +6,10 @@ import {
   PortreeveClient,
   canonicalWorkspaceRoot,
 } from '../../../packages/client/src/index.js';
-import { IdentifierSchema } from '../../protocol/schemas.js';
+import {
+  IdentifierSchema,
+  StackEndpointReferenceSchema,
+} from '../../protocol/schemas.js';
 import { EXIT_CODES } from '../../protocol/constants.js';
 import { CliUsageError, setExitCode } from '../exit.js';
 import { renderOutput } from '../output/render.js';
@@ -270,13 +273,22 @@ function safeMessage(error) {
 
 /** @param {string} value */
 function parseEndpointReference(value) {
+  if (value.startsWith('{')) {
+    try {
+      return StackEndpointReferenceSchema.parse(JSON.parse(value));
+    } catch (error) {
+      throw new CliUsageError(
+        `Invalid JSON endpoint reference ${value}: ${safeMessage(error)}`,
+      );
+    }
+  }
   const separator = value.indexOf('.');
   const component = separator < 0 ? value : value.slice(0, separator);
   const endpoint = separator < 0 ? 'default' : value.slice(separator + 1);
   if (component.length === 0 || endpoint.length === 0) {
     throw new CliUsageError(`Invalid endpoint reference: ${value}.`);
   }
-  return { component, endpoint };
+  return StackEndpointReferenceSchema.parse({ component, endpoint });
 }
 
 /** @param {string} filename */

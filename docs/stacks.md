@@ -89,7 +89,9 @@ evidence. Required endpoints must confirm. Optional endpoints may be named with
 `--skip-endpoint component.endpoint`; after all required endpoints confirm, a skipped or
 failed optional endpoint makes the activation `degraded`. A required dependency on an
 optional provider endpoint must promote it with `--required-endpoint component.endpoint`
-for that activation.
+for that activation. When a component or endpoint name itself contains a dot, pass a
+JSON object such as
+`--required-endpoint '{"component":"api.v2","endpoint":"http.internal"}'`.
 
 Activation states are `starting`, `confirmed`, `degraded`, `failed`, and `ended`.
 Endpoint states are `leased`, `confirmed`, `skipped`, `failed`, and `released`.

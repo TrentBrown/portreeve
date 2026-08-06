@@ -924,6 +924,16 @@ export class Registry {
           { activationId: id, reason: 'leases_pending' },
         );
       }
+      const releasedRuns = this.database
+        .query(
+          `SELECT id FROM runs
+           WHERE state = 'confirmed' AND id IN (
+             SELECT run_id FROM stack_activation_endpoints
+             WHERE activation_id = $activationId AND run_id IS NOT NULL
+           )`,
+        )
+        .all({ activationId: id })
+        .map((row) => z.object({ id: IdentifierSchema }).parse(row));
       this.database
         .query(
           `UPDATE runs
@@ -934,6 +944,15 @@ export class Registry {
            )`,
         )
         .run({ timestamp, activationId: id });
+      for (const run of releasedRuns) {
+        this.#appendHistory(
+          'run.released',
+          'run',
+          run.id,
+          { activationId: id },
+          timestamp,
+        );
+      }
       this.database
         .query(
           `UPDATE stack_activation_endpoints
@@ -1147,6 +1166,18 @@ export class Registry {
             leaseId,
             timestamp,
           });
+        this.#appendHistory(
+          'lease.acquired',
+          'lease',
+          leaseId,
+          {
+            claimId: endpoint.claimId,
+            port: endpoint.port,
+            expiresAt,
+            activationId,
+          },
+          timestamp,
+        );
         leases.push({
           component: endpoint.component,
           endpoint: endpoint.endpoint,

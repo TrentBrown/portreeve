@@ -111,7 +111,16 @@ test('stack commands share definition discovery and versioned JSON contracts', a
     expect(JSON.parse(reused.stdout).result.reused).toBe(true);
 
     const begun = await runCli(
-      ['stacks', 'begin', generationId, '--socket', socketPath, '--json'],
+      [
+        'stacks',
+        'begin',
+        generationId,
+        '--required-endpoint',
+        '{"component":"api","endpoint":"http"}',
+        '--socket',
+        socketPath,
+        '--json',
+      ],
       workspaceRoot,
     );
     expect(begun.exitCode, begun.stderr).toBe(0);

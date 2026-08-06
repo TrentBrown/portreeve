@@ -76,7 +76,9 @@ containers.
 `stacks prepare <stack-id>` creates or reuses an immutable endpoint allocation.
 `stacks begin <generation-id>` atomically leases the activation endpoints and emits
 private lease tokens only in JSON mode. `--required-endpoint component.endpoint`
-promotes an optional endpoint; `--skip-endpoint component.endpoint` skips one.
+promotes an optional endpoint; `--skip-endpoint component.endpoint` skips one. When
+either name itself contains a dot, pass a JSON object such as
+`--required-endpoint '{"component":"api.v2","endpoint":"http.internal"}'`.
 
 Renewal reads a JSON credential array from `--leases-file`. Confirm, abandon, and skip
 read one `{ "leaseId", "leaseToken" }` object from `--lease-file`, keeping tokens out of
