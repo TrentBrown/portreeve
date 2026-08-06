@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portreeve PR #8 — Generations and Activations</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17231f;
+        --muted: #596963;
+        --paper: #f7f2e8;
+        --panel: #fffdf8;
+        --green: #17624b;
+        --green-soft: #e2eee8;
+        --gold: #b66b24;
+        --gold-soft: #fff0dc;
+        --red: #9a3f38;
+        --line: #d9d2c4;
+        --shadow: 0 10px 30px rgb(35 46 40 / 8%);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font:
+          17px/1.65 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+      }
+      header {
+        padding: 72px max(24px, calc((100vw - 1080px) / 2));
+        background: linear-gradient(140deg, #113f33, #17624b 60%, #29785f);
+        color: white;
+      }
+      header p {
+        max-width: 760px;
+        color: #e8f3ef;
+      }
+      .eyebrow {
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        font-weight: 750;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: Georgia, 'Times New Roman', serif;
+        line-height: 1.18;
+      }
+      h1 {
+        margin: 8px 0 16px;
+        font-size: clamp(2.5rem, 7vw, 5rem);
+      }
+      h2 {
+        margin-top: 0;
+        font-size: clamp(2rem, 4vw, 3rem);
+      }
+      h3 {
+        margin-top: 1.8em;
+        font-size: 1.45rem;
+      }
+      main {
+        width: min(1080px, calc(100% - 36px));
+        margin: 34px auto 80px;
+      }
+      section,
+      nav {
+        margin: 24px 0;
+        padding: clamp(24px, 5vw, 56px);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+      nav {
+        padding-block: 26px;
+      }
+      nav ol {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 26px;
+        margin: 0;
+        padding-left: 22px;
+      }
+      a {
+        color: var(--green);
+        text-underline-offset: 3px;
+      }
+      code,
+      pre {
+        font-family: 'SFMono-Regular', Consolas, monospace;
+      }
+      code {
+        padding: 0.1em 0.3em;
+        border-radius: 4px;
+        background: #eee9df;
+        font-size: 0.9em;
+      }
+      pre {
+        overflow: auto;
+        padding: 20px;
+        border-radius: 12px;
+        background: #14231f;
+        color: #eef6f2;
+        white-space: pre-wrap;
+        font-size: 0.88rem;
+      }
+      .pin {
+        display: inline-block;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        padding: 8px 12px;
+        border: 1px solid #7fb29f;
+        border-radius: 8px;
+        background: rgb(255 255 255 / 12%);
+        font-family: 'SFMono-Regular', Consolas, monospace;
+        font-size: 0.8rem;
+      }
+      .callout {
+        margin: 24px 0;
+        padding: 18px 20px;
+        border-left: 5px solid var(--gold);
+        border-radius: 8px;
+        background: var(--gold-soft);
+      }
+      .callout strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 14px;
+        margin: 26px 0;
+      }
+      .card {
+        padding: 19px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: white;
+      }
+      .card .label {
+        color: var(--green);
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+      }
+      .card h3 {
+        margin: 8px 0;
+        font-family: inherit;
+        font-size: 1.05rem;
+      }
+      .card p {
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(120px, 1fr));
+        gap: 10px;
+        align-items: stretch;
+        margin: 28px 0;
+      }
+      .step {
+        position: relative;
+        padding: 18px 13px;
+        border-radius: 11px;
+        background: var(--green-soft);
+        text-align: center;
+      }
+      .step:not(:last-child)::after {
+        content: '→';
+        position: absolute;
+        right: -13px;
+        top: 40%;
+        z-index: 2;
+        color: var(--green);
+        font-weight: 900;
+      }
+      .step b {
+        display: block;
+      }
+      .step small {
+        color: var(--muted);
+      }
+      .lane {
+        display: grid;
+        grid-template-columns: 145px 1fr;
+        border-top: 1px solid var(--line);
+      }
+      .lane:last-child {
+        border-bottom: 1px solid var(--line);
+      }
+      .lane > * {
+        padding: 14px;
+      }
+      .lane .who {
+        color: var(--green);
+        font-weight: 750;
+        background: #f5f8f5;
+      }
+      .states {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+        margin: 20px 0;
+      }
+      .state {
+        padding: 8px 13px;
+        border: 1px solid #a9cbbf;
+        border-radius: 999px;
+        background: var(--green-soft);
+        font-weight: 700;
+      }
+      .state.bad {
+        border-color: #e0ada7;
+        background: #f9e7e5;
+        color: var(--red);
+      }
+      .state.done {
+        border-color: #c8b18d;
+        background: #f4eadb;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        font-size: 0.92rem;
+      }
+      th,
+      td {
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        color: var(--green);
+      }
+      .quiz {
+        margin: 25px 0;
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: white;
+      }
+      .quiz h3 {
+        margin-top: 0;
+        font-family: inherit;
+        font-size: 1.05rem;
+      }
+      .answers {
+        display: grid;
+        gap: 9px;
+      }
+      button {
+        padding: 11px 14px;
+        border: 1px solid #9ab4aa;
+        border-radius: 8px;
+        background: #f8fbf9;
+        color: var(--ink);
+        text-align: left;
+        cursor: pointer;
+        font: inherit;
+      }
+      button:hover {
+        border-color: var(--green);
+        background: var(--green-soft);
+      }
+      button.correct {
+        border-color: var(--green);
+        background: var(--green-soft);
+      }
+      button.wrong {
+        border-color: var(--red);
+        background: #f9e7e5;
+      }
+      .feedback {
+        min-height: 1.7em;
+        margin: 12px 0 0;
+        font-weight: 650;
+      }
+      footer {
+        text-align: center;
+        color: var(--muted);
+        padding: 40px 20px 70px;
+      }
+      @media (max-width: 760px) {
+        header {
+          padding-top: 48px;
+        }
+        .flow {
+          grid-template-columns: 1fr;
+        }
+        .step:not(:last-child)::after {
+          content: '↓';
+          top: auto;
+          bottom: -20px;
+          right: 48%;
+        }
+        .lane {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="eyebrow">Portreeve · Pull Request #8</div>
+      <h1>One plan, one startup attempt</h1>
+      <p>
+        This change turns a stack definition into an immutable allocation generation,
+        then gives a launcher a short-lived, all-or-nothing activation protocol. It is
+        coordination without orchestration: Portreeve assigns and verifies ports, while
+        the project launcher still starts and stops its own services.
+      </p>
+      <div class="pin">
+        13db6838357fdd3e94b896f7498727651b9f5e64..958182c72addae5bea294109d4f695ad3a68d426
+      </div>
+    </header>
+    <main>
+      <nav aria-label="Contents">
+        <ol>
+          <li><a href="#background">Background</a></li>
+          <li><a href="#intuition">Intuition</a></li>
+          <li><a href="#code">Code walkthrough</a></li>
+          <li><a href="#safety">Safety model</a></li>
+          <li><a href="#quiz">Quiz</a></li>
+        </ol>
+      </nav>
+
+      <section id="background">
+        <div class="eyebrow">1 · Background</div>
+        <h2>Ports are relationships, not merely numbers</h2>
+        <p>
+          A single web service can ask Portreeve for an available port and then bind it.
+          A local stack has a harder problem. The API, website, metrics endpoint, and
+          workers must all agree on one coherent set of addresses. If each component
+          asks independently, the launcher can observe a mixture of old and new choices.
+        </p>
+        <p>
+          PR #7 introduced the durable vocabulary: a stack belongs to a canonical Git
+          worktree; components publish named endpoints; definitions have
+          content-addressed revisions; and each published endpoint links to an ordinary
+          Portreeve claim. This PR adds the runtime half of that model.
+        </p>
+        <div class="grid">
+          <div class="card">
+            <div class="label">Definition</div>
+            <h3>What the stack declares</h3>
+            <p>
+              Components, endpoints, requiredness, dependencies, and exact or preferred
+              port policy.
+            </p>
+          </div>
+          <div class="card">
+            <div class="label">Generation</div>
+            <h3>One immutable port plan</h3>
+            <p>
+              A complete snapshot tying one definition revision to concrete host ports.
+            </p>
+          </div>
+          <div class="card">
+            <div class="label">Activation</div>
+            <h3>One startup attempt</h3>
+            <p>
+              Renewable leases and endpoint outcomes for a launcher trying to realize
+              that generation.
+            </p>
+          </div>
+          <div class="card">
+            <div class="label">Run</div>
+            <h3>Confirmed ownership</h3>
+            <p>
+              A provider that bound a port and proved current listener and
+              process-lineage evidence.
+            </p>
+          </div>
+        </div>
+        <div class="callout">
+          <strong>What Portreeve still does not do</strong>
+          It does not launch Node, run Docker Compose, order application startup, check
+          HTTP health, or stop providers. The caller remains the orchestrator.
+        </div>
+      </section>
+
+      <section id="intuition">
+        <div class="eyebrow">2 · Intuition</div>
+        <h2>Separate planning from the attempt to use the plan</h2>
+        <p>
+          Imagine a stack with <code>api.http</code> and optional
+          <code>api.metrics</code>. Preparation might produce ports 43100 and 43101.
+          That mapping is the generation. It can be handed to every launcher step before
+          any provider starts, so all consumers derive configuration from the same
+          source.
+        </p>
+        <div class="flow" aria-label="Activation sequence">
+          <div class="step"><b>Apply</b><small>revision a91…</small></div>
+          <div class="step"><b>Prepare</b><small>43100 + 43101</small></div>
+          <div class="step"><b>Begin</b><small>atomic leases</small></div>
+          <div class="step"><b>Confirm</b><small>fresh evidence</small></div>
+          <div class="step"><b>End</b><small>after listeners stop</small></div>
+        </div>
+        <h3>Why two durable objects?</h3>
+        <p>
+          A generation describes a reusable plan. An activation describes a fallible
+          attempt. If the API fails during startup, the attempt may fail while its plan
+          remains valid. A new attempt can reuse the generation instead of silently
+          reallocating every consumer address.
+        </p>
+        <div class="lane">
+          <div class="who">Portreeve</div>
+          <div>
+            Chooses a complete generation; issues a batch of expiring lease credentials;
+            confirms listener ownership; records outcomes.
+          </div>
+        </div>
+        <div class="lane">
+          <div class="who">Launcher</div>
+          <div>
+            Distributes the generation; starts providers; renews during slow startup;
+            submits evidence; stops providers before ending.
+          </div>
+        </div>
+        <div class="lane">
+          <div class="who">Provider</div>
+          <div>
+            Binds only its assigned port. Its live socket and process instance—not a
+            stored PID—become the ownership evidence.
+          </div>
+        </div>
+        <h3>Atomicity is the important property</h3>
+        <p>
+          Beginning does not return “most of” a stack. Every selected endpoint lease is
+          created in one immediate SQLite transaction, or none is. Likewise, only one
+          activation may be live for a canonical worktree. Concurrent callers converge
+          on one generation and only one startup attempt wins.
+        </p>
+        <pre>
+generation endpoints
+api.http      → 127.0.0.1:43100  required
+api.metrics   → 127.0.0.1:43101  optional
+
+activation A
+api.http      → confirmed
+api.metrics   → skipped
+aggregate     → degraded (usable, but incomplete)</pre>
+      </section>
+
+      <section id="code">
+        <div class="eyebrow">3 · Code walkthrough</div>
+        <h2>From SQLite invariants to portable public surfaces</h2>
+        <h3>1. Storage makes the states durable</h3>
+        <p>
+          Migration 4 adds generation, generation-endpoint, activation, and
+          activation-endpoint tables. Foreign keys preserve the definition revision and
+          claim relationships. Unique constraints prevent duplicate endpoint or port
+          membership inside a generation, and a partial index prevents a second live
+          activation for one stack.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Object</th>
+              <th>Durable facts</th>
+              <th>Important invariant</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Generation</td>
+              <td>stack, revision, state, endpoint port snapshot</td>
+              <td>Immutable after creation</td>
+            </tr>
+            <tr>
+              <td>Activation</td>
+              <td>generation, aggregate state, timestamps</td>
+              <td>One live attempt</td>
+            </tr>
+            <tr>
+              <td>Activation endpoint</td>
+              <td>claim, port, requiredness, lease/run, outcome</td>
+              <td>One outcome per endpoint</td>
+            </tr>
+          </tbody>
+        </table>
+        <h3>2. Preparation reconciles durable intent with live evidence</h3>
+        <p>
+          <code>StackCoordinationService.prepare</code> first attempts to reuse the
+          latest valid generation. Reuse requires the claim assignment still to match
+          and any listener to be freshly verified as that claim's current run. Otherwise
+          the old generation becomes stale and a complete new candidate set is built.
+        </p>
+        <pre>
+candidate order = sticky assignment → preferred port → configured ranges
+remove          = excluded ports + platform ephemeral range
+reject          = another assignment + pending lease + unexplained listener
+exact conflict  = fail the whole preparation; never fall back</pre>
+        <h3>3. Begin converts the snapshot into short-lived authority</h3>
+        <p>
+          Begin rechecks current listeners, definition revision, endpoint selections,
+          pending work, and worktree exclusivity. It then creates a pending lease for
+          each non-skipped endpoint in one transaction. Tokens are returned only in the
+          begin response; ordinary activation inspection is token-free.
+        </p>
+        <h3>4. Endpoint outcomes drive the aggregate state</h3>
+        <div class="states" aria-label="Activation states">
+          <span class="state">starting</span><span class="state">confirmed</span
+          ><span class="state">degraded</span><span class="state bad">failed</span
+          ><span class="state done">ended</span>
+        </div>
+        <p>
+          Required endpoints must confirm. An abandoned or expired required endpoint
+          fails the whole activation and transactionally abandons its remaining pending
+          leases. Once required endpoints confirm, a skipped or failed optional endpoint
+          makes the activation degraded. Every automatic transition and lease/run
+          transition is also written to the ordinary history ledger.
+        </p>
+        <h3>5. The same contract reaches every non-desktop surface</h3>
+        <p>
+          A separate <code>stack-activations-v1</code> capability gates the HTTP/JSON
+          Unix socket routes. The official JavaScript client preflights capability, the
+          declarations describe every response, and Commander exposes prepare, begin,
+          inspect, renew, confirm, abandon, skip, and end. JSON endpoint references are
+          available when canonical names themselves contain dots.
+        </p>
+      </section>
+
+      <section id="safety">
+        <div class="eyebrow">4 · Safety model</div>
+        <h2>Fresh listeners outrank stale bookkeeping</h2>
+        <p>
+          PIDs are recorded as part of a confirmed run, but a stored PID alone never
+          authorizes reuse, confirmation, or cleanup. Portreeve asks the operating
+          system for the current listener, verifies the process instance and lineage,
+          and treats unexplained occupancy as a conflict.
+        </p>
+        <div class="grid">
+          <div class="card">
+            <div class="label">Safe reuse</div>
+            <h3>No listener, or verified same claim</h3>
+            <p>A valid generation can remain the shared port plan.</p>
+          </div>
+          <div class="card">
+            <div class="label">Stale plan</div>
+            <h3>Unexplained current listener</h3>
+            <p>
+              The generation is invalidated; Portreeve does not kill or adopt the
+              process.
+            </p>
+          </div>
+          <div class="card">
+            <div class="label">Safe end</div>
+            <h3>All providers already stopped</h3>
+            <p>
+              Portreeve releases records only after fresh evidence shows no confirmed
+              listener.
+            </p>
+          </div>
+        </div>
+        <div class="callout">
+          <strong>Known race boundary</strong>
+          Listener inspection and the following database transaction are separate system
+          calls. A process can bind between them. This cannot grant false confirmation:
+          provider bind and fresh confirmation remain the final authority. Recovery and
+          reconciliation are expanded in a later slice.
+        </div>
+      </section>
+
+      <section id="quiz">
+        <div class="eyebrow">5 · Quiz</div>
+        <h2>Check the model</h2>
+        <p>Select one answer for each question. Feedback appears immediately.</p>
+
+        <div
+          class="quiz"
+          data-answer="1"
+          data-explain="A generation is the immutable shared plan; a failed startup is an activation outcome and does not by itself invalidate that plan."
+        >
+          <h3>
+            1. An optional provider fails during startup, but required providers
+            confirm. What should happen?
+          </h3>
+          <div class="answers">
+            <button>The generation becomes stale and every port is reallocated.</button
+            ><button>
+              The activation becomes degraded while the generation may remain reusable.</button
+            ><button>
+              The activation confirms because optional endpoints are never recorded.
+            </button>
+          </div>
+          <p class="feedback" aria-live="polite"></p>
+        </div>
+
+        <div
+          class="quiz"
+          data-answer="2"
+          data-explain="Exact means no substitution. Preparation is all-or-nothing, so it creates no partial generation."
+        >
+          <h3>
+            2. An exact endpoint port has an unrelated live listener. What is the
+            contract?
+          </h3>
+          <div class="answers">
+            <button>Use the next automatic port but mark the endpoint degraded.</button
+            ><button>
+              Create the other endpoints and leave this endpoint unresolved.</button
+            ><button>Fail preparation without creating a partial generation.</button>
+          </div>
+          <p class="feedback" aria-live="polite"></p>
+        </div>
+
+        <div
+          class="quiz"
+          data-answer="0"
+          data-explain="The launcher is the orchestrator. Portreeve coordinates allocation and verifies ownership but does not start or stop the provider."
+        >
+          <h3>3. Who starts and stops project services in this design?</h3>
+          <div class="answers">
+            <button>The project launcher or orchestration CLI.</button
+            ><button>The Portreeve daemon after begin and before end.</button
+            ><button>
+              The official JavaScript client through direct in-process calls.
+            </button>
+          </div>
+          <p class="feedback" aria-live="polite"></p>
+        </div>
+
+        <div
+          class="quiz"
+          data-answer="1"
+          data-explain="The stored run narrows expected ownership, but current listener and process-instance evidence must still verify it."
+        >
+          <h3>4. What proves that a process endpoint owns its assigned port?</h3>
+          <div class="answers">
+            <button>A stored root PID matching the activation record.</button
+            ><button>
+              A current listener plus verified process instance and lineage.</button
+            ><button>A successful HTTP application-health response.</button>
+          </div>
+          <p class="feedback" aria-live="polite"></p>
+        </div>
+
+        <div
+          class="quiz"
+          data-answer="2"
+          data-explain="Tokens authorize pending lease mutations and are private. Inspection deliberately returns only non-secret activation state."
+        >
+          <h3>5. Why are activation lease tokens absent from later inspection?</h3>
+          <div class="answers">
+            <button>
+              SQLite reconstructs them from the stored token hash when needed.</button
+            ><button>
+              The server stores them in the generation instead of the activation.</button
+            ><button>
+              They are one-time private authority returned at begin, not durable
+              inspection data.
+            </button>
+          </div>
+          <p class="feedback" aria-live="polite"></p>
+        </div>
+      </section>
+    </main>
+    <footer>
+      Generated for the pinned PR #8 review boundary. No network resources are required.
+    </footer>
+    <script>
+      document.querySelectorAll('.quiz').forEach((quiz) => {
+        const answer = Number(quiz.dataset.answer);
+        const explanation = quiz.dataset.explain;
+        const feedback = quiz.querySelector('.feedback');
+        quiz.querySelectorAll('button').forEach((button, index) => {
+          button.addEventListener('click', () => {
+            quiz
+              .querySelectorAll('button')
+              .forEach((item) => item.classList.remove('correct', 'wrong'));
+            const correct = index === answer;
+            button.classList.add(correct ? 'correct' : 'wrong');
+            quiz.querySelectorAll('button')[answer].classList.add('correct');
+            feedback.textContent = `${correct ? 'Correct.' : 'Not quite.'} ${explanation}`;
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

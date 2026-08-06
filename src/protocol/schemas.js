@@ -210,6 +210,150 @@ export const StackApplyResponseSchema = z.object({
 
 export const StackListSchema = z.array(StackRecordSchema);
 
+export const StackEndpointReferenceSchema = z
+  .object({
+    component: StackNameSchema,
+    endpoint: StackNameSchema.default('default'),
+  })
+  .strict();
+
+export const StackGenerationEndpointSchema = z.object({
+  claimId: IdentifierSchema,
+  component: StackNameSchema,
+  endpoint: StackNameSchema,
+  transport: z.literal('tcp'),
+  host: z.literal('127.0.0.1'),
+  port: PortSchema,
+  required: z.boolean(),
+});
+
+export const StackGenerationSchema = z.object({
+  id: IdentifierSchema,
+  stackId: IdentifierSchema,
+  revision: z.string().regex(/^[a-f0-9]{64}$/),
+  state: z.enum(['valid', 'stale']),
+  endpoints: z.array(StackGenerationEndpointSchema),
+  createdAt: TimestampSchema,
+  invalidatedAt: TimestampSchema.nullable(),
+});
+
+export const StackPrepareRequestSchema = z.object({
+  client: ClientCompatibilitySchema,
+  stackId: IdentifierSchema,
+});
+
+export const StackPrepareResponseSchema = z.object({
+  reused: z.boolean(),
+  generation: StackGenerationSchema,
+});
+
+export const StackActivationEndpointStateSchema = z.enum([
+  'leased',
+  'confirmed',
+  'skipped',
+  'failed',
+  'released',
+]);
+
+export const StackActivationEndpointSchema = z.object({
+  component: StackNameSchema,
+  endpoint: StackNameSchema,
+  claimId: IdentifierSchema,
+  port: PortSchema,
+  required: z.boolean(),
+  bindingKind: z.enum(['process', 'docker']),
+  state: StackActivationEndpointStateSchema,
+  leaseId: IdentifierSchema.nullable(),
+  runId: IdentifierSchema.nullable(),
+  expiresAt: TimestampSchema.nullable(),
+  failureReason: z.string().nullable(),
+  updatedAt: TimestampSchema,
+});
+
+export const StackActivationSchema = z.object({
+  id: IdentifierSchema,
+  stackId: IdentifierSchema,
+  generationId: IdentifierSchema,
+  state: z.enum(['starting', 'confirmed', 'degraded', 'failed', 'ended']),
+  endpoints: z.array(StackActivationEndpointSchema),
+  createdAt: TimestampSchema,
+  updatedAt: TimestampSchema,
+  confirmedAt: TimestampSchema.nullable(),
+  endedAt: TimestampSchema.nullable(),
+});
+
+export const StackActivationLeaseSchema = z.object({
+  component: StackNameSchema,
+  endpoint: StackNameSchema,
+  leaseId: IdentifierSchema,
+  leaseToken: LeaseTokenSchema,
+  port: PortSchema,
+  expiresAt: TimestampSchema,
+});
+
+export const StackBeginActivationRequestSchema = z.object({
+  client: ClientCompatibilitySchema,
+  generationId: IdentifierSchema,
+  requiredEndpoints: z.array(StackEndpointReferenceSchema).default([]),
+  skippedEndpoints: z.array(StackEndpointReferenceSchema).default([]),
+});
+
+export const StackBeginActivationResponseSchema = z.object({
+  activation: StackActivationSchema,
+  leases: z.array(StackActivationLeaseSchema),
+});
+
+const StackLeaseCredentialSchema = z
+  .object({
+    leaseId: IdentifierSchema,
+    leaseToken: LeaseTokenSchema,
+  })
+  .strict();
+
+export const StackRenewActivationRequestSchema = z.object({
+  client: ClientCompatibilitySchema,
+  leases: z.array(StackLeaseCredentialSchema).min(1),
+});
+
+export const StackRenewActivationResponseSchema = z.object({
+  activation: StackActivationSchema,
+  leases: z.array(
+    z.object({
+      leaseId: IdentifierSchema,
+      expiresAt: TimestampSchema,
+    }),
+  ),
+});
+
+export const StackConfirmEndpointRequestSchema = z.object({
+  client: ClientCompatibilitySchema,
+  leaseId: IdentifierSchema,
+  leaseToken: LeaseTokenSchema,
+  rootPid: z.number().int().positive(),
+});
+
+export const StackAbandonEndpointRequestSchema = z.object({
+  client: ClientCompatibilitySchema,
+  leaseId: IdentifierSchema,
+  leaseToken: LeaseTokenSchema,
+  reason: z.enum(['address-in-use', 'startup-error', 'client-cancelled']),
+});
+
+export const StackSkipEndpointRequestSchema = z.object({
+  client: ClientCompatibilitySchema,
+  leaseId: IdentifierSchema,
+  leaseToken: LeaseTokenSchema,
+});
+
+export const StackEndActivationRequestSchema = z.object({
+  client: ClientCompatibilitySchema,
+});
+
+export const StackEndActivationResponseSchema = z.object({
+  changed: z.boolean(),
+  activation: StackActivationSchema,
+});
+
 export const AcquireRequestSchema = z.object({
   client: ClientCompatibilitySchema,
   claim: ClaimIdentitySchema,

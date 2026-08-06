@@ -72,12 +72,43 @@ const result = await client.applyStack({
 });
 ```
 
+`prepareStack(stackId)` creates or reuses a complete immutable allocation generation.
+`beginStackActivation(generationId, options)` then creates one activation and returns
+its activation-scoped lease tokens atomically. The launcher should renew pending leases
+with `renewStackActivation`, bind each provider, and call `confirmStackEndpoint` using
+that provider's root PID. It may call `skipStackEndpoint` only for an optional endpoint,
+or `abandonStackEndpoint` when startup fails.
+
+```js
+const { generation } = await client.prepareStack(result.stack.id);
+const begun = await client.beginStackActivation(generation.id, {
+  skippedEndpoints: [{ component: 'api', endpoint: 'metrics' }],
+});
+
+const lease = begun.leases.find(
+  ({ component, endpoint }) => component === 'api' && endpoint === 'http',
+);
+const server = await startApi(lease.port);
+await client.confirmStackEndpoint(begun.activation.id, {
+  leaseId: lease.leaseId,
+  leaseToken: lease.leaseToken,
+  rootPid: server.pid,
+});
+```
+
+Preparation never starts project processes, and the client does not own startup order,
+health checks, or Docker Compose. `getStackActivation(id)` reports network-ownership
+coordination state, not application readiness.
+
 ## Low-level API
 
 The `PortreeveClient` exposes `health`, `acquire`, `confirm`, `abandon`, `release`,
 `listPorts`, `inspectPort`, `reclaimPort`, `unsafeEvictPort`, `listClaims`, `getClaim`,
 `reassignClaim`, `deleteClaim`, `pruneClaims`, `applyStack`, `listStacks`, `getStack`,
-`getConfig`, `setConfig`, `history`, `logs`, and `stopServer`.
+`prepareStack`, `beginStackActivation`, `getStackActivation`, `renewStackActivation`,
+`confirmStackEndpoint`, `abandonStackEndpoint`, `skipStackEndpoint`,
+`getStackGeneration`, `endStackActivation`, `getConfig`, `setConfig`, `history`, `logs`,
+and `stopServer`.
 
 Construct it with `{ socketPath }` only when overriding the per-user default. Failures
 reject with `PortreeveClientError`, whose stable fields are `code`, optional HTTP

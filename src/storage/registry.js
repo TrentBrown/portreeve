@@ -18,7 +18,9 @@ import {
   ClaimModeSchema,
   IdentifierSchema,
   PortSchema,
+  StackActivationSchema,
   StackDefinitionSchema,
+  StackGenerationSchema,
   StackRecordSchema,
   TimestampSchema,
 } from '../protocol/schemas.js';
@@ -543,6 +545,747 @@ export class Registry {
     return { changed, stack };
   }
 
+  /** @param {string} generationId */
+  getStackGeneration(generationId) {
+    const id = IdentifierSchema.parse(generationId);
+    const row = this.database
+      .query('SELECT * FROM stack_generations WHERE id = $id')
+      .get({ id });
+    if (row === null) return null;
+    const parsed = z
+      .object({
+        id: IdentifierSchema,
+        stack_id: IdentifierSchema,
+        revision: z.string().regex(/^[a-f0-9]{64}$/),
+        state: z.enum(['valid', 'stale']),
+        created_at: TimestampSchema,
+        invalidated_at: TimestampSchema.nullable(),
+      })
+      .parse(row);
+    const endpoints = this.database
+      .query(
+        `SELECT * FROM stack_generation_endpoints
+         WHERE generation_id = $generationId
+         ORDER BY component, endpoint`,
+      )
+      .all({ generationId: id })
+      .map((endpointRow) => {
+        const endpoint = z
+          .object({
+            claim_id: IdentifierSchema,
+            component: z.string().min(1),
+            endpoint: z.string().min(1),
+            transport: z.literal('tcp'),
+            host: z.literal('127.0.0.1'),
+            port: PortSchema,
+            required: z.union([z.literal(0), z.literal(1)]),
+          })
+          .parse(endpointRow);
+        return {
+          claimId: endpoint.claim_id,
+          component: endpoint.component,
+          endpoint: endpoint.endpoint,
+          transport: endpoint.transport,
+          host: endpoint.host,
+          port: endpoint.port,
+          required: endpoint.required === 1,
+        };
+      });
+    return StackGenerationSchema.parse({
+      id: parsed.id,
+      stackId: parsed.stack_id,
+      revision: parsed.revision,
+      state: parsed.state,
+      endpoints,
+      createdAt: parsed.created_at,
+      invalidatedAt: parsed.invalidated_at,
+    });
+  }
+
+  /** @param {string} stackId @param {string} revision */
+  getLatestValidStackGeneration(stackId, revision) {
+    const parsedStackId = IdentifierSchema.parse(stackId);
+    const parsedRevision = z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .parse(revision);
+    const row = /** @type {{id: string}|null} */ (
+      this.database
+        .query(
+          `SELECT id FROM stack_generations
+           WHERE stack_id = $stackId AND revision = $revision AND state = 'valid'
+           ORDER BY created_at DESC LIMIT 1`,
+        )
+        .get({ stackId: parsedStackId, revision: parsedRevision })
+    );
+    return row === null ? null : this.getStackGeneration(row.id);
+  }
+
+  /**
+   * @param {{
+   *   stackId: string,
+   *   revision: string,
+   *   endpoints: Array<{
+   *     claimId: string,
+   *     component: string,
+   *     endpoint: string,
+   *     transport: 'tcp',
+   *     host: '127.0.0.1',
+   *     port: number,
+   *     required: boolean
+   *   }>
+   * }} input
+   * @param {Date} [now]
+   */
+  createStackGeneration(input, now = new Date()) {
+    const stackId = IdentifierSchema.parse(input.stackId);
+    const revision = z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .parse(input.revision);
+    const endpoints = input.endpoints.map((endpoint) =>
+      z
+        .object({
+          claimId: IdentifierSchema,
+          component: z.string().min(1),
+          endpoint: z.string().min(1),
+          transport: z.literal('tcp'),
+          host: z.literal('127.0.0.1'),
+          port: PortSchema,
+          required: z.boolean(),
+        })
+        .parse(endpoint),
+    );
+    const timestamp = toTimestamp(now);
+    /** @type {string} */
+    let generationId = randomUUID();
+    let reused = false;
+
+    const create = this.database.transaction(() => {
+      const stack = /** @type {{current_revision: string}|null} */ (
+        this.database
+          .query('SELECT current_revision FROM stacks WHERE id = $stackId')
+          .get({ stackId })
+      );
+      if (stack === null) {
+        throw new RegistryError('not_found', `Stack ${stackId} was not found.`);
+      }
+      if (stack.current_revision !== revision) {
+        throw new RegistryError(
+          'conflict',
+          `Stack ${stackId} changed while its generation was being prepared.`,
+          { stackId, revision, currentRevision: stack.current_revision },
+        );
+      }
+      const existing = /** @type {{id: string}|null} */ (
+        this.database
+          .query(
+            `SELECT id FROM stack_generations
+             WHERE stack_id = $stackId AND revision = $revision AND state = 'valid'
+             ORDER BY created_at DESC LIMIT 1`,
+          )
+          .get({ stackId, revision })
+      );
+      if (existing !== null) {
+        generationId = existing.id;
+        reused = true;
+        return;
+      }
+
+      for (const endpoint of endpoints) {
+        const linked = this.database
+          .query(
+            `SELECT 1 FROM stack_endpoint_claims
+             WHERE stack_id = $stackId AND component = $component
+               AND endpoint = $endpoint AND claim_id = $claimId`,
+          )
+          .get({
+            stackId,
+            component: endpoint.component,
+            endpoint: endpoint.endpoint,
+            claimId: endpoint.claimId,
+          });
+        if (linked === null) {
+          throw new RegistryError(
+            'conflict',
+            `Stack endpoint ${endpoint.component}.${endpoint.endpoint} is not linked to claim ${endpoint.claimId}.`,
+          );
+        }
+        const assigned = /** @type {{id: string}|null} */ (
+          this.database
+            .query(
+              `SELECT id FROM claims
+               WHERE transport = 'tcp' AND assigned_port = $port AND id != $claimId`,
+            )
+            .get({ port: endpoint.port, claimId: endpoint.claimId })
+        );
+        if (assigned !== null) {
+          throw new RegistryError('conflict', `Port ${endpoint.port} is assigned.`, {
+            port: endpoint.port,
+            claimId: assigned.id,
+            reason: 'port_assigned',
+          });
+        }
+        const pending = this.database
+          .query(`SELECT id FROM leases WHERE port = $port AND state = 'pending'`)
+          .get({ port: endpoint.port });
+        if (pending !== null) {
+          throw new RegistryError('conflict', `Port ${endpoint.port} is leased.`, {
+            port: endpoint.port,
+            reason: 'port_pending',
+          });
+        }
+      }
+
+      this.database
+        .query(
+          `INSERT INTO stack_generations (
+             id, stack_id, revision, state, created_at, invalidated_at
+           ) VALUES ($id, $stackId, $revision, 'valid', $timestamp, NULL)`,
+        )
+        .run({ id: generationId, stackId, revision, timestamp });
+      for (const endpoint of endpoints) {
+        this.database
+          .query(
+            `UPDATE stack_generations
+             SET state = 'stale', invalidated_at = $timestamp
+             WHERE state = 'valid' AND id != $generationId
+               AND EXISTS (
+                 SELECT 1 FROM stack_generation_endpoints prior
+                 WHERE prior.generation_id = stack_generations.id
+                   AND prior.claim_id = $claimId AND prior.port != $port
+               )`,
+          )
+          .run({
+            timestamp,
+            generationId,
+            claimId: endpoint.claimId,
+            port: endpoint.port,
+          });
+        this.database
+          .query(
+            `UPDATE claims
+             SET assigned_port = $port, assignment_expires_at = NULL,
+                 updated_at = $timestamp, last_used_at = $timestamp
+             WHERE id = $claimId`,
+          )
+          .run({ port: endpoint.port, timestamp, claimId: endpoint.claimId });
+        this.database
+          .query(
+            `INSERT INTO stack_generation_endpoints (
+               generation_id, claim_id, component, endpoint,
+               transport, host, port, required
+             ) VALUES (
+               $generationId, $claimId, $component, $endpoint,
+               $transport, $host, $port, $required
+             )`,
+          )
+          .run({
+            generationId,
+            claimId: endpoint.claimId,
+            component: endpoint.component,
+            endpoint: endpoint.endpoint,
+            transport: endpoint.transport,
+            host: endpoint.host,
+            port: endpoint.port,
+            required: endpoint.required ? 1 : 0,
+          });
+      }
+      this.#appendHistory(
+        'stack.generation.prepared',
+        'stack-generation',
+        generationId,
+        { stackId, revision, endpointCount: endpoints.length },
+        timestamp,
+      );
+    });
+    create.immediate();
+    const generation = this.getStackGeneration(generationId);
+    if (generation === null) {
+      throw new RegistryError(
+        'internal',
+        `Stack generation ${generationId} disappeared after preparation.`,
+      );
+    }
+    return { reused, generation };
+  }
+
+  /** @param {string} generationId @param {Date} [now] */
+  invalidateStackGeneration(generationId, now = new Date()) {
+    const id = IdentifierSchema.parse(generationId);
+    const timestamp = toTimestamp(now);
+    const result = this.database
+      .query(
+        `UPDATE stack_generations
+         SET state = 'stale', invalidated_at = $timestamp
+         WHERE id = $id AND state = 'valid'`,
+      )
+      .run({ id, timestamp });
+    if (result.changes > 0) {
+      this.#appendHistory(
+        'stack.generation.invalidated',
+        'stack-generation',
+        id,
+        {},
+        timestamp,
+      );
+    }
+    return result.changes > 0;
+  }
+
+  /** @param {string} activationId */
+  getStackActivation(activationId) {
+    const id = IdentifierSchema.parse(activationId);
+    const row = this.database
+      .query('SELECT * FROM stack_activations WHERE id = $id')
+      .get({ id });
+    if (row === null) return null;
+    const parsed = z
+      .object({
+        id: IdentifierSchema,
+        stack_id: IdentifierSchema,
+        generation_id: IdentifierSchema,
+        state: z.enum(['starting', 'confirmed', 'degraded', 'failed', 'ended']),
+        created_at: TimestampSchema,
+        updated_at: TimestampSchema,
+        confirmed_at: TimestampSchema.nullable(),
+        ended_at: TimestampSchema.nullable(),
+      })
+      .parse(row);
+    const endpoints = this.database
+      .query(
+        `SELECT endpoint.*, leases.expires_at
+         FROM stack_activation_endpoints endpoint
+         LEFT JOIN leases ON leases.id = endpoint.lease_id
+         WHERE endpoint.activation_id = $activationId
+         ORDER BY endpoint.component, endpoint.endpoint`,
+      )
+      .all({ activationId: id })
+      .map((endpointRow) => {
+        const endpoint = z
+          .object({
+            component: z.string().min(1),
+            endpoint: z.string().min(1),
+            claim_id: IdentifierSchema,
+            port: PortSchema,
+            required: z.union([z.literal(0), z.literal(1)]),
+            binding_kind: z.enum(['process', 'docker']),
+            state: z.enum(['leased', 'confirmed', 'skipped', 'failed', 'released']),
+            lease_id: IdentifierSchema.nullable(),
+            run_id: IdentifierSchema.nullable(),
+            expires_at: TimestampSchema.nullable(),
+            failure_reason: z.string().nullable(),
+            updated_at: TimestampSchema,
+          })
+          .parse(endpointRow);
+        return {
+          component: endpoint.component,
+          endpoint: endpoint.endpoint,
+          claimId: endpoint.claim_id,
+          port: endpoint.port,
+          required: endpoint.required === 1,
+          bindingKind: endpoint.binding_kind,
+          state: endpoint.state,
+          leaseId: endpoint.lease_id,
+          runId: endpoint.run_id,
+          expiresAt: endpoint.expires_at,
+          failureReason: endpoint.failure_reason,
+          updatedAt: endpoint.updated_at,
+        };
+      });
+    return StackActivationSchema.parse({
+      id: parsed.id,
+      stackId: parsed.stack_id,
+      generationId: parsed.generation_id,
+      state: parsed.state,
+      endpoints,
+      createdAt: parsed.created_at,
+      updatedAt: parsed.updated_at,
+      confirmedAt: parsed.confirmed_at,
+      endedAt: parsed.ended_at,
+    });
+  }
+
+  /** @param {string} activationId @param {Date} [now] */
+  endStackActivation(activationId, now = new Date()) {
+    const id = IdentifierSchema.parse(activationId);
+    const timestamp = toTimestamp(now);
+    let changed = false;
+    const end = this.database.transaction(() => {
+      const activation = this.getStackActivation(id);
+      if (activation === null) {
+        throw new RegistryError('not_found', `Activation ${id} was not found.`);
+      }
+      if (activation.state === 'ended') return;
+      if (activation.endpoints.some(({ state }) => state === 'leased')) {
+        throw new RegistryError(
+          'conflict',
+          `Activation ${id} still has pending endpoint leases.`,
+          { activationId: id, reason: 'leases_pending' },
+        );
+      }
+      const releasedRuns = this.database
+        .query(
+          `SELECT id FROM runs
+           WHERE state = 'confirmed' AND id IN (
+             SELECT run_id FROM stack_activation_endpoints
+             WHERE activation_id = $activationId AND run_id IS NOT NULL
+           )`,
+        )
+        .all({ activationId: id })
+        .map((row) => z.object({ id: IdentifierSchema }).parse(row));
+      this.database
+        .query(
+          `UPDATE runs
+           SET state = 'released', released_at = $timestamp
+           WHERE state = 'confirmed' AND id IN (
+             SELECT run_id FROM stack_activation_endpoints
+             WHERE activation_id = $activationId AND run_id IS NOT NULL
+           )`,
+        )
+        .run({ timestamp, activationId: id });
+      for (const run of releasedRuns) {
+        this.#appendHistory(
+          'run.released',
+          'run',
+          run.id,
+          { activationId: id },
+          timestamp,
+        );
+      }
+      this.database
+        .query(
+          `UPDATE stack_activation_endpoints
+           SET state = 'released', updated_at = $timestamp
+           WHERE activation_id = $activationId AND state = 'confirmed'`,
+        )
+        .run({ timestamp, activationId: id });
+      this.database
+        .query(
+          `UPDATE stack_activations
+           SET state = 'ended', updated_at = $timestamp, ended_at = $timestamp
+           WHERE id = $activationId AND state != 'ended'`,
+        )
+        .run({ timestamp, activationId: id });
+      changed = true;
+      this.#appendHistory(
+        'stack.activation.ended',
+        'stack-activation',
+        id,
+        {},
+        timestamp,
+      );
+    });
+    end.immediate();
+    const activation = this.getStackActivation(id);
+    if (activation === null) {
+      throw new RegistryError('internal', `Activation ${id} disappeared.`);
+    }
+    return { changed, activation };
+  }
+
+  /**
+   * @param {{
+   *   generationId: string,
+   *   requiredEndpoints: string[],
+   *   skippedEndpoints: string[],
+   *   expiresAt: string
+   * }} input
+   * @param {Date} [now]
+   */
+  beginStackActivation(input, now = new Date()) {
+    const generationId = IdentifierSchema.parse(input.generationId);
+    const requiredEndpoints = new Set(input.requiredEndpoints);
+    const skippedEndpoints = new Set(input.skippedEndpoints);
+    const expiresAt = TimestampSchema.parse(input.expiresAt);
+    const timestamp = toTimestamp(now);
+    const activationId = randomUUID();
+    /** @type {Array<{component: string, endpoint: string, leaseId: string, leaseToken: string, port: number, expiresAt: string}>} */
+    const leases = [];
+
+    const begin = this.database.transaction(() => {
+      const generation = this.getStackGeneration(generationId);
+      if (generation === null) {
+        throw new RegistryError(
+          'not_found',
+          `Stack generation ${generationId} was not found.`,
+        );
+      }
+      if (generation.state !== 'valid') {
+        throw new RegistryError(
+          'conflict',
+          `Stack generation ${generationId} is stale.`,
+          { generationId, reason: 'stale_generation' },
+        );
+      }
+      const stack =
+        /** @type {{workspace_root: string, current_revision: string}|null} */ (
+          this.database
+            .query(
+              'SELECT workspace_root, current_revision FROM stacks WHERE id = $stackId',
+            )
+            .get({ stackId: generation.stackId })
+        );
+      if (stack === null || stack.current_revision !== generation.revision) {
+        throw new RegistryError(
+          'conflict',
+          `Stack generation ${generationId} does not match the current definition.`,
+          {
+            generationId,
+            generationRevision: generation.revision,
+            currentRevision: stack?.current_revision,
+            reason: 'stale_generation',
+          },
+        );
+      }
+      const live = this.database
+        .query(
+          `SELECT activation.id FROM stack_activations activation
+           JOIN stacks owner ON owner.id = activation.stack_id
+           WHERE owner.workspace_root = $workspaceRoot
+             AND activation.state IN ('starting', 'confirmed', 'degraded')
+           LIMIT 1`,
+        )
+        .get({ workspaceRoot: stack.workspace_root });
+      if (live !== null) {
+        throw new RegistryError(
+          'conflict',
+          `Worktree ${stack.workspace_root} already has a live activation.`,
+          { workspaceRoot: stack.workspace_root, reason: 'activation_live' },
+        );
+      }
+
+      const keys = new Set(
+        generation.endpoints.map(
+          ({ component, endpoint }) => `${component}\u0000${endpoint}`,
+        ),
+      );
+      for (const key of [...requiredEndpoints, ...skippedEndpoints]) {
+        if (!keys.has(key)) {
+          throw new RegistryError(
+            'invalid_input',
+            'Activation selection names an unknown endpoint.',
+            {
+              endpoint: key.replace('\u0000', '.'),
+            },
+          );
+        }
+      }
+      for (const key of skippedEndpoints) {
+        const endpoint = generation.endpoints.find(
+          (candidate) => `${candidate.component}\u0000${candidate.endpoint}` === key,
+        );
+        if (endpoint?.required || requiredEndpoints.has(key)) {
+          throw new RegistryError(
+            'invalid_input',
+            `Required endpoint ${key.replace('\u0000', '.')} cannot be skipped.`,
+          );
+        }
+      }
+
+      this.database
+        .query(
+          `INSERT INTO stack_activations (
+             id, stack_id, generation_id, state, created_at, updated_at,
+             confirmed_at, ended_at
+           ) VALUES (
+             $id, $stackId, $generationId, 'starting', $timestamp, $timestamp,
+             NULL, NULL
+           )`,
+        )
+        .run({
+          id: activationId,
+          stackId: generation.stackId,
+          generationId,
+          timestamp,
+        });
+
+      for (const endpoint of generation.endpoints) {
+        const key = `${endpoint.component}\u0000${endpoint.endpoint}`;
+        const required = endpoint.required || requiredEndpoints.has(key);
+        if (skippedEndpoints.has(key)) {
+          this.database
+            .query(
+              `INSERT INTO stack_activation_endpoints (
+                 activation_id, component, endpoint, claim_id, port, required,
+                 binding_kind, state, lease_id, run_id, failure_reason, updated_at
+               ) VALUES (
+                 $activationId, $component, $endpoint, $claimId, $port, $required,
+                 'process', 'skipped', NULL, NULL, 'caller-skipped', $timestamp
+               )`,
+            )
+            .run({
+              activationId,
+              component: endpoint.component,
+              endpoint: endpoint.endpoint,
+              claimId: endpoint.claimId,
+              port: endpoint.port,
+              required: required ? 1 : 0,
+              timestamp,
+            });
+          continue;
+        }
+        this.#assertClaimHasNoActiveWork(endpoint.claimId, now);
+        const leaseId = randomUUID();
+        const { token, tokenHash } = createLeaseToken();
+        this.database
+          .query(
+            `INSERT INTO leases (
+               id, claim_id, port, state, token_hash,
+               expires_at, created_at, updated_at
+             ) VALUES (
+               $id, $claimId, $port, 'pending', $tokenHash,
+               $expiresAt, $timestamp, $timestamp
+             )`,
+          )
+          .run({
+            id: leaseId,
+            claimId: endpoint.claimId,
+            port: endpoint.port,
+            tokenHash,
+            expiresAt,
+            timestamp,
+          });
+        this.database
+          .query(
+            `INSERT INTO stack_activation_endpoints (
+               activation_id, component, endpoint, claim_id, port, required,
+               binding_kind, state, lease_id, run_id, failure_reason, updated_at
+             ) VALUES (
+               $activationId, $component, $endpoint, $claimId, $port, $required,
+               'process', 'leased', $leaseId, NULL, NULL, $timestamp
+             )`,
+          )
+          .run({
+            activationId,
+            component: endpoint.component,
+            endpoint: endpoint.endpoint,
+            claimId: endpoint.claimId,
+            port: endpoint.port,
+            required: required ? 1 : 0,
+            leaseId,
+            timestamp,
+          });
+        this.#appendHistory(
+          'lease.acquired',
+          'lease',
+          leaseId,
+          {
+            claimId: endpoint.claimId,
+            port: endpoint.port,
+            expiresAt,
+            activationId,
+          },
+          timestamp,
+        );
+        leases.push({
+          component: endpoint.component,
+          endpoint: endpoint.endpoint,
+          leaseId,
+          leaseToken: token,
+          port: endpoint.port,
+          expiresAt,
+        });
+      }
+      this.#refreshStackActivationState(activationId, timestamp);
+      this.#appendHistory(
+        'stack.activation.began',
+        'stack-activation',
+        activationId,
+        { stackId: generation.stackId, generationId, leaseCount: leases.length },
+        timestamp,
+      );
+    });
+    begin.immediate();
+    const activation = this.getStackActivation(activationId);
+    if (activation === null) {
+      throw new RegistryError(
+        'internal',
+        `Stack activation ${activationId} disappeared after creation.`,
+      );
+    }
+    return { activation, leases };
+  }
+
+  /**
+   * @param {{activationId: string, leases: Array<{leaseId: string, leaseToken: string}>, expiresAt: string}} input
+   * @param {Date} [now]
+   */
+  renewStackActivation(input, now = new Date()) {
+    const activationId = IdentifierSchema.parse(input.activationId);
+    const expiresAt = TimestampSchema.parse(input.expiresAt);
+    const timestamp = toTimestamp(now);
+    const credentials = input.leases.map(({ leaseId, leaseToken }) => ({
+      leaseId: IdentifierSchema.parse(leaseId),
+      leaseToken,
+    }));
+    const renewed = this.database.transaction(() => {
+      const activation = this.getStackActivation(activationId);
+      if (activation === null) {
+        throw new RegistryError(
+          'not_found',
+          `Activation ${activationId} was not found.`,
+        );
+      }
+      if (activation.state !== 'starting') {
+        throw new RegistryError(
+          'conflict',
+          `Activation ${activationId} is ${activation.state}; its leases cannot be renewed.`,
+        );
+      }
+      for (const credential of credentials) {
+        const lease = this.getLease(credential.leaseId);
+        if (lease === null) {
+          throw new RegistryError(
+            'not_found',
+            `Lease ${credential.leaseId} was not found.`,
+          );
+        }
+        this.#assertPendingLease(lease, credential.leaseToken, now);
+        const linked = this.database
+          .query(
+            `SELECT 1 FROM stack_activation_endpoints
+             WHERE activation_id = $activationId AND lease_id = $leaseId
+               AND state = 'leased'`,
+          )
+          .get({ activationId, leaseId: credential.leaseId });
+        if (linked === null) {
+          throw new RegistryError(
+            'conflict',
+            `Lease ${credential.leaseId} does not belong to activation ${activationId}.`,
+          );
+        }
+      }
+      for (const credential of credentials) {
+        this.database
+          .query(
+            `UPDATE leases SET expires_at = $expiresAt, updated_at = $timestamp
+             WHERE id = $leaseId AND state = 'pending'`,
+          )
+          .run({ expiresAt, timestamp, leaseId: credential.leaseId });
+      }
+      this.database
+        .query('UPDATE stack_activations SET updated_at = $timestamp WHERE id = $id')
+        .run({ timestamp, id: activationId });
+      this.#appendHistory(
+        'stack.activation.renewed',
+        'stack-activation',
+        activationId,
+        { leaseIds: credentials.map(({ leaseId }) => leaseId), expiresAt },
+        timestamp,
+      );
+    });
+    renewed.immediate();
+    const activation = this.getStackActivation(activationId);
+    if (activation === null) {
+      throw new RegistryError('internal', `Activation ${activationId} disappeared.`);
+    }
+    return {
+      activation,
+      leases: credentials.map(({ leaseId }) => ({ leaseId, expiresAt })),
+    };
+  }
+
   /**
    * @param {{claimId: string, port: number, expiresAt: string}} input
    * @param {Date} [now]
@@ -749,7 +1492,8 @@ export class Registry {
    *   token: string,
    *   rootPid: number,
    *   rootFingerprint?: Record<string, unknown> | null,
-   *   listenerFingerprints?: Record<string, unknown>[]
+   *   listenerFingerprints?: Record<string, unknown>[],
+   *   activationId?: string
    * }} input
    * @param {Date} [now]
    */
@@ -758,6 +1502,10 @@ export class Registry {
     const rootPid = z.number().int().positive().parse(input.rootPid);
     const rootFingerprint = input.rootFingerprint ?? null;
     const listenerFingerprints = input.listenerFingerprints ?? [];
+    const activationId =
+      input.activationId === undefined
+        ? null
+        : IdentifierSchema.parse(input.activationId);
     const timestamp = toTimestamp(now);
     const runId = randomUUID();
 
@@ -767,6 +1515,24 @@ export class Registry {
         throw new RegistryError('not_found', `Lease ${leaseId} was not found.`);
       }
       this.#assertPendingLease(lease, input.token, now);
+      if (activationId !== null) {
+        const endpoint = this.database
+          .query(
+            `SELECT 1 FROM stack_activation_endpoints endpoint
+             JOIN stack_activations activation ON activation.id = endpoint.activation_id
+             WHERE endpoint.activation_id = $activationId
+               AND endpoint.lease_id = $leaseId
+               AND endpoint.state = 'leased'
+               AND activation.state = 'starting'`,
+          )
+          .get({ activationId, leaseId });
+        if (endpoint === null) {
+          throw new RegistryError(
+            'conflict',
+            `Lease ${leaseId} is not confirmable for activation ${activationId}.`,
+          );
+        }
+      }
       const claim = this.getClaim(lease.claimId);
       if (claim === null) {
         throw new RegistryError(
@@ -848,11 +1614,30 @@ export class Registry {
           });
       }
 
+      if (activationId !== null) {
+        this.database
+          .query(
+            `UPDATE stack_activation_endpoints
+             SET state = 'confirmed', run_id = $runId,
+                 failure_reason = NULL, updated_at = $timestamp
+             WHERE activation_id = $activationId AND lease_id = $leaseId
+               AND state = 'leased'`,
+          )
+          .run({ runId, timestamp, activationId, leaseId });
+        this.#refreshStackActivationState(activationId, timestamp);
+      }
+
       this.#appendHistory(
         'lease.confirmed',
         'lease',
         leaseId,
-        { runId, claimId: lease.claimId, port: lease.port, rootPid },
+        {
+          runId,
+          claimId: lease.claimId,
+          port: lease.port,
+          rootPid,
+          ...(activationId === null ? {} : { activationId }),
+        },
         timestamp,
       );
     });
@@ -870,7 +1655,9 @@ export class Registry {
    * @param {{
    *   leaseId: string,
    *   token: string,
-   *   reason: 'address-in-use' | 'startup-error' | 'client-cancelled'
+   *   reason: 'address-in-use' | 'startup-error' | 'client-cancelled',
+   *   activationId?: string,
+   *   endpointOutcome?: 'failed' | 'skipped'
    * }} input
    * @param {Date} [now]
    */
@@ -880,6 +1667,14 @@ export class Registry {
       .enum(['address-in-use', 'startup-error', 'client-cancelled'])
       .parse(input.reason);
     const timestamp = toTimestamp(now);
+    const activationId =
+      input.activationId === undefined
+        ? null
+        : IdentifierSchema.parse(input.activationId);
+    const endpointOutcome = z
+      .enum(['failed', 'skipped'])
+      .optional()
+      .parse(input.endpointOutcome);
 
     const abandon = this.database.transaction(() => {
       const lease = this.getLease(leaseId);
@@ -887,6 +1682,29 @@ export class Registry {
         throw new RegistryError('not_found', `Lease ${leaseId} was not found.`);
       }
       this.#assertPendingLease(lease, input.token, now);
+      if (activationId !== null) {
+        const endpoint = /** @type {{required: number}|null} */ (
+          this.database
+            .query(
+              `SELECT required FROM stack_activation_endpoints
+               WHERE activation_id = $activationId AND lease_id = $leaseId
+                 AND state = 'leased'`,
+            )
+            .get({ activationId, leaseId })
+        );
+        if (endpoint === null) {
+          throw new RegistryError(
+            'conflict',
+            `Lease ${leaseId} does not belong to activation ${activationId}.`,
+          );
+        }
+        if (endpointOutcome === 'skipped' && endpoint.required === 1) {
+          throw new RegistryError(
+            'invalid_input',
+            'A required endpoint cannot be skipped.',
+          );
+        }
+      }
 
       this.database
         .query(
@@ -907,6 +1725,18 @@ export class Registry {
         { reason, port: lease.port },
         timestamp,
       );
+      if (activationId !== null) {
+        const outcome = endpointOutcome ?? 'failed';
+        this.database
+          .query(
+            `UPDATE stack_activation_endpoints
+             SET state = $outcome, failure_reason = $reason, updated_at = $timestamp
+             WHERE activation_id = $activationId AND lease_id = $leaseId
+               AND state = 'leased'`,
+          )
+          .run({ outcome, reason, timestamp, activationId, leaseId });
+        this.#refreshStackActivationState(activationId, timestamp);
+      }
     });
 
     abandon.immediate();
@@ -926,6 +1756,7 @@ export class Registry {
       .all({ timestamp: timestamp });
 
     const expire = this.database.transaction(() => {
+      const affectedActivations = new Set();
       for (const candidate of pending) {
         const row = z.object({ id: IdentifierSchema }).parse(candidate);
         this.database
@@ -936,6 +1767,29 @@ export class Registry {
           )
           .run({ timestamp: timestamp, id: row.id });
         this.#appendHistory('lease.expired', 'lease', row.id, {}, timestamp);
+        const activationRows = this.database
+          .query(
+            `SELECT activation_id FROM stack_activation_endpoints
+             WHERE lease_id = $leaseId AND state = 'leased'`,
+          )
+          .all({ leaseId: row.id });
+        for (const activationRow of activationRows) {
+          const parsedActivation = z
+            .object({ activation_id: IdentifierSchema })
+            .parse(activationRow);
+          affectedActivations.add(parsedActivation.activation_id);
+        }
+        this.database
+          .query(
+            `UPDATE stack_activation_endpoints
+             SET state = 'failed', failure_reason = 'lease-expired',
+                 updated_at = $timestamp
+             WHERE lease_id = $leaseId AND state = 'leased'`,
+          )
+          .run({ timestamp, leaseId: row.id });
+      }
+      for (const activationId of affectedActivations) {
+        this.#refreshStackActivationState(String(activationId), timestamp);
       }
     });
 
@@ -1354,6 +2208,112 @@ export class Registry {
       parsed.payload,
       toTimestamp(now),
     );
+  }
+
+  /** @param {string} activationId @param {string} timestamp */
+  #refreshStackActivationState(activationId, timestamp) {
+    const current = /** @type {{state: string}|null} */ (
+      this.database
+        .query('SELECT state FROM stack_activations WHERE id = $activationId')
+        .get({ activationId })
+    );
+    if (current === null || current.state === 'ended') return;
+    const endpoints = this.database
+      .query(
+        `SELECT required, state FROM stack_activation_endpoints
+         WHERE activation_id = $activationId`,
+      )
+      .all({ activationId })
+      .map((row) =>
+        z
+          .object({
+            required: z.union([z.literal(0), z.literal(1)]),
+            state: z.enum(['leased', 'confirmed', 'skipped', 'failed', 'released']),
+          })
+          .parse(row),
+      );
+    const requiredFailed = endpoints.some(
+      ({ required, state }) =>
+        required === 1 && ['failed', 'skipped', 'released'].includes(state),
+    );
+    if (requiredFailed) {
+      const cancelledLeases = this.database
+        .query(
+          `SELECT lease_id, port FROM stack_activation_endpoints
+           WHERE activation_id = $activationId AND state = 'leased'
+             AND lease_id IS NOT NULL`,
+        )
+        .all({ activationId })
+        .map((row) =>
+          z.object({ lease_id: IdentifierSchema, port: PortSchema }).parse(row),
+        );
+      this.database
+        .query(
+          `UPDATE leases
+           SET state = 'abandoned', updated_at = $timestamp
+           WHERE state = 'pending' AND id IN (
+             SELECT lease_id FROM stack_activation_endpoints
+             WHERE activation_id = $activationId AND state = 'leased'
+               AND lease_id IS NOT NULL
+           )`,
+        )
+        .run({ timestamp, activationId });
+      for (const lease of cancelledLeases) {
+        this.#appendHistory(
+          'lease.abandoned',
+          'lease',
+          lease.lease_id,
+          {
+            reason: 'activation-failed',
+            activationId,
+            port: lease.port,
+          },
+          timestamp,
+        );
+      }
+      this.database
+        .query(
+          `UPDATE stack_activation_endpoints
+           SET state = 'failed',
+               failure_reason = COALESCE(failure_reason, 'activation-failed'),
+               updated_at = $timestamp
+           WHERE activation_id = $activationId AND state = 'leased'`,
+        )
+        .run({ timestamp, activationId });
+    }
+    const pending = endpoints.some(({ state }) => state === 'leased');
+    const degraded = endpoints.some(
+      ({ required, state }) =>
+        required === 0 && ['failed', 'skipped', 'released'].includes(state),
+    );
+    const state = requiredFailed
+      ? 'failed'
+      : pending
+        ? 'starting'
+        : degraded
+          ? 'degraded'
+          : 'confirmed';
+    this.database
+      .query(
+        `UPDATE stack_activations
+         SET state = $state, updated_at = $timestamp,
+             confirmed_at = CASE
+               WHEN $state IN ('confirmed', 'degraded')
+                 THEN COALESCE(confirmed_at, $timestamp)
+               ELSE confirmed_at
+             END
+         WHERE id = $activationId`,
+      )
+      .run({ state, timestamp, activationId });
+    if (current.state !== state) {
+      this.#appendHistory(
+        'stack.activation.state_changed',
+        'stack-activation',
+        activationId,
+        { from: current.state, to: state },
+        timestamp,
+      );
+    }
   }
 
   /**

@@ -151,6 +151,10 @@ test('official client refuses a stack apply when an old server lacks the capabil
     code: 'incompatible_protocol',
     details: { missingCapabilities: ['stack-definitions-v1'] },
   });
+  await expect(client.prepareStack(crypto.randomUUID())).rejects.toMatchObject({
+    code: 'incompatible_protocol',
+    details: { missingCapabilities: ['stack-activations-v1'] },
+  });
 });
 
 test('applies and inspects a stack definition through the official client', async () => {
@@ -190,6 +194,76 @@ test('applies and inspects a stack definition through the official client', asyn
     component: 'api',
     endpoint: 'http',
   });
+});
+
+test('prepares and confirms a process-backed activation through the official client', async () => {
+  const { socketPath } = await startFixture();
+  const client = new PortreeveClient({ socketPath });
+  const workspaceRoot = await mkdtemp(join(tmpdir(), 'portreeve-activation-'));
+  cleanups.push(() => rm(workspaceRoot, { force: true, recursive: true }));
+  const exactPort = await unusedPort();
+  const optionalPort = await unusedPort();
+  let listener;
+
+  try {
+    const applied = await client.applyStack({
+      workspaceRoot,
+      definition: {
+        version: 1,
+        project: 'caregiver',
+        components: {
+          api: {
+            endpoints: {
+              http: { allocation: { exactPort } },
+              metrics: {
+                required: false,
+                allocation: { exactPort: optionalPort },
+              },
+            },
+          },
+        },
+      },
+    });
+    const prepared = await client.prepareStack(applied.stack.id);
+    const begun = await client.beginStackActivation(prepared.generation.id, {
+      skippedEndpoints: [{ component: 'api', endpoint: 'metrics' }],
+    });
+    const lease = begun.leases[0];
+    if (lease === undefined) throw new Error('Expected an activation lease.');
+    listener = Bun.serve({
+      port: lease.port,
+      fetch() {
+        return new Response('stack endpoint');
+      },
+    });
+    const activation = await client.confirmStackEndpoint(begun.activation.id, {
+      leaseId: lease.leaseId,
+      leaseToken: lease.leaseToken,
+      rootPid: process.pid,
+    });
+
+    expect(activation.state).toBe('degraded');
+    expect(await client.getStackActivation(activation.id)).toEqual(activation);
+    const runId = activation.endpoints.find(
+      ({ state }) => state === 'confirmed',
+    )?.runId;
+    if (runId === null || runId === undefined) {
+      throw new Error('Expected a confirmed process run.');
+    }
+    listener.stop(true);
+    listener = undefined;
+    await client.release(runId);
+    expect(await client.getStackGeneration(prepared.generation.id)).toEqual(
+      prepared.generation,
+    );
+    const ended = await client.endStackActivation(activation.id);
+    expect(ended).toMatchObject({
+      changed: true,
+      activation: { state: 'ended' },
+    });
+  } finally {
+    listener?.stop(true);
+  }
 });
 
 test('acquires, binds, confirms, releases, and reuses a sticky assignment', async () => {

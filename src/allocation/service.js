@@ -191,6 +191,25 @@ export class AllocationService {
   async confirm(input) {
     const request = ConfirmRequestSchema.parse(input);
     assertCompatible(request.client);
+    return this.#confirmProcess(request, null);
+  }
+
+  /**
+   * Confirm a process-owned lease and attach it to one stack activation.
+   * @param {unknown} input
+   * @param {string} activationId
+   */
+  async confirmForActivation(input, activationId) {
+    const request = ConfirmRequestSchema.parse(input);
+    assertCompatible(request.client);
+    return this.#confirmProcess(request, activationId);
+  }
+
+  /**
+   * @param {import('zod').infer<typeof ConfirmRequestSchema>} request
+   * @param {string | null} activationId
+   */
+  async #confirmProcess(request, activationId) {
     const lease = this.registry.getLease(request.leaseId);
     if (lease === null) {
       throw new RegistryError('not_found', `Lease ${request.leaseId} was not found.`);
@@ -239,6 +258,7 @@ export class AllocationService {
         listenerFingerprints: listeners.flatMap(({ process }) =>
           process === null ? [] : [process],
         ),
+        ...(activationId === null ? {} : { activationId }),
       },
       this.now(),
     );

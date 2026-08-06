@@ -30,9 +30,18 @@ import {
 } from './commands/ports.js';
 import { serveCommand } from './commands/serve.js';
 import {
+  abandonStackEndpointCommand,
   applyStackCommand,
+  beginStackActivationCommand,
+  confirmStackEndpointCommand,
+  endStackActivationCommand,
   listStacksCommand,
+  prepareStackCommand,
+  renewStackActivationCommand,
   showStackCommand,
+  showStackActivationCommand,
+  showStackGenerationCommand,
+  skipStackEndpointCommand,
   stackStatusCommand,
 } from './commands/stacks.js';
 
@@ -245,6 +254,87 @@ export function createProgram() {
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output')
     .action(stackStatusCommand);
+
+  stacks
+    .command('prepare <stack-id>')
+    .description('Create or reuse a complete immutable allocation generation')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(prepareStackCommand);
+
+  stacks
+    .command('begin <generation-id>')
+    .description('Begin one exclusive activation and atomically lease its endpoints')
+    .option(
+      '--required-endpoint <component.endpoint...>',
+      'promote optional endpoints; JSON objects preserve names containing dots',
+    )
+    .option(
+      '--skip-endpoint <component.endpoint...>',
+      'skip optional endpoints; JSON objects preserve names containing dots',
+    )
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output including private lease tokens')
+    .action(beginStackActivationCommand);
+
+  stacks
+    .command('activation <activation-id>')
+    .description('Inspect one activation and its endpoint outcomes')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(showStackActivationCommand);
+
+  stacks
+    .command('generation <generation-id>')
+    .description('Inspect one immutable allocation generation')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(showStackGenerationCommand);
+
+  stacks
+    .command('renew <activation-id>')
+    .description('Renew pending activation leases from a private JSON file')
+    .requiredOption('--leases-file <path>', 'JSON array of lease IDs and tokens')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(renewStackActivationCommand);
+
+  stacks
+    .command('confirm <activation-id>')
+    .description('Confirm one bound process endpoint with fresh listener evidence')
+    .requiredOption('--lease-file <path>', 'private JSON lease credential')
+    .requiredOption('--root-pid <pid>', 'root process PID for lineage verification')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(confirmStackEndpointCommand);
+
+  stacks
+    .command('abandon <activation-id>')
+    .description('Fail one pending activation endpoint')
+    .requiredOption('--lease-file <path>', 'private JSON lease credential')
+    .option(
+      '--reason <reason>',
+      'address-in-use, startup-error, or client-cancelled',
+      'startup-error',
+    )
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(abandonStackEndpointCommand);
+
+  stacks
+    .command('skip <activation-id>')
+    .description('Skip one optional pending activation endpoint')
+    .requiredOption('--lease-file <path>', 'private JSON lease credential')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(skipStackEndpointCommand);
+
+  stacks
+    .command('end <activation-id>')
+    .description('End an activation only after its process listeners have stopped')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(endStackActivationCommand);
 
   const config = program
     .command('config')

@@ -64,6 +64,15 @@ describe('Portreeve CLI', () => {
       'list',
       'show',
       'status',
+      'prepare',
+      'begin',
+      'activation',
+      'generation',
+      'renew',
+      'confirm',
+      'abandon',
+      'skip',
+      'end',
     ]);
   });
 });

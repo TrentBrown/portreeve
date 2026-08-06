@@ -149,6 +149,72 @@ export interface StackApplyResult {
   stack: StackRecord;
 }
 
+export interface StackEndpointReference {
+  component: string;
+  endpoint?: string;
+}
+
+export interface StackGenerationEndpoint {
+  claimId: string;
+  component: string;
+  endpoint: string;
+  transport: 'tcp';
+  host: '127.0.0.1';
+  port: number;
+  required: boolean;
+}
+
+export interface StackGeneration {
+  id: string;
+  stackId: string;
+  revision: string;
+  state: 'valid' | 'stale';
+  endpoints: StackGenerationEndpoint[];
+  createdAt: string;
+  invalidatedAt: string | null;
+}
+
+export interface StackActivationEndpoint {
+  component: string;
+  endpoint: string;
+  claimId: string;
+  port: number;
+  required: boolean;
+  bindingKind: 'process' | 'docker';
+  state: 'leased' | 'confirmed' | 'skipped' | 'failed' | 'released';
+  leaseId: string | null;
+  runId: string | null;
+  expiresAt: string | null;
+  failureReason: string | null;
+  updatedAt: string;
+}
+
+export interface StackActivation {
+  id: string;
+  stackId: string;
+  generationId: string;
+  state: 'starting' | 'confirmed' | 'degraded' | 'failed' | 'ended';
+  endpoints: StackActivationEndpoint[];
+  createdAt: string;
+  updatedAt: string;
+  confirmedAt: string | null;
+  endedAt: string | null;
+}
+
+export interface StackActivationLease {
+  component: string;
+  endpoint: string;
+  leaseId: string;
+  leaseToken: string;
+  port: number;
+  expiresAt: string;
+}
+
+export interface StackBeginActivationResult {
+  activation: StackActivation;
+  leases: StackActivationLease[];
+}
+
 export interface HistoryEvent {
   id: string;
   eventType: string;
@@ -226,6 +292,46 @@ export declare class PortreeveClient {
     workspaceRoot?: string;
   }): Promise<StackRecord[]>;
   getStack(stackId: string): Promise<StackRecord>;
+  prepareStack(stackId: string): Promise<{
+    reused: boolean;
+    generation: StackGeneration;
+  }>;
+  beginStackActivation(
+    generationId: string,
+    options?: {
+      requiredEndpoints?: StackEndpointReference[];
+      skippedEndpoints?: StackEndpointReference[];
+    },
+  ): Promise<StackBeginActivationResult>;
+  getStackActivation(activationId: string): Promise<StackActivation>;
+  getStackGeneration(generationId: string): Promise<StackGeneration>;
+  renewStackActivation(
+    activationId: string,
+    leases: Array<{ leaseId: string; leaseToken: string }>,
+  ): Promise<{
+    activation: StackActivation;
+    leases: Array<{ leaseId: string; expiresAt: string }>;
+  }>;
+  confirmStackEndpoint(
+    activationId: string,
+    evidence: { leaseId: string; leaseToken: string; rootPid: number },
+  ): Promise<StackActivation>;
+  abandonStackEndpoint(
+    activationId: string,
+    evidence: {
+      leaseId: string;
+      leaseToken: string;
+      reason: 'address-in-use' | 'startup-error' | 'client-cancelled';
+    },
+  ): Promise<StackActivation>;
+  skipStackEndpoint(
+    activationId: string,
+    evidence: { leaseId: string; leaseToken: string },
+  ): Promise<StackActivation>;
+  endStackActivation(activationId: string): Promise<{
+    changed: boolean;
+    activation: StackActivation;
+  }>;
   listClaims(): Promise<ClaimRecord[]>;
   getClaim(claimId: string): Promise<ClaimRecord>;
   reassignClaim(

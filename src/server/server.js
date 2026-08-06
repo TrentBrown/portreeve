@@ -35,8 +35,21 @@ import {
   ServerSettingsResponseSchema,
   StackApplyRequestSchema,
   StackApplyResponseSchema,
+  StackActivationSchema,
+  StackBeginActivationRequestSchema,
+  StackBeginActivationResponseSchema,
   StackListSchema,
+  StackPrepareRequestSchema,
+  StackPrepareResponseSchema,
   StackRecordSchema,
+  StackRenewActivationRequestSchema,
+  StackRenewActivationResponseSchema,
+  StackConfirmEndpointRequestSchema,
+  StackEndActivationRequestSchema,
+  StackEndActivationResponseSchema,
+  StackGenerationSchema,
+  StackAbandonEndpointRequestSchema,
+  StackSkipEndpointRequestSchema,
   UnsafeEvictionRequestSchema,
   negotiateCompatibility,
   successEnvelopeSchema,
@@ -44,6 +57,7 @@ import {
 import { InventoryService } from '../reconciliation/inventory.js';
 import { ReclamationService } from '../reclamation/service.js';
 import { RegistryError } from '../storage/registry.js';
+import { StackCoordinationService } from '../stacks/coordination-service.js';
 import { StackDefinitionService } from '../stacks/service.js';
 
 /**
@@ -54,6 +68,7 @@ import { StackDefinitionService } from '../stacks/service.js';
  *   reclamationService?: ReclamationService,
  *   administrationService?: AdministrationService,
  *   stackDefinitionService?: StackDefinitionService,
+ *   stackCoordinationService?: StackCoordinationService,
  *   diagnosticLog?: import('../observability/diagnostic-log.js').DiagnosticLog,
  *   mode?: 'manual' | 'supervised'
  * }} options
@@ -79,6 +94,13 @@ export async function startPortreeveServer(options) {
   const stackDefinitionService =
     options.stackDefinitionService ??
     new StackDefinitionService({ registry: options.allocationService.registry });
+  const stackCoordinationService =
+    options.stackCoordinationService ??
+    new StackCoordinationService({
+      registry: options.allocationService.registry,
+      allocationService: options.allocationService,
+      inventoryService,
+    });
   const diagnosticLog = options.diagnosticLog;
   let stopped = false;
   let resolveStopped = () => {};
@@ -115,6 +137,7 @@ export async function startPortreeveServer(options) {
         reclamationService,
         administrationService,
         stackDefinitionService,
+        stackCoordinationService,
         diagnosticLog,
         options.mode ?? 'manual',
         () => {
@@ -147,6 +170,7 @@ export async function startPortreeveServer(options) {
  * @param {ReclamationService} reclamationService
  * @param {AdministrationService} administrationService
  * @param {StackDefinitionService} stackDefinitionService
+ * @param {StackCoordinationService} stackCoordinationService
  * @param {import('../observability/diagnostic-log.js').DiagnosticLog | undefined} diagnosticLog
  * @param {'manual' | 'supervised'} mode
  * @param {() => void} requestStop
@@ -158,6 +182,7 @@ async function handleRequest(
   reclamationService,
   administrationService,
   stackDefinitionService,
+  stackCoordinationService,
   diagnosticLog,
   mode,
   requestStop,
@@ -192,6 +217,26 @@ async function handleRequest(
               ? { workspaceRoot: url.searchParams.get('workspaceRoot') ?? '' }
               : {}),
           }),
+        ),
+      );
+    }
+    const showActivation = pathname.match(/^\/v1\/stack-activations\/([0-9a-f-]+)$/);
+    if (request.method === 'GET' && showActivation !== null) {
+      return success(
+        requestId,
+        StackActivationSchema.parse(
+          stackCoordinationService.get(IdentifierSchema.parse(showActivation[1])),
+        ),
+      );
+    }
+    const showGeneration = pathname.match(/^\/v1\/stack-generations\/([0-9a-f-]+)$/);
+    if (request.method === 'GET' && showGeneration !== null) {
+      return success(
+        requestId,
+        StackGenerationSchema.parse(
+          stackCoordinationService.getGeneration(
+            IdentifierSchema.parse(showGeneration[1]),
+          ),
         ),
       );
     }
@@ -290,6 +335,88 @@ async function handleRequest(
           stackDefinitionService.apply(StackApplyRequestSchema.parse(body)),
         ),
       );
+    }
+    const prepareStack = pathname.match(/^\/v1\/stacks\/([0-9a-f-]+)\/prepare$/);
+    if (prepareStack !== null) {
+      const stackId = IdentifierSchema.parse(prepareStack[1]);
+      const requestBody = StackPrepareRequestSchema.parse({
+        ...z.record(z.string(), z.unknown()).parse(body),
+        stackId,
+      });
+      return success(
+        requestId,
+        StackPrepareResponseSchema.parse(
+          await stackCoordinationService.prepare(requestBody),
+        ),
+      );
+    }
+    if (pathname === '/v1/stack-activations/begin') {
+      return success(
+        requestId,
+        StackBeginActivationResponseSchema.parse(
+          await stackCoordinationService.begin(
+            StackBeginActivationRequestSchema.parse(body),
+          ),
+        ),
+      );
+    }
+    const activationMutation = pathname.match(
+      /^\/v1\/stack-activations\/([0-9a-f-]+)\/(renew|confirm|abandon|skip|end)$/,
+    );
+    if (activationMutation !== null) {
+      const activationId = IdentifierSchema.parse(activationMutation[1]);
+      switch (activationMutation[2]) {
+        case 'renew':
+          return success(
+            requestId,
+            StackRenewActivationResponseSchema.parse(
+              stackCoordinationService.renew(
+                activationId,
+                StackRenewActivationRequestSchema.parse(body),
+              ),
+            ),
+          );
+        case 'confirm':
+          return success(
+            requestId,
+            StackActivationSchema.parse(
+              await stackCoordinationService.confirm(
+                activationId,
+                StackConfirmEndpointRequestSchema.parse(body),
+              ),
+            ),
+          );
+        case 'abandon':
+          return success(
+            requestId,
+            StackActivationSchema.parse(
+              stackCoordinationService.abandon(
+                activationId,
+                StackAbandonEndpointRequestSchema.parse(body),
+              ),
+            ),
+          );
+        case 'skip':
+          return success(
+            requestId,
+            StackActivationSchema.parse(
+              stackCoordinationService.skip(
+                activationId,
+                StackSkipEndpointRequestSchema.parse(body),
+              ),
+            ),
+          );
+        case 'end':
+          return success(
+            requestId,
+            StackEndActivationResponseSchema.parse(
+              await stackCoordinationService.end(
+                activationId,
+                StackEndActivationRequestSchema.parse(body),
+              ),
+            ),
+          );
+      }
     }
     const reassignClaim = pathname.match(/^\/v1\/claims\/([0-9a-f-]+)\/reassign$/);
     if (reassignClaim !== null) {

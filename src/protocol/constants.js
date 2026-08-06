@@ -16,6 +16,7 @@ export const CAPABILITIES = Object.freeze([
   'observability-v1',
   'lifecycle-control-v1',
   'stack-definitions-v1',
+  'stack-activations-v1',
 ]);
 
 export const EXIT_CODES = Object.freeze({
