@@ -29,6 +29,12 @@ import {
   unsafeEvictPortCommand,
 } from './commands/ports.js';
 import { serveCommand } from './commands/serve.js';
+import {
+  applyStackCommand,
+  listStacksCommand,
+  showStackCommand,
+  stackStatusCommand,
+} from './commands/stacks.js';
 
 /**
  * Create the Portreeve command tree.
@@ -117,6 +123,8 @@ export function createProgram() {
     .option('--project <name>', 'filter by project namespace')
     .option('--workspace <path>', 'filter by canonical workspace root')
     .option('--service <name>', 'filter by service name')
+    .option('--component <name>', 'filter by component name')
+    .option('--endpoint <name>', 'filter by endpoint name')
     .option('--port <number>', 'filter by exact TCP port')
     .action(listPortsCommand);
 
@@ -200,6 +208,43 @@ export function createProgram() {
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output')
     .action(pruneClaimsCommand);
+
+  const stacks = program
+    .command('stacks')
+    .description('Coordinate worktree stack definitions and endpoints');
+
+  stacks
+    .command('apply')
+    .description('Validate and apply a worktree stack definition')
+    .option('--file <path>', 'override portreeve.stack.json')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(applyStackCommand);
+
+  stacks
+    .command('list')
+    .description('List registered worktree stacks')
+    .option('--project <name>', 'filter by project namespace')
+    .option('--workspace <path>', 'filter by canonical workspace root')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(listStacksCommand);
+
+  stacks
+    .command('show <stack-id>')
+    .description('Show one registered stack and its current definition')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(showStackCommand);
+
+  stacks
+    .command('status')
+    .description('Show the stack registered for a canonical worktree')
+    .option('--project <name>', 'select a project namespace')
+    .option('--workspace <path>', 'override the current worktree path')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(stackStatusCommand);
 
   const config = program
     .command('config')

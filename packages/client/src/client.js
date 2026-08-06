@@ -87,6 +87,35 @@ export class PortreeveClient {
   }
 
   /**
+   * @param {{workspaceRoot: string, definition: unknown}} request
+   */
+  async applyStack(request) {
+    const workspaceRoot = await canonicalWorkspaceRoot(request.workspaceRoot);
+    return requestJson(
+      this.socketPath,
+      'POST',
+      '/v1/stacks/apply',
+      withClient({ workspaceRoot, definition: request.definition }, [
+        'stack-definitions-v1',
+      ]),
+    );
+  }
+
+  /** @param {{project?: string, workspaceRoot?: string}} [filters] */
+  async listStacks(filters = {}) {
+    const normalized = { ...filters };
+    if (filters.workspaceRoot !== undefined) {
+      normalized.workspaceRoot = await canonicalWorkspaceRoot(filters.workspaceRoot);
+    }
+    return requestJson(this.socketPath, 'GET', `/v1/stacks${queryString(normalized)}`);
+  }
+
+  /** @param {string} stackId */
+  async getStack(stackId) {
+    return requestJson(this.socketPath, 'GET', `/v1/stacks/${stackId}`);
+  }
+
+  /**
    * @param {string} claimId
    */
   async getClaim(claimId) {
@@ -217,7 +246,9 @@ export class PortreeveClient {
    *   claim: {
    *     project: string,
    *     workspaceRoot: string,
-   *     service: string,
+   *     service?: string,
+   *     component?: string,
+   *     endpoint?: string,
    *     transport?: 'tcp'
    *   },
    *   allocation?: {

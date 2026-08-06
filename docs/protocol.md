@@ -70,6 +70,7 @@ Version 1 capabilities are:
 - `administration-v1`
 - `observability-v1`
 - `lifecycle-control-v1`
+- `stack-definitions-v1`
 
 ## Allocation workflow
 
@@ -87,7 +88,8 @@ Version 1 capabilities are:
   "claim": {
     "project": "caregiver",
     "workspaceRoot": "/canonical/worktree",
-    "service": "website",
+    "component": "website",
+    "endpoint": "default",
     "transport": "tcp"
   },
   "allocation": {
@@ -104,6 +106,11 @@ allowed) or `exactPort` (no fallback), never both. Replacement policy is
 
 The response contains `claimId`, `leaseId`, a one-time `leaseToken`, `port`,
 `expiresAt`, and `reusedAssignment`. The client must bind before expiration.
+
+`component` and `endpoint` are the canonical identity fields. An omitted
+`endpoint` means `default`. Existing callers may continue sending `service` as
+an alias for `component` with endpoint `default`; if both are supplied, they
+must agree.
 
 ### Confirm or abandon
 
@@ -137,11 +144,24 @@ the configured policy.
 | `POST /v1/claims/{claimId}/reassign` | Assign an idle claim a new preferred or exact port |
 | `POST /v1/claims/{claimId}/delete` | Delete an idle, listener-free claim |
 | `POST /v1/claims/prune` | Find or delete old missing-workspace claims using `olderThanMilliseconds` and `dryRun` |
+| `GET /v1/stacks` | List applied stack definitions; accepts project and canonical `workspaceRoot` filters |
+| `GET /v1/stacks/{stackId}` | Read one applied stack and its normalized current definition |
+| `POST /v1/stacks/apply` | Validate and atomically apply a definition; requires `stack-definitions-v1` |
 
 Inventory classifications are `available`, `verified`, `idle`, `pending`,
 `unclaimed`, `conflicting`, and `mixed`. A live PID alone never establishes
 ownership; Portreeve compares fresh listener, process-start, executable, and
 lineage evidence.
+
+## Stack definitions
+
+`POST /v1/stacks/apply` accepts `client`, `workspaceRoot`, and a strict
+version-1 definition. Stack identity is the definition's `project` plus the
+canonical worktree path. Portreeve normalizes schema defaults, hashes the
+canonical JSON with SHA-256, stores that immutable revision, and links each
+published component endpoint to its sticky claim. Reapplying equivalent JSON
+returns `changed: false`; changed content updates the stack's current revision
+without changing an existing port assignment. See [Stack definitions](stacks.md).
 
 ## Settings and observability
 

@@ -23,7 +23,8 @@ const running = await client.withPort(
     claim: {
       project: 'caregiver',
       workspaceRoot: import.meta.dir,
-      service: 'website',
+      component: 'website',
+      endpoint: 'default',
     },
     allocation: {
       mode: 'sticky',
@@ -42,12 +43,41 @@ The client canonicalizes `workspaceRoot` to the real Git worktree root when it
 is inside Git, preventing symlink and subdirectory spellings from creating
 duplicate identities.
 
+For compatibility, `service` remains an alias for `component` with endpoint
+`default`. New integrations should use `component` and `endpoint`.
+
+## Stack definitions
+
+`applyStack({ workspaceRoot, definition })` validates through the same public
+contract as the CLI and returns `{ changed, stack }`. `listStacks(filters)`
+and `getStack(stackId)` inspect the normalized stored definition and its
+content-addressed current revision. These methods coordinate definitions and
+claims only; they do not start project processes or run Docker Compose.
+
+```js
+const result = await client.applyStack({
+  workspaceRoot: import.meta.dir,
+  definition: {
+    version: 1,
+    project: 'caregiver',
+    components: {
+      api: {
+        endpoints: {
+          http: { allocation: { preferredPort: 8080 } },
+        },
+      },
+    },
+  },
+});
+```
+
 ## Low-level API
 
 The `PortreeveClient` exposes `health`, `acquire`, `confirm`, `abandon`,
 `release`, `listPorts`, `inspectPort`, `reclaimPort`, `unsafeEvictPort`,
 `listClaims`, `getClaim`, `reassignClaim`, `deleteClaim`, `pruneClaims`,
-`getConfig`, `setConfig`, `history`, `logs`, and `stopServer`.
+`applyStack`, `listStacks`, `getStack`, `getConfig`, `setConfig`, `history`,
+`logs`, and `stopServer`.
 
 Construct it with `{ socketPath }` only when overriding the per-user default.
 Failures reject with `PortreeveClientError`, whose stable fields are `code`,

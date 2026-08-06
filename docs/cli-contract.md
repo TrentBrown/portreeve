@@ -48,10 +48,26 @@ human output.
 | `claims show` / `claims reassign` | `{ "version": 1, "claim": { ... } }` |
 | `claims delete` | `{ "version": 1, "result": { ... } }` |
 | `claims prune` | `{ "version": 1, "result": { ... } }` |
+| `stacks apply` | `{ "version": 1, "result": { "changed": true, "stack": { ... } } }` |
+| `stacks list` | `{ "version": 1, "stacks": [ ... ] }` |
+| `stacks show` / `stacks status` | `{ "version": 1, "stack": { ... } }` |
 | `config get` | `{ "version": 1, "settings": { ... } }` or `{ "version": 1, "value": ... }` |
 | `config set` | `{ "version": 1, "settings": { ... } }` |
 | `history` | `{ "version": 1, "events": [ ... ] }` |
 | `logs` | `{ "version": 1, "entries": [ ... ] }` |
+
+## Stack definitions
+
+`stacks apply` discovers `portreeve.stack.json` at the canonical Git worktree
+root. `--file <path>` selects an explicit file. The file's parent is supplied
+as the workspace input and the official client canonicalizes it before the
+request. Equivalent normalized content is an ordinary state difference and
+exits `10`; changed content exits `0`.
+
+`stacks list` accepts `--project` and `--workspace`. `stacks status` selects
+the current canonical worktree and accepts the same disambiguating options.
+`stacks show <stack-id>` reads a stack directly. These commands never start or
+stop project services or containers.
 
 ## Prune consent
 

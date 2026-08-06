@@ -41,6 +41,48 @@ describe('protocol schemas', () => {
     });
 
     expect(request.allocation.exactPort).toBe(43100);
+    expect(request.claim).toEqual({
+      project: 'caregiver',
+      workspaceRoot: '/worktrees/caregiver-a',
+      service: 'website',
+      component: 'website',
+      endpoint: 'default',
+      transport: 'tcp',
+    });
+  });
+
+  test('accepts component endpoints and rejects conflicting service aliases', () => {
+    expect(
+      AcquireRequestSchema.parse({
+        client,
+        claim: {
+          project: 'caregiver',
+          workspaceRoot: '/worktrees/caregiver-a',
+          component: 'api',
+          endpoint: 'metrics',
+          transport: 'tcp',
+        },
+        allocation: {},
+      }).claim,
+    ).toMatchObject({
+      service: 'api',
+      component: 'api',
+      endpoint: 'metrics',
+    });
+
+    expect(() =>
+      AcquireRequestSchema.parse({
+        client,
+        claim: {
+          project: 'caregiver',
+          workspaceRoot: '/worktrees/caregiver-a',
+          service: 'website',
+          component: 'api',
+          transport: 'tcp',
+        },
+        allocation: {},
+      }),
+    ).toThrow('must match');
   });
 
   test('rejects preferred and exact ports in the same request', () => {

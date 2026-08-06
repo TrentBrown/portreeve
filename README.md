@@ -50,6 +50,7 @@ const running = await portreeve.withPort(
 - [JavaScript client](docs/client.md)
 - [Socket protocol](docs/protocol.md)
 - [CLI automation contract](docs/cli-contract.md)
+- [Stack definitions](docs/stacks.md)
 - [Migration from project-local remapping](docs/migration.md)
 - [Safety model](docs/safety.md)
 - [Troubleshooting](docs/troubleshooting.md)

@@ -66,6 +66,8 @@ function reducePort(entry) {
         : {
             project: String(identity.project),
             service: String(identity.service),
+            component: String(identity.component),
+            endpoint: String(identity.endpoint),
             workspaceName: basename(String(identity.workspaceRoot)),
             mode: entry.claim.mode,
             createdAt: entry.claim.createdAt,

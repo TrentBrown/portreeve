@@ -1,7 +1,7 @@
 // @ts-check
 
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtemp, rm, stat } from 'node:fs/promises';
+import { mkdtemp, realpath, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
@@ -124,6 +124,45 @@ test('rejects incompatible clients before allocation mutation', async () => {
     error: { code: 'incompatible_protocol' },
   });
   expect(registry.findClaim(claim('future'))).toBeNull();
+});
+
+test('applies and inspects a stack definition through the official client', async () => {
+  const { socketPath, registry } = await startFixture();
+  const client = new PortreeveClient({ socketPath });
+  const workspaceRoot = await mkdtemp(join(tmpdir(), 'portreeve-stack-worktree-'));
+  cleanups.push(() => rm(workspaceRoot, { force: true, recursive: true }));
+  const definition = {
+    version: /** @type {const} */ (1),
+    project: 'caregiver',
+    components: {
+      api: {
+        endpoints: {
+          http: { allocation: { preferredPort: 43100 } },
+        },
+      },
+    },
+  };
+
+  const applied = await client.applyStack({ workspaceRoot, definition });
+  expect(applied.changed).toBe(true);
+  expect(applied.stack).toMatchObject({
+    project: 'caregiver',
+    workspaceRoot: await realpath(resolve(workspaceRoot)),
+  });
+  expect(applied.stack.definition.components.api?.endpoints?.http).toEqual({
+    transport: 'tcp',
+    publish: true,
+    required: true,
+    allocation: { preferredPort: 43100 },
+  });
+  expect(await client.listStacks({ workspaceRoot })).toEqual([applied.stack]);
+  expect(await client.getStack(applied.stack.id)).toEqual(applied.stack);
+  expect((await client.applyStack({ workspaceRoot, definition })).changed).toBe(false);
+  expect(registry.listClaims()[0]?.identity).toMatchObject({
+    service: 'api',
+    component: 'api',
+    endpoint: 'http',
+  });
 });
 
 test('acquires, binds, confirms, releases, and reuses a sticky assignment', async () => {

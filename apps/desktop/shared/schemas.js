@@ -114,6 +114,8 @@ export const DesktopSnapshotSchema = z
             .object({
               project: z.string().min(1),
               service: z.string().min(1),
+              component: z.string().min(1),
+              endpoint: z.string().min(1),
               workspaceName: z.string().min(1),
               mode: z.enum(['sticky', 'ephemeral']),
               createdAt: TimestampSchema,

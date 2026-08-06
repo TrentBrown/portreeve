@@ -33,6 +33,10 @@ import {
   ReclamationResultSchema,
   ReleaseRequestSchema,
   ServerSettingsResponseSchema,
+  StackApplyRequestSchema,
+  StackApplyResponseSchema,
+  StackListSchema,
+  StackRecordSchema,
   UnsafeEvictionRequestSchema,
   negotiateCompatibility,
   successEnvelopeSchema,
@@ -40,6 +44,7 @@ import {
 import { InventoryService } from '../reconciliation/inventory.js';
 import { ReclamationService } from '../reclamation/service.js';
 import { RegistryError } from '../storage/registry.js';
+import { StackDefinitionService } from '../stacks/service.js';
 
 /**
  * @param {{
@@ -48,6 +53,7 @@ import { RegistryError } from '../storage/registry.js';
  *   inventoryService?: InventoryService,
  *   reclamationService?: ReclamationService,
  *   administrationService?: AdministrationService,
+ *   stackDefinitionService?: StackDefinitionService,
  *   diagnosticLog?: import('../observability/diagnostic-log.js').DiagnosticLog,
  *   mode?: 'manual' | 'supervised'
  * }} options
@@ -70,6 +76,9 @@ export async function startPortreeveServer(options) {
       registry: options.allocationService.registry,
       inventoryService,
     });
+  const stackDefinitionService =
+    options.stackDefinitionService ??
+    new StackDefinitionService({ registry: options.allocationService.registry });
   const diagnosticLog = options.diagnosticLog;
   let stopped = false;
   let resolveStopped = () => {};
@@ -105,6 +114,7 @@ export async function startPortreeveServer(options) {
         inventoryService,
         reclamationService,
         administrationService,
+        stackDefinitionService,
         diagnosticLog,
         options.mode ?? 'manual',
         () => {
@@ -136,6 +146,7 @@ export async function startPortreeveServer(options) {
  * @param {InventoryService} inventoryService
  * @param {ReclamationService} reclamationService
  * @param {AdministrationService} administrationService
+ * @param {StackDefinitionService} stackDefinitionService
  * @param {import('../observability/diagnostic-log.js').DiagnosticLog | undefined} diagnosticLog
  * @param {'manual' | 'supervised'} mode
  * @param {() => void} requestStop
@@ -146,6 +157,7 @@ async function handleRequest(
   inventoryService,
   reclamationService,
   administrationService,
+  stackDefinitionService,
   diagnosticLog,
   mode,
   requestStop,
@@ -166,6 +178,30 @@ async function handleRequest(
       return success(
         requestId,
         InventoryListSchema.parse(await inventoryService.list(inventoryFilters(url))),
+      );
+    }
+    if (request.method === 'GET' && pathname === '/v1/stacks') {
+      return success(
+        requestId,
+        StackListSchema.parse(
+          stackDefinitionService.list({
+            ...(url.searchParams.has('project')
+              ? { project: url.searchParams.get('project') ?? '' }
+              : {}),
+            ...(url.searchParams.has('workspaceRoot')
+              ? { workspaceRoot: url.searchParams.get('workspaceRoot') ?? '' }
+              : {}),
+          }),
+        ),
+      );
+    }
+    const showStack = pathname.match(/^\/v1\/stacks\/([0-9a-f-]+)$/);
+    if (request.method === 'GET' && showStack !== null) {
+      return success(
+        requestId,
+        StackRecordSchema.parse(
+          stackDefinitionService.get(IdentifierSchema.parse(showStack[1])),
+        ),
       );
     }
     if (request.method === 'GET' && pathname === '/v1/claims') {
@@ -246,6 +282,14 @@ async function handleRequest(
         ClaimPruneRequestSchema.parse(body),
       );
       return success(requestId, ClaimPruneResultSchema.parse(result));
+    }
+    if (pathname === '/v1/stacks/apply') {
+      return success(
+        requestId,
+        StackApplyResponseSchema.parse(
+          stackDefinitionService.apply(StackApplyRequestSchema.parse(body)),
+        ),
+      );
     }
     const reassignClaim = pathname.match(/^\/v1\/claims\/([0-9a-f-]+)\/reassign$/);
     if (reassignClaim !== null) {
@@ -480,6 +524,8 @@ function inventoryFilters(url) {
    *   project?: string,
    *   workspace?: string,
    *   service?: string,
+   *   component?: string,
+   *   endpoint?: string,
    *   port?: number
    * }} */
   const filters = {};
@@ -487,6 +533,8 @@ function inventoryFilters(url) {
   const project = url.searchParams.get('project');
   const workspace = url.searchParams.get('workspace');
   const service = url.searchParams.get('service');
+  const component = url.searchParams.get('component');
+  const endpoint = url.searchParams.get('endpoint');
   const port = url.searchParams.get('port');
   if (classification !== null) {
     filters.classification = InventoryClassificationSchema.parse(classification);
@@ -507,6 +555,12 @@ function inventoryFilters(url) {
   }
   if (service !== null) {
     filters.service = service;
+  }
+  if (component !== null) {
+    filters.component = component;
+  }
+  if (endpoint !== null) {
+    filters.endpoint = endpoint;
   }
   if (port !== null) {
     filters.port = PortSchema.parse(Number.parseInt(port, 10));

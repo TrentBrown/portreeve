@@ -21,6 +21,8 @@ import { renderOutput } from '../output/render.js';
  *   project?: string,
  *   workspace?: string,
  *   service?: string,
+ *   component?: string,
+ *   endpoint?: string,
  *   port?: string
  * }} options
  */
@@ -42,6 +44,8 @@ export async function listPortsCommand(options) {
     ...(options.project ? { project: options.project } : {}),
     ...(options.workspace ? { workspace: options.workspace } : {}),
     ...(options.service ? { service: options.service } : {}),
+    ...(options.component ? { component: options.component } : {}),
+    ...(options.endpoint ? { endpoint: options.endpoint } : {}),
     ...(options.port ? { port: PortSchema.parse(Number(options.port)) } : {}),
   });
 
@@ -177,7 +181,10 @@ function claimLabel(claim) {
     return '';
   }
   const identity = /** @type {Record<string, unknown>} */ (claim.identity);
-  return [identity.project, identity.service, identity.workspaceRoot]
-    .filter((value) => typeof value === 'string')
+  const component =
+    typeof identity.component === 'string' ? identity.component : identity.service;
+  const endpoint = identity.endpoint === 'default' ? '' : identity.endpoint;
+  return [identity.project, component, endpoint, identity.workspaceRoot]
+    .filter((value) => typeof value === 'string' && value.length > 0)
     .join('/');
 }
