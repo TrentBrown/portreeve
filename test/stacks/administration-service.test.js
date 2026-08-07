@@ -238,7 +238,7 @@ test('blocks pruning when fresh Docker evidence finds a matching running contain
   registry.close();
 });
 
-test('execution skips a candidate when its worktree or listener reappears', async () => {
+test('execution skips a candidate when its worktree, listener, or container reappears', async () => {
   const worktreeRegistry = openRegistry();
   const worktreeStack = applyStack(worktreeRegistry, '/missing/reappears');
   let pathChecks = 0;
@@ -283,4 +283,56 @@ test('execution skips a candidate when its worktree or listener reappears', asyn
   });
   expect(listenerRegistry.getStack(listenerStack.id)).not.toBeNull();
   listenerRegistry.close();
+
+  const containerRegistry = openRegistry();
+  const containerStack = applyStack(containerRegistry, '/missing/container-race', true);
+  const containerClaim = containerRegistry.listStackClaims(containerStack.id)[0];
+  if (containerClaim === undefined) throw new Error('Expected a container claim.');
+  assignPort(containerRegistry, containerClaim.id, 43223);
+  let containerInspections = 0;
+  const containerResult = await service({
+    registry: containerRegistry,
+    dockerAdapter: {
+      availability: async () => ({ available: true, reason: null }),
+      inspect: async () => ({
+        status: 'missing',
+        reason: 'not-needed',
+        container: null,
+      }),
+      findPublishedPort: async () => {
+        containerInspections += 1;
+        return {
+          available: true,
+          reason: null,
+          containers:
+            containerInspections > 1
+              ? [
+                  {
+                    id: 'e'.repeat(64),
+                    running: true,
+                    labels: { [DOCKER_LABELS.stackId]: containerStack.id },
+                    ports: [
+                      {
+                        containerPort: 3000,
+                        hostIp: '127.0.0.1',
+                        hostPort: 43223,
+                      },
+                    ],
+                  },
+                ]
+              : [],
+        };
+      },
+    },
+  }).prune({
+    client,
+    olderThanMilliseconds: 7 * 86_400_000,
+    dryRun: false,
+  });
+  expect(containerResult).toMatchObject({
+    deletedStackIds: [],
+    skipped: [{ stackId: containerStack.id, reason: 'matching-container:api.http' }],
+  });
+  expect(containerRegistry.getStack(containerStack.id)).not.toBeNull();
+  containerRegistry.close();
 });
