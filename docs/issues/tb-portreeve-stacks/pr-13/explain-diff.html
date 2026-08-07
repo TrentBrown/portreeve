@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portreeve PR #13 - Feature-final stack verification</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #14231f;
+        --muted: #60706a;
+        --paper: #f7f2e8;
+        --card: #fffdf7;
+        --line: #d8d0c0;
+        --green: #176c55;
+        --gold: #b87916;
+        --red: #a43c2f;
+        --blue: #356a86;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 17px/1.62 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      main {
+        width: min(1050px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 46px 0 80px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: Georgia, "Times New Roman", serif;
+        line-height: 1.15;
+      }
+
+      h1 {
+        max-width: 820px;
+        margin: 8px 0 16px;
+        font-size: clamp(2.5rem, 7vw, 5.4rem);
+      }
+
+      h2 {
+        margin-top: 64px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+        font-size: 2.2rem;
+      }
+
+      h3 {
+        margin-top: 32px;
+        font-size: 1.35rem;
+      }
+
+      .eyebrow {
+        color: var(--green);
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .lede {
+        max-width: 800px;
+        color: #344740;
+        font-size: 1.25rem;
+      }
+
+      .pin {
+        margin: 28px 0;
+        padding: 18px 22px;
+        border-left: 5px solid var(--green);
+        background: var(--card);
+      }
+
+      nav,
+      .card,
+      .quiz {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--card);
+        box-shadow: 0 8px 30px rgb(57 43 24 / 6%);
+      }
+
+      nav {
+        margin: 34px 0;
+        padding: 22px 26px;
+      }
+
+      nav a {
+        display: inline-block;
+        margin: 5px 18px 5px 0;
+        color: var(--green);
+        font-weight: 700;
+      }
+
+      code {
+        border-radius: 4px;
+        background: #ece6da;
+        padding: 0.12em 0.35em;
+        font-size: 0.92em;
+      }
+
+      pre {
+        overflow: auto;
+        padding: 18px;
+        border-radius: 10px;
+        background: #16231f;
+        color: #f5f0e6;
+        white-space: pre-wrap;
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(130px, 1fr));
+        gap: 12px;
+        align-items: stretch;
+        margin: 28px 0;
+      }
+
+      .node {
+        position: relative;
+        display: grid;
+        min-height: 112px;
+        place-items: center;
+        padding: 14px;
+        border: 2px solid var(--green);
+        border-radius: 12px;
+        background: var(--card);
+        text-align: center;
+      }
+
+      .node:not(:last-child)::after {
+        position: absolute;
+        right: -13px;
+        color: var(--gold);
+        content: "→";
+        font-size: 1.4rem;
+        font-weight: 900;
+        transform: translateX(50%);
+      }
+
+      .evidence-grid,
+      .code-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .card {
+        padding: 22px;
+      }
+
+      .card h3 {
+        margin-top: 0;
+      }
+
+      .listener {
+        border-color: var(--blue);
+      }
+
+      .docker {
+        border-color: var(--gold);
+      }
+
+      .callout {
+        margin: 24px 0;
+        padding: 18px 22px;
+        border-radius: 10px;
+        background: #e6f0eb;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 12px;
+        margin: 24px 0;
+      }
+
+      .event {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 18px;
+        padding: 16px;
+        border-left: 4px solid var(--green);
+        background: var(--card);
+      }
+
+      .event.fail {
+        border-color: var(--red);
+      }
+
+      .event strong {
+        color: var(--green);
+      }
+
+      .event.fail strong {
+        color: var(--red);
+      }
+
+      .quiz {
+        margin: 18px 0;
+        padding: 22px;
+      }
+
+      .choices {
+        display: grid;
+        gap: 9px;
+      }
+
+      button {
+        padding: 12px 14px;
+        border: 1px solid #9d9587;
+        border-radius: 8px;
+        background: white;
+        color: var(--ink);
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+      }
+
+      button:hover {
+        border-color: var(--green);
+      }
+
+      button.correct {
+        border-color: var(--green);
+        background: #dff2e9;
+      }
+
+      button.incorrect {
+        border-color: var(--red);
+        background: #f8e4df;
+      }
+
+      .feedback {
+        min-height: 1.6em;
+        margin-top: 12px;
+        font-weight: 700;
+      }
+
+      footer {
+        margin-top: 70px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 800px) {
+        .flow,
+        .evidence-grid,
+        .code-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .node:not(:last-child)::after {
+          right: auto;
+          bottom: -22px;
+          transform: rotate(90deg);
+        }
+
+        .event {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">Portreeve · PR #13 · feature-final reviewer guide</div>
+      <h1>One stack plan, proven on real machines</h1>
+      <p class="lede">
+        This final slice does two things: it makes the complete stack contract easy to
+        adopt, and it proves the assembled process-plus-Docker lifecycle on the native
+        platforms that claim to support it. That proof caught and corrected one subtle
+        assumption about Linux Docker publication.
+      </p>
+
+      <div class="pin">
+        <strong>Pinned focused diff:</strong>
+        <code>0fc3865..16b5395</code>. Complete-feature evaluation separately covers
+        <code>8e14a33..16b5395</code>.
+      </div>
+
+      <nav aria-label="Table of contents">
+        <strong>Contents</strong><br />
+        <a href="#background">Background</a>
+        <a href="#intuition">Intuition</a>
+        <a href="#code">Code walkthrough</a>
+        <a href="#verification">Verification story</a>
+        <a href="#quiz">Quiz</a>
+      </nav>
+
+      <section id="background">
+        <h2>Background</h2>
+        <p>
+          A Portreeve stack is not a process supervisor. It is a durable, versioned
+          network plan for one Git worktree. The checked-in definition names components,
+          endpoints, and dependencies. Portreeve allocates one immutable generation of
+          host ports. A project-owned launcher consumes short-lived leases, starts the
+          actual processes or containers, and confirms them with fresh evidence.
+        </p>
+
+        <div class="flow" aria-label="Stack lifecycle">
+          <div class="node">Apply strict definition</div>
+          <div class="node">Prepare immutable generation</div>
+          <div class="node">Begin leased activation</div>
+          <div class="node">Launcher starts and confirms providers</div>
+          <div class="node">Resolve, reconcile, end, prune</div>
+        </div>
+
+        <p>
+          This division of labor is the central safety boundary. Portreeve knows which
+          address belongs to which logical endpoint. The launcher knows commands,
+          environment, Compose topology, health checks, and shutdown order. Sandboxes
+          receive a redacted read-only address document, never the control socket.
+        </p>
+
+        <h3>Two kinds of live evidence</h3>
+        <div class="evidence-grid">
+          <article class="card listener">
+            <h3>Host process</h3>
+            <p>
+              <code>lsof</code> supplies fresh listener PIDs. Portreeve combines that
+              with process start time, executable, confirmed run, and lineage. Stored
+              PIDs are hints, never authority.
+            </p>
+          </article>
+          <article class="card docker">
+            <h3>Docker provider</h3>
+            <p>
+              Fresh Docker inspection proves the exact running container, activation
+              labels, loopback host publication, allocated host port, and declared
+              container port. Process lineage is intentionally irrelevant.
+            </p>
+          </article>
+        </div>
+
+        <div class="callout">
+          <strong>The portability discovery:</strong> Docker Desktop commonly exposes a
+          userspace listener that <code>lsof</code> can see. Linux Docker Engine may
+          publish through kernel NAT, where the address works but no userspace process is
+          listening. Treating a missing Linux listener as a dead publication was a false
+          negative.
+        </div>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <p>
+          Imagine a stack with <code>website.http</code> and
+          <code>api.http</code>. Portreeve allocates host ports 10241 and 10240. The
+          launcher binds the website process to 10241 and publishes an API container as
+          <code>127.0.0.1:10240 → 3000/tcp</code>. The website resolves its declared
+          <code>backend</code> alias to 10240.
+        </p>
+
+        <pre>{
+  "website": { "own.http": "127.0.0.1:10241" },
+  "backend": {
+    "host": "127.0.0.1:10240",
+    "dockerNetwork": "api:3000"
+  }
+}</pre>
+
+        <p>
+          Confirmation is not a health check. The launcher may wait for an HTTP health
+          response before starting the website, but Portreeve asks a narrower question:
+          “Does fresh, binding-appropriate evidence identify the provider that this
+          activation leased?” That distinction keeps Portreeve portable and prevents it
+          from absorbing every project's startup policy.
+        </p>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <div class="code-grid">
+          <article class="card">
+            <h3>1. Native harness</h3>
+            <p>
+              <code>scripts/verify-stack-feature.js</code> behaves like a temporary
+              trusted launcher. It starts a disposable process listener and uniquely
+              named container, but all Portreeve operations travel through the official
+              JavaScript client. A <code>finally</code> block owns exact cleanup.
+            </p>
+          </article>
+          <article class="card">
+            <h3>2. Release gate</h3>
+            <p>
+              Linux x64 and ARM64 native jobs run <code>bun run stacks:verify</code>
+              before lifecycle verification. macOS Docker Desktop remains a manual
+              product smoke because hosted macOS runners do not provide it.
+            </p>
+          </article>
+          <article class="card">
+            <h3>3. Platform-correct Docker evidence</h3>
+            <p>
+              Docker confirmation no longer requires an <code>lsof</code> listener.
+              Exact container inspection remains mandatory. Inventory also queries
+              Docker for a known Docker run even when the listener list is empty.
+            </p>
+          </article>
+          <article class="card">
+            <h3>4. Adoption guides</h3>
+            <p>
+              The public desktop guide explains trust and lifecycle boundaries. The
+              mixed-stack example explains how a launcher maps returned leases and
+              resolutions into processes, Compose, and sandbox discovery files.
+            </p>
+          </article>
+        </div>
+
+        <h3>Why the evidence change is still safe</h3>
+        <p>
+          The removed check was not the check that identified the container. The
+          container ID still acts only as an inspection key. Confirmation recomputes
+          labels from durable stack state, requires the container to be running, and
+          verifies the exact host-to-container TCP mapping. A stale ID, wrong label,
+          stopped container, wildcard publication, wrong host port, or wrong container
+          port still fails. Meanwhile, process reclamation continues to require fresh
+          <code>lsof</code> evidence and never signals Docker infrastructure.
+        </p>
+      </section>
+
+      <section id="verification">
+        <h2>Verification story</h2>
+        <div class="timeline">
+          <div class="event">
+            <strong>Local macOS</strong>
+            <span>Complete mixed lifecycle passed on Docker Desktop ARM64.</span>
+          </div>
+          <div class="event fail">
+            <strong>Linux run 1</strong>
+            <span>
+              Both architectures reached a working HTTP publication, then confirmation
+              rejected it because <code>lsof</code> saw no userspace listener.
+            </span>
+          </div>
+          <div class="event">
+            <strong>Correction</strong>
+            <span>
+              Docker inspection became the Docker publication authority; listener
+              evidence remained separate and process authority was unchanged.
+            </span>
+          </div>
+          <div class="event">
+            <strong>Final matrix</strong>
+            <span>
+              Linux x64/ARM64 mixed stacks pass; macOS x64/ARM64 and Linux x64/ARM64
+              native lifecycle jobs pass; both macOS Homebrew jobs pass.
+            </span>
+          </div>
+          <div class="event">
+            <strong>Packaged app</strong>
+            <span>
+              The rebuilt macOS application reports a healthy supervised service and
+              renders the Stacks inspection, Apply, and Prune surface.
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+
+        <div class="quiz" data-answer="1">
+          <h3>1. What does a successful Docker confirmation prove?</h3>
+          <div class="choices">
+            <button>The application has passed its project-specific health check.</button>
+            <button>Fresh exact container and publication evidence matches the activation.</button>
+            <button>The Docker backend process is a descendant of the launcher.</button>
+            <button>The container can be stopped safely by Portreeve reclamation.</button>
+          </div>
+          <div class="feedback"></div>
+        </div>
+
+        <div class="quiz" data-answer="2">
+          <h3>2. Why did the first hosted Linux matrix fail?</h3>
+          <div class="choices">
+            <button>The hosted runners did not have a Docker daemon.</button>
+            <button>The container image did not support ARM64.</button>
+            <button>Kernel-NAT publication had no userspace listener for lsof to report.</button>
+            <button>The allocated host port was inside Linux's ephemeral range.</button>
+          </div>
+          <div class="feedback"></div>
+        </div>
+
+        <div class="quiz" data-answer="0">
+          <h3>3. Who starts the website process and API container?</h3>
+          <div class="choices">
+            <button>The project-owned launcher, after consuming Portreeve leases.</button>
+            <button>The Portreeve server, using commands from the stack definition.</button>
+            <button>The desktop renderer, through its sandboxed preload bridge.</button>
+            <button>The JavaScript discovery reader inside the Codex sandbox.</button>
+          </div>
+          <div class="feedback"></div>
+        </div>
+
+        <div class="quiz" data-answer="3">
+          <h3>4. What does a sandbox receive?</h3>
+          <div class="choices">
+            <button>The Portreeve Unix socket and a short-lived mutation token.</button>
+            <button>The complete generation, including every component's lease.</button>
+            <button>A Docker context configured to reach the host daemon.</button>
+            <button>A component-scoped, redacted, read-only address document.</button>
+          </div>
+          <div class="feedback"></div>
+        </div>
+
+        <div class="quiz" data-answer="1">
+          <h3>5. What remains true about lsof after this PR?</h3>
+          <div class="choices">
+            <button>It is used only for diagnostic display and never for authority.</button>
+            <button>It remains the live authority for process ownership and signaling.</button>
+            <button>It is replaced by HTTP health checks for every provider kind.</button>
+            <button>It must report a listener before any Docker container can confirm.</button>
+          </div>
+          <div class="feedback"></div>
+        </div>
+      </section>
+
+      <footer>
+        Portreeve PR #13 · generated from the pinned feature-final source boundary
+        <code>16b5395</code>
+      </footer>
+    </main>
+
+    <script>
+      document.querySelectorAll(".quiz").forEach((quiz) => {
+        const answer = Number(quiz.dataset.answer);
+        const feedback = quiz.querySelector(".feedback");
+        quiz.querySelectorAll("button").forEach((button, index) => {
+          button.addEventListener("click", () => {
+            quiz.querySelectorAll("button").forEach((candidate) => {
+              candidate.classList.remove("correct", "incorrect");
+            });
+            if (index === answer) {
+              button.classList.add("correct");
+              feedback.textContent = "Correct. That distinction is central to the design.";
+            } else {
+              button.classList.add("incorrect");
+              quiz.querySelectorAll("button")[answer].classList.add("correct");
+              feedback.textContent =
+                "Not quite. The highlighted answer matches the pinned contract.";
+            }
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

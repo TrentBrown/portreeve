@@ -166,7 +166,7 @@ desktop, protocol, client, CLI, package, and boundary gates passed.
 
 ## I-7 - Complete integrated verification and feature evidence
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P8
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
@@ -186,3 +186,7 @@ The first Linux run exposed that Docker Engine kernel-NAT publication has no use
 listener; binding-appropriate Docker inspection replaced that false portability
 assumption. The corrected matrix passes on Linux x64/ARM64 and macOS x64/ARM64, and the
 packaged macOS ARM64 desktop launches with healthy service and Stacks evidence.
+
+**In review 2026-08-07.** The feature-final boundary evaluates every AC and R1-R8 as
+PASS at source `16b5395`, with no code-review findings or known unrelated failures.
+The cumulative feature record is fully tracked and requires no retention decision.

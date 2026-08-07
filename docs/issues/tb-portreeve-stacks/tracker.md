@@ -116,3 +116,17 @@ Append PR boundary entries here.
   PASS with no remaining findings. Native Linux and assembled mixed-stack release
   verification remain I-7/P8.
 - **Merged:** `0fc3865` on 2026-08-07.
+
+### PR #13 - Feature-final stack verification
+
+- **PR:** [#13](https://github.com/TrentBrown/portreeve/pull/13)
+- **Status:** in review
+- **Scope:** P8 public desktop and representative launcher documentation, assembled
+  process/Docker apply-through-prune verification, Linux kernel-NAT evidence correction,
+  complete native release matrix, packaged desktop smoke, and feature-final gates.
+- **Evidence packet:** [pr-13](pr-13/)
+- **Result:** AC1-AC8 and R1-R8 pass with zero `NOT YET` or `FAIL`. The pinned Bun
+  1.3.14 gate passes 225 tests and 930 assertions. Real mixed-stack verification passes
+  on macOS Docker Desktop and hosted Linux x64/ARM64; native lifecycle and release gates
+  pass on macOS x64/ARM64 and Linux x64/ARM64. Independent judge: PASS. Code review:
+  PASS with no findings. Retention: tracked with no decision required.

@@ -228,7 +228,7 @@ Reconstruct status from history in the desktop - rejected because history is an 
 
 ## [11] Make the assembled mixed-stack smoke launcher-owned and release-gated
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -243,7 +243,7 @@ Extend Portreeve itself with a stack launcher - rejected because application lif
 
 ## [12] Treat exact Docker publication as authoritative without requiring an lsof listener
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
