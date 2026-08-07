@@ -141,12 +141,12 @@ human review and merge.
 
 ## I-6 - Add the desktop Stacks experience and failure details
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 3d
 - **Plan steps:** P7
 - **Rubric criteria:** R8
 - **Depends on:** I-1, I-2, I-3, I-4, I-5
-- **PR:** -
+- **PR:** [#12](https://github.com/TrentBrown/portreeve/pull/12)
 
 Build the approved desktop inspection and safe coordination workflows across the
 main/preload/renderer boundary, preserve serialized fresh evidence, and surface
@@ -154,6 +154,12 @@ actionable lifecycle and stack errors without granting orchestration authority.
 
 **Started 2026-08-06.** Sequential delivery branch
 `tb-portreeve-stacks-06-desktop-stacks` begins from merged `main` at `3ecd8a5`.
+
+**In review 2026-08-06.** Draft PR #12 adds the desktop Stacks inspection and safe
+coordination experience, actionable lifecycle and stack failures, a read-only aggregate
+stack-status contract for trusted inspection surfaces, and packaged macOS verification.
+The desktop remains a Portreeve coordinator rather than a project process or container
+orchestrator.
 
 ## I-7 - Complete integrated verification and feature evidence
 

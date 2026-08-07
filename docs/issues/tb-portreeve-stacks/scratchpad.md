@@ -213,7 +213,7 @@ Delete stacks and claims piecemeal through existing public methods - rejected be
 
 ## [10] Expose aggregate stack status for trusted inspection surfaces
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
