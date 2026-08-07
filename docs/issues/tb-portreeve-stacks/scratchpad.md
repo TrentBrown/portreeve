@@ -240,3 +240,18 @@ Add one explicit native verification harness that acts as a temporary trusted pr
 
 **Alternatives considered:**
 Extend Portreeve itself with a stack launcher - rejected because application lifecycle remains project-owned; rely only on isolated deterministic tests - rejected because P8 requires assembled native evidence; run the native smoke on every macOS GitHub runner - rejected because hosted macOS runners do not provide the Docker Desktop environment required by the product contract
+
+## [12] Treat exact Docker publication as authoritative without requiring an lsof listener
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Docker activation confirmation, known-run inventory classification, deterministic and native integration tests, and Docker evidence documentation
+
+Confirm Docker endpoints from fresh exact container inspection: running state, Portreeve activation labels, loopback host publication, allocated host port, and declared container port. Keep an observable lsof listener as corroborating inventory evidence, but do not require one because Linux Docker Engine may implement publication through kernel NAT without a userspace LISTEN socket. Query Docker evidence for a known Docker run even when lsof returns no listener so inventory can still classify the claimed port as docker-managed. Process-backed confirmation and reclamation continue to require fresh lsof evidence.
+
+**Triggered by:** The P8 native mixed-stack release gate passed on macOS Docker Desktop but failed identically on Linux x64 and ARM64 after the container became HTTP-reachable because lsof correctly reported no userspace listener
+
+**Alternatives considered:**
+Require Docker's optional userland proxy in every supported Linux environment - rejected because Portreeve must support ordinary Docker Engine configuration; treat successful HTTP fetch as authority - rejected because application health is launcher-owned and a response does not prove container identity; keep the listener requirement and drop Linux verification - rejected because it would preserve a known false portability claim

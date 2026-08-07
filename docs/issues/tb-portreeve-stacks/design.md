@@ -11,10 +11,11 @@ launchers still allocate ports piecemeal, persist generated configuration, injec
 backend addresses into consumers, and reproduce this logic across repositories.
 
 Docker and Codex sandboxes add distinct address and ownership domains. A port published
-by Docker is visible to `lsof`, but its listener may belong to a shared Docker backend
-rather than the intended container. A sandbox also needs a host-gateway address rather
-than host loopback, yet exposing Portreeve's control socket inside the sandbox would
-grant unnecessary mutation and reclamation authority.
+by Docker Desktop may be visible to `lsof` under a shared Docker backend, while Linux
+Docker Engine may publish through kernel NAT with no userspace listener at all. A
+sandbox also needs a host-gateway address rather than host loopback, yet exposing
+Portreeve's control socket inside the sandbox would grant unnecessary mutation and
+reclamation authority.
 
 The design must add coherent stack coordination without turning Portreeve into a general
 process, Compose, health-check, or application-configuration orchestrator. It must also
@@ -171,8 +172,9 @@ changing logical endpoint identity. The launcher starts a container with labels 
 stack, component, endpoint, definition revision, generation, and activation, then
 submits its container ID during confirmation. Portreeve performs fresh host-side Docker
 inspection and verifies the running container, labels, published host port, declared
-container port, and fresh host listener. Process-lineage rules are never applied to
-Docker's shared backend.
+container port, and any listener evidence the platform exposes. Linux kernel-NAT
+publication does not require a userspace listener. Process-lineage rules are never
+applied to Docker's shared backend.
 
 Docker inspection uses an adapter interface. The initial adapter invokes a trusted
 installed `docker` CLI and configured Docker context on macOS Docker Desktop or Linux
