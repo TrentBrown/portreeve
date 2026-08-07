@@ -7,6 +7,7 @@ import {
   canUninstall,
   compareVersions,
   stackPresentationState,
+  stackRenderSignature,
   updatePresentation,
 } from '../../apps/desktop/renderer/state.js';
 import { createDesktopSnapshot } from '../../apps/desktop/main/view-model.js';
@@ -98,6 +99,29 @@ test('withholds stack mutations on stale evidence and never invents launcher act
   expect(
     stackPresentationState({ generation: {}, activation: { state: 'degraded' } }),
   ).toBe('degraded');
+});
+
+test('keeps stack rendering stable across evidence timestamps while noticing material changes', () => {
+  const stack = { id: 'stack-1', project: 'demo' };
+  const initial = {
+    stacks: [stack],
+    errors: [],
+    refreshedAt: '2026-08-06T10:00:00.000Z',
+  };
+  const later = {
+    ...initial,
+    refreshedAt: '2026-08-06T10:00:05.000Z',
+  };
+  expect(stackRenderSignature(later)).toBe(stackRenderSignature(initial));
+  expect(
+    stackRenderSignature({ ...later, stacks: [{ ...stack, project: 'next' }] }),
+  ).not.toBe(stackRenderSignature(initial));
+  expect(
+    stackRenderSignature({
+      ...later,
+      errors: [{ source: 'stacks', code: 'unavailable' }],
+    }),
+  ).not.toBe(stackRenderSignature(initial));
 });
 
 test('presents update discovery without implying automatic installation', () => {

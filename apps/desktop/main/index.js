@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   protocol,
@@ -104,6 +105,7 @@ async function startDesktop() {
     ipcMain,
     coordinator,
     windows: () => BrowserWindow.getAllWindows(),
+    writeClipboard: (text) => clipboard.writeText(text),
   });
 
   const window = new BrowserWindow(

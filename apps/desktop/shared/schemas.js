@@ -181,6 +181,14 @@ export const DesktopOpenDownloadResultSchema = z
   .object({ schemaVersion: z.literal(1), opened: z.literal(true) })
   .strict();
 
+export const DesktopCopyTextRequestSchema = z
+  .object({ text: z.string().max(65_536) })
+  .strict();
+
+export const DesktopCopyTextResultSchema = z
+  .object({ schemaVersion: z.literal(1), copied: z.literal(true) })
+  .strict();
+
 export const DesktopSnapshotSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -506,4 +514,5 @@ export const IPC_CHANNELS = Object.freeze({
   previewStackPrune: 'portreeve:desktop:preview-stack-prune',
   executeStackPrune: 'portreeve:desktop:execute-stack-prune',
   previewStackSnapshot: 'portreeve:desktop:preview-stack-snapshot',
+  copyText: 'portreeve:desktop:copy-text',
 });

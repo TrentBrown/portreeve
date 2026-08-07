@@ -1,6 +1,8 @@
 // @ts-check
 
 import {
+  DesktopCopyTextRequestSchema,
+  DesktopCopyTextResultSchema,
   DesktopLifecycleActionResultSchema,
   DesktopOpenDownloadResultSchema,
   DesktopPurgeExecutionRequestSchema,
@@ -44,6 +46,7 @@ export function isTrustedRenderer(event) {
  *     previewStackSnapshot(activationId: string, component: string, gatewayHost: string): Promise<unknown>
  *   },
  *   windows: () => Electron.BrowserWindow[]
+ *   writeClipboard?: (text: string) => void
  * }} options
  */
 export function registerDesktopIpc(options) {
@@ -101,6 +104,15 @@ export function registerDesktopIpc(options) {
       );
     },
   );
+  options.ipcMain.handle(IPC_CHANNELS.copyText, async (event, request) => {
+    requireTrusted(event);
+    const { text } = DesktopCopyTextRequestSchema.parse(request);
+    if (options.writeClipboard === undefined) {
+      throw new Error('Clipboard integration is unavailable.');
+    }
+    options.writeClipboard(text);
+    return DesktopCopyTextResultSchema.parse({ schemaVersion: 1, copied: true });
+  });
   options.ipcMain.handle(
     IPC_CHANNELS.applyStackDefinition,
     async (event, ...arguments_) => {

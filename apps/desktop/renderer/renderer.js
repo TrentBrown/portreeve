@@ -5,6 +5,7 @@ import {
   availableStackActions,
   canUninstall,
   stackPresentationState,
+  stackRenderSignature,
   updatePresentation,
 } from './state.js';
 
@@ -15,6 +16,8 @@ let filter = '';
 let selectedPort = null;
 /** @type {string|null} */
 let selectedStack = null;
+/** @type {string|null} */
+let renderedStacksSignature = null;
 let busy = false;
 
 const notice = requiredElement('notice');
@@ -377,8 +380,12 @@ function renderPortDetail(entry) {
   portDetail.replaceChildren(heading, claim, listenersHeading, listeners);
 }
 
-function renderStacks() {
+/** @param {boolean} [force] */
+function renderStacks(force = false) {
   if (snapshot === null) return;
+  const signature = stackRenderSignature(snapshot);
+  if (!force && signature === renderedStacksSignature) return;
+  renderedStacksSignature = signature;
   const entries = /** @type {any[]} */ (snapshot.stacks);
   if (!entries.some(({ id }) => id === selectedStack)) selectedStack = null;
   stackList.replaceChildren(
@@ -400,7 +407,7 @@ function renderStacks() {
           button.append(title, workspace, state);
           button.addEventListener('click', () => {
             selectedStack = stack.id;
-            renderStacks();
+            renderStacks(true);
           });
           return button;
         })),
@@ -707,7 +714,7 @@ function snapshotDocument(snapshot) {
 /** @param {string} value */
 async function copyText(value) {
   try {
-    await navigator.clipboard.writeText(value);
+    await window.portreeveDesktop.copyText(value);
     showOperation('Copied to the clipboard.', []);
   } catch {
     showOperation('Clipboard access was unavailable.', [

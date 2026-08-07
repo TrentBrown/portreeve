@@ -23,6 +23,7 @@ const channels = Object.freeze({
   previewStackPrune: 'portreeve:desktop:preview-stack-prune',
   executeStackPrune: 'portreeve:desktop:execute-stack-prune',
   previewStackSnapshot: 'portreeve:desktop:preview-stack-snapshot',
+  copyText: 'portreeve:desktop:copy-text',
 });
 
 function requireSnapshot(value) {
@@ -72,6 +73,18 @@ function requireOpenDownloadResult(value) {
     value.opened !== true
   ) {
     throw new Error('The main process returned an invalid navigation result.');
+  }
+  return value;
+}
+
+function requireCopyTextResult(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    value.copied !== true
+  ) {
+    throw new Error('The main process returned an invalid clipboard result.');
   }
   return value;
 }
@@ -150,6 +163,8 @@ contextBridge.exposeInMainWorld(
           gatewayHost,
         }),
       ),
+    copyText: async (text) =>
+      requireCopyTextResult(await ipcRenderer.invoke(channels.copyText, { text })),
     subscribe(callback) {
       if (typeof callback !== 'function') {
         throw new TypeError('Snapshot subscriber must be a function.');

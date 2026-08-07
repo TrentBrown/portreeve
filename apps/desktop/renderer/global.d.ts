@@ -23,6 +23,7 @@ interface Window {
       component: string,
       gatewayHost: string,
     ): Promise<any>;
+    copyText(text: string): Promise<any>;
     subscribe(callback: (snapshot: any) => void): () => void;
   };
 }

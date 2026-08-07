@@ -60,6 +60,16 @@ export function stackPresentationState(stack) {
   return stack.generation === null ? 'defined' : 'prepared';
 }
 
+/** @param {any} snapshot */
+export function stackRenderSignature(snapshot) {
+  return JSON.stringify({
+    stacks: snapshot.stacks,
+    unavailable: snapshot.errors.some(
+      (/** @type {any} */ { source }) => source === 'stacks',
+    ),
+  });
+}
+
 /** @param {any} update */
 export function updatePresentation(update) {
   if (update.status === 'available') {

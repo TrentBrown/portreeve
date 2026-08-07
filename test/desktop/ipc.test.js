@@ -80,3 +80,37 @@ test('validates stack identifiers before invoking a named main-process capabilit
     handlers.get(IPC_CHANNELS.applyStackDefinition)?.(event, '/tmp/stack.json'),
   ).rejects.toThrow('does not accept renderer arguments');
 });
+
+test('exposes only a bounded text clipboard capability to the trusted renderer', async () => {
+  /** @type {Map<string, (event: any, ...arguments_: any[]) => Promise<any>>} */
+  const handlers = new Map();
+  /** @type {string[]} */
+  const copied = [];
+  registerDesktopIpc({
+    ipcMain: /** @type {any} */ ({
+      /** @param {string} channel @param {(event: any, ...arguments_: any[]) => Promise<any>} handler */
+      handle(channel, handler) {
+        handlers.set(channel, handler);
+      },
+    }),
+    coordinator: /** @type {any} */ ({
+      subscribe() {
+        return () => true;
+      },
+    }),
+    windows: () => [],
+    writeClipboard(text) {
+      copied.push(text);
+    },
+  });
+  const mainFrame = { url: RENDERER_URL };
+  const event = { sender: { mainFrame }, senderFrame: mainFrame };
+  expect(
+    await handlers.get(IPC_CHANNELS.copyText)?.(event, { text: '127.0.0.1:4100' }),
+  ).toEqual({ schemaVersion: 1, copied: true });
+  expect(copied).toEqual(['127.0.0.1:4100']);
+  await expect(
+    handlers.get(IPC_CHANNELS.copyText)?.(event, { text: 'x'.repeat(65_537) }),
+  ).rejects.toThrow();
+  expect(copied).toHaveLength(1);
+});
