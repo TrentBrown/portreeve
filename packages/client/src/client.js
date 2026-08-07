@@ -2,7 +2,7 @@
 
 import { request as httpRequest } from 'node:http';
 import { execFile } from 'node:child_process';
-import { realpath } from 'node:fs/promises';
+import { realpath, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -87,26 +87,26 @@ export class PortreeveClient {
   }
 
   /**
-   * @param {{workspaceRoot: string, definition: unknown}} request
+   * @param {{stackRoot: string, definition: unknown}} request
    */
   async applyStack(request) {
-    const workspaceRoot = await canonicalWorkspaceRoot(request.workspaceRoot);
+    const stackRoot = await canonicalStackRoot(request.stackRoot);
     await this.#requireCapabilities(['stack-definitions-v1']);
     return requestJson(
       this.socketPath,
       'POST',
       '/v1/stacks/apply',
-      withClient({ workspaceRoot, definition: request.definition }, [
+      withClient({ stackRoot, definition: request.definition }, [
         'stack-definitions-v1',
       ]),
     );
   }
 
-  /** @param {{project?: string, workspaceRoot?: string}} [filters] */
+  /** @param {{project?: string, stackRoot?: string}} [filters] */
   async listStacks(filters = {}) {
     const normalized = { ...filters };
-    if (filters.workspaceRoot !== undefined) {
-      normalized.workspaceRoot = await canonicalWorkspaceRoot(filters.workspaceRoot);
+    if (filters.stackRoot !== undefined) {
+      normalized.stackRoot = await canonicalStackRoot(filters.stackRoot);
     }
     return requestJson(this.socketPath, 'GET', `/v1/stacks${queryString(normalized)}`);
   }
@@ -618,6 +618,20 @@ export async function canonicalWorkspaceRoot(projectPath) {
   } catch {
     return canonicalPath;
   }
+}
+
+/**
+ * Resolve an explicit stack root without allowing a child Git repository to
+ * reinterpret its enclosing runnable-stack boundary.
+ *
+ * @param {string} stackPath
+ */
+export async function canonicalStackRoot(stackPath) {
+  const canonicalPath = await realpath(stackPath);
+  if (!(await stat(canonicalPath)).isDirectory()) {
+    throw new Error(`Stack root ${stackPath} must be a directory.`);
+  }
+  return canonicalPath;
 }
 
 /**

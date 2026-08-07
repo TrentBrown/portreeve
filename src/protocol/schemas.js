@@ -196,7 +196,7 @@ export const StackDefinitionSchema = z
 export const StackRecordSchema = z.object({
   id: IdentifierSchema,
   project: StackNameSchema,
-  workspaceRoot: z.string().min(1),
+  stackRoot: z.string().min(1),
   currentRevision: z.string().regex(/^[a-f0-9]{64}$/),
   definition: StackDefinitionSchema,
   createdAt: TimestampSchema,
@@ -206,7 +206,7 @@ export const StackRecordSchema = z.object({
 
 export const StackApplyRequestSchema = z.object({
   client: ClientCompatibilitySchema,
-  workspaceRoot: z.string().min(1),
+  stackRoot: z.string().min(1),
   definition: StackDefinitionSchema,
 });
 
@@ -440,7 +440,7 @@ export const StackPruneRequestSchema = z.object({
 export const StackPruneCandidateSchema = z.object({
   stack: StackRecordSchema,
   claimIds: z.array(IdentifierSchema),
-  reason: z.literal('workspace-missing'),
+  reason: z.literal('stack-root-missing'),
 });
 
 export const StackPruneBlockerSchema = z.object({

@@ -107,7 +107,7 @@ async function activeHarness() {
   const services = harness();
   const stack = services.definitionService.apply({
     client: definitionClient,
-    workspaceRoot: '/worktrees/caregiver-discovery',
+    stackRoot: '/worktrees/caregiver-discovery',
     definition: definition(),
   }).stack;
   const prepared = await services.coordinationService.prepare({
@@ -235,23 +235,25 @@ test('renders a deterministic redacted sandbox snapshot from launcher gateway in
   registry.close();
 });
 
-test('refuses discovery after definition drift', async () => {
+test('refuses definition drift while an activation is live and preserves discovery', async () => {
   const { registry, definitionService, discoveryService, stack, begun } =
     await activeHarness();
   const changed = definition();
   changed.components.admin.endpoints.http.required = false;
-  definitionService.apply({
-    client: definitionClient,
-    workspaceRoot: stack.workspaceRoot,
-    definition: changed,
-  });
-
   expect(() =>
+    definitionService.apply({
+      client: definitionClient,
+      stackRoot: stack.stackRoot,
+      definition: changed,
+    }),
+  ).toThrow('has a live activation and cannot change definition');
+
+  expect(
     discoveryService.resolve(begun.activation.id, {
       client: discoveryClient,
       component: 'website',
     }),
-  ).toThrow('is stale and cannot publish discovery');
+  ).toMatchObject({ activationId: begun.activation.id, component: 'website' });
   registry.close();
 });
 

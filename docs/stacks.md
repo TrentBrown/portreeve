@@ -1,12 +1,15 @@
 # Stack definitions
 
-Portreeve coordinates a project-defined independently runnable stack for a canonical Git
-worktree. Stack identity is project plus canonical worktree, and only one activation may
-be current for a worktree at a time. The project remains the authority for how its
+Portreeve coordinates a project-defined independently runnable stack for a canonical
+stack root. The root is the exact real path of an existing directory and need not be a
+Git repository; it may contain multiple child repositories. Stack identity is project
+plus canonical stack root, and only one activation may be current for a root at a time.
+Registered roots may be siblings but may not overlap as equal, ancestor, or descendant
+paths. The project remains the authority for how its
 processes and containers are launched. Portreeve stores coordination state; it does not
 store commands, environment secrets, Compose files, or health-check logic.
 
-The checked-in definition is `portreeve.stack.json` at the worktree root:
+The checked-in definition is `portreeve.stack.json` at the stack root:
 
 ```json
 {
@@ -49,12 +52,13 @@ Docker metadata is declarative coordination metadata. An endpoint with a Docker
 container port must belong to a component with a Docker service. Applying a definition
 never runs Docker; it supplies the facts later used by activation evidence.
 
-Run `portreeve stacks apply` from anywhere in the worktree, or pass `--file`. The CLI
+Run `portreeve stacks apply` from the stack root, or pass `--file`. The CLI
 and JavaScript client send the same definition over the private socket. Portreeve
 normalizes defaults, canonicalizes object-key order, hashes the JSON, and records the
 SHA-256 value as an immutable definition revision. Reapplying equivalent content is
 idempotent. A changed definition creates or reuses its revision and updates the stack's
-current revision atomically.
+current revision atomically. While an activation is `starting`, `confirmed`, or
+`degraded`, an equivalent re-apply remains idempotent but changed content is refused.
 
 Applying links every published endpoint to a sticky canonical claim. A prior standalone
 `service` claim is adopted as component plus endpoint `default` without changing its
@@ -62,7 +66,7 @@ assigned port. An existing conflicting exact assignment or an ephemeral matching
 refuses the whole apply operation.
 
 Inspect the definition together with its latest generation, activation, and fresh
-provider evidence from anywhere in that worktree:
+provider evidence for that registered stack:
 
 ```sh
 portreeve stacks status --json
@@ -96,7 +100,7 @@ Omitted components remain process-backed, so an activation may mix both kinds. D
 selection is per activation and does not change logical endpoint identity.
 
 Beginning atomically creates pending leases for all non-skipped endpoints. Only one
-activation may be live for a canonical worktree. The JSON response contains private
+activation may be live for a canonical stack root. The JSON response contains private
 lease tokens; keep them out of source control and process arguments. Use a mode-0600
 JSON file with `stacks renew --leases-file`, or the JavaScript client, to renew the
 whole pending batch during startup.
@@ -150,7 +154,7 @@ activations continue normally. Inventory marks fresh Docker publications as
 `launcher-action-required` with the container IDs and send no process signal. The
 trusted launcher stops the container and retries.
 
-## Prune deleted worktrees
+## Prune deleted stack roots
 
 Stack pruning removes obsolete coordination state without reclaiming ports or stopping
 providers:
@@ -160,14 +164,14 @@ portreeve stacks prune --dry-run
 portreeve stacks prune --yes
 ```
 
-The default minimum age is seven days. Only an old stack whose canonical worktree is
+The default minimum age is seven days. Only an old stack whose canonical stack root is
 missing can become a candidate. Dry-run also reports blockers such as pending leases or
 activations, confirmed runs, live listeners, matching running containers, and
 unavailable Docker evidence. A naked interactive command prints the plan and prompts;
 noninteractive execution requires `--yes`, and `--json` is not consent.
 
-Execution rechecks the worktree and all provider evidence. It skips a stack if the
-worktree, listener, container, or database-owned live work reappears. Successful pruning
+Execution rechecks the stack root and all provider evidence. It skips a stack if the
+root, listener, container, or database-owned live work reappears. Successful pruning
 atomically removes the inactive definition, generations, activations, and associated
 endpoint claims while retaining claim history and a final `stack.pruned` identity and
 summary event.
@@ -202,7 +206,7 @@ portreeve stacks snapshot ACTIVATION_ID \
 The launcher chooses the platform gateway. Portreeve substitutes it for loopback while
 retaining the allocated host ports, but does not claim that gateway as an independently
 owned listener. The strict document contains only revision, generation, activation,
-consumer, and scoped TCP addresses. It excludes worktree paths, claims, lease tokens,
+consumer, and scoped TCP addresses. It excludes stack-root paths, claims, lease tokens,
 runs, process and Docker identifiers, the daemon socket, and mutation authority.
 
 Mount the file read-only instead of exposing Portreeve's socket. The official JavaScript

@@ -26,7 +26,7 @@ export class StackDefinitionService {
     return this.registry.applyStackDefinition(
       {
         project: normalized.definition.project,
-        workspaceRoot: request.workspaceRoot,
+        stackRoot: request.stackRoot,
         revision: normalized.revision,
         definitionJson: normalized.definitionJson,
         definition: normalized.definition,
@@ -35,7 +35,7 @@ export class StackDefinitionService {
     );
   }
 
-  /** @param {{project?: string, workspaceRoot?: string}} [filters] */
+  /** @param {{project?: string, stackRoot?: string}} [filters] */
   list(filters = {}) {
     return StackListSchema.parse(this.registry.listStacks(filters));
   }

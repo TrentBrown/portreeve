@@ -10,6 +10,7 @@ import {
   StackBeginActivationRequestSchema,
   StackConfirmEndpointRequestSchema,
   StackDefinitionSchema,
+  StackApplyRequestSchema,
   StackRenewActivationRequestSchema,
   StackSnapshotRequestSchema,
   UnsafeEvictionRequestSchema,
@@ -145,6 +146,28 @@ describe('protocol schemas', () => {
       StackRenewActivationRequestSchema.parse({
         client,
         leases: [],
+      }),
+    ).toThrow();
+  });
+
+  test('uses stackRoot for stack definitions without changing claim workspaceRoot', () => {
+    const definition = StackDefinitionSchema.parse({
+      version: 1,
+      project: 'caregiver',
+      components: { api: { endpoints: { default: {} } } },
+    });
+    expect(
+      StackApplyRequestSchema.parse({
+        client,
+        stackRoot: '/stacks/caregiver',
+        definition,
+      }),
+    ).toMatchObject({ stackRoot: '/stacks/caregiver' });
+    expect(() =>
+      StackApplyRequestSchema.parse({
+        client,
+        workspaceRoot: '/worktrees/caregiver',
+        definition,
       }),
     ).toThrow();
   });

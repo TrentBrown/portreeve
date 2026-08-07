@@ -2,6 +2,7 @@
 
 import { Database } from 'bun:sqlite';
 import { randomUUID } from 'node:crypto';
+import { isAbsolute, relative, sep } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import {
@@ -233,7 +234,7 @@ export class Registry {
   }
 
   /**
-   * @param {{project?: string, workspaceRoot?: string}} [filters]
+   * @param {{project?: string, stackRoot?: string}} [filters]
    */
   listStacks(filters = {}) {
     const clauses = [];
@@ -243,9 +244,9 @@ export class Registry {
       clauses.push('stacks.project = $project');
       parameters.project = filters.project;
     }
-    if (filters.workspaceRoot !== undefined) {
-      clauses.push('stacks.workspace_root = $workspaceRoot');
-      parameters.workspaceRoot = filters.workspaceRoot;
+    if (filters.stackRoot !== undefined) {
+      clauses.push('stacks.workspace_root = $stackRoot');
+      parameters.stackRoot = filters.stackRoot;
     }
     const where = clauses.length === 0 ? '' : `WHERE ${clauses.join(' AND ')}`;
     return this.database
@@ -296,7 +297,7 @@ export class Registry {
   /**
    * @param {{
    *   project: string,
-   *   workspaceRoot: string,
+   *   stackRoot: string,
    *   revision: string,
    *   definitionJson: string,
    *   definition: unknown
@@ -306,7 +307,13 @@ export class Registry {
   applyStackDefinition(input, now = new Date()) {
     const definition = StackDefinitionSchema.parse(input.definition);
     const project = z.string().min(1).parse(input.project);
-    const workspaceRoot = z.string().min(1).parse(input.workspaceRoot);
+    const stackRoot = z.string().min(1).parse(input.stackRoot);
+    if (!isAbsolute(stackRoot)) {
+      throw new RegistryError('invalid_input', 'Stack root must be an absolute path.', {
+        stackRoot,
+        reason: 'invalid_stack_root',
+      });
+    }
     const revision = z
       .string()
       .regex(/^[a-f0-9]{64}$/)
@@ -331,17 +338,58 @@ export class Registry {
     let changed = false;
 
     const apply = this.database.transaction(() => {
-      const existing = /** @type {{id: string, current_revision: string}|null} */ (
-        this.database
-          .query(
-            `SELECT id, current_revision FROM stacks
-             WHERE project = $project AND workspace_root = $workspaceRoot`,
-          )
-          .get({ project, workspaceRoot })
+      const registered =
+        /** @type {Array<{id: string, project: string, workspace_root: string, current_revision: string}>} */ (
+          this.database
+            .query(`SELECT id, project, workspace_root, current_revision FROM stacks`)
+            .all()
+        );
+      const existing =
+        registered.find(
+          (candidate) =>
+            candidate.project === project && candidate.workspace_root === stackRoot,
+        ) ?? null;
+      const overlap = registered.find(
+        (candidate) =>
+          candidate.id !== existing?.id &&
+          rootsOverlap(candidate.workspace_root, stackRoot),
       );
+      if (overlap !== undefined) {
+        throw new RegistryError(
+          'conflict',
+          `Stack root ${stackRoot} overlaps registered stack root ${overlap.workspace_root}.`,
+          {
+            stackRoot,
+            conflictingStackId: overlap.id,
+            conflictingStackRoot: overlap.workspace_root,
+            reason: 'stack_root_overlap',
+          },
+        );
+      }
       stackId = existing?.id ?? randomUUID();
       changed = existing === null || existing.current_revision !== revision;
       if (!changed) return;
+      if (existing !== null) {
+        const liveActivation = this.database
+          .query(
+            `SELECT id FROM stack_activations
+             WHERE stack_id = $stackId
+               AND state IN ('starting', 'confirmed', 'degraded')
+             LIMIT 1`,
+          )
+          .get({ stackId: existing.id });
+        if (liveActivation !== null) {
+          throw new RegistryError(
+            'conflict',
+            `Stack ${existing.id} has a live activation and cannot change definition.`,
+            {
+              stackId: existing.id,
+              stackRoot,
+              reason: 'activation_live',
+            },
+          );
+        }
+      }
 
       const endpointClaims = [];
       for (const [component, componentDefinition] of Object.entries(
@@ -353,7 +401,7 @@ export class Registry {
           if (!endpointDefinition.publish) continue;
           const identity = ClaimIdentitySchema.parse({
             project,
-            workspaceRoot,
+            workspaceRoot: stackRoot,
             component,
             endpoint,
             transport: endpointDefinition.transport,
@@ -362,14 +410,14 @@ export class Registry {
             .query(
               `SELECT * FROM claims
                WHERE project = $project
-                 AND workspace_root = $workspaceRoot
+                 AND workspace_root = $stackRoot
                  AND component = $component
                  AND endpoint = $endpoint
                  AND transport = $transport`,
             )
             .get({
               project,
-              workspaceRoot,
+              stackRoot,
               component,
               endpoint,
               transport: identity.transport,
@@ -440,14 +488,14 @@ export class Registry {
                id, project, workspace_root, current_revision,
                created_at, updated_at, last_used_at
              ) VALUES (
-               $id, $project, $workspaceRoot, $revision,
+               $id, $project, $stackRoot, $revision,
                $timestamp, $timestamp, $timestamp
              )`,
           )
           .run({
             id: stackId,
             project,
-            workspaceRoot,
+            stackRoot,
             revision,
             timestamp,
           });
@@ -486,7 +534,7 @@ export class Registry {
                  assigned_port, preferred_port, exact_port, assignment_expires_at,
                  created_at, updated_at, last_used_at
                ) VALUES (
-                 $id, $project, $workspaceRoot, $component, $endpoint, $transport,
+                 $id, $project, $stackRoot, $component, $endpoint, $transport,
                  'sticky', NULL, $preferredPort, $exactPort, NULL,
                  $timestamp, $timestamp, $timestamp
                )`,
@@ -494,7 +542,7 @@ export class Registry {
             .run({
               id: claimId,
               project,
-              workspaceRoot,
+              stackRoot,
               component: endpointClaim.component,
               endpoint: endpointClaim.endpoint,
               transport: endpointClaim.identity.transport,
@@ -550,7 +598,7 @@ export class Registry {
         existing === null ? 'stack.created' : 'stack.definition.applied',
         'stack',
         stackId,
-        { project, workspaceRoot, revision },
+        { project, stackRoot, revision },
         timestamp,
       );
     });
@@ -1220,8 +1268,8 @@ export class Registry {
       if (live !== null) {
         throw new RegistryError(
           'conflict',
-          `Worktree ${stack.workspace_root} already has a live activation.`,
-          { workspaceRoot: stack.workspace_root, reason: 'activation_live' },
+          `Stack root ${stack.workspace_root} already has a live activation.`,
+          { stackRoot: stack.workspace_root, reason: 'activation_live' },
         );
       }
 
@@ -2464,7 +2512,7 @@ export class Registry {
         {
           identity: {
             project: stack.project,
-            workspaceRoot: stack.workspaceRoot,
+            stackRoot: stack.stackRoot,
           },
           currentRevision: stack.currentRevision,
           claimIds: claims.map(({ id: claimId }) => claimId),
@@ -2883,7 +2931,7 @@ function stackFromRow(row) {
   return StackRecordSchema.parse({
     id: parsed.id,
     project: parsed.project,
-    workspaceRoot: parsed.workspace_root,
+    stackRoot: parsed.workspace_root,
     currentRevision: parsed.current_revision,
     definition: StackDefinitionSchema.parse(JSON.parse(parsed.definition_json)),
     createdAt: parsed.created_at,
@@ -2903,4 +2951,19 @@ function parseJsonObject(value) {
 function countFor(database, sql, id) {
   const row = database.query(sql).get({ id });
   return z.object({ count: z.number().int().min(0) }).parse(row).count;
+}
+
+/** @param {string} left @param {string} right */
+function rootsOverlap(left, right) {
+  const leftToRight = relative(left, right);
+  const rightToLeft = relative(right, left);
+  return containsPath(leftToRight) || containsPath(rightToLeft);
+}
+
+/** @param {string} candidate */
+function containsPath(candidate) {
+  return (
+    candidate === '' ||
+    (candidate !== '..' && !candidate.startsWith(`..${sep}`) && !isAbsolute(candidate))
+  );
 }

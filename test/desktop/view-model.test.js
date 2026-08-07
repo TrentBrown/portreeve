@@ -81,7 +81,7 @@ test('reduces stack definitions, activation evidence, and addresses without cred
   });
   expect(snapshot.stacks[0]).toMatchObject({
     project: 'caregiver',
-    workspaceName: 'caregiver-secret-worktree',
+    stackRootName: 'caregiver-secret-worktree',
     generation: { state: 'valid', endpoints: [{ port: 4100 }] },
     activation: { state: 'confirmed', endpoints: [{ state: 'confirmed' }] },
     providers: [{ status: 'active', listeners: 1 }],

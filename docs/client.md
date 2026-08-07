@@ -47,7 +47,7 @@ New integrations should use `component` and `endpoint`.
 
 ## Stack definitions
 
-`applyStack({ workspaceRoot, definition })` validates through the same public contract
+`applyStack({ stackRoot, definition })` validates through the same public contract
 as the CLI and returns `{ changed, stack }`. `listStacks(filters)`,
 `getStack(stackId)`, and `getStackStatus(stackId)` inspect the normalized stored
 definition, its content-addressed current revision, and the latest generation,
@@ -58,7 +58,7 @@ health for `stack-definitions-v1`; an older daemon fails explicitly with
 
 ```js
 const result = await client.applyStack({
-  workspaceRoot: import.meta.dir,
+  stackRoot: import.meta.dir,
   definition: {
     version: 1,
     project: 'caregiver',
@@ -72,6 +72,11 @@ const result = await client.applyStack({
   },
 });
 ```
+
+The client resolves `stackRoot` to the real path of the exact selected directory. It
+does not reinterpret that directory as a Git worktree root, so one runnable stack may
+span a non-Git parent containing multiple child repositories. Registered stack roots
+may be siblings but cannot be equal, ancestors, or descendants of one another.
 
 `prepareStack(stackId)` creates or reuses a complete immutable allocation generation.
 `beginStackActivation(generationId, options)` then creates one activation and returns
@@ -138,7 +143,7 @@ valid. `endStackActivation(id)` uses the same evidence and refuses active or uno
 providers.
 
 `pruneStacks({ olderThanMilliseconds, dryRun })` returns candidate and blocked
-missing-worktree stacks. Passing `dryRun: false` requests execution-time revalidation and
+missing-stack-root stacks. Passing `dryRun: false` requests execution-time revalidation and
 atomic deletion; CLI-style interactive or `--yes` consent remains a CLI responsibility.
 
 ## Low-level API

@@ -61,7 +61,7 @@ function reduceStack(status) {
   return {
     id: stack.id,
     project: stack.project,
-    workspaceName: basename(stack.workspaceRoot),
+    stackRootName: basename(stack.stackRoot),
     currentRevision: stack.currentRevision,
     createdAt: stack.createdAt,
     updatedAt: stack.updatedAt,

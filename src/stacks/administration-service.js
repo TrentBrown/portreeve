@@ -64,8 +64,8 @@ export class StackAdministrationService {
           skipped.push({ stackId: candidate.stack.id, reason: 'not_found' });
           continue;
         }
-        if (await this.pathExists(stack.workspaceRoot)) {
-          skipped.push({ stackId: stack.id, reason: 'workspace-reappeared' });
+        if (await this.pathExists(stack.stackRoot)) {
+          skipped.push({ stackId: stack.id, reason: 'stack-root-reappeared' });
           continue;
         }
         const liveActivation = this.registry.getLiveStackActivationForStack(stack.id);
@@ -116,13 +116,13 @@ export class StackAdministrationService {
     const blocked = [];
     for (const stack of this.registry.listStacks()) {
       if (new Date(stack.lastUsedAt).getTime() > cutoff) continue;
-      if (await this.pathExists(stack.workspaceRoot)) continue;
+      if (await this.pathExists(stack.stackRoot)) continue;
       const evaluation = await this.#evaluate(stack, now);
       if (evaluation.reasons.length === 0) {
         candidates.push({
           stack,
           claimIds: evaluation.claimIds,
-          reason: /** @type {const} */ ('workspace-missing'),
+          reason: /** @type {const} */ ('stack-root-missing'),
         });
       } else {
         blocked.push({ stack, reasons: evaluation.reasons });

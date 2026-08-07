@@ -143,10 +143,10 @@ policy.
 | `POST /v1/claims/{claimId}/reassign`       | Assign an idle claim a new preferred or exact port                                                                                   |
 | `POST /v1/claims/{claimId}/delete`         | Delete an idle, listener-free claim                                                                                                  |
 | `POST /v1/claims/prune`                    | Find or delete old missing-workspace claims using `olderThanMilliseconds` and `dryRun`                                               |
-| `GET /v1/stacks`                           | List applied stack definitions; accepts project and canonical `workspaceRoot` filters                                                |
+| `GET /v1/stacks`                           | List applied stack definitions; accepts project and canonical `stackRoot` filters                                                    |
 | `GET /v1/stacks/{stackId}`                 | Read one applied stack and its normalized current definition                                                                         |
 | `POST /v1/stacks/apply`                    | Validate and atomically apply a definition; requires `stack-definitions-v1`                                                          |
-| `POST /v1/stacks/prune`                    | Preview or delete old missing-worktree stacks with fresh evidence revalidation                                                       |
+| `POST /v1/stacks/prune`                    | Preview or delete old missing-stack-root stacks with fresh evidence revalidation                                                     |
 | `POST /v1/stacks/{stackId}/status`         | Read the current definition plus latest generation, activation, and fresh provider evidence                                          |
 | `POST /v1/stacks/{stackId}/prepare`        | Create or reuse a complete immutable allocation generation; requires `stack-activations-v1`                                          |
 | `POST /v1/stack-activations/begin`         | Create one activation and atomically lease its selected endpoints                                                                    |
@@ -168,11 +168,15 @@ evidence.
 
 ## Stack definitions
 
-`POST /v1/stacks/apply` accepts `client`, `workspaceRoot`, and a strict version-1
-definition. Stack identity is the definition's `project` plus the canonical worktree
-path. Portreeve normalizes schema defaults, hashes the canonical JSON with SHA-256,
+`POST /v1/stacks/apply` accepts `client`, `stackRoot`, and a strict version-1
+definition. `stackRoot` must name an existing directory; the server resolves its real
+path without substituting a Git root. Portreeve rejects a root that equals, contains,
+or is contained by another registered stack root, while sibling roots remain valid.
+Stack identity is the definition's `project` plus that canonical root. Portreeve
+normalizes schema defaults, hashes the canonical JSON with SHA-256,
 stores that immutable revision, and links each published component endpoint to its
-sticky claim. Reapplying equivalent JSON returns `changed: false`; changed content
+sticky claim. Reapplying equivalent JSON returns `changed: false`. Changed content is
+refused while an activation is `starting`, `confirmed`, or `degraded`; otherwise it
 updates the stack's current revision without changing an existing port assignment. See
 [Stack definitions](stacks.md).
 
@@ -184,7 +188,7 @@ leases. Beginning accepts `generationId`, optional `requiredEndpoints`, optional
 `skippedEndpoints`, and component-keyed `bindings`. Omitted bindings default to
 `process`; `docker` requires complete Docker definition data and the dynamically
 advertised `docker-evidence-v1` capability. It refuses a stale definition revision or
-another live activation for the same canonical worktree.
+another live activation for the same canonical stack root.
 
 The begin response contains an activation plus a private token for every newly leased
 endpoint. Tokens are not returned by later inspection. Each lease identifies its
@@ -236,7 +240,7 @@ drawn from the same precomputed generation.
 
 Snapshot rendering additionally accepts `gatewayHost`. It returns a strict
 `schemaVersion: 1` document whose addresses use that launcher-supplied host and the
-generation's allocated host ports. It excludes worktree paths, claims, leases, tokens,
+generation's allocated host ports. It excludes stack-root paths, claims, leases, tokens,
 runs, PIDs, Docker identifiers, socket paths, and mutation authority. Portreeve
 validates but does not discover or independently verify the gateway.
 

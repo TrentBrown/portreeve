@@ -398,13 +398,13 @@ function renderStacks(force = false) {
           button.classList.toggle('selected', selectedStack === stack.id);
           const title = document.createElement('strong');
           title.textContent = stack.project;
-          const workspace = document.createElement('span');
-          workspace.textContent = stack.workspaceName;
+          const stackRoot = document.createElement('span');
+          stackRoot.textContent = stack.stackRootName;
           const state = document.createElement('span');
           const presentationState = stackPresentationState(stack);
           state.className = `badge state-${presentationState}`;
           state.textContent = presentationState;
-          button.append(title, workspace, state);
+          button.append(title, stackRoot, state);
           button.addEventListener('click', () => {
             selectedStack = stack.id;
             renderStacks(true);
@@ -440,7 +440,7 @@ function renderStackDetail(stack) {
   const summary = document.createElement('dl');
   summary.className = 'definitions';
   summary.append(
-    definition('Workspace', stack.workspaceName),
+    definition('Stack root', stack.stackRootName),
     definition('Revision', shortId(stack.currentRevision)),
     definition('Generation', stack.generation?.state ?? 'Not prepared'),
     definition('Activation', stack.activation?.state ?? 'None'),
@@ -639,11 +639,11 @@ async function previewStackPrune() {
   await runBusy(async () => {
     const preview = await window.portreeveDesktop.previewStackPrune();
     requiredElement('stack-prune-summary').textContent =
-      `${preview.candidates.length} stack${preview.candidates.length === 1 ? '' : 's'} older than ${preview.olderThanDays} days with missing worktrees can be removed.`;
+      `${preview.candidates.length} stack${preview.candidates.length === 1 ? '' : 's'} older than ${preview.olderThanDays} days with missing stack roots can be removed.`;
     requiredElement('stack-prune-candidates').replaceChildren(
       ...preview.candidates.map((/** @type {any} */ candidate) => {
         const item = document.createElement('li');
-        item.textContent = `${candidate.project} (${candidate.workspaceName}) — ${candidate.claimCount} claim${candidate.claimCount === 1 ? '' : 's'}`;
+        item.textContent = `${candidate.project} (${candidate.stackRootName}) — ${candidate.claimCount} claim${candidate.claimCount === 1 ? '' : 's'}`;
         return item;
       }),
     );
@@ -651,7 +651,7 @@ async function previewStackPrune() {
     blocked.replaceChildren(
       ...preview.blocked.map((/** @type {any} */ entry) =>
         paragraph(
-          `${entry.project} (${entry.workspaceName}): ${entry.reasons.join('; ')}`,
+          `${entry.project} (${entry.stackRootName}): ${entry.reasons.join('; ')}`,
         ),
       ),
     );

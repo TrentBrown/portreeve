@@ -39,12 +39,12 @@ test('applies strict definitions idempotently and links published claims', () =>
   const service = new StackDefinitionService({ registry, now: () => now });
   const first = service.apply({
     client,
-    workspaceRoot: '/worktrees/caregiver-a',
+    stackRoot: '/worktrees/caregiver-a',
     definition: definition(),
   });
   const second = service.apply({
     client,
-    workspaceRoot: '/worktrees/caregiver-a',
+    stackRoot: '/worktrees/caregiver-a',
     definition: {
       ...definition(),
       components: {
@@ -93,7 +93,7 @@ test('reuses legacy assignments and rejects a conflicting exact revision atomica
   const service = new StackDefinitionService({ registry, now: () => now });
   const applied = service.apply({
     client,
-    workspaceRoot: '/worktrees/caregiver-a',
+    stackRoot: '/worktrees/caregiver-a',
     definition: definition(43100),
   });
 
@@ -109,7 +109,7 @@ test('reuses legacy assignments and rejects a conflicting exact revision atomica
   expect(() =>
     service.apply({
       client,
-      workspaceRoot: '/worktrees/caregiver-a',
+      stackRoot: '/worktrees/caregiver-a',
       definition: definition(43101),
     }),
   ).toThrow(RegistryError);
@@ -137,7 +137,7 @@ test('preserves assignments and immutable prior content across changed revisions
   const service = new StackDefinitionService({ registry, now: () => now });
   const first = service.apply({
     client,
-    workspaceRoot: '/worktrees/caregiver-a',
+    stackRoot: '/worktrees/caregiver-a',
     definition: definition(43100),
   });
   const changedDefinition = definition(43100);
@@ -148,7 +148,7 @@ test('preserves assignments and immutable prior content across changed revisions
   /** @type {any} */ (website.endpoints.default).required = false;
   const second = service.apply({
     client,
-    workspaceRoot: '/worktrees/caregiver-a',
+    stackRoot: '/worktrees/caregiver-a',
     definition: changedDefinition,
   });
 
@@ -173,10 +173,101 @@ test('requires the definition capability before mutation', () => {
   expect(() =>
     service.apply({
       client: { ...client, requiredCapabilities: ['future-stack-v2'] },
-      workspaceRoot: '/worktrees/caregiver-a',
+      stackRoot: '/worktrees/caregiver-a',
       definition: definition(),
     }),
   ).toThrow('requirements do not overlap');
   expect(service.list()).toEqual([]);
+  registry.close();
+});
+
+test('rejects ancestor and descendant stack roots while allowing siblings', () => {
+  const registry = openRegistry();
+  const service = new StackDefinitionService({ registry, now: () => now });
+  service.apply({
+    client,
+    stackRoot: '/stacks/family/alpha',
+    definition: definition(),
+  });
+  expect(() =>
+    service.apply({
+      client,
+      stackRoot: '/stacks/family',
+      definition: { ...definition(), project: 'parent' },
+    }),
+  ).toThrow(
+    expect.objectContaining({
+      code: 'conflict',
+      details: expect.objectContaining({ reason: 'stack_root_overlap' }),
+    }),
+  );
+  expect(() =>
+    service.apply({
+      client,
+      stackRoot: '/stacks/family/alpha/child',
+      definition: { ...definition(), project: 'child' },
+    }),
+  ).toThrow(
+    expect.objectContaining({
+      code: 'conflict',
+      details: expect.objectContaining({ reason: 'stack_root_overlap' }),
+    }),
+  );
+  expect(() =>
+    service.apply({
+      client,
+      stackRoot: '/stacks/family/alpha',
+      definition: { ...definition(), project: 'other-project' },
+    }),
+  ).toThrow(
+    expect.objectContaining({
+      code: 'conflict',
+      details: expect.objectContaining({ reason: 'stack_root_overlap' }),
+    }),
+  );
+  expect(
+    service.apply({
+      client,
+      stackRoot: '/stacks/family/beta',
+      definition: { ...definition(), project: 'sibling' },
+    }).changed,
+  ).toBe(true);
+  expect(service.list()).toHaveLength(2);
+  registry.close();
+});
+
+test('adopts standalone claims only when their workspace exactly matches the stack root', () => {
+  const registry = openRegistry();
+  const childClaim = registry.insertClaim(
+    {
+      identity: {
+        project: 'caregiver',
+        workspaceRoot: '/stacks/team/child-repository',
+        component: 'api',
+        endpoint: 'default',
+        transport: 'tcp',
+      },
+      mode: 'sticky',
+    },
+    now,
+  );
+  const service = new StackDefinitionService({ registry, now: () => now });
+  const applied = service.apply({
+    client,
+    stackRoot: '/stacks/team',
+    definition: definition(),
+  });
+  const parentClaim = registry.findClaim({
+    project: 'caregiver',
+    workspaceRoot: '/stacks/team',
+    component: 'api',
+    endpoint: 'default',
+    transport: 'tcp',
+  });
+  if (parentClaim === null) throw new Error('Expected a parent-root stack claim.');
+
+  expect(parentClaim.id).not.toBe(childClaim.id);
+  expect(registry.getClaim(childClaim.id)).toEqual(childClaim);
+  expect(registry.listStackClaims(applied.stack.id)).toContainEqual(parentClaim);
   registry.close();
 });

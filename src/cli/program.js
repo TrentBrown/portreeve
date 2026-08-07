@@ -225,11 +225,11 @@ export function createProgram() {
 
   const stacks = program
     .command('stacks')
-    .description('Coordinate worktree stack definitions and endpoints');
+    .description('Coordinate stack-root definitions and endpoints');
 
   stacks
     .command('apply')
-    .description('Validate and apply a worktree stack definition')
+    .description('Validate and apply a stack-root definition')
     .option('--file <path>', 'override portreeve.stack.json')
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output')
@@ -237,9 +237,9 @@ export function createProgram() {
 
   stacks
     .command('list')
-    .description('List registered worktree stacks')
+    .description('List registered stacks')
     .option('--project <name>', 'filter by project namespace')
-    .option('--workspace <path>', 'filter by canonical workspace root')
+    .option('--stack-root <path>', 'filter by canonical stack root')
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output')
     .action(listStacksCommand);
@@ -253,9 +253,9 @@ export function createProgram() {
 
   stacks
     .command('status')
-    .description('Show the stack registered for a canonical worktree')
+    .description('Show the stack registered for a canonical stack root')
     .option('--project <name>', 'select a project namespace')
-    .option('--workspace <path>', 'override the current worktree path')
+    .option('--stack-root <path>', 'override the current stack root')
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output')
     .action(stackStatusCommand);
@@ -365,7 +365,7 @@ export function createProgram() {
 
   stacks
     .command('prune')
-    .description('Delete old missing-worktree stacks with no live provider evidence')
+    .description('Delete old missing-stack-root records with no live provider evidence')
     .option(
       '--older-than <duration>',
       'minimum age such as 12h or 7d',

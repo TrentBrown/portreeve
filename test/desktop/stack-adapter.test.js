@@ -48,7 +48,7 @@ test('uses the official client for current stack status and component resolution
   expect(first.resolutions.every(({ error }) => error === null)).toBe(true);
 });
 
-test('owns file selection and submits the selected definition directory as workspace', async () => {
+test('owns file selection and submits the selected definition directory as stack root', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'portreeve-desktop-stack-'));
   const filename = join(directory, 'portreeve.stack.json');
   const fixture = stackStatus();
@@ -73,7 +73,7 @@ test('owns file selection and submits the selected definition directory as works
     result: { changed: true },
   });
   expect(/** @type {any} */ (submitted)).toEqual({
-    workspaceRoot: directory,
+    stackRoot: directory,
     definition: fixture.stack.definition,
   });
 });

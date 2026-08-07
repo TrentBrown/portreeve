@@ -96,7 +96,7 @@ test('Commander.js CLI runs from the standalone executable', async () => {
       const stackWorktree = join(directory, 'deleted-stack-worktree');
       await mkdir(stackWorktree);
       const applied = await client.applyStack({
-        workspaceRoot: stackWorktree,
+        stackRoot: stackWorktree,
         definition: {
           version: 1,
           project: 'compiled-cli-stack',

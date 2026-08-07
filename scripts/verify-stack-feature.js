@@ -25,7 +25,7 @@ const directory = await mkdtemp(join(tmpdir(), 'portreeve-stack-feature-'));
 const applicationDirectory = join(directory, 'authority');
 const socketPath = join(applicationDirectory, 'portreeve.sock');
 const databasePath = join(applicationDirectory, 'registry.sqlite');
-const workspaceRoot = join(directory, 'worktree');
+const stackRoot = join(directory, 'stack-root');
 const snapshotPath = join(directory, 'sandbox', 'endpoints.json');
 const containerName = `portreeve-feature-final-${randomUUID().slice(0, 8)}`;
 const dockerAdapter = new DockerCliAdapter({ executable: dockerExecutable });
@@ -46,7 +46,7 @@ try {
     `Docker is required for the mixed-stack smoke: ${availability.reason}`,
   );
   await ensureDockerImage(dockerImage);
-  await mkdir(workspaceRoot, { recursive: true, mode: 0o700 });
+  await mkdir(stackRoot, { recursive: true, mode: 0o700 });
   await prepareRuntimeDirectories({ applicationDirectory, socketPath });
   registry = openRegistry(databasePath);
   const allocationService = new AllocationService({ registry });
@@ -60,7 +60,7 @@ try {
   assert(health.capabilities.includes('docker-evidence-v1'));
 
   const applied = await client.applyStack({
-    workspaceRoot,
+    stackRoot,
     definition: {
       version: 1,
       project: 'feature-final-mixed',
@@ -158,7 +158,7 @@ try {
   assert.equal(consumed.own.http?.address.host, gatewayHost);
   assert.equal(consumed.dependencies.backend?.address.host, gatewayHost);
   const serializedSnapshot = JSON.stringify(consumed);
-  for (const secret of [socketPath, workspaceRoot, containerId, apiLease.leaseToken]) {
+  for (const secret of [socketPath, stackRoot, containerId, apiLease.leaseToken]) {
     assert(!serializedSnapshot.includes(secret));
   }
 
@@ -190,7 +190,7 @@ try {
   const ended = await client.endStackActivation(begun.activation.id);
   assert.equal(ended.activation.state, 'ended');
 
-  await rm(workspaceRoot, { recursive: true, force: true });
+  await rm(stackRoot, { recursive: true, force: true });
   const preview = await client.pruneStacks({
     olderThanMilliseconds: 0,
     dryRun: true,
