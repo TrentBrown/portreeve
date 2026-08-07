@@ -68,17 +68,23 @@ output.
 
 ## Stack definitions
 
-`stacks apply` reads `portreeve.stack.json` from the selected stack root.
-`--file <path>` selects an explicit file. The file's parent is supplied as the stack
-root and the official client canonicalizes that exact directory before the request.
-Equivalent normalized
-content is an ordinary state difference and exits `10`; changed content exits `0`.
+`stacks apply` walks upward from the current real directory to the nearest
+`portreeve.stack.json`, without stopping at child Git repository boundaries.
+`--stack-root <path>` selects the standard file at an explicit root. `--file <path>`
+selects an explicit file and supplies its parent as the stack root. The selectors are
+mutually exclusive, and apply fails as invalid input when it cannot read a selected or
+enclosing definition; it never falls back to registered database state. The official
+client canonicalizes the exact root before the request. Equivalent normalized content
+is an ordinary state difference and exits `10`; changed content exits `0`.
 
-`stacks list` accepts `--project` and `--stack-root`. `stacks status` selects the current
-stack root, accepts the same disambiguating options, and reports the latest
-generation, activation, and fresh provider evidence. `stacks show <stack-id>` reads only
-the registered definition. These commands never start or stop project services or
-containers.
+`stacks list` accepts `--project` and `--stack-root`. `stacks status` accepts those same
+disambiguating options. Without an explicit root, status first discovers the nearest
+enclosing definition file. When no such file exists, it may select the one registered
+stack root enclosing the current real directory. If neither source resolves a stack,
+status emits `{ "version": 1, "stack": null }` and exits `10`. A resolved status reports
+the latest generation, activation, and fresh provider evidence. `stacks show <stack-id>`
+reads only the registered definition. These commands never start or stop project
+services or containers.
 
 `stacks prepare <stack-id>` creates or reuses an immutable endpoint allocation.
 `stacks begin <generation-id>` atomically leases the activation endpoints and emits

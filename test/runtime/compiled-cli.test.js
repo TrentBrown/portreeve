@@ -1,7 +1,15 @@
 // @ts-check
 
 import { expect, test } from 'bun:test';
-import { access, chmod, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import {
+  access,
+  chmod,
+  mkdir,
+  mkdtemp,
+  realpath,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { PortreeveClient } from '../../packages/client/src/index.js';
@@ -92,6 +100,58 @@ test('Commander.js CLI runs from the standalone executable', async () => {
         }
       }
       expect(healthy).toBe(true);
+
+      const stackRoot = join(directory, 'customer-stack');
+      const frontendSource = join(stackRoot, 'frontend', 'src');
+      const backendSource = join(stackRoot, 'backend', 'services', 'api');
+      const definitionFile = join(stackRoot, 'portreeve.stack.json');
+      await mkdir(frontendSource, { recursive: true });
+      await mkdir(backendSource, { recursive: true });
+      await initializeGitRepository(join(stackRoot, 'frontend'));
+      await initializeGitRepository(join(stackRoot, 'backend'));
+      await writeFile(
+        definitionFile,
+        JSON.stringify({
+          version: 1,
+          project: 'compiled-discovery-stack',
+          components: {
+            api: {
+              endpoints: {
+                http: { allocation: { preferredPort: 43229 } },
+              },
+            },
+          },
+        }),
+      );
+      const discoveredApply = Bun.spawn(
+        [binaryPath, 'stacks', 'apply', '--socket', socketPath, '--json'],
+        { cwd: frontendSource, stderr: 'pipe', stdout: 'pipe' },
+      );
+      const discoveredApplyCode = await discoveredApply.exited;
+      const discoveredApplyError = await new Response(discoveredApply.stderr).text();
+      const discoveredApplyOutput = JSON.parse(
+        await new Response(discoveredApply.stdout).text(),
+      );
+      expect(discoveredApplyCode, discoveredApplyError).toBe(0);
+      expect(discoveredApplyOutput.result.stack).toMatchObject({
+        project: 'compiled-discovery-stack',
+        stackRoot: await realpath(stackRoot),
+      });
+
+      await rm(definitionFile);
+      const fallbackStatus = Bun.spawn(
+        [binaryPath, 'stacks', 'status', '--socket', socketPath, '--json'],
+        { cwd: backendSource, stderr: 'pipe', stdout: 'pipe' },
+      );
+      const fallbackStatusCode = await fallbackStatus.exited;
+      const fallbackStatusError = await new Response(fallbackStatus.stderr).text();
+      const fallbackStatusOutput = JSON.parse(
+        await new Response(fallbackStatus.stdout).text(),
+      );
+      expect(fallbackStatusCode, fallbackStatusError).toBe(0);
+      expect(fallbackStatusOutput.status.stack.id).toBe(
+        discoveredApplyOutput.result.stack.id,
+      );
 
       const stackWorktree = join(directory, 'deleted-stack-worktree');
       await mkdir(stackWorktree);
@@ -326,3 +386,16 @@ test('Commander.js CLI runs from the standalone executable', async () => {
     await rm(directory, { force: true, recursive: true });
   }
 }, 60_000);
+
+/** @param {string} directory */
+async function initializeGitRepository(directory) {
+  const child = Bun.spawn(['git', 'init', '--quiet', directory], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const [exitCode, stderr] = await Promise.all([
+    child.exited,
+    new Response(child.stderr).text(),
+  ]);
+  if (exitCode !== 0) throw new Error(`Unable to initialize ${directory}: ${stderr}`);
+}

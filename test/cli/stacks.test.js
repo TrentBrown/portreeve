@@ -19,10 +19,18 @@ import { openRegistry } from '../../src/storage/registry.js';
 
 test('stack commands share definition discovery and versioned JSON contracts', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'portreeve-stack-cli-'));
-  const workspaceRoot = join(directory, 'worktree');
+  const stackRoot = join(directory, 'customer-stack');
+  const frontendDirectory = join(stackRoot, 'frontend');
+  const frontendSourceDirectory = join(frontendDirectory, 'src');
+  const backendDirectory = join(stackRoot, 'backend');
+  const backendSourceDirectory = join(backendDirectory, 'services', 'api');
+  const definitionFile = join(stackRoot, 'portreeve.stack.json');
   const socketPath = join(directory, 'runtime', 'portreeve.sock');
   const applicationDirectory = join(directory, 'data');
-  await mkdir(workspaceRoot);
+  await mkdir(frontendSourceDirectory, { recursive: true });
+  await mkdir(backendSourceDirectory, { recursive: true });
+  await initializeGitRepository(frontendDirectory);
+  await initializeGitRepository(backendDirectory);
   await prepareRuntimeDirectories({
     applicationDirectory,
     socketPath,
@@ -33,7 +41,7 @@ test('stack commands share definition discovery and versioned JSON contracts', a
     allocationService: new AllocationService({ registry }),
   });
   await writeFile(
-    join(workspaceRoot, 'portreeve.stack.json'),
+    definitionFile,
     JSON.stringify({
       version: 1,
       project: 'cli-stack',
@@ -50,7 +58,7 @@ test('stack commands share definition discovery and versioned JSON contracts', a
   try {
     const applied = await runCli(
       ['stacks', 'apply', '--socket', socketPath, '--json'],
-      workspaceRoot,
+      frontendSourceDirectory,
     );
     expect(applied.exitCode, applied.stderr).toBe(0);
     const appliedDocument = JSON.parse(applied.stdout);
@@ -58,36 +66,59 @@ test('stack commands share definition discovery and versioned JSON contracts', a
       version: 1,
       result: {
         changed: true,
-        stack: { project: 'cli-stack', stackRoot: await realpath(workspaceRoot) },
+        stack: { project: 'cli-stack', stackRoot: await realpath(stackRoot) },
       },
     });
     const stackId = appliedDocument.result.stack.id;
 
     const unchanged = await runCli(
       ['stacks', 'apply', '--socket', socketPath, '--json'],
-      workspaceRoot,
+      backendSourceDirectory,
     );
     expect(unchanged.exitCode, unchanged.stderr).toBe(10);
     expect(JSON.parse(unchanged.stdout).result.changed).toBe(false);
 
     const list = await runCli(
-      [
-        'stacks',
-        'list',
-        '--stack-root',
-        workspaceRoot,
-        '--socket',
-        socketPath,
-        '--json',
-      ],
-      workspaceRoot,
+      ['stacks', 'list', '--stack-root', stackRoot, '--socket', socketPath, '--json'],
+      directory,
     );
     expect(list.exitCode, list.stderr).toBe(0);
     expect(JSON.parse(list.stdout).stacks).toHaveLength(1);
 
+    const explicitRoot = await runCli(
+      ['stacks', 'apply', '--stack-root', stackRoot, '--socket', socketPath, '--json'],
+      directory,
+    );
+    expect(explicitRoot.exitCode, explicitRoot.stderr).toBe(10);
+
+    const explicitFile = await runCli(
+      ['stacks', 'apply', '--file', definitionFile, '--socket', socketPath, '--json'],
+      directory,
+    );
+    expect(explicitFile.exitCode, explicitFile.stderr).toBe(10);
+
+    const conflictingSelectors = await runCli(
+      [
+        'stacks',
+        'apply',
+        '--file',
+        definitionFile,
+        '--stack-root',
+        stackRoot,
+        '--socket',
+        socketPath,
+        '--json',
+      ],
+      directory,
+    );
+    expect(conflictingSelectors.exitCode).toBe(50);
+    expect(JSON.parse(conflictingSelectors.stderr).error.message).toContain(
+      '--file and --stack-root cannot be used together',
+    );
+
     const status = await runCli(
       ['stacks', 'status', '--socket', socketPath, '--json'],
-      workspaceRoot,
+      backendSourceDirectory,
     );
     expect(status.exitCode, status.stderr).toBe(0);
     expect(JSON.parse(status.stdout).status).toMatchObject({
@@ -97,22 +128,39 @@ test('stack commands share definition discovery and versioned JSON contracts', a
       providers: [],
     });
 
+    await rm(definitionFile);
+    const fallbackStatus = await runCli(
+      ['stacks', 'status', '--socket', socketPath, '--json'],
+      frontendSourceDirectory,
+    );
+    expect(fallbackStatus.exitCode, fallbackStatus.stderr).toBe(0);
+    expect(JSON.parse(fallbackStatus.stdout).status.stack.id).toBe(stackId);
+
+    const missingDefinition = await runCli(
+      ['stacks', 'apply', '--socket', socketPath, '--json'],
+      backendSourceDirectory,
+    );
+    expect(missingDefinition.exitCode).toBe(50);
+    expect(JSON.parse(missingDefinition.stderr).error.message).toContain(
+      'No enclosing portreeve.stack.json was found',
+    );
+
     const show = await runCli(
       ['stacks', 'show', stackId, '--socket', socketPath, '--json'],
-      workspaceRoot,
+      frontendSourceDirectory,
     );
     expect(show.exitCode, show.stderr).toBe(0);
     expect(JSON.parse(show.stdout).stack.currentRevision).toMatch(/^[a-f0-9]{64}$/);
 
     const prepared = await runCli(
       ['stacks', 'prepare', stackId, '--socket', socketPath, '--json'],
-      workspaceRoot,
+      frontendSourceDirectory,
     );
     expect(prepared.exitCode, prepared.stderr).toBe(0);
     const generationId = JSON.parse(prepared.stdout).result.generation.id;
     const preparedStatus = await runCli(
       ['stacks', 'status', '--socket', socketPath, '--json'],
-      workspaceRoot,
+      backendSourceDirectory,
     );
     expect(JSON.parse(preparedStatus.stdout).status).toMatchObject({
       generation: { id: generationId, state: 'valid' },
@@ -120,13 +168,13 @@ test('stack commands share definition discovery and versioned JSON contracts', a
     });
     const generation = await runCli(
       ['stacks', 'generation', generationId, '--socket', socketPath, '--json'],
-      workspaceRoot,
+      frontendSourceDirectory,
     );
     expect(generation.exitCode, generation.stderr).toBe(0);
     expect(JSON.parse(generation.stdout).generation.id).toBe(generationId);
     const reused = await runCli(
       ['stacks', 'prepare', stackId, '--socket', socketPath, '--json'],
-      workspaceRoot,
+      backendSourceDirectory,
     );
     expect(reused.exitCode, reused.stderr).toBe(10);
     expect(JSON.parse(reused.stdout).result.reused).toBe(true);
@@ -142,7 +190,7 @@ test('stack commands share definition discovery and versioned JSON contracts', a
         socketPath,
         '--json',
       ],
-      workspaceRoot,
+      frontendSourceDirectory,
     );
     expect(begun.exitCode, begun.stderr).toBe(0);
     const begunDocument = JSON.parse(begun.stdout).result;
@@ -160,7 +208,7 @@ test('stack commands share definition discovery and versioned JSON contracts', a
         socketPath,
         '--json',
       ],
-      workspaceRoot,
+      backendSourceDirectory,
     );
     expect(resolved.exitCode, resolved.stderr).toBe(0);
     expect(JSON.parse(resolved.stdout)).toMatchObject({
@@ -182,7 +230,7 @@ test('stack commands share definition discovery and versioned JSON contracts', a
         socketPath,
         '--json',
       ],
-      workspaceRoot,
+      frontendSourceDirectory,
     );
     expect(snapshotted.exitCode, snapshotted.stderr).toBe(0);
     expect(JSON.parse(await readFile(snapshotFile, 'utf8'))).toMatchObject({
@@ -211,19 +259,19 @@ test('stack commands share definition discovery and versioned JSON contracts', a
         socketPath,
         '--json',
       ],
-      workspaceRoot,
+      backendSourceDirectory,
     );
     expect(abandoned.exitCode, abandoned.stderr).toBe(0);
     expect(JSON.parse(abandoned.stdout).activation.state).toBe('failed');
     const activation = await runCli(
       ['stacks', 'activation', activationId, '--socket', socketPath, '--json'],
-      workspaceRoot,
+      frontendSourceDirectory,
     );
     expect(activation.exitCode, activation.stderr).toBe(0);
     expect(JSON.parse(activation.stdout).activation.state).toBe('failed');
     const reconciled = await runCli(
       ['stacks', 'reconcile', activationId, '--socket', socketPath, '--json'],
-      workspaceRoot,
+      backendSourceDirectory,
     );
     expect(reconciled.exitCode, reconciled.stderr).toBe(10);
     expect(JSON.parse(reconciled.stdout).result).toMatchObject({
@@ -232,17 +280,17 @@ test('stack commands share definition discovery and versioned JSON contracts', a
     });
     const ended = await runCli(
       ['stacks', 'end', activationId, '--socket', socketPath, '--json'],
-      workspaceRoot,
+      frontendSourceDirectory,
     );
     expect(ended.exitCode, ended.stderr).toBe(0);
     expect(JSON.parse(ended.stdout).result.activation.state).toBe('ended');
     const alreadyEnded = await runCli(
       ['stacks', 'end', activationId, '--socket', socketPath, '--json'],
-      workspaceRoot,
+      backendSourceDirectory,
     );
     expect(alreadyEnded.exitCode, alreadyEnded.stderr).toBe(10);
 
-    await rm(workspaceRoot, { force: true, recursive: true });
+    await rm(stackRoot, { force: true, recursive: true });
     const prunePlan = await runCli(
       [
         'stacks',
@@ -443,4 +491,17 @@ async function runCli(arguments_, cwd) {
     new Response(child.stderr).text(),
   ]);
   return { exitCode, stdout, stderr };
+}
+
+/** @param {string} directory */
+async function initializeGitRepository(directory) {
+  const child = Bun.spawn(['git', 'init', '--quiet', directory], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const [exitCode, stderr] = await Promise.all([
+    child.exited,
+    new Response(child.stderr).text(),
+  ]);
+  if (exitCode !== 0) throw new Error(`Unable to initialize ${directory}: ${stderr}`);
 }

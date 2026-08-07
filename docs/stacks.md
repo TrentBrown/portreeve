@@ -52,8 +52,14 @@ Docker metadata is declarative coordination metadata. An endpoint with a Docker
 container port must belong to a component with a Docker service. Applying a definition
 never runs Docker; it supplies the facts later used by activation evidence.
 
-Run `portreeve stacks apply` from the stack root, or pass `--file`. The CLI
-and JavaScript client send the same definition over the private socket. Portreeve
+Run `portreeve stacks apply` from the stack root or any directory beneath it. Implicit
+selection walks upward from the current real directory to the nearest
+`portreeve.stack.json`; child Git repository boundaries do not stop the search. Use
+`--stack-root <path>` to select the standard file at another root, or `--file <path>` to
+select an explicit file whose parent is the stack root. The two selectors are mutually
+exclusive, and apply never reconstructs a missing definition from Portreeve's database.
+
+The CLI and JavaScript client send the same definition over the private socket. Portreeve
 normalizes defaults, canonicalizes object-key order, hashes the JSON, and records the
 SHA-256 value as an immutable definition revision. Reapplying equivalent content is
 idempotent. A changed definition creates or reuses its revision and updates the stack's
@@ -71,6 +77,12 @@ provider evidence for that registered stack:
 ```sh
 portreeve stacks status --json
 ```
+
+Status uses an explicit `--stack-root` when supplied. Otherwise it first uses the
+nearest enclosing definition file. If that file is missing, it asks Portreeve for the
+single registered stack root enclosing the current real directory, which keeps a known
+stack inspectable while its project-owned definition is repaired. If neither source
+resolves a stack, status reports an ordinary state difference.
 
 Use `stacks show STACK_ID` when only the registered definition is needed.
 

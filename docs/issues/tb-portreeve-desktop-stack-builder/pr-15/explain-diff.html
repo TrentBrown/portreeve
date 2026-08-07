@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PR #15 explained: deterministic stack discovery</title>
+  <style>
+    :root { color-scheme: light; --ink:#18231f; --muted:#5c6a64; --paper:#fbf8f1; --card:#fffdf8; --green:#176b52; --mint:#dcefe7; --gold:#a35c16; --line:#d8d2c7; --red:#9c342d; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:17px/1.62 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { width:min(980px,calc(100% - 32px)); margin:0 auto; padding:42px 0 80px; }
+    h1,h2,h3 { font-family:Georgia,"Times New Roman",serif; line-height:1.15; }
+    h1 { font-size:clamp(2.4rem,7vw,4.8rem); margin:.15em 0; }
+    h2 { font-size:2rem; margin-top:2.4em; border-bottom:1px solid var(--line); padding-bottom:.35em; }
+    h3 { font-size:1.3rem; margin-top:1.8em; }
+    p,li { max-width:76ch; }
+    a { color:var(--green); }
+    code { background:#eee9df; border-radius:4px; padding:.08em .3em; }
+    pre { white-space:pre-wrap; overflow-wrap:anywhere; background:#17231f; color:#edf7f2; border-radius:12px; padding:18px; }
+    .eyebrow { color:var(--green); font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    .lede { color:var(--muted); font-size:1.18rem; max-width:68ch; }
+    .meta,.callout,.flow,.code-card,.quiz { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin:20px 0; box-shadow:0 4px 16px #18231f0b; }
+    .meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }
+    .meta strong { display:block; color:var(--muted); font-size:.78rem; letter-spacing:.08em; text-transform:uppercase; }
+    .toc ol { columns:2; padding-left:24px; }
+    .callout { border-left:6px solid var(--gold); }
+    .flow { display:flex; gap:10px; align-items:stretch; flex-wrap:wrap; }
+    .node { flex:1 1 155px; border:1px solid #b9cfc5; background:var(--mint); border-radius:10px; padding:14px; text-align:center; }
+    .arrow { align-self:center; color:var(--green); font-size:1.5rem; font-weight:800; }
+    .filesystem { display:grid; gap:8px; margin:18px 0; }
+    .path { border-left:4px solid var(--line); padding:8px 12px; background:#fff; }
+    .path.hit { border-color:var(--green); background:var(--mint); }
+    .path.git { margin-left:28px; border-color:var(--gold); }
+    .path.deep { margin-left:56px; }
+    .badge { display:inline-block; padding:3px 9px; border-radius:999px; background:var(--mint); color:var(--green); font-size:.78rem; font-weight:800; text-transform:uppercase; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+    .code-card h3 { margin-top:0; }
+    .quiz button { display:block; width:100%; text-align:left; border:1px solid var(--line); background:white; border-radius:9px; padding:11px 13px; margin:8px 0; font:inherit; cursor:pointer; }
+    .quiz button:hover { border-color:var(--green); }
+    .quiz button.correct { background:var(--mint); border-color:var(--green); }
+    .quiz button.wrong { background:#fae5e2; border-color:var(--red); }
+    .feedback { min-height:1.5em; color:var(--muted); font-weight:650; }
+    @media (max-width:640px) { .toc ol { columns:1; } .arrow { display:none; } main { width:min(100% - 22px,980px); padding-top:24px; } }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Portreeve pull request #15</div>
+  <h1>Finding the stack you are already inside</h1>
+  <p class="lede">A runnable development stack may be a plain parent directory containing several Git repositories. This change makes Portreeve's CLI discover that parent reliably, while keeping the checked-in definition—not the database—as the authority for apply.</p>
+
+  <div class="meta">
+    <div><strong>Base</strong><code>757bb1a</code></div>
+    <div><strong>Head</strong><code>279f5f1</code></div>
+    <div><strong>Plan slice</strong>P3 / I-3</div>
+    <div><strong>Rubric result</strong>R2 PASS</div>
+  </div>
+
+  <nav class="toc" aria-label="Table of contents">
+    <h2>Contents</h2>
+    <ol><li><a href="#background">Background</a></li><li><a href="#intuition">Intuition</a></li><li><a href="#code">Code walkthrough</a></li><li><a href="#cases">Important cases</a></li><li><a href="#quiz">Quiz</a></li></ol>
+  </nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <h3>Ports belong to a runnable stack, not necessarily a repository</h3>
+    <p>Portreeve stores a stack definition and allocates its published endpoints. A stack root is the canonical real path of the directory containing one independently runnable stack. That directory may itself be a Git worktree, but it may just as naturally contain a frontend repository, a backend repository, and a worker repository.</p>
+
+    <div class="filesystem" aria-label="Example stack directory tree">
+      <div class="path hit"><strong>/customer-stack</strong> — stack root and <code>portreeve.stack.json</code></div>
+      <div class="path git"><strong>frontend/.git</strong> — child repository</div>
+      <div class="path deep"><strong>frontend/src/routes</strong> — current directory</div>
+      <div class="path git"><strong>backend/.git</strong> — another child repository</div>
+    </div>
+
+    <p>Before this PR, implicit apply looked only for <code>portreeve.stack.json</code> in the current directory. Status likewise treated the current directory itself as the root. Running either command from <code>frontend/src/routes</code> therefore missed the actual stack.</p>
+
+    <div class="callout"><strong>The authority split:</strong> the project-owned JSON file is authoritative for topology and apply. Portreeve's database is authoritative for the last registered state and may support status when the file is temporarily missing. The database never silently recreates an apply.</div>
+
+    <h3>The existing server invariant</h3>
+    <p>PR #14 established that registered stack roots cannot overlap. A registered parent and registered child cannot coexist. This turns status fallback into a simple question: at most one valid registered root can contain the current directory.</p>
+  </section>
+
+  <section id="intuition">
+    <h2>Intuition</h2>
+    <p>The CLI now resolves location before it performs the operation. Think of resolution as a small policy layer in front of the existing client.</p>
+    <div class="flow" aria-label="Apply resolution flow">
+      <div class="node"><strong>Explicit file?</strong><br>Use its parent</div><div class="arrow">→</div>
+      <div class="node"><strong>Explicit root?</strong><br>Use its standard file</div><div class="arrow">→</div>
+      <div class="node"><strong>Neither?</strong><br>Walk upward</div><div class="arrow">→</div>
+      <div class="node"><strong>No file?</strong><br>Apply refuses</div>
+    </div>
+    <p>Status shares the first part of that reasoning. Its final step differs: when the upward walk finds no file, status lists registered stacks and asks which root contains the current real directory.</p>
+    <div class="flow" aria-label="Status resolution flow">
+      <div class="node"><strong>Explicit root</strong><br>Exact selection</div><div class="arrow">→</div>
+      <div class="node"><strong>Enclosing file</strong><br>Nearest ancestor</div><div class="arrow">→</div>
+      <div class="node"><strong>Registered root</strong><br>Status-only fallback</div><div class="arrow">→</div>
+      <div class="node"><strong>No match</strong><br>Exit 10</div>
+    </div>
+    <p>Git never appears in either algorithm. The current directory and candidate roots are canonical filesystem paths. That is the crucial inversion: repository structure is application content, not Portreeve identity.</p>
+  </section>
+
+  <section id="code">
+    <h2>Code walkthrough</h2>
+    <div class="grid">
+      <article class="code-card"><span class="badge">New policy module</span><h3><code>stack-selection.js</code></h3><p><code>selectStackDefinition</code> resolves explicit selectors or delegates to ancestor discovery. <code>findEnclosingStackDefinition</code> starts from the real directory and walks to the filesystem root. <code>selectRegisteredEnclosingStack</code> performs separator-aware containment and rejects impossible overlap.</p></article>
+      <article class="code-card"><span class="badge">Command wiring</span><h3><code>commands/stacks.js</code></h3><p>Apply reads only the selected file and sends the selected root to the existing official client. Status uses one client instance, prefers a file-derived root, then performs the registered-state fallback.</p></article>
+      <article class="code-card"><span class="badge">Public surface</span><h3><code>program.js</code></h3><p><code>stacks apply</code> gains <code>--stack-root</code>; its <code>--file</code> description becomes explicit. Status help now describes enclosing or explicitly selected behavior.</p></article>
+      <article class="code-card"><span class="badge">Evidence</span><h3>Source and compiled tests</h3><p>Both integration paths create a non-Git parent, initialize frontend and backend Git repositories, invoke apply from one child, and invoke status from the other. The compiled test removes the definition before status to prove the fallback in the shipped executable.</p></article>
+    </div>
+
+    <h3>The ancestor loop</h3>
+    <pre><code>start = realpath(current directory)
+repeat:
+  candidate = start / "portreeve.stack.json"
+  if candidate is a file: return candidate and start
+  if candidate exists but is not a file: fail clearly
+  if start is the filesystem root: return no match
+  start = parent(start)</code></pre>
+
+    <h3>Why containment is not a prefix test</h3>
+    <p>The string <code>/tmp/customer-stack-copy</code> begins with <code>/tmp/customer-stack</code>, but it is not inside that root. The code uses <code>path.relative</code> and checks path-segment boundaries, so only the root itself or a true descendant matches.</p>
+  </section>
+
+  <section id="cases">
+    <h2>Important cases</h2>
+    <div class="grid">
+      <article class="code-card"><h3>Inside a child repository</h3><p>Implicit apply crosses <code>.git</code>, finds the parent file, and registers the parent real path.</p></article>
+      <article class="code-card"><h3>Definition accidentally deleted</h3><p>Status finds no file, selects the registered enclosing root, and remains useful for diagnosis. Apply fails with exit 50.</p></article>
+      <article class="code-card"><h3>Both selectors supplied</h3><p>The CLI rejects <code>--file</code> plus <code>--stack-root</code>; it does not invent precedence.</p></article>
+      <article class="code-card"><h3>Corrupt overlapping records</h3><p>Status refuses multiple enclosing matches and names the violated invariant rather than making a nondeterministic choice.</p></article>
+    </div>
+  </section>
+
+  <section id="quiz">
+    <h2>Quiz</h2>
+    <div class="quiz" data-answer="b"><h3>1. From <code>/stack/frontend/src</code>, what stops implicit discovery?</h3><button data-choice="a">The frontend repository's <code>.git</code> directory</button><button data-choice="b">The first enclosing <code>portreeve.stack.json</code></button><button data-choice="c">The first registered stack returned by the server</button><p class="feedback"></p></div>
+    <div class="quiz" data-answer="c"><h3>2. What happens when apply finds no definition?</h3><button data-choice="a">It reconstructs the last definition from the database</button><button data-choice="b">It creates a minimal definition using the directory name</button><button data-choice="c">It exits as invalid input and suggests explicit selectors</button><p class="feedback"></p></div>
+    <div class="quiz" data-answer="a"><h3>3. Why can status normally have at most one registered enclosing root?</h3><button data-choice="a">The server forbids equal and ancestor/descendant registrations</button><button data-choice="b">Status selects the alphabetically first project name</button><button data-choice="c">Every stack root must also be a Git root</button><p class="feedback"></p></div>
+    <div class="quiz" data-answer="c"><h3>4. What does <code>stacks apply --file custom.json</code> use as the root?</h3><button data-choice="a">The current Git worktree</button><button data-choice="b">The nearest directory containing <code>portreeve.stack.json</code></button><button data-choice="c">The canonical parent directory of the selected file</button><p class="feedback"></p></div>
+    <div class="quiz" data-answer="b"><h3>5. Why does registered-root fallback belong only to status?</h3><button data-choice="a">The server cannot return definitions through its protocol</button><button data-choice="b">Apply must preserve the project-owned file as topology authority</button><button data-choice="c">Status is the only command allowed to canonicalize paths</button><p class="feedback"></p></div>
+  </section>
+</main>
+<script>
+  document.querySelectorAll('.quiz').forEach((quiz) => {
+    quiz.querySelectorAll('button').forEach((button) => {
+      button.addEventListener('click', () => {
+        quiz.querySelectorAll('button').forEach((item) => item.classList.remove('correct','wrong'));
+        const correct = button.dataset.choice === quiz.dataset.answer;
+        button.classList.add(correct ? 'correct' : 'wrong');
+        quiz.querySelector('.feedback').textContent = correct ? 'Correct — that follows the explicit resolution contract.' : 'Not quite. Revisit the resolution order and authority boundary above.';
+      });
+    });
+  });
+</script>
+</body>
+</html>
