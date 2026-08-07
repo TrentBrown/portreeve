@@ -8,7 +8,7 @@ entries are appended to `decisions.md`.
 
 ## [1] Decouple stack identity from Git worktrees
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -23,7 +23,7 @@ Keep Git worktree identity and require an arbitrary child repository as the stac
 
 ## [2] Forbid overlapping stack roots
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -38,7 +38,7 @@ Allow nested stacks and choose the nearest definition - rejected because it adds
 
 ## [3] Refuse definition changes beneath live activations
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

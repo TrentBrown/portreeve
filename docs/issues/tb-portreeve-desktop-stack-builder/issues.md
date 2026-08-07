@@ -9,12 +9,12 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Replace the public stack identity contract
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R8
 - **Depends on:** none
-- **PR:** -
+- **PR:** [#14](https://github.com/TrentBrown/portreeve/pull/14)
 
 Replace stack-specific public vocabulary and canonicalization across schemas, protocol,
 client runtime/types, server routes, fixtures, and contract documentation while
@@ -22,12 +22,12 @@ preserving standalone claim behavior.
 
 ## I-2 - Enforce stack-root and live-activation safety
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P2
 - **Rubric criteria:** R1, R3, R8
 - **Depends on:** I-1
-- **PR:** -
+- **PR:** [#14](https://github.com/TrentBrown/portreeve/pull/14)
 
 Implement persistence mapping, non-overlapping root enforcement, exact-root adoption,
 missing-root pruning, and changed-apply refusal under live activation with concurrency
