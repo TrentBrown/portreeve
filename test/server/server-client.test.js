@@ -248,6 +248,18 @@ test('canonicalizes and validates stack roots for raw protocol callers', async (
     { stackRoot: await realpath(stackRoot) },
   ]);
 
+  const obsoleteFilter = await fetch(
+    `http://portreeve/v1/stacks?workspaceRoot=${encodeURIComponent(alias)}`,
+    { unix: socketPath },
+  );
+  expect(obsoleteFilter.status).toBe(400);
+  expect(await obsoleteFilter.json()).toMatchObject({
+    error: {
+      code: 'invalid_input',
+      details: { reason: 'unsupported_stack_filter' },
+    },
+  });
+
   const invalid = await fetch('http://portreeve/v1/stacks/apply', {
     unix: socketPath,
     method: 'POST',

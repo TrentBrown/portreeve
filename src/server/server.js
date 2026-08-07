@@ -268,6 +268,13 @@ async function handleRequest(
       );
     }
     if (request.method === 'GET' && pathname === '/v1/stacks') {
+      if (url.searchParams.has('workspaceRoot')) {
+        throw new RegistryError(
+          'invalid_input',
+          'workspaceRoot is not a stack filter; use stackRoot.',
+          { reason: 'unsupported_stack_filter', filter: 'workspaceRoot' },
+        );
+      }
       const stackRoot = url.searchParams.get('stackRoot');
       return success(
         requestId,

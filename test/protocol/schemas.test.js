@@ -170,6 +170,14 @@ describe('protocol schemas', () => {
         definition,
       }),
     ).toThrow();
+    expect(() =>
+      StackApplyRequestSchema.parse({
+        client,
+        stackRoot: '/stacks/caregiver',
+        workspaceRoot: '/worktrees/caregiver',
+        definition,
+      }),
+    ).toThrow();
   });
 
   test('distinguishes process and Docker activation confirmations', () => {

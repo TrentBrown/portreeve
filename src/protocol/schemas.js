@@ -204,11 +204,13 @@ export const StackRecordSchema = z.object({
   lastUsedAt: TimestampSchema,
 });
 
-export const StackApplyRequestSchema = z.object({
-  client: ClientCompatibilitySchema,
-  stackRoot: z.string().min(1),
-  definition: StackDefinitionSchema,
-});
+export const StackApplyRequestSchema = z
+  .object({
+    client: ClientCompatibilitySchema,
+    stackRoot: z.string().min(1),
+    definition: StackDefinitionSchema,
+  })
+  .strict();
 
 export const StackApplyResponseSchema = z.object({
   changed: z.boolean(),
