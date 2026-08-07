@@ -21,6 +21,7 @@ import { createLifecycleAdapter } from './cli-adapter.js';
 import { createStateCoordinator } from './coordinator.js';
 import { createInventoryAdapter } from './inventory-adapter.js';
 import { createStackAdapter } from './stack-adapter.js';
+import { createStackDocumentService } from './stack-document.js';
 import { registerDesktopIpc } from './ipc.js';
 import { registerRendererProtocol } from './protocol.js';
 import { createUpdateAdapter } from './update.js';
@@ -80,11 +81,22 @@ async function startDesktop() {
       });
   diagnose('artifact-verified', artifact.filename);
   const client = new PortreeveClient();
+  const documents = createStackDocumentService(client, {
+    async selectStackRoot() {
+      const selection = await dialog.showOpenDialog({
+        title: 'Create or edit a Portreeve stack',
+        buttonLabel: 'Choose stack root',
+        properties: ['openDirectory'],
+      });
+      return selection.canceled ? null : (selection.filePaths[0] ?? null);
+    },
+  });
   const coordinator = createStateCoordinator({
     artifact: { ...artifact, desktopVersion: app.getVersion() },
     lifecycle: createLifecycleAdapter({ executablePath: artifact.executablePath }),
     inventory: createInventoryAdapter(client),
     stacks: createStackAdapter(client, {
+      documents,
       async selectDefinitionFile() {
         const selection = await dialog.showOpenDialog({
           title: 'Apply a Portreeve stack definition',

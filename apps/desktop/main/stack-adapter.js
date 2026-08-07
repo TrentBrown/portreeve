@@ -28,7 +28,7 @@ export const DEFAULT_STACK_PRUNE_AGE_MILLISECONDS = 7 * 86_400_000;
  *   resolveStackEndpoints(activationId: string, component: string): Promise<unknown>,
  *   createStackEndpointSnapshot(activationId: string, input: {component: string, gatewayHost: string}): Promise<unknown>
  * }} client
- * @param {{selectDefinitionFile(): Promise<string|null>}} options
+ * @param {{selectDefinitionFile(): Promise<string|null>, documents?: any}} options
  */
 export function createStackAdapter(client, options) {
   return Object.freeze({
@@ -37,6 +37,7 @@ export function createStackAdapter(client, options) {
       return Promise.all(
         stacks.map(async ({ id }) => {
           const status = StackStatusSchema.parse(await client.getStackStatus(id));
+          options.documents?.rememberStack(status.stack);
           const activation = status.activation;
           if (
             activation === null ||
@@ -89,6 +90,21 @@ export function createStackAdapter(client, options) {
         ),
       };
     },
+    openStackDocument() {
+      return requireDocuments(options).openSelected();
+    },
+    /** @param {string} stackId */
+    openKnownStackDocument(stackId) {
+      return requireDocuments(options).openKnown(stackId);
+    },
+    /** @param {{documentId: string, content: string, conflictToken?: string|null}} request */
+    saveStackDocument(request) {
+      return requireDocuments(options).save(request);
+    },
+    /** @param {string} documentId */
+    retryStackDocumentApply(documentId) {
+      return requireDocuments(options).retryApply(documentId);
+    },
     /** @param {string} stackId */
     async prepare(stackId) {
       return StackPrepareResponseSchema.parse(await client.prepareStack(stackId));
@@ -131,6 +147,17 @@ export function createStackAdapter(client, options) {
       );
     },
   });
+}
+
+/** @param {{documents?: any}} options */
+function requireDocuments(options) {
+  if (options.documents === undefined) {
+    throw adapterError(
+      'stack_document_unavailable',
+      'Stack definition editing is unavailable.',
+    );
+  }
+  return options.documents;
 }
 
 /** @param {unknown} error */

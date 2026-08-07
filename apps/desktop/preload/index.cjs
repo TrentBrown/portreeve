@@ -17,6 +17,10 @@ const channels = Object.freeze({
   executePurge: 'portreeve:desktop:execute-purge',
   openDownloadPage: 'portreeve:desktop:open-download-page',
   applyStackDefinition: 'portreeve:desktop:apply-stack-definition',
+  openStackDocument: 'portreeve:desktop:open-stack-document',
+  openKnownStackDocument: 'portreeve:desktop:open-known-stack-document',
+  saveStackDocument: 'portreeve:desktop:save-stack-document',
+  retryStackDocumentApply: 'portreeve:desktop:retry-stack-document-apply',
   prepareStack: 'portreeve:desktop:prepare-stack',
   reconcileStack: 'portreeve:desktop:reconcile-stack',
   endStack: 'portreeve:desktop:end-stack',
@@ -102,6 +106,20 @@ function requireStackSnapshot(value) {
   return value;
 }
 
+function requireStackDocumentOpenResult(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    !['opened', 'cancelled'].includes(value.outcome) ||
+    (value.outcome === 'opened' &&
+      (typeof value.document !== 'object' || value.document === null))
+  ) {
+    throw new Error('The main process returned an invalid stack document.');
+  }
+  return value;
+}
+
 function requireStackPrunePreview(value) {
   if (
     typeof value !== 'object' ||
@@ -143,6 +161,26 @@ contextBridge.exposeInMainWorld(
       requireOpenDownloadResult(await ipcRenderer.invoke(channels.openDownloadPage)),
     applyStackDefinition: async () =>
       requireMutationResult(await ipcRenderer.invoke(channels.applyStackDefinition)),
+    openStackDocument: async () =>
+      requireStackDocumentOpenResult(
+        await ipcRenderer.invoke(channels.openStackDocument),
+      ),
+    openKnownStackDocument: async (id) =>
+      requireStackDocumentOpenResult(
+        await ipcRenderer.invoke(channels.openKnownStackDocument, { id }),
+      ),
+    saveStackDocument: async (documentId, content, conflictToken = null) =>
+      requireMutationResult(
+        await ipcRenderer.invoke(channels.saveStackDocument, {
+          documentId,
+          content,
+          conflictToken,
+        }),
+      ),
+    retryStackDocumentApply: async (documentId) =>
+      requireMutationResult(
+        await ipcRenderer.invoke(channels.retryStackDocumentApply, { documentId }),
+      ),
     prepareStack: async (id) =>
       requireMutationResult(await ipcRenderer.invoke(channels.prepareStack, { id })),
     reconcileStack: async (id) =>

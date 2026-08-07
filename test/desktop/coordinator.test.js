@@ -419,3 +419,85 @@ test('publishes update discovery independently without delaying local refresh', 
     opened: true,
   });
 });
+
+test('preserves saved-not-applied document state and safely reduces unexpected failures', async () => {
+  const documentId = '99999999-9999-4999-8999-999999999999';
+  const stackId = '44444444-4444-4444-8444-444444444444';
+  let statusCalls = 0;
+  const coordinator = createStateCoordinator({
+    artifact: provisionalArtifact(),
+    lifecycle: {
+      async status() {
+        statusCalls += 1;
+        return lifecycleSnapshot();
+      },
+    },
+    inventory: {
+      async listPorts() {
+        return [];
+      },
+    },
+    stacks: {
+      async list() {
+        return [];
+      },
+      /** @param {unknown} request */
+      async saveStackDocument(request) {
+        expect(request).toEqual({ documentId, content: '{}', conflictToken: null });
+        return {
+          schemaVersion: 1,
+          documentId,
+          outcome: 'saved-not-applied',
+          saved: true,
+          applied: false,
+          changed: null,
+          stackId,
+          message: 'The stack definition was saved, but it could not be applied.',
+          conflict: null,
+          issues: [],
+          error: {
+            code: 'unavailable',
+            message: 'The Portreeve server is unavailable.',
+          },
+        };
+      },
+      async retryStackDocumentApply() {
+        throw new Error('/private/path/that-must-not-reach-the-renderer');
+      },
+    },
+    now: () => new Date(timestamp),
+  });
+
+  expect(
+    await coordinator.saveStackDocument({
+      documentId,
+      content: '{}',
+      conflictToken: null,
+    }),
+  ).toMatchObject({
+    documentId,
+    outcome: 'saved-not-applied',
+    saved: true,
+    applied: false,
+    stackId,
+    error: {
+      code: 'unavailable',
+      message: 'The Portreeve server is unavailable.',
+    },
+    snapshot: { stale: false },
+  });
+  const failure = await coordinator.retryStackDocumentApply(documentId);
+  expect(failure).toMatchObject({
+    documentId,
+    outcome: 'failed',
+    saved: false,
+    applied: false,
+    error: {
+      code: 'unavailable',
+      message: 'The operation failed without additional safe details.',
+    },
+    snapshot: { stale: false },
+  });
+  expect(JSON.stringify(failure)).not.toContain('/private/path');
+  expect(statusCalls).toBe(2);
+});

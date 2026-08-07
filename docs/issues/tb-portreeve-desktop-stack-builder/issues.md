@@ -35,7 +35,7 @@ tests.
 
 ## I-3 - Deliver stack-root CLI discovery
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P3
 - **Rubric criteria:** R1, R2, R8
@@ -47,7 +47,7 @@ coverage for non-Git parent roots with child repositories.
 
 ## I-4 - Build the trusted desktop document boundary
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1d
 - **Plan steps:** P4
 - **Rubric criteria:** R4, R6, R7, R8

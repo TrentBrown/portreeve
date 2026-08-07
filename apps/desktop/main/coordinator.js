@@ -6,6 +6,8 @@ import {
   DesktopPurgeResultSchema,
   DesktopSnapshotSchema,
   DesktopStackActionResultSchema,
+  DesktopStackDocumentMutationResultSchema,
+  DesktopStackDocumentOpenResultSchema,
   DesktopStackEndpointSnapshotSchema,
   DesktopStackPrunePreviewSchema,
   DesktopStackPruneResultSchema,
@@ -231,6 +233,34 @@ export function createStateCoordinator(options) {
     });
   }
 
+  /** @param {string} documentId @param {() => Promise<any>} invoke */
+  function stackDocumentMutation(documentId, invoke) {
+    return mutate(async () => {
+      try {
+        const result = await invoke();
+        return DesktopStackDocumentMutationResultSchema.parse({
+          ...result,
+          snapshot: await collect(),
+        });
+      } catch (error) {
+        return DesktopStackDocumentMutationResultSchema.parse({
+          schemaVersion: 1,
+          documentId,
+          outcome: 'failed',
+          saved: false,
+          applied: false,
+          changed: null,
+          stackId: null,
+          message: 'The stack definition operation failed without completing.',
+          conflict: null,
+          issues: [],
+          error: safeError(error),
+          snapshot: await collect(),
+        });
+      }
+    });
+  }
+
   return Object.freeze({
     refresh,
     checkForUpdates,
@@ -340,6 +370,33 @@ export function createStateCoordinator(options) {
             : `The ${selected.result.stack.project} stack definition is already current.`,
         };
       });
+    },
+    openStackDocument() {
+      return mutate(async () =>
+        DesktopStackDocumentOpenResultSchema.parse(
+          await requireStacks(options).openStackDocument(),
+        ),
+      );
+    },
+    /** @param {string} stackId */
+    openKnownStackDocument(stackId) {
+      return mutate(async () =>
+        DesktopStackDocumentOpenResultSchema.parse(
+          await requireStacks(options).openKnownStackDocument(stackId),
+        ),
+      );
+    },
+    /** @param {{documentId: string, content: string, conflictToken?: string|null}} request */
+    saveStackDocument(request) {
+      return stackDocumentMutation(request.documentId, () =>
+        requireStacks(options).saveStackDocument(request),
+      );
+    },
+    /** @param {string} documentId */
+    retryStackDocumentApply(documentId) {
+      return stackDocumentMutation(documentId, () =>
+        requireStacks(options).retryStackDocumentApply(documentId),
+      );
     },
     /** @param {string} stackId */
     prepareStack(stackId) {

@@ -38,7 +38,7 @@ Append PR boundary entries here.
 ### PR #15 - Deterministic CLI stack discovery
 
 - **PR:** [#15](https://github.com/TrentBrown/portreeve/pull/15)
-- **Status:** in review
+- **Status:** merged 2026-08-07 (`4740cf4a6012eac339595a289727c9ec3236557b`)
 - **Scope:** P3 / I-3: explicit apply root/file selection, upward definition discovery
   across child Git repositories, registered-root status fallback, compiled CLI coverage,
   and public CLI/example documentation.

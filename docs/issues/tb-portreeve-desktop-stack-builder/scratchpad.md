@@ -50,3 +50,28 @@ At server apply time, permit an idempotent apply of the current revision but ref
 
 **Alternatives considered:**
 Allow the apply and mark the live generation stale - rejected because it breaks discovery for a still-running stack. Make the desktop warn but allow CLI and client mutation - rejected because safety must not depend on one caller.
+
+## [4] Bind desktop file authority to opaque edit capabilities
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Desktop main-process document service, IPC schemas, preload API, and filesystem integration tests
+
+Represent an open stack document with an opaque main-process session ID rather than a
+renderer-visible path or fingerprint. A detected external change or invalid-file
+replacement produces a separate, session-bound conflict capability. Overwrite succeeds
+only when that capability matches and the exact evidence observed at conflict time is
+still current; another external change requires another review. The main process bounds
+candidate and file bytes, rejects non-regular canonical definition files, validates JSON
+and the strict stack schema before writing, and performs same-directory exclusive create
+or atomic replacement. These controls preserve the approved Overwrite or Cancel user
+experience without widening renderer filesystem authority.
+
+**Triggered by:** P4 turns the renderer draft into filesystem mutation and must prevent a compromised or stale renderer message from naming arbitrary paths or bypassing fresh overwrite evidence.
+
+**Alternatives considered:**
+- Send the canonical path and fingerprint to the renderer - rejected because it widens the renderer's authority and makes the overwrite check caller-controlled.
+- Accept a plain `overwrite: true` flag - rejected because it can bypass the required two-step conflict review and can overwrite a second unseen external change.
+- Follow symbolic links and permit unbounded local files - rejected because the editor should mutate only the fixed regular definition file at the trusted stack root.

@@ -13,6 +13,14 @@ interface Window {
     executePurge(confirmation: string): Promise<any>;
     openDownloadPage(): Promise<any>;
     applyStackDefinition(): Promise<any>;
+    openStackDocument(): Promise<any>;
+    openKnownStackDocument(id: string): Promise<any>;
+    saveStackDocument(
+      documentId: string,
+      content: string,
+      conflictToken?: string | null,
+    ): Promise<any>;
+    retryStackDocumentApply(documentId: string): Promise<any>;
     prepareStack(id: string): Promise<any>;
     reconcileStack(id: string): Promise<any>;
     endStack(id: string): Promise<any>;
