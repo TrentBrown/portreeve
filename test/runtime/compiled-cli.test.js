@@ -107,8 +107,8 @@ test('Commander.js CLI runs from the standalone executable', async () => {
       const definitionFile = join(stackRoot, 'portreeve.stack.json');
       await mkdir(frontendSource, { recursive: true });
       await mkdir(backendSource, { recursive: true });
-      await mkdir(join(stackRoot, 'frontend', '.git'));
-      await mkdir(join(stackRoot, 'backend', '.git'));
+      await initializeGitRepository(join(stackRoot, 'frontend'));
+      await initializeGitRepository(join(stackRoot, 'backend'));
       await writeFile(
         definitionFile,
         JSON.stringify({
@@ -386,3 +386,16 @@ test('Commander.js CLI runs from the standalone executable', async () => {
     await rm(directory, { force: true, recursive: true });
   }
 }, 60_000);
+
+/** @param {string} directory */
+async function initializeGitRepository(directory) {
+  const child = Bun.spawn(['git', 'init', '--quiet', directory], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const [exitCode, stderr] = await Promise.all([
+    child.exited,
+    new Response(child.stderr).text(),
+  ]);
+  if (exitCode !== 0) throw new Error(`Unable to initialize ${directory}: ${stderr}`);
+}

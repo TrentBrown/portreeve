@@ -29,8 +29,8 @@ test('stack commands share definition discovery and versioned JSON contracts', a
   const applicationDirectory = join(directory, 'data');
   await mkdir(frontendSourceDirectory, { recursive: true });
   await mkdir(backendSourceDirectory, { recursive: true });
-  await mkdir(join(frontendDirectory, '.git'));
-  await mkdir(join(backendDirectory, '.git'));
+  await initializeGitRepository(frontendDirectory);
+  await initializeGitRepository(backendDirectory);
   await prepareRuntimeDirectories({
     applicationDirectory,
     socketPath,
@@ -491,4 +491,17 @@ async function runCli(arguments_, cwd) {
     new Response(child.stderr).text(),
   ]);
   return { exitCode, stdout, stderr };
+}
+
+/** @param {string} directory */
+async function initializeGitRepository(directory) {
+  const child = Bun.spawn(['git', 'init', '--quiet', directory], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const [exitCode, stderr] = await Promise.all([
+    child.exited,
+    new Response(child.stderr).text(),
+  ]);
+  if (exitCode !== 0) throw new Error(`Unable to initialize ${directory}: ${stderr}`);
 }
