@@ -28,6 +28,7 @@
     "release:build": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/release.js",
     "release:verify": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/verify-release.js",
     "runtime:spike": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" test test/runtime/compiled-runtime.test.js",
+    "stacks:verify": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/verify-stack-feature.js",
     "test": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" test",
     "toolchain:check": "\"$npm_execpath\" scripts/check-toolchain.js",
     "typecheck": "tsc -p jsconfig.json"

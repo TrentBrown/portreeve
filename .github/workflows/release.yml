@@ -66,6 +66,9 @@ jobs:
           path: dist/release
       - name: Restore executable artifact modes
         run: chmod 755 dist/release/portreeve-v*
+      - if: startsWith(matrix.platform, 'linux-')
+        name: Verify a real mixed process and Docker stack
+        run: bun run stacks:verify
       - run: bun run release:verify -- --native --lifecycle
       - if: startsWith(matrix.platform, 'macos-')
         run: bun run release:verify -- --homebrew

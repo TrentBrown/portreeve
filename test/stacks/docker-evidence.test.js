@@ -128,7 +128,6 @@ test('confirms one mixed process and Docker activation from fresh provider evide
     labels: apiLease.docker.requiredLabels,
     ports: [{ containerPort: 3000, hostIp: '127.0.0.1', hostPort: 43210 }],
   };
-  listeners.set(43210, [listener(43210, 500)]);
   listeners.set(43211, [listener(43211, 501)]);
 
   await coordinationService.confirm(begun.activation.id, {
@@ -154,6 +153,7 @@ test('confirms one mixed process and Docker activation from fresh provider evide
   expect(await inventoryService.inspect(43210)).toMatchObject({
     classification: 'docker-managed',
     docker: { containers: [{ id: containerId }] },
+    listeners: [],
   });
   await expect(
     coordinationService.begin({

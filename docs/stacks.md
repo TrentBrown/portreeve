@@ -34,6 +34,10 @@ The checked-in definition is `portreeve.stack.json` at the worktree root:
 }
 ```
 
+The repository includes a complete
+[mixed process and Docker launcher example](../examples/mixed-stack/README.md) that
+shows how one project-owned launcher consumes the returned leases and addresses.
+
 The schema is strict. Unknown fields are rejected. Component and endpoint names are
 stable logical identities. An omitted dependency endpoint means `default`. Endpoint
 defaults are TCP, published, and required. Use `publish: false` for an endpoint that
@@ -110,7 +114,9 @@ portreeve stacks confirm-docker ACTIVATION_ID \
 
 The container ID is only a lookup key. Portreeve freshly verifies running state, every
 stack/component/revision/generation/activation/endpoint label, the exact publication,
-and a live `lsof` listener. It never applies process lineage to Docker's backend.
+and the declared container port. A listener found by `lsof` is retained as corroborating
+evidence, but its absence does not reject a Linux Docker Engine publication implemented
+through kernel NAT. Portreeve never applies process lineage to Docker's backend.
 Required endpoints must confirm. Optional endpoints may be named with
 `--skip-endpoint component.endpoint`; after all required endpoints confirm, a skipped or
 failed optional endpoint makes the activation `degraded`. A required dependency on an

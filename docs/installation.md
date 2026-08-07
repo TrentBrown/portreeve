@@ -58,7 +58,17 @@ bun run release:build
 
 bun run release:verify -- --native --lifecycle
 bun run release:verify -- --homebrew
+bun run stacks:verify
 ```
+
+`stacks:verify` is a destructive-only-to-its-own-fixtures native integration smoke. It
+creates one uniquely named disposable Docker container and one temporary process
+listener, drives a mixed stack through the official JavaScript client, and removes its
+container, worktree, Portreeve home, and runtime files in `finally` cleanup. It pulls
+`node:22.17.0-bookworm` when that default image is absent. Override the trusted Docker
+CLI, image, or launcher-rendered sandbox gateway with
+`PORTREEVE_DOCKER_EXECUTABLE`, `PORTREEVE_DOCKER_SMOKE_IMAGE`, or
+`PORTREEVE_SANDBOX_GATEWAY`.
 
 `release:verify -- --native` verifies every artifact's checksum and executable
 header, validates the formula syntax, and actually runs the artifact matching
@@ -71,7 +81,9 @@ gate and both native release smokes before publication. Cross-compilation alone
 is not release evidence. Native jobs require Node.js 22, Bun 1.3.14, Git,
 `lsof`, `ps`, Ruby, and a non-root login session. Linux runners must provide a
 working `systemd --user` manager. The Linux ARM64 job runs natively on GitHub's
-hosted `ubuntu-24.04-arm` image.
+hosted `ubuntu-24.04-arm` image. Both Linux release jobs also run the real mixed-stack
+Docker smoke. Docker Desktop on macOS is verified manually because hosted macOS runners
+do not provide the product's Docker Desktop environment.
 
 Development may occur while a GitHub repository is private, and branch or
 manual Actions runs still work. The Portreeve repository is public before its

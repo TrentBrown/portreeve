@@ -472,14 +472,6 @@ export class StackCoordinationService {
       hostPort: endpoint.port,
     });
     assertDockerEvidence(verification, request.containerId);
-    const listeners = await this.allocationService.inspectListeners(endpoint.port);
-    if (listeners.length === 0) {
-      throw new RegistryError(
-        'conflict',
-        `Docker publication ${endpoint.port} has no fresh host listener.`,
-        { port: endpoint.port, reason: 'listener_missing' },
-      );
-    }
     this.registry.confirmDockerLease(
       {
         leaseId: request.leaseId,

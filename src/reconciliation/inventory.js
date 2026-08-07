@@ -71,7 +71,8 @@ export class InventoryService {
           const portListeners = listeners.filter((listener) => listener.port === port);
           const ownership = await this.#ownership(run, portListeners);
           const docker =
-            this.dockerAdapter === null || portListeners.length === 0
+            this.dockerAdapter === null ||
+            (portListeners.length === 0 && run?.bindingKind !== 'docker')
               ? null
               : publicDockerEvidence(await this.dockerAdapter.findPublishedPort(port));
 

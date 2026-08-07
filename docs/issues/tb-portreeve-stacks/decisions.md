@@ -243,3 +243,37 @@ Add a read-only stack status operation under the existing stack-activations-v1 c
 Reconstruct status from history in the desktop - rejected because history is an audit trail rather than a current-state index; add database access to the desktop - rejected by the existing trust boundary; show only definitions and prepared results from the current desktop session - rejected because the desktop must inspect stacks created by project launchers and survive restarts.
 
 **Promoted:** 2026-08-06. PR: #12.
+
+---
+
+## Make the assembled mixed-stack smoke launcher-owned and release-gated
+
+**Confidence:** HIGH
+
+**Blast Radius:** Native verification script, package scripts, Linux release jobs, mixed-stack example, and feature-final evidence
+
+Add one explicit native verification harness that acts as a temporary trusted project launcher. It starts a disposable process listener and a uniquely named disposable Docker container, but it drives Portreeve exclusively through the official client and validates apply, prepare, mixed activation confirmation, scoped resolution, redacted snapshot publication and reading, current status, live-provider refusal, reconciliation, ending, pruning, and retained history. It owns exact cleanup for everything it creates. Run it manually on macOS Docker Desktop and in both Linux native release jobs; keep it out of the ordinary source test command because Docker is an optional runtime capability.
+
+**Triggered by:** P8 requires one representative process-plus-Docker lifecycle across every public coordination phase without transferring project lifecycle authority to Portreeve
+
+**Alternatives considered:**
+Extend Portreeve itself with a stack launcher - rejected because application lifecycle remains project-owned; rely only on isolated deterministic tests - rejected because P8 requires assembled native evidence; run the native smoke on every macOS GitHub runner - rejected because hosted macOS runners do not provide the Docker Desktop environment required by the product contract
+
+**Promoted:** 2026-08-07. PR: #13.
+
+---
+
+## Treat exact Docker publication as authoritative without requiring an lsof listener
+
+**Confidence:** HIGH
+
+**Blast Radius:** Docker activation confirmation, known-run inventory classification, deterministic and native integration tests, and Docker evidence documentation
+
+Confirm Docker endpoints from fresh exact container inspection: running state, Portreeve activation labels, loopback host publication, allocated host port, and declared container port. Keep an observable lsof listener as corroborating inventory evidence, but do not require one because Linux Docker Engine may implement publication through kernel NAT without a userspace LISTEN socket. Query Docker evidence for a known Docker run even when lsof returns no listener so inventory can still classify the claimed port as docker-managed. Process-backed confirmation and reclamation continue to require fresh lsof evidence.
+
+**Triggered by:** The P8 native mixed-stack release gate passed on macOS Docker Desktop but failed identically on Linux x64 and ARM64 after the container became HTTP-reachable because lsof correctly reported no userspace listener
+
+**Alternatives considered:**
+Require Docker's optional userland proxy in every supported Linux environment - rejected because Portreeve must support ordinary Docker Engine configuration; treat successful HTTP fetch as authority - rejected because application health is launcher-owned and a response does not prove container identity; keep the listener requirement and drop Linux verification - rejected because it would preserve a known false portability claim
+
+**Promoted:** 2026-08-07. PR: #13.
