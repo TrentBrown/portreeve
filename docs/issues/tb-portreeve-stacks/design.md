@@ -172,9 +172,9 @@ changing logical endpoint identity. The launcher starts a container with labels 
 stack, component, endpoint, definition revision, generation, and activation, then
 submits its container ID during confirmation. Portreeve performs fresh host-side Docker
 inspection and verifies the running container, labels, published host port, declared
-container port, and any listener evidence the platform exposes. Linux kernel-NAT
-publication does not require a userspace listener. Process-lineage rules are never
-applied to Docker's shared backend.
+container port. Separately, inventory retains any listener evidence the platform
+exposes. Linux kernel-NAT publication does not require a userspace listener.
+Process-lineage rules are never applied to Docker's shared backend.
 
 Docker inspection uses an adapter interface. The initial adapter invokes a trusted
 installed `docker` CLI and configured Docker context on macOS Docker Desktop or Linux
