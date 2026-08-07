@@ -105,3 +105,133 @@ export function inventoryEntry() {
     ],
   };
 }
+
+export function stackStatus() {
+  return {
+    stack: {
+      id: '44444444-4444-4444-8444-444444444444',
+      project: 'caregiver',
+      workspaceRoot: '/Users/example/Code/caregiver-secret-worktree',
+      currentRevision: 'b'.repeat(64),
+      definition: {
+        version: 1,
+        project: 'caregiver',
+        components: {
+          api: {
+            endpoints: {
+              default: {
+                transport: 'tcp',
+                publish: true,
+                required: true,
+                allocation: { preferredPort: 4100 },
+              },
+            },
+            dependencies: {},
+          },
+          website: {
+            endpoints: {
+              default: {
+                transport: 'tcp',
+                publish: true,
+                required: true,
+                allocation: {},
+                docker: { containerPort: 3000 },
+              },
+            },
+            dependencies: {
+              backend: {
+                component: 'api',
+                endpoint: 'default',
+                required: true,
+              },
+            },
+            docker: { service: 'website' },
+          },
+        },
+      },
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      lastUsedAt: timestamp,
+    },
+    generation: {
+      id: '55555555-5555-4555-8555-555555555555',
+      stackId: '44444444-4444-4444-8444-444444444444',
+      revision: 'b'.repeat(64),
+      state: 'valid',
+      endpoints: [
+        {
+          claimId: '11111111-1111-4111-8111-111111111111',
+          component: 'api',
+          endpoint: 'default',
+          transport: 'tcp',
+          host: '127.0.0.1',
+          port: 4100,
+          required: true,
+        },
+      ],
+      createdAt: timestamp,
+      invalidatedAt: null,
+    },
+    activation: {
+      id: '66666666-6666-4666-8666-666666666666',
+      stackId: '44444444-4444-4444-8444-444444444444',
+      generationId: '55555555-5555-4555-8555-555555555555',
+      state: 'confirmed',
+      endpoints: [
+        {
+          component: 'api',
+          endpoint: 'default',
+          claimId: '11111111-1111-4111-8111-111111111111',
+          port: 4100,
+          required: true,
+          bindingKind: 'process',
+          state: 'confirmed',
+          leaseId: '77777777-7777-4777-8777-777777777777',
+          runId: '88888888-8888-4888-8888-888888888888',
+          expiresAt: null,
+          failureReason: null,
+          updatedAt: timestamp,
+        },
+      ],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      confirmedAt: timestamp,
+      endedAt: null,
+    },
+    providers: [
+      {
+        component: 'api',
+        endpoint: 'default',
+        port: 4100,
+        bindingKind: 'process',
+        status: 'active',
+        reason: 'listener matches the confirmed run',
+        listeners: 1,
+        runId: '88888888-8888-4888-8888-888888888888',
+        containerId: null,
+      },
+    ],
+    resolutions: [
+      {
+        component: 'website',
+        resolution: {
+          schemaVersion: 1,
+          definitionRevision: 'b'.repeat(64),
+          generationId: '55555555-5555-4555-8555-555555555555',
+          activationId: '66666666-6666-4666-8666-666666666666',
+          component: 'website',
+          own: {},
+          dependencies: {
+            backend: {
+              component: 'api',
+              endpoint: 'default',
+              host: { transport: 'tcp', host: '127.0.0.1', port: 4100 },
+              dockerNetwork: null,
+            },
+          },
+        },
+        error: null,
+      },
+    ],
+  };
+}

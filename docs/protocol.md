@@ -147,6 +147,7 @@ policy.
 | `GET /v1/stacks/{stackId}`                 | Read one applied stack and its normalized current definition                                                                         |
 | `POST /v1/stacks/apply`                    | Validate and atomically apply a definition; requires `stack-definitions-v1`                                                          |
 | `POST /v1/stacks/prune`                    | Preview or delete old missing-worktree stacks with fresh evidence revalidation                                                       |
+| `POST /v1/stacks/{stackId}/status`         | Read the current definition plus latest generation, activation, and fresh provider evidence                                          |
 | `POST /v1/stacks/{stackId}/prepare`        | Create or reuse a complete immutable allocation generation; requires `stack-activations-v1`                                          |
 | `POST /v1/stack-activations/begin`         | Create one activation and atomically lease its selected endpoints                                                                    |
 | `GET /v1/stack-activations/{id}`           | Inspect activation and endpoint states without returning lease tokens                                                                |

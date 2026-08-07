@@ -2,7 +2,16 @@
 
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { app, BrowserWindow, ipcMain, protocol, session, shell } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  dialog,
+  ipcMain,
+  protocol,
+  session,
+  shell,
+} from 'electron';
 import { PortreeveClient } from 'portreeve';
 import {
   resolveBundledReleaseCandidate,
@@ -11,6 +20,7 @@ import {
 import { createLifecycleAdapter } from './cli-adapter.js';
 import { createStateCoordinator } from './coordinator.js';
 import { createInventoryAdapter } from './inventory-adapter.js';
+import { createStackAdapter } from './stack-adapter.js';
 import { registerDesktopIpc } from './ipc.js';
 import { registerRendererProtocol } from './protocol.js';
 import { createUpdateAdapter } from './update.js';
@@ -69,10 +79,22 @@ async function startDesktop() {
           : {}),
       });
   diagnose('artifact-verified', artifact.filename);
+  const client = new PortreeveClient();
   const coordinator = createStateCoordinator({
     artifact: { ...artifact, desktopVersion: app.getVersion() },
     lifecycle: createLifecycleAdapter({ executablePath: artifact.executablePath }),
-    inventory: createInventoryAdapter(new PortreeveClient()),
+    inventory: createInventoryAdapter(client),
+    stacks: createStackAdapter(client, {
+      async selectDefinitionFile() {
+        const selection = await dialog.showOpenDialog({
+          title: 'Apply a Portreeve stack definition',
+          buttonLabel: 'Apply definition',
+          properties: ['openFile'],
+          filters: [{ name: 'JSON stack definitions', extensions: ['json'] }],
+        });
+        return selection.canceled ? null : (selection.filePaths[0] ?? null);
+      },
+    }),
     updates: createUpdateAdapter({
       desktopVersion: app.getVersion(),
       statePath: desktopUpdateStatePath(app.getPath('userData')),
@@ -83,6 +105,7 @@ async function startDesktop() {
     ipcMain,
     coordinator,
     windows: () => BrowserWindow.getAllWindows(),
+    writeClipboard: (text) => clipboard.writeText(text),
   });
 
   const window = new BrowserWindow(

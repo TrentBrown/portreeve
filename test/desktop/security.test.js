@@ -52,8 +52,10 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
     'apps/desktop/main/index.js',
     'apps/desktop/main/cli-adapter.js',
     'apps/desktop/main/inventory-adapter.js',
+    'apps/desktop/main/stack-adapter.js',
     'apps/desktop/main/update.js',
     'apps/desktop/preload/index.cjs',
+    'apps/desktop/renderer/renderer.js',
   ];
   const source = (await Promise.all(files.map((file) => readFile(file, 'utf8')))).join(
     '\n',
@@ -66,6 +68,8 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
   expect(source).toContain('executablePath: artifact.executablePath');
   expect(source).toContain('openDownloadPage: async () =>');
   expect(source).not.toContain('openDownloadPage: async (url) =>');
+  expect(source.match(/clipboard\.writeText/g)).toHaveLength(1);
+  expect(source).not.toContain('navigator.clipboard');
 });
 
 test('sets a distinct Electron user-data root before startup', async () => {

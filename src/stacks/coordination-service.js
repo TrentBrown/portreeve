@@ -25,6 +25,8 @@ import {
   StackRenewActivationRequestSchema,
   StackRenewActivationResponseSchema,
   StackSkipEndpointRequestSchema,
+  StackStatusRequestSchema,
+  StackStatusSchema,
   negotiateCompatibility,
 } from '../protocol/schemas.js';
 import { InventoryService } from '../reconciliation/inventory.js';
@@ -569,6 +571,22 @@ export class StackCoordinationService {
       );
     }
     return StackGenerationSchema.parse(generation);
+  }
+
+  /** @param {string} stackId @param {unknown} input */
+  async status(stackId, input) {
+    const request = StackStatusRequestSchema.parse(input);
+    assertCompatible(request.client);
+    this.registry.expirePendingLeases(this.now());
+    const stack = this.registry.getStack(stackId);
+    if (stack === null) {
+      throw new RegistryError('not_found', `Stack ${stackId} was not found.`);
+    }
+    const generation = this.registry.getLatestStackGenerationForStack(stack.id);
+    const activation = this.registry.getLatestStackActivationForStack(stack.id);
+    const providers =
+      activation === null ? [] : await this.inspectProviders(activation.id);
+    return StackStatusSchema.parse({ stack, generation, activation, providers });
   }
 
   /** @param {string} activationId @param {unknown} input */

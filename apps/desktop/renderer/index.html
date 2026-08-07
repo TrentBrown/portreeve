@@ -18,6 +18,7 @@
     <nav aria-label="Primary">
       <button class="tab active" type="button" data-view="overview">Overview</button>
       <button class="tab" type="button" data-view="ports">Ports</button>
+      <button class="tab" type="button" data-view="stacks">Stacks</button>
     </nav>
     <main>
       <p id="notice" class="notice" role="status">Loading Portreeve status…</p>
@@ -107,6 +108,32 @@
           </aside>
         </div>
       </section>
+      <section id="stacks" aria-labelledby="stacks-title" hidden>
+        <div class="section-heading">
+          <div>
+            <h2 id="stacks-title">Stacks</h2>
+            <p>
+              Persistent definitions and current Portreeve coordination evidence.
+              Project processes and containers remain launcher-owned.
+            </p>
+          </div>
+          <div class="actions">
+            <button id="apply-stack-definition" class="primary" type="button">
+              Apply definition…
+            </button>
+            <button id="preview-stack-prune" type="button">Prune stale stacks…</button>
+          </div>
+        </div>
+        <div class="stacks-grid">
+          <div id="stack-list" class="stack-list" aria-label="Known stacks"></div>
+          <aside id="stack-detail" class="panel stack-detail" aria-live="polite">
+            <h3>Stack details</h3>
+            <p class="muted">
+              Select a stack to inspect its current coordination state.
+            </p>
+          </aside>
+        </div>
+      </section>
     </main>
 
     <dialog id="confirmation-dialog" aria-labelledby="confirmation-title">
@@ -136,6 +163,40 @@
           <button id="purge-accept" class="danger" value="confirm" disabled>
             Delete all data
           </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="stack-prune-dialog" aria-labelledby="stack-prune-title">
+      <form method="dialog">
+        <h2 id="stack-prune-title">Prune stale stacks</h2>
+        <p id="stack-prune-summary"></p>
+        <div id="stack-prune-blocked" class="refusals" hidden></div>
+        <ul id="stack-prune-candidates" class="path-list"></ul>
+        <label for="stack-prune-confirmation">
+          Type <strong>PRUNE</strong> to remove the previewed records
+        </label>
+        <input id="stack-prune-confirmation" type="text" autocomplete="off" />
+        <div class="dialog-actions">
+          <button value="cancel">Cancel</button>
+          <button id="stack-prune-accept" class="danger" value="confirm" disabled>
+            Prune stacks
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="snapshot-dialog" aria-labelledby="snapshot-title">
+      <form method="dialog">
+        <h2 id="snapshot-title">Discovery snapshot preview</h2>
+        <p>
+          This is a credential-free preview. Portreeve does not write it or launch the
+          component.
+        </p>
+        <pre id="snapshot-content" class="snapshot-content"></pre>
+        <div class="dialog-actions">
+          <button id="copy-snapshot" type="button">Copy JSON</button>
+          <button value="cancel">Close</button>
         </div>
       </form>
     </dialog>

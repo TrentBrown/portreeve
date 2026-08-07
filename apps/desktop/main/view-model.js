@@ -5,7 +5,7 @@ import { DesktopSnapshotSchema } from '../shared/schemas.js';
 import { NOT_CHECKED_UPDATE_STATE } from './update.js';
 
 /**
- * @param {{artifact: {source: 'local-release-candidate'|'published', desktopVersion: string, version: string, filename: string, sha256: string}, update?: unknown, lifecycle: unknown, ports: unknown[], errors?: unknown[], refreshedAt: string, stale?: boolean, lastSuccessfulAt?: string|null}} input
+ * @param {{artifact: {source: 'local-release-candidate'|'published', desktopVersion: string, version: string, filename: string, sha256: string}, update?: unknown, lifecycle: unknown, ports: unknown[], stacks?: unknown[], errors?: unknown[], refreshedAt: string, stale?: boolean, lastSuccessfulAt?: string|null}} input
  */
 export function createDesktopSnapshot(input) {
   const lifecycle = /** @type {any} */ (input.lifecycle);
@@ -50,8 +50,130 @@ export function createDesktopSnapshot(input) {
             limitations: lifecycle.limitations,
           },
     ports: input.ports.map(reducePort),
+    stacks: (input.stacks ?? []).map(reduceStack),
     errors: input.errors ?? [],
   });
+}
+
+/** @param {any} status */
+function reduceStack(status) {
+  const { stack, generation, activation } = status;
+  return {
+    id: stack.id,
+    project: stack.project,
+    workspaceName: basename(stack.workspaceRoot),
+    currentRevision: stack.currentRevision,
+    createdAt: stack.createdAt,
+    updatedAt: stack.updatedAt,
+    lastUsedAt: stack.lastUsedAt,
+    components: Object.entries(stack.definition.components).map(
+      ([name, definition]) => ({
+        name,
+        dockerService: definition.docker?.service ?? null,
+        endpoints: Object.entries(definition.endpoints).map(
+          ([endpointName, endpoint]) => ({
+            name: endpointName,
+            publish: endpoint.publish,
+            required: endpoint.required,
+            preferredPort: endpoint.allocation.preferredPort ?? null,
+            exactPort: endpoint.allocation.exactPort ?? null,
+            containerPort: endpoint.docker?.containerPort ?? null,
+          }),
+        ),
+        dependencies: Object.entries(definition.dependencies).map(
+          ([alias, dependency]) => ({ alias, ...dependency }),
+        ),
+      }),
+    ),
+    generation:
+      generation === null
+        ? null
+        : {
+            id: generation.id,
+            revision: generation.revision,
+            state: generation.state,
+            createdAt: generation.createdAt,
+            invalidatedAt: generation.invalidatedAt,
+            endpoints: generation.endpoints.map((/** @type {any} */ endpoint) => ({
+              component: endpoint.component,
+              endpoint: endpoint.endpoint,
+              host: endpoint.host,
+              port: endpoint.port,
+              required: endpoint.required,
+            })),
+          },
+    activation:
+      activation === null
+        ? null
+        : {
+            id: activation.id,
+            generationId: activation.generationId,
+            state: activation.state,
+            createdAt: activation.createdAt,
+            updatedAt: activation.updatedAt,
+            confirmedAt: activation.confirmedAt,
+            endedAt: activation.endedAt,
+            endpoints: activation.endpoints.map((/** @type {any} */ endpoint) => ({
+              component: endpoint.component,
+              endpoint: endpoint.endpoint,
+              port: endpoint.port,
+              required: endpoint.required,
+              bindingKind: endpoint.bindingKind,
+              state: endpoint.state,
+              expiresAt: endpoint.expiresAt,
+              failureReason: endpoint.failureReason,
+              updatedAt: endpoint.updatedAt,
+            })),
+          },
+    providers: status.providers.map((/** @type {any} */ provider) => ({
+      component: provider.component,
+      endpoint: provider.endpoint,
+      port: provider.port,
+      bindingKind: provider.bindingKind,
+      status: provider.status,
+      reason: provider.reason,
+      listeners: provider.listeners,
+      containerId: provider.containerId,
+    })),
+    resolutions: status.resolutions.map((/** @type {any} */ entry) => ({
+      component: entry.component,
+      definitionRevision: entry.resolution?.definitionRevision ?? null,
+      generationId: entry.resolution?.generationId ?? null,
+      activationId: entry.resolution?.activationId ?? null,
+      own: reduceResolvedMap(entry.resolution?.own ?? {}),
+      dependencies: reduceResolvedMap(entry.resolution?.dependencies ?? {}),
+      error: entry.error,
+    })),
+  };
+}
+
+/** @param {Record<string, any>} entries */
+function reduceResolvedMap(entries) {
+  return Object.entries(entries).map(([alias, endpoint]) => ({ alias, ...endpoint }));
+}
+
+/** @param {any} snapshot */
+export function reduceStackEndpointSnapshot(snapshot) {
+  return {
+    schemaVersion: 1,
+    definitionRevision: snapshot.definitionRevision,
+    generationId: snapshot.generationId,
+    activationId: snapshot.activationId,
+    component: snapshot.component,
+    own: reduceSnapshotMap(snapshot.own),
+    dependencies: reduceSnapshotMap(snapshot.dependencies),
+  };
+}
+
+/** @param {Record<string, any>} entries */
+function reduceSnapshotMap(entries) {
+  return Object.entries(entries).map(([alias, endpoint]) => ({
+    alias,
+    component: endpoint.component,
+    endpoint: endpoint.endpoint,
+    host: endpoint.address,
+    dockerNetwork: null,
+  }));
 }
 
 /** @param {any} entry */

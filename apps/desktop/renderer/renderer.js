@@ -1,12 +1,23 @@
 // @ts-check
 
-import { availableActions, canUninstall, updatePresentation } from './state.js';
+import {
+  availableActions,
+  availableStackActions,
+  canUninstall,
+  stackPresentationState,
+  stackRenderSignature,
+  updatePresentation,
+} from './state.js';
 
 /** @type {any} */
 let snapshot = null;
 let filter = '';
 /** @type {number|null} */
 let selectedPort = null;
+/** @type {string|null} */
+let selectedStack = null;
+/** @type {string|null} */
+let renderedStacksSignature = null;
 let busy = false;
 
 const notice = requiredElement('notice');
@@ -24,6 +35,8 @@ const portDetail = requiredElement('port-detail');
 const operationResult = requiredElement('operation-result');
 const operationMessage = requiredElement('operation-message');
 const operationDetails = requiredElement('operation-details');
+const stackList = requiredElement('stack-list');
+const stackDetail = requiredElement('stack-detail');
 const filterInput = /** @type {HTMLInputElement} */ (requiredElement('port-filter'));
 const confirmationDialog = /** @type {HTMLDialogElement} */ (
   requiredElement('confirmation-dialog')
@@ -33,6 +46,19 @@ const purgeConfirmation = /** @type {HTMLInputElement} */ (
   requiredElement('purge-confirmation')
 );
 const purgeAccept = /** @type {HTMLButtonElement} */ (requiredElement('purge-accept'));
+const stackPruneDialog = /** @type {HTMLDialogElement} */ (
+  requiredElement('stack-prune-dialog')
+);
+const stackPruneConfirmation = /** @type {HTMLInputElement} */ (
+  requiredElement('stack-prune-confirmation')
+);
+const stackPruneAccept = /** @type {HTMLButtonElement} */ (
+  requiredElement('stack-prune-accept')
+);
+const snapshotDialog = /** @type {HTMLDialogElement} */ (
+  requiredElement('snapshot-dialog')
+);
+let snapshotJson = '';
 
 /** @type {Readonly<Record<string, {label: string, title?: string, message?: string, confirm: boolean}>>} */
 const actionDefinitions = Object.freeze({
@@ -70,6 +96,7 @@ for (const tab of document.querySelectorAll('.tab')) {
     const view = /** @type {HTMLElement} */ (tab).dataset.view;
     requiredElement('overview').hidden = view !== 'overview';
     requiredElement('ports').hidden = view !== 'ports';
+    requiredElement('stacks').hidden = view !== 'stacks';
   });
 }
 
@@ -92,6 +119,10 @@ requiredElement('uninstall').addEventListener('click', async () => {
   await invokeLifecycle('uninstall');
 });
 requiredElement('preview-purge').addEventListener('click', previewPurge);
+requiredElement('apply-stack-definition').addEventListener('click', async () => {
+  await invokeStack(() => window.portreeveDesktop.applyStackDefinition());
+});
+requiredElement('preview-stack-prune').addEventListener('click', previewStackPrune);
 openDownloadPage.addEventListener('click', async () => {
   await runBusy(async () => {
     await window.portreeveDesktop.openDownloadPage();
@@ -106,6 +137,12 @@ filterInput.addEventListener('input', () => {
 });
 purgeConfirmation.addEventListener('input', () => {
   purgeAccept.disabled = purgeConfirmation.value !== 'DELETE';
+});
+stackPruneConfirmation.addEventListener('input', () => {
+  stackPruneAccept.disabled = stackPruneConfirmation.value !== 'PRUNE';
+});
+requiredElement('copy-snapshot').addEventListener('click', async () => {
+  await copyText(snapshotJson);
 });
 
 window.portreeveDesktop.subscribe(render);
@@ -149,6 +186,7 @@ function render(next) {
   openDownloadPage.disabled = busy || !update.canOpenDownloadPage;
   renderActions();
   renderPorts();
+  renderStacks();
   if (busy) setControlsDisabled(true);
 }
 
@@ -191,10 +229,23 @@ async function invokeLifecycle(name) {
     render(result.snapshot);
     showOperation(result.message, [
       `Outcome: ${result.outcome}`,
+      ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
       ...result.steps.map(
         (/** @type {any} */ step) =>
-          `${step.operation}: ${step.outcome}${step.errorCode ? ` (${step.errorCode})` : ''}`,
+          `${step.operation}: ${step.outcome}${step.error ? ` — ${step.error.code}: ${step.error.message}` : ''}`,
       ),
+    ]);
+  });
+}
+
+/** @param {() => Promise<any>} invoke */
+async function invokeStack(invoke) {
+  await runBusy(async () => {
+    const result = await invoke();
+    render(result.snapshot);
+    showOperation(result.message, [
+      `Outcome: ${result.outcome}`,
+      ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
     ]);
   });
 }
@@ -329,6 +380,354 @@ function renderPortDetail(entry) {
   portDetail.replaceChildren(heading, claim, listenersHeading, listeners);
 }
 
+/** @param {boolean} [force] */
+function renderStacks(force = false) {
+  if (snapshot === null) return;
+  const signature = stackRenderSignature(snapshot);
+  if (!force && signature === renderedStacksSignature) return;
+  renderedStacksSignature = signature;
+  const entries = /** @type {any[]} */ (snapshot.stacks);
+  if (!entries.some(({ id }) => id === selectedStack)) selectedStack = null;
+  stackList.replaceChildren(
+    ...(entries.length === 0
+      ? [emptyStackList()]
+      : entries.map((stack) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'stack-card';
+          button.classList.toggle('selected', selectedStack === stack.id);
+          const title = document.createElement('strong');
+          title.textContent = stack.project;
+          const workspace = document.createElement('span');
+          workspace.textContent = stack.workspaceName;
+          const state = document.createElement('span');
+          const presentationState = stackPresentationState(stack);
+          state.className = `badge state-${presentationState}`;
+          state.textContent = presentationState;
+          button.append(title, workspace, state);
+          button.addEventListener('click', () => {
+            selectedStack = stack.id;
+            renderStacks(true);
+          });
+          return button;
+        })),
+  );
+  renderStackDetail(entries.find(({ id }) => id === selectedStack) ?? null);
+}
+
+function emptyStackList() {
+  const empty = document.createElement('div');
+  empty.className = 'panel empty-state';
+  empty.append(
+    paragraph('No stack definitions have been applied.'),
+    paragraph('Choose a portreeve.stack.json file to add one.'),
+  );
+  return empty;
+}
+
+/** @param {any} stack */
+function renderStackDetail(stack) {
+  const heading = document.createElement('h3');
+  heading.textContent = stack === null ? 'Stack details' : stack.project;
+  if (stack === null) {
+    const empty = paragraph(
+      'Select a stack to inspect its current coordination state.',
+    );
+    empty.className = 'muted';
+    stackDetail.replaceChildren(heading, empty);
+    return;
+  }
+  const summary = document.createElement('dl');
+  summary.className = 'definitions';
+  summary.append(
+    definition('Workspace', stack.workspaceName),
+    definition('Revision', shortId(stack.currentRevision)),
+    definition('Generation', stack.generation?.state ?? 'Not prepared'),
+    definition('Activation', stack.activation?.state ?? 'None'),
+    definition('Components', String(stack.components.length)),
+    definition('Last used', stack.lastUsedAt),
+  );
+  const actions = document.createElement('div');
+  actions.className = 'actions stack-actions';
+  const allowedActions = availableStackActions(snapshot, stack);
+  if (allowedActions.includes('prepare')) {
+    actions.append(
+      actionButton('Prepare allocation', () =>
+        invokeStack(() => window.portreeveDesktop.prepareStack(stack.id)),
+      ),
+    );
+  }
+  if (allowedActions.includes('reconcile')) {
+    actions.append(
+      actionButton('Reconcile evidence', () =>
+        invokeStack(() => window.portreeveDesktop.reconcileStack(stack.activation.id)),
+      ),
+      actionButton(
+        'End activation',
+        async () => {
+          if (
+            await confirmAction(
+              'End this stack activation?',
+              'Portreeve will verify current provider evidence and release its coordination records. It will not stop project processes or containers.',
+              'End activation',
+            )
+          ) {
+            await invokeStack(() =>
+              window.portreeveDesktop.endStack(stack.activation.id),
+            );
+          }
+        },
+        'danger',
+      ),
+    );
+  }
+  if (allowedActions.length === 0) {
+    const withheld = paragraph(
+      'Stack mutations are withheld until current stack evidence is available.',
+    );
+    withheld.className = 'muted';
+    actions.append(withheld);
+  }
+  const componentHeading = document.createElement('h4');
+  componentHeading.textContent = 'Components and endpoints';
+  const components = document.createElement('div');
+  components.className = 'component-list';
+  components.replaceChildren(
+    ...stack.components.map((/** @type {any} */ component) =>
+      renderComponent(stack, component),
+    ),
+  );
+  const evidenceHeading = document.createElement('h4');
+  evidenceHeading.textContent = 'Provider evidence';
+  const evidence = document.createElement('div');
+  evidence.className = 'evidence-list';
+  evidence.replaceChildren(
+    ...(stack.providers.length === 0
+      ? [paragraph('No live provider evidence is available for this stack.')]
+      : stack.providers.map((/** @type {any} */ provider) => {
+          const item = document.createElement('article');
+          item.append(
+            paragraph(
+              `${provider.component}.${provider.endpoint} — ${provider.status} on ${provider.port}`,
+            ),
+            paragraph(
+              `${provider.bindingKind}; ${provider.listeners} listener${provider.listeners === 1 ? '' : 's'}; ${provider.reason}`,
+            ),
+          );
+          return item;
+        })),
+  );
+  stackDetail.replaceChildren(
+    heading,
+    summary,
+    actions,
+    componentHeading,
+    components,
+    evidenceHeading,
+    evidence,
+  );
+}
+
+/** @param {any} stack @param {any} component */
+function renderComponent(stack, component) {
+  const details = document.createElement('details');
+  details.className = 'component';
+  const summary = document.createElement('summary');
+  summary.textContent = `${component.name}${component.dockerService ? ` — Docker service ${component.dockerService}` : ''}`;
+  const body = document.createElement('div');
+  body.className = 'component-body';
+  const definitionList = document.createElement('ul');
+  definitionList.className = 'endpoint-list';
+  definitionList.replaceChildren(
+    ...component.endpoints.map((/** @type {any} */ endpoint) => {
+      const allocation = endpoint.exactPort
+        ? `exact ${endpoint.exactPort}`
+        : endpoint.preferredPort
+          ? `preferred ${endpoint.preferredPort}`
+          : 'automatic';
+      const docker = endpoint.containerPort
+        ? `, container ${endpoint.containerPort}`
+        : '';
+      const item = document.createElement('li');
+      item.textContent = `${endpoint.name}: ${allocation}${docker}; ${endpoint.required ? 'required' : 'optional'}${endpoint.publish ? '' : '; private'}`;
+      return item;
+    }),
+    ...component.dependencies.map((/** @type {any} */ dependency) => {
+      const item = document.createElement('li');
+      item.textContent = `${dependency.alias} → ${dependency.component}.${dependency.endpoint} (${dependency.required ? 'required' : 'optional'})`;
+      return item;
+    }),
+  );
+  const resolution = stack.resolutions.find(
+    (/** @type {any} */ entry) => entry.component === component.name,
+  );
+  const addresses = document.createElement('div');
+  addresses.className = 'address-list';
+  if (resolution?.error) {
+    addresses.append(
+      paragraph(`${resolution.error.code}: ${resolution.error.message}`),
+    );
+  } else if (resolution) {
+    for (const endpoint of [...resolution.own, ...resolution.dependencies]) {
+      addresses.append(addressLine(endpoint));
+    }
+  } else {
+    addresses.append(
+      paragraph('Addresses become available after activation confirmation.'),
+    );
+  }
+  if (
+    stack.activation !== null &&
+    ['confirmed', 'degraded'].includes(stack.activation.state)
+  ) {
+    const snapshotControls = document.createElement('div');
+    snapshotControls.className = 'snapshot-controls';
+    const gateway = document.createElement('input');
+    gateway.type = 'text';
+    gateway.value = 'host.docker.internal';
+    gateway.setAttribute('aria-label', `Gateway host for ${component.name}`);
+    snapshotControls.append(
+      gateway,
+      actionButton('Preview discovery JSON', async () => {
+        await runBusy(async () => {
+          const result = await window.portreeveDesktop.previewStackSnapshot(
+            stack.activation.id,
+            component.name,
+            gateway.value,
+          );
+          snapshotJson = JSON.stringify(snapshotDocument(result), null, 2);
+          requiredElement('snapshot-content').textContent = snapshotJson;
+          snapshotDialog.showModal();
+        });
+      }),
+    );
+    body.append(definitionList, addresses, snapshotControls);
+  } else {
+    body.append(definitionList, addresses);
+  }
+  details.append(summary, body);
+  return details;
+}
+
+/** @param {any} endpoint */
+function addressLine(endpoint) {
+  const row = document.createElement('div');
+  row.className = 'address-row';
+  const label = document.createElement('span');
+  label.textContent = `${endpoint.alias} (${endpoint.component}.${endpoint.endpoint})`;
+  const address = `${endpoint.host.host}:${endpoint.host.port}`;
+  const value = document.createElement('code');
+  value.textContent = address;
+  row.append(
+    label,
+    value,
+    actionButton('Copy', () => copyText(address)),
+  );
+  if (endpoint.dockerNetwork !== null) {
+    const dockerAddress = `${endpoint.dockerNetwork.host}:${endpoint.dockerNetwork.port}`;
+    const dockerValue = document.createElement('code');
+    dockerValue.textContent = dockerAddress;
+    row.append(
+      dockerValue,
+      actionButton('Copy Docker', () => copyText(dockerAddress)),
+    );
+  }
+  return row;
+}
+
+async function previewStackPrune() {
+  await runBusy(async () => {
+    const preview = await window.portreeveDesktop.previewStackPrune();
+    requiredElement('stack-prune-summary').textContent =
+      `${preview.candidates.length} stack${preview.candidates.length === 1 ? '' : 's'} older than ${preview.olderThanDays} days with missing worktrees can be removed.`;
+    requiredElement('stack-prune-candidates').replaceChildren(
+      ...preview.candidates.map((/** @type {any} */ candidate) => {
+        const item = document.createElement('li');
+        item.textContent = `${candidate.project} (${candidate.workspaceName}) — ${candidate.claimCount} claim${candidate.claimCount === 1 ? '' : 's'}`;
+        return item;
+      }),
+    );
+    const blocked = requiredElement('stack-prune-blocked');
+    blocked.replaceChildren(
+      ...preview.blocked.map((/** @type {any} */ entry) =>
+        paragraph(
+          `${entry.project} (${entry.workspaceName}): ${entry.reasons.join('; ')}`,
+        ),
+      ),
+    );
+    blocked.hidden = preview.blocked.length === 0;
+    stackPruneConfirmation.value = '';
+    stackPruneConfirmation.disabled = preview.candidates.length === 0;
+    stackPruneAccept.disabled = true;
+    stackPruneDialog.showModal();
+    if ((await dialogResult(stackPruneDialog)) !== 'confirm') return;
+    const result = await window.portreeveDesktop.executeStackPrune(
+      stackPruneConfirmation.value,
+    );
+    render(result.snapshot);
+    showOperation(result.message, [
+      `Outcome: ${result.outcome}`,
+      `Deleted stacks: ${result.deletedStacks}`,
+      `Deleted claims: ${result.deletedClaims}`,
+      ...result.skipped.map(
+        (/** @type {any} */ entry) => `Skipped ${entry.stackId}: ${entry.reason}`,
+      ),
+    ]);
+  });
+}
+
+/** @param {string} label @param {() => void|Promise<void>} invoke @param {string} [className] */
+function actionButton(label, invoke, className = '') {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = label;
+  button.className = className;
+  button.disabled = busy;
+  button.addEventListener('click', invoke);
+  return button;
+}
+
+/** @param {any} snapshot */
+function snapshotDocument(snapshot) {
+  const endpointMap = (/** @type {any[]} */ entries) =>
+    Object.fromEntries(
+      entries.map((entry) => [
+        entry.alias,
+        {
+          component: entry.component,
+          endpoint: entry.endpoint,
+          address: entry.host,
+        },
+      ]),
+    );
+  return {
+    schemaVersion: snapshot.schemaVersion,
+    definitionRevision: snapshot.definitionRevision,
+    generationId: snapshot.generationId,
+    activationId: snapshot.activationId,
+    component: snapshot.component,
+    own: endpointMap(snapshot.own),
+    dependencies: endpointMap(snapshot.dependencies),
+  };
+}
+
+/** @param {string} value */
+async function copyText(value) {
+  try {
+    await window.portreeveDesktop.copyText(value);
+    showOperation('Copied to the clipboard.', []);
+  } catch {
+    showOperation('Clipboard access was unavailable.', [
+      'Select the visible value and copy it manually.',
+    ]);
+  }
+}
+
+/** @param {string} value */
+function shortId(value) {
+  return value.slice(0, 12);
+}
+
 /** @param {any} listener */
 function listenerDetail(listener) {
   const article = document.createElement('article');
@@ -391,14 +790,17 @@ async function runBusy(work) {
   setControlsDisabled(true);
   try {
     await work();
-  } catch {
+  } catch (error) {
     showOperation('The operation could not be completed.', [
-      'Refresh Portreeve evidence, then try again.',
+      error instanceof Error && error.message.trim() !== ''
+        ? error.message
+        : 'Refresh Portreeve evidence, then try again.',
     ]);
   } finally {
     busy = false;
     setControlsDisabled(false);
     renderActions();
+    renderStacks();
   }
 }
 

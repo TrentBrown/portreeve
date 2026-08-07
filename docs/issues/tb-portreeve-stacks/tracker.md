@@ -14,7 +14,7 @@
 | R5  | Compatibility and migration | PASS    | #7    | Legacy aliases and relational migration pass                  |
 | R6  | Safety and recovery         | PASS    | #10-#11 | Docker refusal, recovery, consent, and revalidation pass      |
 | R7  | Client, CLI, and protocol   | PASS    | #7-#11 | Complete capability-gated coordination contract               |
-| R8  | Desktop                     | NOT YET | -     | Planned for P7 / I-6                                          |
+| R8  | Desktop                     | PASS    | #12   | Safe stack inspection/actions and actionable failures pass    |
 
 ## PR Log
 
@@ -85,7 +85,7 @@ Append PR boundary entries here.
 ### PR #11 - Activation recovery and safe stack pruning
 
 - **PR:** [#11](https://github.com/TrentBrown/portreeve/pull/11)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P6 fresh process and Docker provider reconciliation, persisted non-live
   lost activations, evidence-gated ending, previewed and consent-gated missing-worktree
   stack pruning, execution-time revalidation, atomic coordination/claim deletion,
@@ -98,3 +98,20 @@ Append PR boundary entries here.
   no remaining findings. The pinned Bun 1.3.14 gate passes all 214 tests with 865
   assertions. Desktop Stacks controls and actionable GUI failure details remain R8 in
   I-6/P7.
+- **Merged:** `3ecd8a5` on 2026-08-06.
+
+### PR #12 - Desktop stack coordination
+
+- **PR:** [#12](https://github.com/TrentBrown/portreeve/pull/12)
+- **Status:** in review
+- **Scope:** P7 desktop Stacks views, definition apply, preparation, reconciliation,
+  evidence-gated activation ending, snapshot/address copy, previewed confirmed pruning,
+  actionable failures, and the aggregate read-only stack-status surface used by the
+  desktop adapter.
+- **Evidence packet:** [pr-12](pr-12/)
+- **Result:** R8 passes. The pinned Bun 1.3.14 gate passes all 224 tests with 908
+  assertions; the standalone release and macOS ARM64 desktop package build; and the
+  packaged app applied a temporary definition and prepared its generation before the
+  test stack and claims were pruned. Independent judge: PASS WITH CONCERNS; code review:
+  PASS with no remaining findings. Native Linux and assembled mixed-stack release
+  verification remain I-7/P8.

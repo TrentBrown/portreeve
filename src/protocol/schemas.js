@@ -420,6 +420,17 @@ export const StackReconcileActivationResponseSchema = z.object({
   providers: z.array(StackProviderEvidenceSchema),
 });
 
+export const StackStatusRequestSchema = z.object({
+  client: ClientCompatibilitySchema,
+});
+
+export const StackStatusSchema = z.object({
+  stack: StackRecordSchema,
+  generation: StackGenerationSchema.nullable(),
+  activation: StackActivationSchema.nullable(),
+  providers: z.array(StackProviderEvidenceSchema),
+});
+
 export const StackPruneRequestSchema = z.object({
   client: ClientCompatibilitySchema,
   olderThanMilliseconds: z.number().int().min(0).max(315_576_000_000),

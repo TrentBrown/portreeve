@@ -16,6 +16,14 @@ const channels = Object.freeze({
   previewPurge: 'portreeve:desktop:preview-purge',
   executePurge: 'portreeve:desktop:execute-purge',
   openDownloadPage: 'portreeve:desktop:open-download-page',
+  applyStackDefinition: 'portreeve:desktop:apply-stack-definition',
+  prepareStack: 'portreeve:desktop:prepare-stack',
+  reconcileStack: 'portreeve:desktop:reconcile-stack',
+  endStack: 'portreeve:desktop:end-stack',
+  previewStackPrune: 'portreeve:desktop:preview-stack-prune',
+  executeStackPrune: 'portreeve:desktop:execute-stack-prune',
+  previewStackSnapshot: 'portreeve:desktop:preview-stack-snapshot',
+  copyText: 'portreeve:desktop:copy-text',
 });
 
 function requireSnapshot(value) {
@@ -24,6 +32,7 @@ function requireSnapshot(value) {
     value === null ||
     value.schemaVersion !== 1 ||
     !Array.isArray(value.ports) ||
+    !Array.isArray(value.stacks) ||
     !Array.isArray(value.errors)
   ) {
     throw new Error('The main process returned an invalid desktop snapshot.');
@@ -68,6 +77,44 @@ function requireOpenDownloadResult(value) {
   return value;
 }
 
+function requireCopyTextResult(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    value.copied !== true
+  ) {
+    throw new Error('The main process returned an invalid clipboard result.');
+  }
+  return value;
+}
+
+function requireStackSnapshot(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    !Array.isArray(value.own) ||
+    !Array.isArray(value.dependencies)
+  ) {
+    throw new Error('The main process returned an invalid stack snapshot.');
+  }
+  return value;
+}
+
+function requireStackPrunePreview(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    !Array.isArray(value.candidates) ||
+    !Array.isArray(value.blocked)
+  ) {
+    throw new Error('The main process returned an invalid stack prune preview.');
+  }
+  return value;
+}
+
 contextBridge.exposeInMainWorld(
   'portreeveDesktop',
   Object.freeze({
@@ -94,6 +141,30 @@ contextBridge.exposeInMainWorld(
       ),
     openDownloadPage: async () =>
       requireOpenDownloadResult(await ipcRenderer.invoke(channels.openDownloadPage)),
+    applyStackDefinition: async () =>
+      requireMutationResult(await ipcRenderer.invoke(channels.applyStackDefinition)),
+    prepareStack: async (id) =>
+      requireMutationResult(await ipcRenderer.invoke(channels.prepareStack, { id })),
+    reconcileStack: async (id) =>
+      requireMutationResult(await ipcRenderer.invoke(channels.reconcileStack, { id })),
+    endStack: async (id) =>
+      requireMutationResult(await ipcRenderer.invoke(channels.endStack, { id })),
+    previewStackPrune: async () =>
+      requireStackPrunePreview(await ipcRenderer.invoke(channels.previewStackPrune)),
+    executeStackPrune: async (confirmation) =>
+      requireMutationResult(
+        await ipcRenderer.invoke(channels.executeStackPrune, { confirmation }),
+      ),
+    previewStackSnapshot: async (activationId, component, gatewayHost) =>
+      requireStackSnapshot(
+        await ipcRenderer.invoke(channels.previewStackSnapshot, {
+          activationId,
+          component,
+          gatewayHost,
+        }),
+      ),
+    copyText: async (text) =>
+      requireCopyTextResult(await ipcRenderer.invoke(channels.copyText, { text })),
     subscribe(callback) {
       if (typeof callback !== 'function') {
         throw new TypeError('Snapshot subscriber must be a function.');

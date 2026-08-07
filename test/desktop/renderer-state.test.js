@@ -3,8 +3,11 @@
 import { expect, test } from 'bun:test';
 import {
   availableActions,
+  availableStackActions,
   canUninstall,
   compareVersions,
+  stackPresentationState,
+  stackRenderSignature,
   updatePresentation,
 } from '../../apps/desktop/renderer/state.js';
 import { createDesktopSnapshot } from '../../apps/desktop/main/view-model.js';
@@ -71,6 +74,54 @@ test('derives only state-appropriate service actions', () => {
   expect(compareVersions('0.1.0-rc.10', '0.1.0-rc.2')).toBeGreaterThan(0);
   expect(compareVersions('0.1.0-alpha', '0.1.0-1')).toBeGreaterThan(0);
   expect(compareVersions('0.1.0+desktop.1', '0.1.0+cli.9')).toBe(0);
+});
+
+test('withholds stack mutations on stale evidence and never invents launcher actions', () => {
+  const active = { activation: { state: 'confirmed' } };
+  expect(availableStackActions({ errors: [] }, active)).toEqual([
+    'prepare',
+    'reconcile',
+    'end',
+  ]);
+  expect(
+    availableStackActions(
+      { errors: [{ source: 'stacks', code: 'unavailable' }] },
+      active,
+    ),
+  ).toEqual([]);
+  expect(availableStackActions({ errors: [] }, { activation: null })).toEqual([
+    'prepare',
+  ]);
+  expect(stackPresentationState({ generation: null, activation: null })).toBe(
+    'defined',
+  );
+  expect(stackPresentationState({ generation: {}, activation: null })).toBe('prepared');
+  expect(
+    stackPresentationState({ generation: {}, activation: { state: 'degraded' } }),
+  ).toBe('degraded');
+});
+
+test('keeps stack rendering stable across evidence timestamps while noticing material changes', () => {
+  const stack = { id: 'stack-1', project: 'demo' };
+  const initial = {
+    stacks: [stack],
+    errors: [],
+    refreshedAt: '2026-08-06T10:00:00.000Z',
+  };
+  const later = {
+    ...initial,
+    refreshedAt: '2026-08-06T10:00:05.000Z',
+  };
+  expect(stackRenderSignature(later)).toBe(stackRenderSignature(initial));
+  expect(
+    stackRenderSignature({ ...later, stacks: [{ ...stack, project: 'next' }] }),
+  ).not.toBe(stackRenderSignature(initial));
+  expect(
+    stackRenderSignature({
+      ...later,
+      errors: [{ source: 'stacks', code: 'unavailable' }],
+    }),
+  ).not.toBe(stackRenderSignature(initial));
 });
 
 test('presents update discovery without implying automatic installation', () => {

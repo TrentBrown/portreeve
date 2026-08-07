@@ -639,6 +639,22 @@ export class Registry {
     return row === null ? null : this.getStackGeneration(row.id);
   }
 
+  /** @param {string} stackId */
+  getLatestStackGenerationForStack(stackId) {
+    const id = IdentifierSchema.parse(stackId);
+    const row = /** @type {{id: string}|null} */ (
+      this.database
+        .query(
+          `SELECT id FROM stack_generations
+           WHERE stack_id = $stackId
+           ORDER BY created_at DESC, rowid DESC
+           LIMIT 1`,
+        )
+        .get({ stackId: id })
+    );
+    return row === null ? null : this.getStackGeneration(row.id);
+  }
+
   /**
    * @param {{
    *   stackId: string,
@@ -934,6 +950,22 @@ export class Registry {
            WHERE stack_id = $stackId
              AND state IN ('starting', 'confirmed', 'degraded')
            ORDER BY created_at DESC
+           LIMIT 1`,
+        )
+        .get({ stackId: id })
+    );
+    return row === null ? null : this.getStackActivation(row.id);
+  }
+
+  /** @param {string} stackId */
+  getLatestStackActivationForStack(stackId) {
+    const id = IdentifierSchema.parse(stackId);
+    const row = /** @type {{id: string} | null} */ (
+      this.database
+        .query(
+          `SELECT id FROM stack_activations
+           WHERE stack_id = $stackId
+           ORDER BY created_at DESC, rowid DESC
            LIMIT 1`,
         )
         .get({ stackId: id })

@@ -6,6 +6,7 @@ import {
   inventoryEntry,
   lifecycleSnapshot,
   provisionalArtifact,
+  stackStatus,
   timestamp,
 } from './fixtures.js';
 
@@ -209,7 +210,52 @@ test('reports install success followed by failed health verification as partial'
   ]);
 });
 
-test('refreshes and publishes evidence after an adapter-level mutation failure', async () => {
+test('preserves safe lifecycle error codes and messages for the renderer', async () => {
+  const coordinator = createStateCoordinator({
+    artifact: provisionalArtifact(),
+    lifecycle: {
+      clearPurgePreview() {},
+      async restart() {
+        return mutationResult('restart', {
+          outcome: 'failed',
+          changed: false,
+          error: {
+            code: 'internal',
+            message: 'Portreeve runtime file is not private; change its mode to 0600.',
+          },
+        });
+      },
+      async status() {
+        return lifecycleSnapshot();
+      },
+    },
+    inventory: {
+      async listPorts() {
+        return [];
+      },
+    },
+    now: () => new Date(timestamp),
+  });
+  expect(await coordinator.restartService()).toMatchObject({
+    outcome: 'failed',
+    errorCode: 'internal',
+    error: {
+      code: 'internal',
+      message: 'Portreeve runtime file is not private; change its mode to 0600.',
+    },
+    steps: [
+      {
+        operation: 'restart',
+        error: {
+          code: 'internal',
+          message: 'Portreeve runtime file is not private; change its mode to 0600.',
+        },
+      },
+    ],
+  });
+});
+
+test('returns actionable safe details and refreshes after an adapter-level mutation failure', async () => {
   let statusCalls = 0;
   let published = 0;
   const coordinator = createStateCoordinator({
@@ -236,12 +282,60 @@ test('refreshes and publishes evidence after an adapter-level mutation failure',
   coordinator.subscribe(() => {
     published += 1;
   });
-  await expect(coordinator.startService()).rejects.toMatchObject({
-    code: 'lifecycle_unavailable',
+  expect(await coordinator.startService()).toMatchObject({
+    outcome: 'failed',
+    error: {
+      code: 'lifecycle_unavailable',
+      message: 'private executable failure',
+    },
   });
   expect(statusCalls).toBe(1);
   expect(published).toBe(1);
   expect(coordinator.current()?.lifecycle?.mode).toBe('supervised');
+});
+
+test('collects stack evidence and serializes stack mutations with other desktop work', async () => {
+  let prepared = 0;
+  const status = stackStatus();
+  const coordinator = createStateCoordinator({
+    artifact: provisionalArtifact(),
+    lifecycle: {
+      async status() {
+        return lifecycleSnapshot();
+      },
+    },
+    inventory: {
+      async listPorts() {
+        return [];
+      },
+    },
+    stacks: {
+      async list() {
+        return [status];
+      },
+      /** @param {string} stackId */
+      async prepare(stackId) {
+        expect(stackId).toBe(status.stack.id);
+        prepared += 1;
+        return { reused: false, generation: status.generation };
+      },
+    },
+    now: () => new Date(timestamp),
+  });
+  const initial = await coordinator.refresh();
+  expect(initial.stacks[0]).toMatchObject({
+    project: 'caregiver',
+    workspaceName: 'caregiver-secret-worktree',
+    activation: { state: 'confirmed' },
+  });
+  const result = await coordinator.prepareStack(status.stack.id);
+  expect(result).toMatchObject({
+    action: 'prepare',
+    outcome: 'succeeded',
+    changed: true,
+  });
+  expect(prepared).toBe(1);
+  expect(result.snapshot.stacks).toHaveLength(1);
 });
 
 test('publishes update discovery independently without delaying local refresh', async () => {

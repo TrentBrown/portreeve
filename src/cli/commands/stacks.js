@@ -347,7 +347,10 @@ export async function stackStatusCommand(options) {
   }
   const stack = stacks[0];
   if (stack === undefined) return;
-  renderStack(stack, options.json ?? false);
+  renderStackStatus(
+    await clientFor(options.socket).getStackStatus(stack.id),
+    options.json ?? false,
+  );
 }
 
 /** @param {import('../../../packages/client/src/index.js').StackRecord} stack @param {boolean} json */
@@ -357,6 +360,21 @@ function renderStack(stack, json) {
     `Identity: ${stackLabel(stack)}`,
     `Revision: ${stack.currentRevision}`,
     `Components: ${String(Object.keys(stack.definition.components).length)}`,
+  ]);
+}
+
+/** @param {import('../../../packages/client/src/index.js').StackStatus} status @param {boolean} json */
+function renderStackStatus(status, json) {
+  renderOutput(json, 'status', status, [
+    `Stack: ${status.stack.id}`,
+    `Identity: ${stackLabel(status.stack)}`,
+    `Revision: ${status.stack.currentRevision}`,
+    `Generation: ${status.generation?.id ?? 'none'}${status.generation ? ` (${status.generation.state})` : ''}`,
+    `Activation: ${status.activation?.id ?? 'none'}${status.activation ? ` (${status.activation.state})` : ''}`,
+    ...status.providers.map(
+      (provider) =>
+        `${provider.component}.${provider.endpoint}  ${provider.port}  ${provider.bindingKind}  ${provider.status}  ${provider.reason}`,
+    ),
   ]);
 }
 

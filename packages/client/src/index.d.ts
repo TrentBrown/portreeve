@@ -230,6 +230,13 @@ export interface StackReconcileResult {
   providers: StackProviderEvidence[];
 }
 
+export interface StackStatus {
+  stack: StackRecord;
+  generation: StackGeneration | null;
+  activation: StackActivation | null;
+  providers: StackProviderEvidence[];
+}
+
 export interface StackPruneResult {
   dryRun: boolean;
   candidates: Array<{
@@ -390,6 +397,7 @@ export declare class PortreeveClient {
     workspaceRoot?: string;
   }): Promise<StackRecord[]>;
   getStack(stackId: string): Promise<StackRecord>;
+  getStackStatus(stackId: string): Promise<StackStatus>;
   prepareStack(stackId: string): Promise<{
     reused: boolean;
     generation: StackGeneration;

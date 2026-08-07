@@ -42,6 +42,34 @@ export function canUninstall(snapshot) {
   );
 }
 
+/** @param {any} snapshot @param {any} stack */
+export function availableStackActions(snapshot, stack) {
+  if (snapshot.errors.some((/** @type {any} */ { source }) => source === 'stacks')) {
+    return [];
+  }
+  const actions = ['prepare'];
+  if (stack.activation !== null && stack.activation.state !== 'ended') {
+    actions.push('reconcile', 'end');
+  }
+  return actions;
+}
+
+/** @param {any} stack */
+export function stackPresentationState(stack) {
+  if (stack.activation !== null) return stack.activation.state;
+  return stack.generation === null ? 'defined' : 'prepared';
+}
+
+/** @param {any} snapshot */
+export function stackRenderSignature(snapshot) {
+  return JSON.stringify({
+    stacks: snapshot.stacks,
+    unavailable: snapshot.errors.some(
+      (/** @type {any} */ { source }) => source === 'stacks',
+    ),
+  });
+}
+
 /** @param {any} update */
 export function updatePresentation(update) {
   if (update.status === 'available') {
