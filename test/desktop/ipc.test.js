@@ -47,3 +47,36 @@ test('opens only the fixed download capability with no renderer arguments', asyn
     }),
   ).rejects.toThrow('Untrusted renderer');
 });
+
+test('validates stack identifiers before invoking a named main-process capability', async () => {
+  /** @type {Map<string, (event: any, ...arguments_: any[]) => Promise<any>>} */
+  const handlers = new Map();
+  let prepares = 0;
+  registerDesktopIpc({
+    ipcMain: /** @type {any} */ ({
+      /** @param {string} channel @param {(event: any, ...arguments_: any[]) => Promise<any>} handler */
+      handle(channel, handler) {
+        handlers.set(channel, handler);
+      },
+    }),
+    coordinator: /** @type {any} */ ({
+      subscribe() {
+        return () => true;
+      },
+      async prepareStack() {
+        prepares += 1;
+      },
+      async applyStackDefinition() {},
+    }),
+    windows: () => [],
+  });
+  const mainFrame = { url: RENDERER_URL };
+  const event = { sender: { mainFrame }, senderFrame: mainFrame };
+  await expect(
+    handlers.get(IPC_CHANNELS.prepareStack)?.(event, { id: '../../secret' }),
+  ).rejects.toThrow();
+  expect(prepares).toBe(0);
+  await expect(
+    handlers.get(IPC_CHANNELS.applyStackDefinition)?.(event, '/tmp/stack.json'),
+  ).rejects.toThrow('does not accept renderer arguments');
+});

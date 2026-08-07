@@ -52,6 +52,7 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
     'apps/desktop/main/index.js',
     'apps/desktop/main/cli-adapter.js',
     'apps/desktop/main/inventory-adapter.js',
+    'apps/desktop/main/stack-adapter.js',
     'apps/desktop/main/update.js',
     'apps/desktop/preload/index.cjs',
   ];

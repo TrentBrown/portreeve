@@ -57,6 +57,8 @@ import {
   StackResolutionSchema,
   StackResolveRequestSchema,
   StackSnapshotRequestSchema,
+  StackStatusRequestSchema,
+  StackStatusSchema,
   StackAbandonEndpointRequestSchema,
   StackSkipEndpointRequestSchema,
   UnsafeEvictionRequestSchema,
@@ -401,6 +403,18 @@ async function handleRequest(
         requestId,
         StackPruneResultSchema.parse(
           await stackAdministrationService.prune(StackPruneRequestSchema.parse(body)),
+        ),
+      );
+    }
+    const stackStatus = pathname.match(/^\/v1\/stacks\/([0-9a-f-]+)\/status$/);
+    if (stackStatus !== null) {
+      return success(
+        requestId,
+        StackStatusSchema.parse(
+          await stackCoordinationService.status(
+            IdentifierSchema.parse(stackStatus[1]),
+            StackStatusRequestSchema.parse(body),
+          ),
         ),
       );
     }

@@ -6,6 +6,7 @@ import {
   inventoryEntry,
   lifecycleSnapshot,
   provisionalArtifact,
+  stackStatus,
   timestamp,
 } from './fixtures.js';
 
@@ -68,6 +69,39 @@ test('reduces lifecycle and inventory evidence before it reaches the renderer', 
   expect(snapshot.lifecycle?.installation.managedLocation).toBe(
     '/Users/example/.local/portreeve/bin/portreeve',
   );
+});
+
+test('reduces stack definitions, activation evidence, and addresses without credentials', () => {
+  const snapshot = createDesktopSnapshot({
+    artifact: provisionalArtifact(),
+    lifecycle: lifecycleSnapshot(),
+    ports: [],
+    stacks: [stackStatus()],
+    refreshedAt: timestamp,
+  });
+  expect(snapshot.stacks[0]).toMatchObject({
+    project: 'caregiver',
+    workspaceName: 'caregiver-secret-worktree',
+    generation: { state: 'valid', endpoints: [{ port: 4100 }] },
+    activation: { state: 'confirmed', endpoints: [{ state: 'confirmed' }] },
+    providers: [{ status: 'active', listeners: 1 }],
+    resolutions: [
+      {
+        component: 'website',
+        dependencies: [
+          {
+            alias: 'backend',
+            host: { host: '127.0.0.1', port: 4100 },
+          },
+        ],
+      },
+    ],
+  });
+  const serialized = JSON.stringify(snapshot.stacks[0]);
+  expect(serialized).not.toContain('claimId');
+  expect(serialized).not.toContain('leaseId');
+  expect(serialized).not.toContain('runId');
+  expect(serialized).not.toContain('/Users/example/Code/');
 });
 
 test('represents absent, manual, supervised, and incompatible lifecycle states', () => {

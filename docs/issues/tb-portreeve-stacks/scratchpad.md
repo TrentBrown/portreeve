@@ -210,3 +210,18 @@ The administration layer produces candidate and blocker plans from filesystem, a
 
 **Alternatives considered:**
 Delete stacks and claims piecemeal through existing public methods - rejected because partial deletion could strand coordination records; put filesystem and Docker checks inside the registry - rejected because the registry owns durable transactions rather than platform adapters; omit blockers from dry-run - rejected by the approved operator contract.
+
+## [10] Expose aggregate stack status for trusted inspection surfaces
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Registry read queries, stack coordination service, protocol schemas and route, official client declarations, desktop stack adapter, and public protocol/client documentation
+
+Add a read-only stack status operation under the existing stack-activations-v1 capability. It returns the canonical stack, latest generation, latest activation, and freshly inspected provider evidence when the latest activation has confirmed endpoints. The server derives the aggregate from registry-owned relationships and the existing provider evaluator; clients and the desktop do not reconstruct current coordination state from history. The operation performs no reconciliation or mutation.
+
+**Triggered by:** P7 requires the desktop to inspect each stack current generation, activation, placement, and fresh provider evidence, but listStacks returns only the definition and audit history is not an authoritative current-state index.
+
+**Alternatives considered:**
+Reconstruct status from history in the desktop - rejected because history is an audit trail rather than a current-state index; add database access to the desktop - rejected by the existing trust boundary; show only definitions and prepared results from the current desktop session - rejected because the desktop must inspect stacks created by project launchers and survive restarts.

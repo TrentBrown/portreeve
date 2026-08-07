@@ -57,6 +57,15 @@ Applying links every published endpoint to a sticky canonical claim. A prior sta
 assigned port. An existing conflicting exact assignment or an ephemeral matching claim
 refuses the whole apply operation.
 
+Inspect the definition together with its latest generation, activation, and fresh
+provider evidence from anywhere in that worktree:
+
+```sh
+portreeve stacks status --json
+```
+
+Use `stacks show STACK_ID` when only the registered definition is needed.
+
 ## Prepare and activate
 
 Preparation creates or reuses one immutable allocation generation containing every

@@ -256,6 +256,142 @@ input {
   gap: 18px;
   align-items: start;
 }
+.stacks-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr);
+  gap: 18px;
+  align-items: start;
+}
+.stack-list {
+  display: grid;
+  gap: 10px;
+}
+.stack-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 10px;
+  width: 100%;
+  border-radius: 12px;
+  padding: 14px;
+  text-align: left;
+}
+.stack-card strong {
+  font-size: 16px;
+}
+.stack-card > span:not(.badge) {
+  grid-column: 1;
+  color: #65706c;
+  overflow-wrap: anywhere;
+}
+.stack-card .badge {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+.stack-card.selected {
+  border-color: #24634f;
+  background: #edf5ef;
+}
+.badge {
+  border-radius: 999px;
+  background: #e6ebe6;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.state-confirmed,
+.state-active {
+  background: #dcefe2;
+  color: #174a3a;
+}
+.state-degraded,
+.state-starting {
+  background: #fff0cf;
+  color: #794c00;
+}
+.state-failed,
+.state-lost {
+  background: #f9ded9;
+  color: #812d24;
+}
+.stack-detail {
+  max-height: 68vh;
+  overflow: auto;
+}
+.stack-actions {
+  margin-top: 18px;
+}
+.component-list {
+  display: grid;
+  gap: 10px;
+}
+.component {
+  border: 1px solid #e0dcd3;
+  border-radius: 10px;
+}
+.component summary {
+  cursor: pointer;
+  padding: 13px 14px;
+  font-weight: 700;
+}
+.component-body {
+  border-top: 1px solid #e0dcd3;
+  padding: 14px;
+}
+.endpoint-list {
+  margin-top: 0;
+  padding-left: 22px;
+}
+.address-list {
+  display: grid;
+  gap: 8px;
+}
+.address-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(120px, auto) auto;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid #ebe8e0;
+  padding-top: 8px;
+}
+.address-row code {
+  overflow-wrap: anywhere;
+}
+.snapshot-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.snapshot-controls input {
+  min-width: 0;
+  flex: 1;
+}
+.evidence-list article {
+  border-top: 1px solid #e4e1d9;
+  padding-top: 10px;
+}
+.evidence-list p {
+  margin-bottom: 6px;
+}
+.evidence-list p + p {
+  color: #65706c;
+  font-size: 13px;
+}
+.empty-state p:last-child {
+  margin-bottom: 0;
+  color: #65706c;
+}
+.snapshot-content {
+  max-height: 52vh;
+  overflow: auto;
+  border: 1px solid #e0dcd3;
+  border-radius: 10px;
+  background: #f5f1e8;
+  padding: 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .table-wrap {
   overflow: hidden;
 }
@@ -357,6 +493,17 @@ dialog form > input {
 }
 .refusals p:last-child {
   margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .overview-grid,
+  .ports-grid,
+  .stacks-grid {
+    grid-template-columns: 1fr;
+  }
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 @media (max-width: 920px) {
   .overview-grid,

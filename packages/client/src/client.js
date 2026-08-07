@@ -117,6 +117,17 @@ export class PortreeveClient {
   }
 
   /** @param {string} stackId */
+  async getStackStatus(stackId) {
+    await this.#requireCapabilities(['stack-activations-v1']);
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/stacks/${stackId}/status`,
+      withClient({}, ['stack-activations-v1']),
+    );
+  }
+
+  /** @param {string} stackId */
   async prepareStack(stackId) {
     await this.#requireCapabilities(['stack-activations-v1']);
     return requestJson(

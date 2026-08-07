@@ -1,10 +1,16 @@
 # Portreeve Desktop engineering slice
 
 This private workspace contains the non-shipping Electron MVP for Portreeve Desktop. It
-displays lifecycle evidence from an exact Portreeve CLI executable, global inventory
-from the official JavaScript client, and confirmed lifecycle/reset workflows through a
-narrow named preload API. The CLI remains the authority for every mutation and all
-filesystem deletion safety.
+displays lifecycle evidence from an exact Portreeve CLI executable, global inventory and
+stack coordination evidence from the official JavaScript client, and confirmed
+lifecycle/reset workflows through a narrow named preload API. The CLI and server remain
+the authorities for every mutation and all filesystem deletion safety.
+
+The Stacks tab can apply a checked-in `portreeve.stack.json` through a main-process file
+picker, prepare allocations, reconcile or end existing activations, preview discovery
+documents, copy resolved addresses, and preview-confirm stale-stack pruning. It never
+starts or stops project processes, invokes Docker Compose, stops containers, or handles
+lease credentials; those responsibilities remain with each trusted project launcher.
 
 Update discovery is separately notification-only. The main process checks the strict
 fixed manifest documented in [`docs/desktop-updates.md`](../../docs/desktop-updates.md)

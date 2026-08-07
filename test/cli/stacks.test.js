@@ -90,7 +90,12 @@ test('stack commands share definition discovery and versioned JSON contracts', a
       workspaceRoot,
     );
     expect(status.exitCode, status.stderr).toBe(0);
-    expect(JSON.parse(status.stdout).stack.id).toBe(stackId);
+    expect(JSON.parse(status.stdout).status).toMatchObject({
+      stack: { id: stackId },
+      generation: null,
+      activation: null,
+      providers: [],
+    });
 
     const show = await runCli(
       ['stacks', 'show', stackId, '--socket', socketPath, '--json'],
@@ -105,6 +110,14 @@ test('stack commands share definition discovery and versioned JSON contracts', a
     );
     expect(prepared.exitCode, prepared.stderr).toBe(0);
     const generationId = JSON.parse(prepared.stdout).result.generation.id;
+    const preparedStatus = await runCli(
+      ['stacks', 'status', '--socket', socketPath, '--json'],
+      workspaceRoot,
+    );
+    expect(JSON.parse(preparedStatus.stdout).status).toMatchObject({
+      generation: { id: generationId, state: 'valid' },
+      activation: null,
+    });
     const generation = await runCli(
       ['stacks', 'generation', generationId, '--socket', socketPath, '--json'],
       workspaceRoot,

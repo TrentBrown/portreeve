@@ -50,7 +50,8 @@ output.
 | `claims prune`                                     | `{ "version": 1, "result": { ... } }`                                       |
 | `stacks apply`                                     | `{ "version": 1, "result": { "changed": true, "stack": { ... } } }`         |
 | `stacks list`                                      | `{ "version": 1, "stacks": [ ... ] }`                                       |
-| `stacks show` / `stacks status`                    | `{ "version": 1, "stack": { ... } }`                                        |
+| `stacks show`                                      | `{ "version": 1, "stack": { ... } }`                                        |
+| `stacks status`                                    | `{ "version": 1, "status": { "stack": { ... }, "generation": { ... }, "activation": { ... }, "providers": [ ... ] } }` |
 | `stacks prepare` / `stacks begin` / `stacks renew` | `{ "version": 1, "result": { ... } }`                                       |
 | `stacks activation` / `stacks confirm` / `stacks confirm-docker` | `{ "version": 1, "activation": { ... } }`                       |
 | `stacks generation`                                | `{ "version": 1, "generation": { ... } }`                                   |
@@ -73,8 +74,9 @@ input and the official client canonicalizes it before the request. Equivalent no
 content is an ordinary state difference and exits `10`; changed content exits `0`.
 
 `stacks list` accepts `--project` and `--workspace`. `stacks status` selects the current
-canonical worktree and accepts the same disambiguating options. `stacks show <stack-id>`
-reads a stack directly. These commands never start or stop project services or
+canonical worktree, accepts the same disambiguating options, and reports the latest
+generation, activation, and fresh provider evidence. `stacks show <stack-id>` reads only
+the registered definition. These commands never start or stop project services or
 containers.
 
 `stacks prepare <stack-id>` creates or reuses an immutable endpoint allocation.

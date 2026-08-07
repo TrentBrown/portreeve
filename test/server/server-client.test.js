@@ -198,6 +198,12 @@ test('applies and inspects a stack definition through the official client', asyn
   });
   expect(await client.listStacks({ workspaceRoot })).toEqual([applied.stack]);
   expect(await client.getStack(applied.stack.id)).toEqual(applied.stack);
+  expect(await client.getStackStatus(applied.stack.id)).toEqual({
+    stack: applied.stack,
+    generation: null,
+    activation: null,
+    providers: [],
+  });
   expect((await client.applyStack({ workspaceRoot, definition })).changed).toBe(false);
   expect(registry.listClaims()[0]?.identity).toMatchObject({
     service: 'api',
@@ -317,6 +323,12 @@ test('prepares and confirms a process-backed activation through the official cli
       activation: { state: 'degraded' },
       providers: [{ status: 'active', bindingKind: 'process' }],
     });
+    expect(await client.getStackStatus(applied.stack.id)).toMatchObject({
+      stack: { id: applied.stack.id },
+      generation: { id: prepared.generation.id, state: 'valid' },
+      activation: { id: activation.id, state: 'degraded' },
+      providers: [{ status: 'active', bindingKind: 'process' }],
+    });
     listener.stop(true);
     listener = undefined;
     expect(await client.reconcileStackActivation(activation.id)).toMatchObject({
@@ -331,6 +343,10 @@ test('prepares and confirms a process-backed activation through the official cli
     expect(ended).toMatchObject({
       changed: true,
       activation: { state: 'ended' },
+    });
+    expect(await client.getStackStatus(applied.stack.id)).toMatchObject({
+      activation: { id: activation.id, state: 'ended' },
+      providers: [],
     });
   } finally {
     listener?.stop(true);

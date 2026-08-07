@@ -48,9 +48,10 @@ New integrations should use `component` and `endpoint`.
 ## Stack definitions
 
 `applyStack({ workspaceRoot, definition })` validates through the same public contract
-as the CLI and returns `{ changed, stack }`. `listStacks(filters)` and
-`getStack(stackId)` inspect the normalized stored definition and its content-addressed
-current revision. These methods coordinate definitions and claims only; they do not
+as the CLI and returns `{ changed, stack }`. `listStacks(filters)`,
+`getStack(stackId)`, and `getStackStatus(stackId)` inspect the normalized stored
+definition, its content-addressed current revision, and the latest generation,
+activation, and fresh provider evidence. These methods coordinate definitions and claims only; they do not
 start project processes or run Docker Compose. Before applying, the client checks server
 health for `stack-definitions-v1`; an older daemon fails explicitly with
 `incompatible_protocol` before mutation.
@@ -145,6 +146,7 @@ atomic deletion; CLI-style interactive or `--yes` consent remains a CLI responsi
 The `PortreeveClient` exposes `health`, `acquire`, `confirm`, `abandon`, `release`,
 `listPorts`, `inspectPort`, `reclaimPort`, `unsafeEvictPort`, `listClaims`, `getClaim`,
 `reassignClaim`, `deleteClaim`, `pruneClaims`, `applyStack`, `listStacks`, `getStack`,
+`getStackStatus`,
 `prepareStack`, `beginStackActivation`, `getStackActivation`, `renewStackActivation`,
 `confirmStackEndpoint`, `abandonStackEndpoint`, `skipStackEndpoint`,
 `getStackGeneration`, `reconcileStackActivation`, `endStackActivation`, `pruneStacks`,

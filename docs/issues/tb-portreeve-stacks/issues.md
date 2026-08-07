@@ -135,9 +135,13 @@ consent modes, execution-time revalidation, and retained history. R7 now passes 
 the complete capability-gated protocol, official client, CLI, compiled runtime, and
 documentation contract; the separate desktop experience remains I-6/P7 and R8.
 
+**Merged 2026-08-06.** PR #11 merged to `main` as `3ecd8a5`; its activation
+recovery, evidence-gated ending, and safe stack-pruning contract were accepted through
+human review and merge.
+
 ## I-6 - Add the desktop Stacks experience and failure details
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 3d
 - **Plan steps:** P7
 - **Rubric criteria:** R8
@@ -147,6 +151,9 @@ documentation contract; the separate desktop experience remains I-6/P7 and R8.
 Build the approved desktop inspection and safe coordination workflows across the
 main/preload/renderer boundary, preserve serialized fresh evidence, and surface
 actionable lifecycle and stack errors without granting orchestration authority.
+
+**Started 2026-08-06.** Sequential delivery branch
+`tb-portreeve-stacks-06-desktop-stacks` begins from merged `main` at `3ecd8a5`.
 
 ## I-7 - Complete integrated verification and feature evidence
 

@@ -85,7 +85,7 @@ Append PR boundary entries here.
 ### PR #11 - Activation recovery and safe stack pruning
 
 - **PR:** [#11](https://github.com/TrentBrown/portreeve/pull/11)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P6 fresh process and Docker provider reconciliation, persisted non-live
   lost activations, evidence-gated ending, previewed and consent-gated missing-worktree
   stack pruning, execution-time revalidation, atomic coordination/claim deletion,
@@ -98,3 +98,4 @@ Append PR boundary entries here.
   no remaining findings. The pinned Bun 1.3.14 gate passes all 214 tests with 865
   assertions. Desktop Stacks controls and actionable GUI failure details remain R8 in
   I-6/P7.
+- **Merged:** `3ecd8a5` on 2026-08-06.
