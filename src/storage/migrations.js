@@ -302,6 +302,48 @@ export const MIGRATIONS = Object.freeze([
         WHERE state = 'confirmed' AND binding_kind = 'docker';
     `,
   }),
+  Object.freeze({
+    version: 6,
+    name: 'lost-stack-activations',
+    rebuildsForeignKeyTable: true,
+    sql: `
+      CREATE TABLE stack_activations_next (
+        id TEXT PRIMARY KEY,
+        stack_id TEXT NOT NULL REFERENCES stacks(id) ON DELETE CASCADE,
+        generation_id TEXT NOT NULL
+          REFERENCES stack_generations(id) ON DELETE RESTRICT,
+        state TEXT NOT NULL
+          CHECK (
+            state IN (
+              'starting', 'confirmed', 'degraded', 'failed', 'lost', 'ended'
+            )
+          ),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        confirmed_at TEXT,
+        ended_at TEXT
+      );
+
+      INSERT INTO stack_activations_next (
+        id, stack_id, generation_id, state, created_at, updated_at,
+        confirmed_at, ended_at
+      )
+      SELECT
+        id, stack_id, generation_id, state, created_at, updated_at,
+        confirmed_at, ended_at
+      FROM stack_activations;
+
+      DROP TABLE stack_activations;
+      ALTER TABLE stack_activations_next RENAME TO stack_activations;
+
+      CREATE UNIQUE INDEX stack_activations_one_live_per_stack
+        ON stack_activations (stack_id)
+        WHERE state IN ('starting', 'confirmed', 'degraded');
+
+      CREATE INDEX stack_activations_generation
+        ON stack_activations (generation_id, created_at DESC);
+    `,
+  }),
 ]);
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.at(-1)?.version ?? 0;

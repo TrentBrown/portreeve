@@ -46,6 +46,29 @@ portreeve claims prune --dry-run
 The default minimum age is seven days. Active runs, pending leases, current
 listeners, existing paths, and recently used claims remain protected.
 
+For an entire deleted worktree stack, preview the higher-level coordination cleanup:
+
+```sh
+portreeve stacks prune --dry-run
+```
+
+The plan reports eligible stacks and blockers. Noninteractive execution requires
+`portreeve stacks prune --yes`; no prune command stops processes or containers.
+
+## Launcher exited but providers may still be running
+
+Inspect and reconcile the activation instead of relying on the launcher's PID:
+
+```sh
+portreeve stacks reconcile ACTIVATION_ID --json
+```
+
+`active` or `unknown` provider evidence keeps the activation live. When every confirmed
+provider is conclusively gone, the activation becomes `lost` and a replacement launcher
+may begin another activation against the generation if it remains valid. Stop surviving
+processes or containers through the project launcher before retrying reconciliation or
+ending.
+
 ## Logs and history
 
 `portreeve logs --json` reads bounded diagnostic JSON Lines. `portreeve

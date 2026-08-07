@@ -35,6 +35,16 @@ daemon, or a Docker port-forwarding process. They return a structured launcher a
 containing the freshly observed container IDs; the trusted launcher remains responsible
 for stopping or recreating containers.
 
+Activation reconciliation does not trust launcher liveness, stored PIDs, or stored
+container IDs. It freshly evaluates current process ownership or exact Docker labels and
+publication evidence. Unobservable evidence preserves the live activation; it never
+authorizes replacement or ending.
+
+`stacks prune` performs no reclamation. It requires an old missing worktree, reports
+resource blockers, revalidates before deletion, and skips any stack whose path or live
+evidence reappears. Successful pruning deletes only inactive coordination records and
+their endpoint claims while retaining durable history.
+
 `ports unsafe-evict` is a separate escape hatch. It requires literal
 `--unsafe-any-owner` consent for that invocation, still binds its plan to the
 observed process fingerprint, and supports `--dry-run`. It can terminate an

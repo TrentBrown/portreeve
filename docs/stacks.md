@@ -110,22 +110,52 @@ for that activation. When a component or endpoint name itself contains a dot, pa
 JSON object such as
 `--required-endpoint '{"component":"api.v2","endpoint":"http.internal"}'`.
 
-Activation states are `starting`, `confirmed`, `degraded`, `failed`, and `ended`.
+Activation states are `starting`, `confirmed`, `degraded`, `failed`, `lost`, and
+`ended`.
 Endpoint states are `leased`, `confirmed`, `skipped`, `failed`, and `released`.
 Abandoning or expiring a required endpoint fails the activation and cancels every
 remaining unconfirmed lease as one batch. A still-valid allocation generation may be
 reused for the next attempt.
 
-`stacks generation` and `stacks activation` provide token-free inspection. After the
-launcher has stopped its providers, `stacks end` takes fresh listener evidence and
-refuses to end while any confirmed endpoint is still listening. Ending never
-signals or stops the provider itself.
+`stacks generation` and `stacks activation` provide token-free inspection. A replacement
+launcher can run `stacks reconcile ACTIVATION_ID` after a launcher crash. Portreeve
+freshly checks every confirmed process or Docker provider. A surviving or unobservable
+provider keeps the activation live; only conclusive absence of every provider marks it
+`lost`, releases its stored run evidence, and permits another activation to reuse a
+still-valid generation. Stored launcher and provider PIDs are never liveness authority.
+
+After the launcher has stopped its providers, `stacks end` uses the same process and
+Docker evidence evaluator. It refuses active or unobservable providers and unresolved
+listeners, and never signals a process or stops a container. A `lost` activation may be
+ended explicitly for lifecycle clarity.
 
 If Docker is absent or inaccessible, health omits `docker-evidence-v1`; process-only
 activations continue normally. Inventory marks fresh Docker publications as
 `docker-managed`. Both normal reclamation and `unsafe-evict` return
 `launcher-action-required` with the container IDs and send no process signal. The
 trusted launcher stops the container and retries.
+
+## Prune deleted worktrees
+
+Stack pruning removes obsolete coordination state without reclaiming ports or stopping
+providers:
+
+```sh
+portreeve stacks prune --dry-run
+portreeve stacks prune --yes
+```
+
+The default minimum age is seven days. Only an old stack whose canonical worktree is
+missing can become a candidate. Dry-run also reports blockers such as pending leases or
+activations, confirmed runs, live listeners, matching running containers, and
+unavailable Docker evidence. A naked interactive command prints the plan and prompts;
+noninteractive execution requires `--yes`, and `--json` is not consent.
+
+Execution rechecks the worktree and all provider evidence. It skips a stack if the
+worktree, listener, container, or database-owned live work reappears. Successful pruning
+atomically removes the inactive definition, generations, activations, and associated
+endpoint claims while retaining claim history and a final `stack.pruned` identity and
+summary event.
 
 ## Resolve dependencies and publish sandbox discovery
 

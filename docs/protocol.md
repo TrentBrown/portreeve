@@ -146,6 +146,7 @@ policy.
 | `GET /v1/stacks`                           | List applied stack definitions; accepts project and canonical `workspaceRoot` filters                                                |
 | `GET /v1/stacks/{stackId}`                 | Read one applied stack and its normalized current definition                                                                         |
 | `POST /v1/stacks/apply`                    | Validate and atomically apply a definition; requires `stack-definitions-v1`                                                          |
+| `POST /v1/stacks/prune`                    | Preview or delete old missing-worktree stacks with fresh evidence revalidation                                                       |
 | `POST /v1/stacks/{stackId}/prepare`        | Create or reuse a complete immutable allocation generation; requires `stack-activations-v1`                                          |
 | `POST /v1/stack-activations/begin`         | Create one activation and atomically lease its selected endpoints                                                                    |
 | `GET /v1/stack-activations/{id}`           | Inspect activation and endpoint states without returning lease tokens                                                                |
@@ -154,7 +155,8 @@ policy.
 | `POST /v1/stack-activations/{id}/confirm`  | Confirm one process or Docker endpoint using binding-appropriate fresh evidence                                                       |
 | `POST /v1/stack-activations/{id}/abandon`  | Fail one pending endpoint; a required failure cancels the remaining pending batch                                                    |
 | `POST /v1/stack-activations/{id}/skip`     | Skip one optional pending endpoint                                                                                                   |
-| `POST /v1/stack-activations/{id}/end`      | End only after fresh evidence shows confirmed process listeners have stopped                                                         |
+| `POST /v1/stack-activations/{id}/reconcile` | Reconcile launcher loss using fresh process, listener, and Docker provider evidence                                                  |
+| `POST /v1/stack-activations/{id}/end`      | End only after fresh evidence shows every confirmed process or Docker provider has stopped                                           |
 | `POST /v1/stack-activations/{id}/resolve`  | Resolve one consumer's own endpoints and declared dependencies from its activation generation; requires `stack-discovery-v1`         |
 | `POST /v1/stack-activations/{id}/snapshot` | Render one redacted sandbox discovery document using a launcher-supplied gateway; requires `stack-discovery-v1`                      |
 
@@ -193,10 +195,21 @@ requires `rootPid` and fresh lineage evidence. Docker confirmation requires
 `bindingKind: "docker"` and a container ID lookup key, then freshly verifies running
 state, exact labels, loopback host/container publication, and an `lsof` listener.
 
-End accepts only `client`. It refuses while leases remain pending or fresh inspection
-still observes a confirmed endpoint listener. It does not signal providers.
-Successful ending releases the activation's run records and returns
+Reconcile accepts only `client` and returns `{ changed, activation, providers }`.
+Each provider result is `active`, `gone`, or `unknown` with a safe reason and listener
+count. Only conclusive absence of every confirmed provider changes the activation to
+`lost`; active or unavailable evidence preserves the live activation.
+
+End accepts only `client`. It refuses while leases remain pending, a process or Docker
+provider remains active, provider evidence is unavailable, or an unresolved listener is
+present. It does not signal providers. Successful ending releases the activation's run records and returns
 `{ changed, activation }`; repeated ending is idempotent.
+
+Stack prune accepts `client`, `olderThanMilliseconds`, and `dryRun`. Its result separates
+`candidates` from `blocked` stacks and reports deleted stack and claim IDs plus
+execution-time skips. Execution revalidates filesystem, listener, process, Docker, lease,
+run, and activation evidence, performs no reclamation, and retains a final history
+summary.
 
 `exactPort` is a preparation constraint and never falls back. `preferredPort` may fall
 back. Separately, required endpoints must confirm; optional endpoints may be skipped or
@@ -207,7 +220,7 @@ leases. See [Stack definitions and activation](stacks.md).
 ## Stack dependency discovery
 
 Resolution accepts `client` and one consumer `component`. The activation selects exactly
-one immutable generation; failed, ended, stale, or definition-drifted activations refuse
+one immutable generation; failed, lost, ended, stale, or definition-drifted activations refuse
 discovery. The response contains the definition revision, generation ID, activation ID,
 consumer name, and two separate maps:
 

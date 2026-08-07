@@ -1,6 +1,7 @@
 // @ts-check
 
 import { readFile } from 'node:fs/promises';
+import { createInterface } from 'node:readline/promises';
 import { dirname, join, resolve } from 'node:path';
 import {
   PortreeveClient,
@@ -14,6 +15,7 @@ import {
 import { EXIT_CODES } from '../../protocol/constants.js';
 import { CliUsageError, setExitCode } from '../exit.js';
 import { renderOutput } from '../output/render.js';
+import { DEFAULT_PRUNE_AGE, parseDuration, pruneConsentMode } from './claims.js';
 
 export const DEFAULT_STACK_DEFINITION = 'portreeve.stack.json';
 
@@ -226,6 +228,60 @@ export async function endStackActivationCommand(activationIdArgument, options) {
   ]);
 }
 
+/** @param {string} activationIdArgument @param {{socket?: string, json?: boolean}} options */
+export async function reconcileStackActivationCommand(activationIdArgument, options) {
+  const result = await clientFor(options.socket).reconcileStackActivation(
+    IdentifierSchema.parse(activationIdArgument),
+  );
+  if (!result.changed) setExitCode(EXIT_CODES.stateDifference);
+  renderOutput(options.json ?? false, 'result', result, [
+    `${result.changed ? 'Reconciled' : 'Inspected'} activation ${result.activation.id}: ${result.activation.state}.`,
+    ...result.providers.map(
+      (provider) =>
+        `${provider.component}.${provider.endpoint}  ${provider.bindingKind}  ${provider.status}  ${provider.reason}`,
+    ),
+  ]);
+}
+
+/**
+ * @param {{socket?: string, json?: boolean, olderThan?: string, dryRun?: boolean, yes?: boolean}} options
+ */
+export async function pruneStacksCommand(options) {
+  const consentMode = pruneConsentMode(
+    { dryRun: options.dryRun ?? false, yes: options.yes ?? false },
+    process.stdin.isTTY === true,
+    'stack',
+  );
+  const olderThanMilliseconds = parseDuration(options.olderThan ?? DEFAULT_PRUNE_AGE);
+  const client = clientFor(options.socket);
+  if (consentMode === 'dry-run') {
+    renderStackPrune(
+      await client.pruneStacks({ olderThanMilliseconds, dryRun: true }),
+      options.json ?? false,
+    );
+    return;
+  }
+  if (consentMode === 'prompt') {
+    const plan = await client.pruneStacks({ olderThanMilliseconds, dryRun: true });
+    if (plan.candidates.length === 0) {
+      renderStackPrune(plan, options.json ?? false);
+      return;
+    }
+    if (!options.json) renderStackPrune(plan, false);
+    if (!(await confirmStackPrune(plan.candidates.length, options.json))) {
+      setExitCode(EXIT_CODES.stateDifference);
+      renderOutput(options.json ?? false, 'result', { cancelled: true, plan }, [
+        'Stack prune cancelled.',
+      ]);
+      return;
+    }
+  }
+  renderStackPrune(
+    await client.pruneStacks({ olderThanMilliseconds, dryRun: false }),
+    options.json ?? false,
+  );
+}
+
 /**
  * @param {string} activationIdArgument
  * @param {{component: string, socket?: string, json?: boolean}} options
@@ -315,6 +371,47 @@ function renderActivation(activation, json) {
         `${endpoint.component}.${endpoint.endpoint}  ${endpoint.port}  ${endpoint.state}${endpoint.required ? '  required' : '  optional'}`,
     ),
   ]);
+}
+
+/** @param {import('../../../packages/client/src/index.js').StackPruneResult} result @param {boolean} json */
+function renderStackPrune(result, json) {
+  const lines = [];
+  if (result.candidates.length === 0) {
+    lines.push('No missing-worktree stacks are eligible.');
+  } else {
+    lines.push(
+      `${result.dryRun ? 'Would prune' : 'Eligible'} ${String(result.candidates.length)} stack(s):`,
+    );
+    for (const { stack } of result.candidates) {
+      lines.push(`  ${stack.id}  ${stackLabel(stack)}  ${stack.workspaceRoot}`);
+    }
+  }
+  for (const blocker of result.blocked) {
+    lines.push(`Blocked ${stackLabel(blocker.stack)}: ${blocker.reasons.join(', ')}`);
+  }
+  if (!result.dryRun) {
+    lines.push(`Deleted ${String(result.deletedStackIds.length)} stack(s).`);
+    if (result.skipped.length > 0) {
+      lines.push(`Skipped ${String(result.skipped.length)} changed stack(s).`);
+    }
+  }
+  renderOutput(json, 'result', result, lines);
+}
+
+/** @param {number} count @param {boolean | undefined} json */
+async function confirmStackPrune(count, json) {
+  const terminal = createInterface({
+    input: process.stdin,
+    output: json ? process.stderr : process.stdout,
+  });
+  try {
+    const answer = await terminal.question(
+      `Delete ${String(count)} eligible stack(s)? [y/N] `,
+    );
+    return ['y', 'yes'].includes(answer.trim().toLowerCase());
+  } finally {
+    terminal.close();
+  }
 }
 
 /** @param {import('../../../packages/client/src/index.js').StackRecord} stack */

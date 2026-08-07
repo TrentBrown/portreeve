@@ -155,8 +155,9 @@ export async function pruneClaimsCommand(options) {
 /**
  * @param {{dryRun: boolean, yes: boolean}} options
  * @param {boolean} interactive
+ * @param {string} [noun]
  */
-export function pruneConsentMode(options, interactive) {
+export function pruneConsentMode(options, interactive, noun = 'claim') {
   if (options.dryRun && options.yes) {
     throw new CliUsageError('--dry-run and --yes cannot be used together.');
   }
@@ -170,7 +171,7 @@ export function pruneConsentMode(options, interactive) {
     return /** @type {const} */ ('prompt');
   }
   throw new CliUsageError(
-    'Noninteractive claim pruning requires --yes. Use --dry-run to inspect candidates.',
+    `Noninteractive ${noun} pruning requires --yes. Use --dry-run to inspect candidates.`,
   );
 }
 

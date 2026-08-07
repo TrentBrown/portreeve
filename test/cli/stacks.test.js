@@ -208,6 +208,15 @@ test('stack commands share definition discovery and versioned JSON contracts', a
     );
     expect(activation.exitCode, activation.stderr).toBe(0);
     expect(JSON.parse(activation.stdout).activation.state).toBe('failed');
+    const reconciled = await runCli(
+      ['stacks', 'reconcile', activationId, '--socket', socketPath, '--json'],
+      workspaceRoot,
+    );
+    expect(reconciled.exitCode, reconciled.stderr).toBe(10);
+    expect(JSON.parse(reconciled.stdout).result).toMatchObject({
+      changed: false,
+      activation: { state: 'failed' },
+    });
     const ended = await runCli(
       ['stacks', 'end', activationId, '--socket', socketPath, '--json'],
       workspaceRoot,
@@ -219,6 +228,49 @@ test('stack commands share definition discovery and versioned JSON contracts', a
       workspaceRoot,
     );
     expect(alreadyEnded.exitCode, alreadyEnded.stderr).toBe(10);
+
+    await rm(workspaceRoot, { force: true, recursive: true });
+    const prunePlan = await runCli(
+      [
+        'stacks',
+        'prune',
+        '--older-than',
+        '0',
+        '--dry-run',
+        '--socket',
+        socketPath,
+        '--json',
+      ],
+      directory,
+    );
+    expect(prunePlan.exitCode, prunePlan.stderr).toBe(0);
+    expect(JSON.parse(prunePlan.stdout).result).toMatchObject({
+      candidates: [{ stack: { id: stackId } }],
+      deletedStackIds: [],
+    });
+    const refusedPrune = await runCli(
+      ['stacks', 'prune', '--older-than', '0', '--socket', socketPath, '--json'],
+      directory,
+    );
+    expect(refusedPrune.exitCode).toBe(50);
+    expect(refusedPrune.stderr).toContain(
+      'Noninteractive stack pruning requires --yes',
+    );
+    const pruned = await runCli(
+      [
+        'stacks',
+        'prune',
+        '--older-than',
+        '0',
+        '--yes',
+        '--socket',
+        socketPath,
+        '--json',
+      ],
+      directory,
+    );
+    expect(pruned.exitCode, pruned.stderr).toBe(0);
+    expect(JSON.parse(pruned.stdout).result.deletedStackIds).toEqual([stackId]);
   } finally {
     await server.stop();
     registry.close();

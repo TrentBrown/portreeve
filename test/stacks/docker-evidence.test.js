@@ -166,6 +166,34 @@ test('confirms one mixed process and Docker activation from fresh provider evide
     details: { reason: 'active_run' },
   });
   expect(registry.getStackGeneration(prepared.generation.id)?.state).toBe('valid');
+
+  listeners.clear();
+  expect(
+    await coordinationService.reconcile(begun.activation.id, {
+      client: activationClient,
+    }),
+  ).toMatchObject({
+    changed: false,
+    activation: { state: 'confirmed' },
+    providers: expect.arrayContaining([
+      expect.objectContaining({
+        bindingKind: 'docker',
+        status: 'active',
+        listeners: 0,
+      }),
+      expect.objectContaining({
+        bindingKind: 'process',
+        status: 'gone',
+        listeners: 0,
+      }),
+    ]),
+  });
+  container = null;
+  expect(
+    await coordinationService.reconcile(begun.activation.id, {
+      client: activationClient,
+    }),
+  ).toMatchObject({ changed: true, activation: { state: 'lost' } });
   registry.close();
 });
 

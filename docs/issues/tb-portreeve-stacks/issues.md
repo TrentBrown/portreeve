@@ -82,7 +82,7 @@ through human review and merge.
 
 ## I-4 - Add Docker evidence and mixed activations
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P5
 - **Rubric criteria:** R3, R6
@@ -100,20 +100,40 @@ unconditional refusal to signal Docker-managed host listeners.
 advertisement, per-component mixed activation bindings, exact label and publication
 evidence, schema-v5 Docker run persistence, Docker-managed inventory, launcher-only
 reclamation results, official client and CLI surfaces, and a real Docker Desktop
-end-to-end activation smoke. Awaiting human review and merge.
+end-to-end activation smoke.
+
+**Merged 2026-08-06.** PR #10 merged to `main` as `655f1ac`; its Docker evidence,
+mixed-activation safety, and real Docker Desktop verification were accepted through
+human review and merge.
 
 ## I-5 - Complete activation recovery and safe stack pruning
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P6
 - **Rubric criteria:** R6
 - **Depends on:** I-2, I-4
-- **PR:** -
+- **PR:** [#11](https://github.com/TrentBrown/portreeve/pull/11)
 
 Reconcile launcher loss and surviving providers from fresh evidence, implement
 evidence-gated activation ending, and add missing-worktree stack pruning with preview,
 consent, revalidation, no-reclamation, and history retention.
+
+**Started 2026-08-06.** Sequential delivery branch
+`tb-portreeve-stacks-05-recovery-pruning` begins from merged `main` at `655f1ac`.
+
+**Implementation complete 2026-08-06.** The slice adds schema-v6 lost activation
+recovery, fresh process and Docker provider reconciliation, evidence-gated ending,
+previewed and consent-gated missing-worktree stack pruning, execution-time
+revalidation, atomic coordination and claim deletion, retained history, and matching
+protocol, official client, CLI, migration, documentation, and compiled-runtime coverage.
+The pinned Bun 1.3.14 gate passes all 214 tests with 865 assertions.
+
+**In review 2026-08-06.** Draft PR #11 completes P6 recovery and safe pruning. R6 now
+passes across fresh process and Docker reconciliation, signal-free Docker handling,
+consent modes, execution-time revalidation, and retained history. R7 now passes across
+the complete capability-gated protocol, official client, CLI, compiled runtime, and
+documentation contract; the separate desktop experience remains I-6/P7 and R8.
 
 ## I-6 - Add the desktop Stacks experience and failure details
 

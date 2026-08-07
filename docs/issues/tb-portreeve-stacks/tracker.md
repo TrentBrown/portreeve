@@ -12,8 +12,8 @@
 | R3  | Ownership confirmation      | PASS    | #10   | Mixed process/Docker evidence and capability behavior pass    |
 | R4  | Discovery isolation         | PASS    | #9    | Scoped, redacted, generation-aware discovery                  |
 | R5  | Compatibility and migration | PASS    | #7    | Legacy aliases and relational migration pass                  |
-| R6  | Safety and recovery         | NOT YET | -     | Planned for P5-P6 / I-4-I-5                                   |
-| R7  | Client, CLI, and protocol   | NOT YET | #7-#10 | Definition through Docker evidence delivered; P6-P7 remain   |
+| R6  | Safety and recovery         | PASS    | #10-#11 | Docker refusal, recovery, consent, and revalidation pass      |
+| R7  | Client, CLI, and protocol   | PASS    | #7-#11 | Complete capability-gated coordination contract               |
 | R8  | Desktop                     | NOT YET | -     | Planned for P7 / I-6                                          |
 
 ## PR Log
@@ -68,7 +68,7 @@ Append PR boundary entries here.
 ### PR #10 - Docker evidence and mixed activations
 
 - **PR:** [#10](https://github.com/TrentBrown/portreeve/pull/10)
-- **Status:** ready for human review
+- **Status:** merged
 - **Scope:** P5 dynamic `docker-evidence-v1` capability, per-component process/Docker
   placement, exact activation labels, fresh container and host-publication confirmation,
   schema-v5 Docker run evidence, Docker-managed inventory, launcher-only reclamation,
@@ -79,4 +79,22 @@ Append PR boundary entries here.
   capability-gated Docker surface and remains open for P6-P7. Independent judge: PASS
   WITH CONCERNS; code review: PASS with no remaining findings. The pinned Bun 1.3.14
   gate passes all 206 tests, and a temporary real Docker Desktop container completed the
-  full apply/prepare/begin/confirm/inventory path before being removed.
+  full apply/prepare/begin/confirm/inventory path before being removed. Merged to `main`
+  as `655f1ac` on 2026-08-06.
+
+### PR #11 - Activation recovery and safe stack pruning
+
+- **PR:** [#11](https://github.com/TrentBrown/portreeve/pull/11)
+- **Status:** in review
+- **Scope:** P6 fresh process and Docker provider reconciliation, persisted non-live
+  lost activations, evidence-gated ending, previewed and consent-gated missing-worktree
+  stack pruning, execution-time revalidation, atomic coordination/claim deletion,
+  retained history, and matching protocol, client, CLI, compiled-runtime, and
+  documentation surfaces.
+- **Evidence packet:** [pr-11](pr-11/)
+- **Result:** R6 passes across P5-P6 safety and recovery. R7 passes across the complete
+  protocol, official JavaScript client, Commander CLI, capability, compiled-runtime, and
+  documentation contract. Independent judge: PASS WITH CONCERNS; code review: PASS with
+  no remaining findings. The pinned Bun 1.3.14 gate passes all 214 tests with 865
+  assertions. Desktop Stacks controls and actionable GUI failure details remain R8 in
+  I-6/P7.

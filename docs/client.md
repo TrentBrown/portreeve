@@ -130,6 +130,16 @@ Preparation never starts project processes, and the client does not own startup 
 health checks, or Docker Compose. `getStackActivation(id)` reports network-ownership
 coordination state, not application readiness.
 
+After launcher loss, `reconcileStackActivation(id)` returns fresh per-provider
+`active`, `gone`, or `unknown` evidence. Only an activation whose providers are all
+conclusively gone becomes `lost`, allowing the generation to be reused when it remains
+valid. `endStackActivation(id)` uses the same evidence and refuses active or unobservable
+providers.
+
+`pruneStacks({ olderThanMilliseconds, dryRun })` returns candidate and blocked
+missing-worktree stacks. Passing `dryRun: false` requests execution-time revalidation and
+atomic deletion; CLI-style interactive or `--yes` consent remains a CLI responsibility.
+
 ## Low-level API
 
 The `PortreeveClient` exposes `health`, `acquire`, `confirm`, `abandon`, `release`,
@@ -137,7 +147,8 @@ The `PortreeveClient` exposes `health`, `acquire`, `confirm`, `abandon`, `releas
 `reassignClaim`, `deleteClaim`, `pruneClaims`, `applyStack`, `listStacks`, `getStack`,
 `prepareStack`, `beginStackActivation`, `getStackActivation`, `renewStackActivation`,
 `confirmStackEndpoint`, `abandonStackEndpoint`, `skipStackEndpoint`,
-`getStackGeneration`, `endStackActivation`, `getConfig`, `setConfig`, `history`, `logs`,
+`getStackGeneration`, `reconcileStackActivation`, `endStackActivation`, `pruneStacks`,
+`getConfig`, `setConfig`, `history`, `logs`,
 `resolveStackEndpoints`, `createStackEndpointSnapshot`, and `stopServer`.
 
 Construct it with `{ socketPath }` only when overriding the per-user default. Failures

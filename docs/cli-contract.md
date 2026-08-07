@@ -56,6 +56,8 @@ output.
 | `stacks generation`                                | `{ "version": 1, "generation": { ... } }`                                   |
 | `stacks abandon` / `stacks skip`                   | `{ "version": 1, "activation": { ... } }`                                   |
 | `stacks end`                                       | `{ "version": 1, "result": { "changed": true, "activation": { ... } } }`    |
+| `stacks reconcile`                                 | `{ "version": 1, "result": { "changed": false, "activation": { ... }, "providers": [ ... ] } }` |
+| `stacks prune`                                     | `{ "version": 1, "result": { "candidates": [ ... ], "blocked": [ ... ] } }` |
 | `stacks resolve`                                   | `{ "version": 1, "resolution": { ... } }`                                   |
 | `stacks snapshot`                                  | `{ "version": 1, "result": { "filename": "...", "snapshot": { ... } } }`    |
 | `config get`                                       | `{ "version": 1, "settings": { ... } }` or `{ "version": 1, "value": ... }` |
@@ -93,9 +95,11 @@ credential files with mode `0600`, remove them after use, and use
 token-free inspection. For Docker-backed leases, use `stacks confirm-docker` with the
 same credential file and `--container-id`; Portreeve freshly verifies the running
 container, exact labels, loopback publication, and host listener. After the launcher
-stops providers, `stacks end <activation-id>`
-refuses while fresh listener evidence still observes a confirmed endpoint and never
-signals the provider.
+stops providers, `stacks reconcile <activation-id>` inspects every confirmed process or
+Docker provider. Only conclusive absence of every provider marks the activation `lost`;
+active or unobservable evidence keeps it live. `stacks end <activation-id>` uses the
+same evidence, refuses surviving or unobservable providers and unresolved listeners,
+and never signals a process or stops a container.
 
 When port inventory identifies a Docker-published listener, `ports reclaim` and
 `ports unsafe-evict` return `launcher-action-required` with exact container IDs. They
@@ -114,7 +118,10 @@ document read-only and never mount the Portreeve control socket into the sandbox
 
 ## Prune consent
 
-`claims prune --dry-run` reports eligible missing-workspace claims without mutation. A
+`claims prune --dry-run` reports eligible missing-workspace claims without mutation.
+`stacks prune --dry-run` reports both eligible missing-worktree stacks and evidence
+blockers; stack deletion also removes associated inactive endpoint claims while retaining
+history. A
 naked interactive invocation displays the plan and prompts before execution.
 Noninteractive execution requires `--yes`; `--json` is output selection, not consent.
 `--dry-run` and `--yes` cannot be combined.

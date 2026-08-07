@@ -374,6 +374,84 @@ test('refuses to end around a live listener and ends after fresh evidence shows 
   registry.close();
 });
 
+test('reconciles partial survivors and marks an activation lost only after every provider is gone', async () => {
+  const { registry, service, stack, listening } = harness();
+  const prepared = await service.prepare({ client, stackId: stack.id });
+  const begun = await service.begin({ client, generationId: prepared.generation.id });
+  for (const lease of begun.leases) {
+    listening.add(lease.port);
+    await service.confirm(begun.activation.id, {
+      client,
+      leaseId: lease.leaseId,
+      leaseToken: lease.leaseToken,
+      rootPid: 4242,
+    });
+  }
+  const [first, second] = begun.leases;
+  if (first === undefined || second === undefined) {
+    throw new Error('Expected two confirmed providers.');
+  }
+
+  listening.delete(first.port);
+  const partial = await service.reconcile(begun.activation.id, { client });
+  expect(partial).toMatchObject({
+    changed: false,
+    activation: { state: 'confirmed' },
+  });
+  expect(partial.providers.map(({ status }) => status).sort()).toEqual([
+    'active',
+    'gone',
+  ]);
+
+  listening.delete(second.port);
+  const lost = await service.reconcile(begun.activation.id, { client });
+  expect(lost).toMatchObject({
+    changed: true,
+    activation: { state: 'lost' },
+  });
+  expect(lost.providers.every(({ status }) => status === 'gone')).toBe(true);
+  expect(registry.listConfirmedRuns()).toEqual([]);
+  expect(registry.listHistory({ eventType: 'stack.activation.lost' })).toHaveLength(1);
+
+  const replacement = await service.begin({
+    client,
+    generationId: prepared.generation.id,
+  });
+  expect(replacement.activation.state).toBe('starting');
+  registry.close();
+});
+
+test('keeps unobservable process ownership live and refuses evidence-gated ending', async () => {
+  const { registry, service, stack, listening, setOwnershipVerified } = harness();
+  const prepared = await service.prepare({ client, stackId: stack.id });
+  const begun = await service.begin({
+    client,
+    generationId: prepared.generation.id,
+    skippedEndpoints: [{ component: 'api', endpoint: 'metrics' }],
+  });
+  const lease = begun.leases[0];
+  if (lease === undefined) throw new Error('Expected one process provider.');
+  listening.add(lease.port);
+  await service.confirm(begun.activation.id, {
+    client,
+    leaseId: lease.leaseId,
+    leaseToken: lease.leaseToken,
+    rootPid: 4242,
+  });
+  setOwnershipVerified(false);
+
+  expect(await service.reconcile(begun.activation.id, { client })).toMatchObject({
+    changed: false,
+    activation: { state: 'degraded' },
+    providers: [{ status: 'unknown', reason: 'process-ownership-unverified' }],
+  });
+  expect(service.end(begun.activation.id, { client })).rejects.toMatchObject({
+    code: 'unavailable',
+    details: { reason: 'provider_unobservable' },
+  });
+  registry.close();
+});
+
 test('does not let a stale confirmed run explain a listener whose fresh ownership fails', async () => {
   const { registry, service, stack, listening, setOwnershipVerified } = harness();
   const prepared = await service.prepare({ client, stackId: stack.id });

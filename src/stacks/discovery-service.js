@@ -73,7 +73,7 @@ export class StackDiscoveryService {
   /** @param {string} activationId @param {string} component */
   #context(activationId, component) {
     const activation = this.coordinationService.get(activationId);
-    if (activation.state === 'failed' || activation.state === 'ended') {
+    if (['failed', 'lost', 'ended'].includes(activation.state)) {
       throw new RegistryError(
         'conflict',
         `Activation ${activation.id} is ${activation.state} and cannot publish discovery.`,

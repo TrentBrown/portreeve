@@ -20,6 +20,8 @@ import {
   StackGenerationSchema,
   StackPrepareRequestSchema,
   StackPrepareResponseSchema,
+  StackReconcileActivationRequestSchema,
+  StackReconcileActivationResponseSchema,
   StackRenewActivationRequestSchema,
   StackRenewActivationResponseSchema,
   StackSkipEndpointRequestSchema,
@@ -570,6 +572,47 @@ export class StackCoordinationService {
   }
 
   /** @param {string} activationId @param {unknown} input */
+  async reconcile(activationId, input) {
+    const request = StackReconcileActivationRequestSchema.parse(input);
+    assertCompatible(request.client);
+    const activation = this.get(activationId);
+    if (!['confirmed', 'degraded'].includes(activation.state)) {
+      return StackReconcileActivationResponseSchema.parse({
+        changed: false,
+        activation,
+        providers: [],
+      });
+    }
+    const providers = await this.inspectProviders(activation.id);
+    if (providers.length > 0 && providers.every(({ status }) => status === 'gone')) {
+      const result = this.registry.markStackActivationLost(
+        activation.id,
+        providers,
+        this.now(),
+      );
+      return StackReconcileActivationResponseSchema.parse({
+        ...result,
+        providers,
+      });
+    }
+    return StackReconcileActivationResponseSchema.parse({
+      changed: false,
+      activation: this.get(activation.id),
+      providers,
+    });
+  }
+
+  /** @param {string} activationId */
+  async inspectProviders(activationId) {
+    const activation = this.get(activationId);
+    return Promise.all(
+      activation.endpoints
+        .filter(({ state }) => state === 'confirmed')
+        .map((endpoint) => this.#inspectProvider(activation, endpoint)),
+    );
+  }
+
+  /** @param {string} activationId @param {unknown} input */
   async end(activationId, input) {
     const request = StackEndActivationRequestSchema.parse(input);
     assertCompatible(request.client);
@@ -587,27 +630,168 @@ export class StackCoordinationService {
         { activationId, reason: 'leases_pending' },
       );
     }
-    for (const endpoint of activation.endpoints) {
-      if (endpoint.state !== 'confirmed') continue;
-      const inventory = await this.inventoryService.inspect(endpoint.port);
-      if (inventory.listeners.length > 0) {
-        throw new RegistryError(
-          'conflict',
-          `Activation ${activationId} still has a listener on port ${endpoint.port}.`,
-          {
-            activationId,
-            component: endpoint.component,
-            endpoint: endpoint.endpoint,
-            port: endpoint.port,
-            listeners: inventory.listeners,
-            reason: 'listener_present',
-          },
-        );
-      }
+    const providers = await this.inspectProviders(activation.id);
+    const blocker = providers.find(
+      ({ status, listeners }) => status !== 'gone' || listeners > 0,
+    );
+    if (blocker !== undefined) {
+      throw new RegistryError(
+        blocker.status === 'unknown' ? 'unavailable' : 'conflict',
+        `Activation ${activationId} still has provider evidence for ${blocker.component}.${blocker.endpoint}.`,
+        {
+          activationId,
+          provider: blocker,
+          reason:
+            blocker.status === 'unknown'
+              ? 'provider_unobservable'
+              : blocker.listeners > 0
+                ? 'listener_present'
+                : 'provider_present',
+        },
+      );
     }
     return StackEndActivationResponseSchema.parse(
       this.registry.endStackActivation(activationId, this.now()),
     );
+  }
+
+  /**
+   * @param {import('zod').infer<typeof StackActivationSchema>} activation
+   * @param {import('zod').infer<typeof import('../protocol/schemas.js').StackActivationEndpointSchema>} endpoint
+   */
+  async #inspectProvider(activation, endpoint) {
+    const run = endpoint.runId === null ? null : this.registry.getRun(endpoint.runId);
+    const inventory = await this.inventoryService.inspect(endpoint.port);
+    const base = {
+      component: endpoint.component,
+      endpoint: endpoint.endpoint,
+      port: endpoint.port,
+      bindingKind: endpoint.bindingKind,
+      listeners: inventory.listeners.length,
+      runId: endpoint.runId,
+      containerId: run?.containerId ?? null,
+    };
+    if (endpoint.runId === null || run === null) {
+      return {
+        ...base,
+        status: /** @type {const} */ ('unknown'),
+        reason: 'run-evidence-missing',
+      };
+    }
+    if (run.state !== 'confirmed') {
+      return {
+        ...base,
+        status: /** @type {const} */ ('gone'),
+        reason: 'run-released',
+      };
+    }
+    if (endpoint.bindingKind === 'process') {
+      if (inventory.listeners.length === 0) {
+        return {
+          ...base,
+          status: /** @type {const} */ ('gone'),
+          reason: 'listener-missing',
+        };
+      }
+      if (inventory.run?.id !== run.id) {
+        return {
+          ...base,
+          status: /** @type {const} */ ('gone'),
+          reason: 'provider-replaced',
+        };
+      }
+      return {
+        ...base,
+        status: /** @type {'active' | 'unknown'} */ (
+          inventory.classification === 'verified' ? 'active' : 'unknown'
+        ),
+        reason:
+          inventory.classification === 'verified'
+            ? 'process-ownership-verified'
+            : 'process-ownership-unverified',
+      };
+    }
+
+    if (run.containerId === null) {
+      return {
+        ...base,
+        status: /** @type {const} */ ('unknown'),
+        reason: 'container-evidence-missing',
+      };
+    }
+    const availability = await this.dockerAdapter.availability();
+    if (!availability.available) {
+      return {
+        ...base,
+        status: /** @type {const} */ ('unknown'),
+        reason: availability.reason ?? 'docker-unavailable',
+      };
+    }
+    const inspected = await this.dockerAdapter.inspect(run.containerId);
+    if (inspected.status === 'missing') {
+      return {
+        ...base,
+        status: /** @type {const} */ ('gone'),
+        reason: inspected.reason ?? 'container-missing',
+      };
+    }
+    if (inspected.status !== 'ok') {
+      return {
+        ...base,
+        status: /** @type {const} */ ('unknown'),
+        reason: inspected.reason ?? 'container-unobservable',
+      };
+    }
+    const generation = this.getGeneration(activation.generationId);
+    const stack = this.registry.getStack(activation.stackId);
+    const component = stack?.definition.components[endpoint.component];
+    const endpointDefinition = component?.endpoints[endpoint.endpoint];
+    if (
+      stack === null ||
+      component?.docker === undefined ||
+      endpointDefinition?.docker === undefined
+    ) {
+      return {
+        ...base,
+        status: /** @type {const} */ ('unknown'),
+        reason: 'docker-definition-missing',
+      };
+    }
+    const expectedLabels = expectedDockerLabels({
+      stackId: stack.id,
+      component: endpoint.component,
+      definitionRevision: generation.revision,
+      generationId: generation.id,
+      activationId: activation.id,
+      endpoints: Object.fromEntries(
+        Object.entries(component.endpoints).flatMap(([name, definition]) =>
+          definition.publish && definition.docker !== undefined
+            ? [[name, definition.docker.containerPort]]
+            : [],
+        ),
+      ),
+    });
+    const verification = verifyDockerEvidence({
+      container: inspected.container,
+      expectedLabels,
+      endpoint: endpoint.endpoint,
+      containerPort: endpointDefinition.docker.containerPort,
+      hostPort: endpoint.port,
+    });
+    return verification.verified
+      ? {
+          ...base,
+          status: /** @type {const} */ ('active'),
+          reason:
+            inventory.listeners.length > 0
+              ? 'docker-provider-verified'
+              : 'docker-provider-running-listener-missing',
+        }
+      : {
+          ...base,
+          status: /** @type {const} */ ('gone'),
+          reason: verification.reason ?? 'docker-provider-mismatch',
+        };
   }
 
   /** @param {import('zod').infer<typeof StackGenerationSchema>} generation */

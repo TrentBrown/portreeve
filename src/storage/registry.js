@@ -278,6 +278,21 @@ export class Registry {
     return row === null ? null : stackFromRow(row);
   }
 
+  /** @param {string} stackId */
+  listStackClaims(stackId) {
+    const id = IdentifierSchema.parse(stackId);
+    return this.database
+      .query(
+        `SELECT claims.*
+         FROM stack_endpoint_claims endpoints
+         JOIN claims ON claims.id = endpoints.claim_id
+         WHERE endpoints.stack_id = $stackId
+         ORDER BY claims.component, claims.endpoint`,
+      )
+      .all({ stackId: id })
+      .map(claimFromRow);
+  }
+
   /**
    * @param {{
    *   project: string,
@@ -848,7 +863,7 @@ export class Registry {
         id: IdentifierSchema,
         stack_id: IdentifierSchema,
         generation_id: IdentifierSchema,
-        state: z.enum(['starting', 'confirmed', 'degraded', 'failed', 'ended']),
+        state: z.enum(['starting', 'confirmed', 'degraded', 'failed', 'lost', 'ended']),
         created_at: TimestampSchema,
         updated_at: TimestampSchema,
         confirmed_at: TimestampSchema.nullable(),
@@ -907,6 +922,122 @@ export class Registry {
       confirmedAt: parsed.confirmed_at,
       endedAt: parsed.ended_at,
     });
+  }
+
+  /** @param {string} stackId */
+  getLiveStackActivationForStack(stackId) {
+    const id = IdentifierSchema.parse(stackId);
+    const row = /** @type {{id: string} | null} */ (
+      this.database
+        .query(
+          `SELECT id FROM stack_activations
+           WHERE stack_id = $stackId
+             AND state IN ('starting', 'confirmed', 'degraded')
+           ORDER BY created_at DESC
+           LIMIT 1`,
+        )
+        .get({ stackId: id })
+    );
+    return row === null ? null : this.getStackActivation(row.id);
+  }
+
+  /**
+   * @param {string} activationId
+   * @param {Array<{component: string, endpoint: string, bindingKind: 'process' | 'docker', status: string, reason: string}>} providers
+   * @param {Date} [now]
+   */
+  markStackActivationLost(activationId, providers, now = new Date()) {
+    const id = IdentifierSchema.parse(activationId);
+    const timestamp = toTimestamp(now);
+    let changed = false;
+    const markLost = this.database.transaction(() => {
+      const activation = this.getStackActivation(id);
+      if (activation === null) {
+        throw new RegistryError('not_found', `Activation ${id} was not found.`);
+      }
+      if (activation.state === 'lost') return;
+      if (!['confirmed', 'degraded'].includes(activation.state)) {
+        throw new RegistryError(
+          'conflict',
+          `Activation ${id} is ${activation.state} and cannot become lost.`,
+          { activationId: id, reason: 'activation_not_reconcilable' },
+        );
+      }
+      if (providers.some(({ status }) => status !== 'gone')) {
+        throw new RegistryError(
+          'conflict',
+          `Activation ${id} still has active or unobservable providers.`,
+          { activationId: id, reason: 'provider_not_gone' },
+        );
+      }
+      const releasedRuns = this.database
+        .query(
+          `SELECT id FROM runs
+           WHERE state = 'confirmed' AND id IN (
+             SELECT run_id FROM stack_activation_endpoints
+             WHERE activation_id = $activationId AND run_id IS NOT NULL
+           )`,
+        )
+        .all({ activationId: id })
+        .map((row) => z.object({ id: IdentifierSchema }).parse(row));
+      this.database
+        .query(
+          `UPDATE runs
+           SET state = 'released', released_at = $timestamp
+           WHERE state = 'confirmed' AND id IN (
+             SELECT run_id FROM stack_activation_endpoints
+             WHERE activation_id = $activationId AND run_id IS NOT NULL
+           )`,
+        )
+        .run({ timestamp, activationId: id });
+      for (const run of releasedRuns) {
+        this.#appendHistory(
+          'run.released',
+          'run',
+          run.id,
+          { activationId: id, reason: 'provider-lost' },
+          timestamp,
+        );
+      }
+      this.database
+        .query(
+          `UPDATE stack_activation_endpoints
+           SET state = 'released', failure_reason = 'provider-lost',
+               updated_at = $timestamp
+           WHERE activation_id = $activationId AND state = 'confirmed'`,
+        )
+        .run({ timestamp, activationId: id });
+      this.database
+        .query(
+          `UPDATE stack_activations
+           SET state = 'lost', updated_at = $timestamp
+           WHERE id = $activationId
+             AND state IN ('confirmed', 'degraded')`,
+        )
+        .run({ timestamp, activationId: id });
+      changed = true;
+      this.#appendHistory(
+        'stack.activation.lost',
+        'stack-activation',
+        id,
+        {
+          providers: providers.map((provider) => ({
+            component: provider.component,
+            endpoint: provider.endpoint,
+            bindingKind: provider.bindingKind,
+            status: provider.status,
+            reason: provider.reason,
+          })),
+        },
+        timestamp,
+      );
+    });
+    markLost.immediate();
+    const activation = this.getStackActivation(id);
+    if (activation === null) {
+      throw new RegistryError('internal', `Activation ${id} disappeared.`);
+    }
+    return { changed, activation };
   }
 
   /** @param {string} activationId @param {Date} [now] */
@@ -2232,6 +2363,92 @@ export class Registry {
     return deleted;
   }
 
+  /** @param {string} stackId @param {Date} [now] */
+  deleteStack(stackId, now = new Date()) {
+    const id = IdentifierSchema.parse(stackId);
+    const timestamp = toTimestamp(now);
+    const remove = this.database.transaction(() => {
+      const stack = this.getStack(id);
+      if (stack === null) {
+        throw new RegistryError('not_found', `Stack ${id} was not found.`);
+      }
+      const liveActivation = this.getLiveStackActivationForStack(id);
+      if (liveActivation !== null) {
+        throw new RegistryError(
+          'conflict',
+          `Stack ${id} still has a live activation.`,
+          {
+            stackId: id,
+            activationId: liveActivation.id,
+            reason: 'activation_live',
+          },
+        );
+      }
+      const claims = this.listStackClaims(id);
+      for (const claim of claims) {
+        this.#assertClaimHasNoActiveWork(claim.id, now);
+      }
+      const counts = {
+        revisions: countFor(
+          this.database,
+          'SELECT COUNT(*) AS count FROM stack_definition_revisions WHERE stack_id = $id',
+          id,
+        ),
+        generations: countFor(
+          this.database,
+          'SELECT COUNT(*) AS count FROM stack_generations WHERE stack_id = $id',
+          id,
+        ),
+        activations: countFor(
+          this.database,
+          'SELECT COUNT(*) AS count FROM stack_activations WHERE stack_id = $id',
+          id,
+        ),
+        claims: claims.length,
+      };
+      this.database.query('DELETE FROM stacks WHERE id = $id').run({ id });
+      for (const claim of claims) {
+        this.database.query('DELETE FROM runs WHERE claim_id = $claimId').run({
+          claimId: claim.id,
+        });
+        this.database.query('DELETE FROM leases WHERE claim_id = $claimId').run({
+          claimId: claim.id,
+        });
+        this.database.query('DELETE FROM claims WHERE id = $claimId').run({
+          claimId: claim.id,
+        });
+        this.#appendHistory(
+          'claim.pruned',
+          'claim',
+          claim.id,
+          { claim, reason: 'pruned', source: 'stack-prune', stackId: id },
+          timestamp,
+        );
+      }
+      this.#appendHistory(
+        'stack.pruned',
+        'stack',
+        id,
+        {
+          identity: {
+            project: stack.project,
+            workspaceRoot: stack.workspaceRoot,
+          },
+          currentRevision: stack.currentRevision,
+          claimIds: claims.map(({ id: claimId }) => claimId),
+          counts,
+        },
+        timestamp,
+      );
+      return {
+        stackId: id,
+        claimIds: claims.map(({ id: claimId }) => claimId),
+        counts,
+      };
+    });
+    return remove.immediate();
+  }
+
   getSettings() {
     const row = this.database
       .query(`SELECT value_json FROM settings WHERE key = 'server'`)
@@ -2359,7 +2576,7 @@ export class Registry {
         .query('SELECT state FROM stack_activations WHERE id = $activationId')
         .get({ activationId })
     );
-    if (current === null || current.state === 'ended') return;
+    if (current === null || ['lost', 'ended'].includes(current.state)) return;
     const endpoints = this.database
       .query(
         `SELECT required, state FROM stack_activation_endpoints
@@ -2648,4 +2865,10 @@ function stackFromRow(row) {
  */
 function parseJsonObject(value) {
   return z.record(z.string(), z.unknown()).parse(JSON.parse(value));
+}
+
+/** @param {Database} database @param {string} sql @param {string} id */
+function countFor(database, sql, id) {
+  const row = database.query(sql).get({ id });
+  return z.object({ count: z.number().int().min(0) }).parse(row).count;
 }
