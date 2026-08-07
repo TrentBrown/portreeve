@@ -35,12 +35,12 @@ tests.
 
 ## I-3 - Deliver stack-root CLI discovery
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P3
 - **Rubric criteria:** R1, R2, R8
 - **Depends on:** I-1, I-2
-- **PR:** -
+- **PR:** [#15](https://github.com/TrentBrown/portreeve/pull/15)
 
 Update CLI flags, help, discovery, registered-root fallback, output, and integration
 coverage for non-Git parent roots with child repositories.
