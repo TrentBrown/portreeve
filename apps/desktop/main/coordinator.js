@@ -389,14 +389,14 @@ export function createStateCoordinator(options) {
           candidates: result.candidates.map((/** @type {any} */ candidate) => ({
             stackId: candidate.stack.id,
             project: candidate.stack.project,
-            workspaceName: basename(candidate.stack.workspaceRoot),
+            stackRootName: basename(candidate.stack.stackRoot),
             claimCount: candidate.claimIds.length,
             reason: candidate.reason,
           })),
           blocked: result.blocked.map((/** @type {any} */ blocker) => ({
             stackId: blocker.stack.id,
             project: blocker.stack.project,
-            workspaceName: basename(blocker.stack.workspaceRoot),
+            stackRootName: basename(blocker.stack.stackRoot),
             reasons: blocker.reasons,
           })),
         });

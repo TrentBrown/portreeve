@@ -14,14 +14,14 @@ const client = {
 const old = new Date('2026-07-01T12:00:00.000Z');
 const now = new Date('2026-08-06T12:00:00.000Z');
 
-/** @param {import('../../src/storage/registry.js').Registry} registry @param {string} workspaceRoot @param {boolean} [docker] */
-function applyStack(registry, workspaceRoot, docker = false) {
+/** @param {import('../../src/storage/registry.js').Registry} registry @param {string} stackRoot @param {boolean} [docker] */
+function applyStack(registry, stackRoot, docker = false) {
   return new StackDefinitionService({ registry, now: () => old }).apply({
     client: {
       ...client,
       requiredCapabilities: ['stack-definitions-v1'],
     },
-    workspaceRoot,
+    stackRoot,
     definition: {
       version: 1,
       project: 'prune-test',
@@ -91,7 +91,7 @@ function service({
   });
 }
 
-test('previews and atomically prunes an old missing-worktree stack while retaining history', async () => {
+test('previews and atomically prunes an old missing-root stack while retaining history', async () => {
   const registry = openRegistry();
   const stack = applyStack(registry, '/missing/prune-me');
   const claims = registry.listStackClaims(stack.id);
@@ -125,7 +125,7 @@ test('previews and atomically prunes an old missing-worktree stack while retaini
       payload: expect.objectContaining({
         identity: {
           project: stack.project,
-          workspaceRoot: stack.workspaceRoot,
+          stackRoot: stack.stackRoot,
         },
         claimIds: claims.map(({ id }) => id),
       }),
@@ -238,12 +238,12 @@ test('blocks pruning when fresh Docker evidence finds a matching running contain
   registry.close();
 });
 
-test('execution skips a candidate when its worktree, listener, or container reappears', async () => {
-  const worktreeRegistry = openRegistry();
-  const worktreeStack = applyStack(worktreeRegistry, '/missing/reappears');
+test('execution skips a candidate when its stack root, listener, or container reappears', async () => {
+  const stackRootRegistry = openRegistry();
+  const stackRootStack = applyStack(stackRootRegistry, '/missing/reappears');
   let pathChecks = 0;
-  const worktreeResult = await service({
-    registry: worktreeRegistry,
+  const stackRootResult = await service({
+    registry: stackRootRegistry,
     pathExists: async () => {
       pathChecks += 1;
       return pathChecks > 1;
@@ -253,12 +253,12 @@ test('execution skips a candidate when its worktree, listener, or container reap
     olderThanMilliseconds: 7 * 86_400_000,
     dryRun: false,
   });
-  expect(worktreeResult).toMatchObject({
+  expect(stackRootResult).toMatchObject({
     deletedStackIds: [],
-    skipped: [{ stackId: worktreeStack.id, reason: 'workspace-reappeared' }],
+    skipped: [{ stackId: stackRootStack.id, reason: 'stack-root-reappeared' }],
   });
-  expect(worktreeRegistry.getStack(worktreeStack.id)).not.toBeNull();
-  worktreeRegistry.close();
+  expect(stackRootRegistry.getStack(stackRootStack.id)).not.toBeNull();
+  stackRootRegistry.close();
 
   const listenerRegistry = openRegistry();
   const listenerStack = applyStack(listenerRegistry, '/missing/listener-race');

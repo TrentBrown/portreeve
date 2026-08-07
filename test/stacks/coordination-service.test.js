@@ -103,7 +103,7 @@ function harness() {
   });
   const stack = definitionService.apply({
     client: { ...client, requiredCapabilities: ['stack-definitions-v1'] },
-    workspaceRoot: '/worktrees/caregiver-a',
+    stackRoot: '/worktrees/caregiver-a',
     definition: definition(),
   }).stack;
   return {
@@ -202,6 +202,40 @@ test('allows only one activation and expires its entire unconfirmed attempt with
   registry.close();
 });
 
+test('allows an idempotent apply but refuses a changed definition during a live activation', async () => {
+  const { registry, service, definitionService, stack } = harness();
+  const prepared = await service.prepare({ client, stackId: stack.id });
+  await service.begin({ client, generationId: prepared.generation.id });
+
+  expect(
+    definitionService.apply({
+      client: { ...client, requiredCapabilities: ['stack-definitions-v1'] },
+      stackRoot: stack.stackRoot,
+      definition: definition(),
+    }),
+  ).toMatchObject({
+    changed: false,
+    stack: { currentRevision: stack.currentRevision },
+  });
+
+  const changed = definition();
+  changed.components.api.endpoints.metrics.required = true;
+  expect(() =>
+    definitionService.apply({
+      client: { ...client, requiredCapabilities: ['stack-definitions-v1'] },
+      stackRoot: stack.stackRoot,
+      definition: changed,
+    }),
+  ).toThrow(
+    expect.objectContaining({
+      code: 'conflict',
+      details: expect.objectContaining({ reason: 'activation_live' }),
+    }),
+  );
+  expect(definitionService.get(stack.id).currentRevision).toBe(stack.currentRevision);
+  registry.close();
+});
+
 test('renews an activation lease batch only after validating every token', async () => {
   const { registry, service, stack, advance } = harness();
   const prepared = await service.prepare({ client, stackId: stack.id });
@@ -256,7 +290,7 @@ test('falls back from an occupied preferred port and refuses an older revision a
   changed.components.api.endpoints.metrics.required = true;
   definitionService.apply({
     client: { ...client, requiredCapabilities: ['stack-definitions-v1'] },
-    workspaceRoot: '/worktrees/caregiver-a',
+    stackRoot: '/worktrees/caregiver-a',
     definition: changed,
   });
   expect(
@@ -305,7 +339,7 @@ test('requires promotion when a required dependency targets an optional endpoint
   };
   const applied = definitionService.apply({
     client: { ...client, requiredCapabilities: ['stack-definitions-v1'] },
-    workspaceRoot: '/worktrees/caregiver-a',
+    stackRoot: '/worktrees/caregiver-a',
     definition: changed,
   });
   const prepared = await service.prepare({ client, stackId: applied.stack.id });

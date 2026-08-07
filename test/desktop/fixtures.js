@@ -111,7 +111,7 @@ export function stackStatus() {
     stack: {
       id: '44444444-4444-4444-8444-444444444444',
       project: 'caregiver',
-      workspaceRoot: '/Users/example/Code/caregiver-secret-worktree',
+      stackRoot: '/Users/example/Code/caregiver-secret-worktree',
       currentRevision: 'b'.repeat(64),
       definition: {
         version: 1,

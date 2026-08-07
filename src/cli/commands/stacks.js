@@ -5,7 +5,7 @@ import { createInterface } from 'node:readline/promises';
 import { dirname, join, resolve } from 'node:path';
 import {
   PortreeveClient,
-  canonicalWorkspaceRoot,
+  canonicalStackRoot,
   writeEndpointSnapshot,
 } from '../../../packages/client/src/index.js';
 import {
@@ -23,7 +23,7 @@ export const DEFAULT_STACK_DEFINITION = 'portreeve.stack.json';
 export async function applyStackCommand(options) {
   const filename = options.file
     ? resolve(options.file)
-    : join(await canonicalWorkspaceRoot(process.cwd()), DEFAULT_STACK_DEFINITION);
+    : join(await canonicalStackRoot(process.cwd()), DEFAULT_STACK_DEFINITION);
   let definition;
   try {
     definition = JSON.parse(await readFile(filename, 'utf8'));
@@ -33,7 +33,7 @@ export async function applyStackCommand(options) {
     );
   }
   const result = await clientFor(options.socket).applyStack({
-    workspaceRoot: dirname(filename),
+    stackRoot: dirname(filename),
     definition,
   });
   if (!result.changed) setExitCode(EXIT_CODES.stateDifference);
@@ -42,11 +42,11 @@ export async function applyStackCommand(options) {
   ]);
 }
 
-/** @param {{project?: string, workspace?: string, socket?: string, json?: boolean}} options */
+/** @param {{project?: string, stackRoot?: string, socket?: string, json?: boolean}} options */
 export async function listStacksCommand(options) {
   const stacks = await clientFor(options.socket).listStacks({
     ...(options.project ? { project: options.project } : {}),
-    ...(options.workspace ? { workspaceRoot: options.workspace } : {}),
+    ...(options.stackRoot ? { stackRoot: options.stackRoot } : {}),
   });
   renderOutput(
     options.json ?? false,
@@ -324,25 +324,23 @@ export async function snapshotStackEndpointsCommand(activationIdArgument, option
   ]);
 }
 
-/** @param {{project?: string, workspace?: string, socket?: string, json?: boolean}} options */
+/** @param {{project?: string, stackRoot?: string, socket?: string, json?: boolean}} options */
 export async function stackStatusCommand(options) {
-  const workspaceRoot = await canonicalWorkspaceRoot(
-    options.workspace ?? process.cwd(),
-  );
+  const stackRoot = await canonicalStackRoot(options.stackRoot ?? process.cwd());
   const stacks = await clientFor(options.socket).listStacks({
-    workspaceRoot,
+    stackRoot,
     ...(options.project ? { project: options.project } : {}),
   });
   if (stacks.length === 0) {
     setExitCode(EXIT_CODES.stateDifference);
     renderOutput(options.json ?? false, 'stack', null, [
-      `No Portreeve stack is registered for ${workspaceRoot}.`,
+      `No Portreeve stack is registered for ${stackRoot}.`,
     ]);
     return;
   }
   if (stacks.length > 1) {
     throw new CliUsageError(
-      'More than one project stack is registered for this worktree; specify --project.',
+      'More than one project stack is registered for this stack root; specify --project.',
     );
   }
   const stack = stacks[0];
@@ -395,13 +393,13 @@ function renderActivation(activation, json) {
 function renderStackPrune(result, json) {
   const lines = [];
   if (result.candidates.length === 0) {
-    lines.push('No missing-worktree stacks are eligible.');
+    lines.push('No missing-stack-root stacks are eligible.');
   } else {
     lines.push(
       `${result.dryRun ? 'Would prune' : 'Eligible'} ${String(result.candidates.length)} stack(s):`,
     );
     for (const { stack } of result.candidates) {
-      lines.push(`  ${stack.id}  ${stackLabel(stack)}  ${stack.workspaceRoot}`);
+      lines.push(`  ${stack.id}  ${stackLabel(stack)}  ${stack.stackRoot}`);
     }
   }
   for (const blocker of result.blocked) {
@@ -434,7 +432,7 @@ async function confirmStackPrune(count, json) {
 
 /** @param {import('../../../packages/client/src/index.js').StackRecord} stack */
 function stackLabel(stack) {
-  return `${stack.project}/${stack.workspaceRoot}`;
+  return `${stack.project}/${stack.stackRoot}`;
 }
 
 /** @param {{transport: 'tcp', host: string, port: number}} address */

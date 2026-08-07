@@ -42,7 +42,7 @@ container IDs. It freshly evaluates current process ownership or exact Docker la
 publication evidence. Unobservable evidence preserves the live activation; it never
 authorizes replacement or ending.
 
-`stacks prune` performs no reclamation. It requires an old missing worktree, reports
+`stacks prune` performs no reclamation. It requires an old missing stack root, reports
 resource blockers, revalidates before deletion, and skips any stack whose path or live
 evidence reappears. Successful pruning deletes only inactive coordination records and
 their endpoint claims while retaining durable history.

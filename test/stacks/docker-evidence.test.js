@@ -78,7 +78,7 @@ test('confirms one mixed process and Docker activation from fresh provider evide
   });
   const stack = new StackDefinitionService({ registry }).apply({
     client: definitionClient,
-    workspaceRoot: '/worktrees/mixed-docker',
+    stackRoot: '/worktrees/mixed-docker',
     definition: {
       version: 1,
       project: 'mixed',
@@ -226,7 +226,7 @@ test('Docker binding degrades as unavailable without affecting process-only begi
   });
   const stack = new StackDefinitionService({ registry }).apply({
     client: definitionClient,
-    workspaceRoot: '/worktrees/docker-absent',
+    stackRoot: '/worktrees/docker-absent',
     definition: {
       version: 1,
       project: 'absent',

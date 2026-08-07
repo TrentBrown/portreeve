@@ -54,7 +54,7 @@ fresh provider evidence through the official client. It supports:
 - explicitly reconciling provider evidence after launcher loss;
 - requesting evidence-gated activation ending after the project launcher stops its
   providers;
-- previewing seven-day missing-worktree stack pruning and typing `PRUNE` before
+- previewing seven-day missing-stack-root pruning and typing `PRUNE` before
   execution.
 
 Portreeve Desktop never starts or stops a project process or container, invokes Docker
@@ -73,7 +73,7 @@ renderer frame and owns the native file picker, clipboard write, fixed download-
 navigation, exact CLI execution, and official client connection.
 
 The desktop receives no general filesystem, shell, network-navigation, SQLite, Docker,
-or Portreeve-socket capability. Stack view models omit full worktree paths, claim and
+or Portreeve-socket capability. Stack view models omit full stack-root paths, claim and
 lease identifiers, run identifiers, Docker labels, and credentials. Discovery previews
 contain only their documented component-scoped address contract.
 

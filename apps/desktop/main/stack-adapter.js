@@ -20,7 +20,7 @@ export const DEFAULT_STACK_PRUNE_AGE_MILLISECONDS = 7 * 86_400_000;
  * @param {{
  *   listStacks(): Promise<unknown>,
  *   getStackStatus(stackId: string): Promise<unknown>,
- *   applyStack(input: {workspaceRoot: string, definition: unknown}): Promise<unknown>,
+ *   applyStack(input: {stackRoot: string, definition: unknown}): Promise<unknown>,
  *   prepareStack(stackId: string): Promise<unknown>,
  *   reconcileStackActivation(activationId: string): Promise<unknown>,
  *   endStackActivation(activationId: string): Promise<unknown>,
@@ -85,7 +85,7 @@ export function createStackAdapter(client, options) {
       return {
         cancelled: false,
         result: StackApplyResponseSchema.parse(
-          await client.applyStack({ workspaceRoot: dirname(filename), definition }),
+          await client.applyStack({ stackRoot: dirname(filename), definition }),
         ),
       };
     },

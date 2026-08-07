@@ -58,7 +58,7 @@ test('stack commands share definition discovery and versioned JSON contracts', a
       version: 1,
       result: {
         changed: true,
-        stack: { project: 'cli-stack', workspaceRoot: await realpath(workspaceRoot) },
+        stack: { project: 'cli-stack', stackRoot: await realpath(workspaceRoot) },
       },
     });
     const stackId = appliedDocument.result.stack.id;
@@ -74,7 +74,7 @@ test('stack commands share definition discovery and versioned JSON contracts', a
       [
         'stacks',
         'list',
-        '--workspace',
+        '--stack-root',
         workspaceRoot,
         '--socket',
         socketPath,

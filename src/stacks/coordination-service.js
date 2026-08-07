@@ -104,7 +104,7 @@ export class StackCoordinationService {
         if (!endpointDefinition.publish) continue;
         const claim = this.registry.findClaim({
           project: stack.project,
-          workspaceRoot: stack.workspaceRoot,
+          workspaceRoot: stack.stackRoot,
           component,
           endpoint,
           transport: endpointDefinition.transport,

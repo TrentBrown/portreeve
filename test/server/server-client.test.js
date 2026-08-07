@@ -1,7 +1,7 @@
 // @ts-check
 
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtemp, realpath, rm, stat } from 'node:fs/promises';
+import { mkdtemp, realpath, rm, stat, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
@@ -144,7 +144,7 @@ test('official client refuses a stack apply when an old server lacks the capabil
 
   await expect(
     client.applyStack({
-      workspaceRoot,
+      stackRoot: workspaceRoot,
       definition: {
         version: 1,
         project: 'caregiver',
@@ -184,11 +184,11 @@ test('applies and inspects a stack definition through the official client', asyn
     },
   };
 
-  const applied = await client.applyStack({ workspaceRoot, definition });
+  const applied = await client.applyStack({ stackRoot: workspaceRoot, definition });
   expect(applied.changed).toBe(true);
   expect(applied.stack).toMatchObject({
     project: 'caregiver',
-    workspaceRoot: await realpath(resolve(workspaceRoot)),
+    stackRoot: await realpath(resolve(workspaceRoot)),
   });
   expect(applied.stack.definition.components.api?.endpoints?.http).toEqual({
     transport: 'tcp',
@@ -196,7 +196,9 @@ test('applies and inspects a stack definition through the official client', asyn
     required: true,
     allocation: { preferredPort: 43100 },
   });
-  expect(await client.listStacks({ workspaceRoot })).toEqual([applied.stack]);
+  expect(await client.listStacks({ stackRoot: workspaceRoot })).toEqual([
+    applied.stack,
+  ]);
   expect(await client.getStack(applied.stack.id)).toEqual(applied.stack);
   expect(await client.getStackStatus(applied.stack.id)).toEqual({
     stack: applied.stack,
@@ -204,7 +206,9 @@ test('applies and inspects a stack definition through the official client', asyn
     activation: null,
     providers: [],
   });
-  expect((await client.applyStack({ workspaceRoot, definition })).changed).toBe(false);
+  expect(
+    (await client.applyStack({ stackRoot: workspaceRoot, definition })).changed,
+  ).toBe(false);
   expect(registry.listClaims()[0]?.identity).toMatchObject({
     service: 'api',
     component: 'api',
@@ -212,12 +216,86 @@ test('applies and inspects a stack definition through the official client', asyn
   });
 });
 
-test('previews and executes missing-worktree stack pruning through the official client', async () => {
+test('canonicalizes and validates stack roots for raw protocol callers', async () => {
+  const { socketPath, registry } = await startFixture();
+  const directory = await mkdtemp(join(tmpdir(), 'portreeve-raw-stack-'));
+  const stackRoot = join(directory, 'stack');
+  const alias = join(directory, 'alias');
+  await Bun.write(join(stackRoot, '.keep'), '');
+  await symlink(stackRoot, alias, 'dir');
+  cleanups.push(() => rm(directory, { force: true, recursive: true }));
+  const request = {
+    client: {
+      softwareVersion: '0.1.0',
+      protocol: { minimum: 1, maximum: 1 },
+      requiredCapabilities: ['stack-definitions-v1'],
+    },
+    definition: {
+      version: 1,
+      project: 'raw-client',
+      components: { api: {} },
+    },
+  };
+
+  const response = await fetch('http://portreeve/v1/stacks/apply', {
+    unix: socketPath,
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ...request, stackRoot: alias }),
+  });
+  expect(response.status).toBe(200);
+  expect(registry.listStacks()).toMatchObject([
+    { stackRoot: await realpath(stackRoot) },
+  ]);
+
+  const obsoleteFilter = await fetch(
+    `http://portreeve/v1/stacks?workspaceRoot=${encodeURIComponent(alias)}`,
+    { unix: socketPath },
+  );
+  expect(obsoleteFilter.status).toBe(400);
+  expect(await obsoleteFilter.json()).toMatchObject({
+    error: {
+      code: 'invalid_input',
+      details: { reason: 'unsupported_stack_filter' },
+    },
+  });
+
+  const invalid = await fetch('http://portreeve/v1/stacks/apply', {
+    unix: socketPath,
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ...request, stackRoot: join(directory, 'missing') }),
+  });
+  expect(invalid.status).toBe(400);
+  expect(await invalid.json()).toMatchObject({
+    error: {
+      code: 'invalid_input',
+      details: { reason: 'invalid_stack_root' },
+    },
+  });
+
+  const fileRoot = await fetch('http://portreeve/v1/stacks/apply', {
+    unix: socketPath,
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ...request, stackRoot: join(stackRoot, '.keep') }),
+  });
+  expect(fileRoot.status).toBe(400);
+  expect(await fileRoot.json()).toMatchObject({
+    error: {
+      code: 'invalid_input',
+      details: { reason: 'invalid_stack_root' },
+    },
+  });
+  expect(registry.listStacks()).toHaveLength(1);
+});
+
+test('previews and executes missing-stack-root pruning through the official client', async () => {
   const { socketPath, registry } = await startFixture();
   const client = new PortreeveClient({ socketPath });
   const workspaceRoot = await mkdtemp(join(tmpdir(), 'portreeve-prune-stack-'));
   const applied = await client.applyStack({
-    workspaceRoot,
+    stackRoot: workspaceRoot,
     definition: {
       version: 1,
       project: 'prune-client',
@@ -255,7 +333,7 @@ test('prepares and confirms a process-backed activation through the official cli
 
   try {
     const applied = await client.applyStack({
-      workspaceRoot,
+      stackRoot: workspaceRoot,
       definition: {
         version: 1,
         project: 'caregiver',
@@ -380,7 +458,7 @@ test('advertises and confirms Docker evidence through the official socket client
   const exactPort = await unusedPort();
   expect((await client.health()).capabilities).toContain('docker-evidence-v1');
   const applied = await client.applyStack({
-    workspaceRoot,
+    stackRoot: workspaceRoot,
     definition: {
       version: 1,
       project: 'docker-client',

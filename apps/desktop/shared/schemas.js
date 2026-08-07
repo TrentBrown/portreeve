@@ -30,7 +30,7 @@ const DesktopStackSchema = z
   .object({
     id: IdentifierSchema,
     project: z.string().min(1),
-    workspaceName: z.string().min(1),
+    stackRootName: z.string().min(1),
     currentRevision: z.string().regex(/^[a-f0-9]{64}$/),
     createdAt: TimestampSchema,
     updatedAt: TimestampSchema,
@@ -397,9 +397,9 @@ const DesktopStackPruneCandidateSchema = z
   .object({
     stackId: IdentifierSchema,
     project: z.string().min(1),
-    workspaceName: z.string().min(1),
+    stackRootName: z.string().min(1),
     claimCount: z.number().int().nonnegative(),
-    reason: z.literal('workspace-missing'),
+    reason: z.literal('stack-root-missing'),
   })
   .strict();
 
@@ -413,7 +413,7 @@ export const DesktopStackPrunePreviewSchema = z
         .object({
           stackId: IdentifierSchema,
           project: z.string().min(1),
-          workspaceName: z.string().min(1),
+          stackRootName: z.string().min(1),
           reasons: z.array(z.string().min(1)),
         })
         .strict(),

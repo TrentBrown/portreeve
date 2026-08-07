@@ -319,13 +319,25 @@ test('collects stack evidence and serializes stack mutations with other desktop 
         prepared += 1;
         return { reused: false, generation: status.generation };
       },
+      async previewPrune() {
+        return {
+          candidates: [
+            {
+              stack: status.stack,
+              claimIds: ['11111111-1111-4111-8111-111111111111'],
+              reason: 'stack-root-missing',
+            },
+          ],
+          blocked: [],
+        };
+      },
     },
     now: () => new Date(timestamp),
   });
   const initial = await coordinator.refresh();
   expect(initial.stacks[0]).toMatchObject({
     project: 'caregiver',
-    workspaceName: 'caregiver-secret-worktree',
+    stackRootName: 'caregiver-secret-worktree',
     activation: { state: 'confirmed' },
   });
   const result = await coordinator.prepareStack(status.stack.id);
@@ -336,6 +348,20 @@ test('collects stack evidence and serializes stack mutations with other desktop 
   });
   expect(prepared).toBe(1);
   expect(result.snapshot.stacks).toHaveLength(1);
+  expect(await coordinator.previewStackPrune()).toEqual({
+    schemaVersion: 1,
+    olderThanDays: 7,
+    candidates: [
+      {
+        stackId: status.stack.id,
+        project: 'caregiver',
+        stackRootName: 'caregiver-secret-worktree',
+        claimCount: 1,
+        reason: 'stack-root-missing',
+      },
+    ],
+    blocked: [],
+  });
 });
 
 test('publishes update discovery independently without delaying local refresh', async () => {

@@ -1,6 +1,6 @@
 // @ts-check
 
-import { chmod, lstat, unlink } from 'node:fs/promises';
+import { chmod, lstat, realpath, stat, unlink } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { createConnection } from 'node:net';
 import { z } from 'zod';
@@ -268,6 +268,14 @@ async function handleRequest(
       );
     }
     if (request.method === 'GET' && pathname === '/v1/stacks') {
+      if (url.searchParams.has('workspaceRoot')) {
+        throw new RegistryError(
+          'invalid_input',
+          'workspaceRoot is not a stack filter; use stackRoot.',
+          { reason: 'unsupported_stack_filter', filter: 'workspaceRoot' },
+        );
+      }
+      const stackRoot = url.searchParams.get('stackRoot');
       return success(
         requestId,
         StackListSchema.parse(
@@ -275,9 +283,9 @@ async function handleRequest(
             ...(url.searchParams.has('project')
               ? { project: url.searchParams.get('project') ?? '' }
               : {}),
-            ...(url.searchParams.has('workspaceRoot')
-              ? { workspaceRoot: url.searchParams.get('workspaceRoot') ?? '' }
-              : {}),
+            ...(stackRoot === null
+              ? {}
+              : { stackRoot: await canonicalStackRootForRequest(stackRoot) }),
           }),
         ),
       );
@@ -391,10 +399,14 @@ async function handleRequest(
       return success(requestId, ClaimPruneResultSchema.parse(result));
     }
     if (pathname === '/v1/stacks/apply') {
+      const requestBody = StackApplyRequestSchema.parse(body);
       return success(
         requestId,
         StackApplyResponseSchema.parse(
-          stackDefinitionService.apply(StackApplyRequestSchema.parse(body)),
+          stackDefinitionService.apply({
+            ...requestBody,
+            stackRoot: await canonicalStackRootForRequest(requestBody.stackRoot),
+          }),
         ),
       );
     }
@@ -758,6 +770,23 @@ function requestIdFor(request) {
  */
 function objectBody(body) {
   return z.record(z.string(), z.unknown()).parse(body);
+}
+
+/** @param {string} stackRoot */
+async function canonicalStackRootForRequest(stackRoot) {
+  try {
+    const canonicalPath = await realpath(stackRoot);
+    if (!(await stat(canonicalPath)).isDirectory()) {
+      throw new Error('Not a directory');
+    }
+    return canonicalPath;
+  } catch {
+    throw new RegistryError(
+      'invalid_input',
+      `Stack root ${stackRoot} must be an existing directory.`,
+      { stackRoot, reason: 'invalid_stack_root' },
+    );
+  }
 }
 
 /**

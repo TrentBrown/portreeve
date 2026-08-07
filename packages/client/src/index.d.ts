@@ -147,7 +147,7 @@ export interface StackDefinition {
 export interface StackRecord {
   id: string;
   project: string;
-  workspaceRoot: string;
+  stackRoot: string;
   currentRevision: string;
   definition: StackDefinition;
   createdAt: string;
@@ -242,7 +242,7 @@ export interface StackPruneResult {
   candidates: Array<{
     stack: StackRecord;
     claimIds: string[];
-    reason: 'workspace-missing';
+    reason: 'stack-root-missing';
   }>;
   blocked: Array<{ stack: StackRecord; reasons: string[] }>;
   deletedStackIds: string[];
@@ -389,12 +389,12 @@ export declare class PortreeveClient {
   }): Promise<InventoryEntry[]>;
   inspectPort(port: number): Promise<InventoryEntry>;
   applyStack(request: {
-    workspaceRoot: string;
+    stackRoot: string;
     definition: StackDefinition;
   }): Promise<StackApplyResult>;
   listStacks(filters?: {
     project?: string;
-    workspaceRoot?: string;
+    stackRoot?: string;
   }): Promise<StackRecord[]>;
   getStack(stackId: string): Promise<StackRecord>;
   getStackStatus(stackId: string): Promise<StackStatus>;
@@ -522,6 +522,7 @@ export declare class PortreeveClient {
 }
 
 export declare function defaultSocketPath(): string;
+export declare function canonicalStackRoot(stackPath: string): Promise<string>;
 export declare function canonicalWorkspaceRoot(projectPath: string): Promise<string>;
 export declare function parseEndpointSnapshot(input: unknown): StackEndpointSnapshot;
 export declare function readEndpointSnapshot(

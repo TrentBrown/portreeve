@@ -68,13 +68,14 @@ output.
 
 ## Stack definitions
 
-`stacks apply` discovers `portreeve.stack.json` at the canonical Git worktree root.
-`--file <path>` selects an explicit file. The file's parent is supplied as the workspace
-input and the official client canonicalizes it before the request. Equivalent normalized
+`stacks apply` reads `portreeve.stack.json` from the selected stack root.
+`--file <path>` selects an explicit file. The file's parent is supplied as the stack
+root and the official client canonicalizes that exact directory before the request.
+Equivalent normalized
 content is an ordinary state difference and exits `10`; changed content exits `0`.
 
-`stacks list` accepts `--project` and `--workspace`. `stacks status` selects the current
-canonical worktree, accepts the same disambiguating options, and reports the latest
+`stacks list` accepts `--project` and `--stack-root`. `stacks status` selects the current
+stack root, accepts the same disambiguating options, and reports the latest
 generation, activation, and fresh provider evidence. `stacks show <stack-id>` reads only
 the registered definition. These commands never start or stop project services or
 containers.
@@ -121,7 +122,7 @@ document read-only and never mount the Portreeve control socket into the sandbox
 ## Prune consent
 
 `claims prune --dry-run` reports eligible missing-workspace claims without mutation.
-`stacks prune --dry-run` reports both eligible missing-worktree stacks and evidence
+`stacks prune --dry-run` reports both eligible missing-stack-root stacks and evidence
 blockers; stack deletion also removes associated inactive endpoint claims while retaining
 history. A
 naked interactive invocation displays the plan and prompts before execution.
