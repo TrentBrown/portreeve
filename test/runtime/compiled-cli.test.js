@@ -1,7 +1,7 @@
 // @ts-check
 
 import { expect, test } from 'bun:test';
-import { access, chmod, mkdtemp, rm } from 'node:fs/promises';
+import { access, chmod, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { PortreeveClient } from '../../packages/client/src/index.js';
@@ -92,6 +92,77 @@ test('Commander.js CLI runs from the standalone executable', async () => {
         }
       }
       expect(healthy).toBe(true);
+
+      const stackWorktree = join(directory, 'deleted-stack-worktree');
+      await mkdir(stackWorktree);
+      const applied = await client.applyStack({
+        workspaceRoot: stackWorktree,
+        definition: {
+          version: 1,
+          project: 'compiled-cli-stack',
+          components: {
+            api: {
+              endpoints: {
+                http: { allocation: { preferredPort: 43230 } },
+              },
+            },
+          },
+        },
+      });
+      const prepared = await client.prepareStack(applied.stack.id);
+      const begun = await client.beginStackActivation(prepared.generation.id);
+      const lease = begun.leases[0];
+      if (lease === undefined) throw new Error('Expected a compiled CLI lease.');
+      await client.abandonStackEndpoint(begun.activation.id, {
+        leaseId: lease.leaseId,
+        leaseToken: lease.leaseToken,
+        reason: 'client-cancelled',
+      });
+      const reconcile = Bun.spawn(
+        [
+          binaryPath,
+          'stacks',
+          'reconcile',
+          begun.activation.id,
+          '--socket',
+          socketPath,
+          '--json',
+        ],
+        { stderr: 'pipe', stdout: 'pipe' },
+      );
+      const reconcileExitCode = await reconcile.exited;
+      const reconcileError = await new Response(reconcile.stderr).text();
+      const reconcileOutput = await new Response(reconcile.stdout).text();
+      expect(reconcileExitCode, reconcileError).toBe(10);
+      expect(JSON.parse(reconcileOutput)).toMatchObject({
+        version: 1,
+        result: { changed: false, activation: { state: 'failed' } },
+      });
+
+      await rm(stackWorktree, { force: true, recursive: true });
+      const prune = Bun.spawn(
+        [
+          binaryPath,
+          'stacks',
+          'prune',
+          '--older-than',
+          '0',
+          '--yes',
+          '--socket',
+          socketPath,
+          '--json',
+        ],
+        { stderr: 'pipe', stdout: 'pipe' },
+      );
+      const pruneExitCode = await prune.exited;
+      const pruneError = await new Response(prune.stderr).text();
+      const pruneOutput = await new Response(prune.stdout).text();
+      expect(pruneExitCode, pruneError).toBe(0);
+      expect(JSON.parse(pruneOutput)).toMatchObject({
+        version: 1,
+        result: { deletedStackIds: [applied.stack.id] },
+      });
+
       const status = Bun.spawn(
         [binaryPath, 'status', '--socket', socketPath, '--json'],
         {
