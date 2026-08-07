@@ -17,6 +17,9 @@ test('keeps dry-run, interactive prompting, and noninteractive consent distinct'
   expect(() => pruneConsentMode({ dryRun: false, yes: false }, false)).toThrow(
     'requires --yes',
   );
+  expect(() => pruneConsentMode({ dryRun: false, yes: false }, false, 'stack')).toThrow(
+    'Noninteractive stack pruning requires --yes',
+  );
   expect(() => pruneConsentMode({ dryRun: true, yes: true }, true)).toThrow(
     'cannot be used together',
   );

@@ -42,6 +42,10 @@ import {
   StackListSchema,
   StackPrepareRequestSchema,
   StackPrepareResponseSchema,
+  StackPruneRequestSchema,
+  StackPruneResultSchema,
+  StackReconcileActivationRequestSchema,
+  StackReconcileActivationResponseSchema,
   StackRecordSchema,
   StackRenewActivationRequestSchema,
   StackRenewActivationResponseSchema,
@@ -63,6 +67,7 @@ import { InventoryService } from '../reconciliation/inventory.js';
 import { ReclamationService } from '../reclamation/service.js';
 import { RegistryError } from '../storage/registry.js';
 import { StackCoordinationService } from '../stacks/coordination-service.js';
+import { StackAdministrationService } from '../stacks/administration-service.js';
 import { StackDiscoveryService } from '../stacks/discovery-service.js';
 import { StackDefinitionService } from '../stacks/service.js';
 
@@ -75,6 +80,7 @@ import { StackDefinitionService } from '../stacks/service.js';
  *   administrationService?: AdministrationService,
  *   stackDefinitionService?: StackDefinitionService,
  *   stackCoordinationService?: StackCoordinationService,
+ *   stackAdministrationService?: StackAdministrationService,
  *   stackDiscoveryService?: StackDiscoveryService,
  *   dockerAdapter?: import('../docker/adapter.js').DockerEvidenceAdapter | null,
  *   diagnosticLog?: import('../observability/diagnostic-log.js').DiagnosticLog,
@@ -128,6 +134,14 @@ export async function startPortreeveServer(options) {
       registry: options.allocationService.registry,
       coordinationService: stackCoordinationService,
     });
+  const stackAdministrationService =
+    options.stackAdministrationService ??
+    new StackAdministrationService({
+      registry: options.allocationService.registry,
+      coordinationService: stackCoordinationService,
+      inventoryService,
+      dockerAdapter,
+    });
   const diagnosticLog = options.diagnosticLog;
   let stopped = false;
   let resolveStopped = () => {};
@@ -166,6 +180,7 @@ export async function startPortreeveServer(options) {
         stackDefinitionService,
         stackCoordinationService,
         stackDiscoveryService,
+        stackAdministrationService,
         capabilities,
         diagnosticLog,
         options.mode ?? 'manual',
@@ -210,6 +225,7 @@ export async function startPortreeveServer(options) {
  * @param {StackDefinitionService} stackDefinitionService
  * @param {StackCoordinationService} stackCoordinationService
  * @param {StackDiscoveryService} stackDiscoveryService
+ * @param {StackAdministrationService} stackAdministrationService
  * @param {readonly string[]} capabilities
  * @param {import('../observability/diagnostic-log.js').DiagnosticLog | undefined} diagnosticLog
  * @param {'manual' | 'supervised'} mode
@@ -224,6 +240,7 @@ async function handleRequest(
   stackDefinitionService,
   stackCoordinationService,
   stackDiscoveryService,
+  stackAdministrationService,
   capabilities,
   diagnosticLog,
   mode,
@@ -379,6 +396,14 @@ async function handleRequest(
         ),
       );
     }
+    if (pathname === '/v1/stacks/prune') {
+      return success(
+        requestId,
+        StackPruneResultSchema.parse(
+          await stackAdministrationService.prune(StackPruneRequestSchema.parse(body)),
+        ),
+      );
+    }
     const prepareStack = pathname.match(/^\/v1\/stacks\/([0-9a-f-]+)\/prepare$/);
     if (prepareStack !== null) {
       const stackId = IdentifierSchema.parse(prepareStack[1]);
@@ -432,7 +457,7 @@ async function handleRequest(
       }
     }
     const activationMutation = pathname.match(
-      /^\/v1\/stack-activations\/([0-9a-f-]+)\/(renew|confirm|abandon|skip|end)$/,
+      /^\/v1\/stack-activations\/([0-9a-f-]+)\/(renew|confirm|abandon|skip|reconcile|end)$/,
     );
     if (activationMutation !== null) {
       const activationId = IdentifierSchema.parse(activationMutation[1]);
@@ -484,6 +509,16 @@ async function handleRequest(
               await stackCoordinationService.end(
                 activationId,
                 StackEndActivationRequestSchema.parse(body),
+              ),
+            ),
+          );
+        case 'reconcile':
+          return success(
+            requestId,
+            StackReconcileActivationResponseSchema.parse(
+              await stackCoordinationService.reconcile(
+                activationId,
+                StackReconcileActivationRequestSchema.parse(body),
               ),
             ),
           );

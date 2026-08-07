@@ -239,6 +239,28 @@ export class PortreeveClient {
     );
   }
 
+  /** @param {string} activationId */
+  async reconcileStackActivation(activationId) {
+    await this.#requireCapabilities(['stack-activations-v1']);
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/stack-activations/${activationId}/reconcile`,
+      withClient({}, ['stack-activations-v1']),
+    );
+  }
+
+  /** @param {{olderThanMilliseconds: number, dryRun: boolean}} options */
+  async pruneStacks(options) {
+    await this.#requireCapabilities(['stack-activations-v1']);
+    return requestJson(
+      this.socketPath,
+      'POST',
+      '/v1/stacks/prune',
+      withClient(options, ['stack-activations-v1']),
+    );
+  }
+
   /** @param {string} activationId @param {string} component */
   async resolveStackEndpoints(activationId, component) {
     await this.#requireCapabilities(['stack-discovery-v1']);

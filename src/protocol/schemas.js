@@ -277,11 +277,20 @@ export const StackActivationEndpointSchema = z.object({
   updatedAt: TimestampSchema,
 });
 
+export const StackActivationStateSchema = z.enum([
+  'starting',
+  'confirmed',
+  'degraded',
+  'failed',
+  'lost',
+  'ended',
+]);
+
 export const StackActivationSchema = z.object({
   id: IdentifierSchema,
   stackId: IdentifierSchema,
   generationId: IdentifierSchema,
-  state: z.enum(['starting', 'confirmed', 'degraded', 'failed', 'ended']),
+  state: StackActivationStateSchema,
   endpoints: z.array(StackActivationEndpointSchema),
   createdAt: TimestampSchema,
   updatedAt: TimestampSchema,
@@ -387,6 +396,59 @@ export const StackEndActivationRequestSchema = z.object({
 export const StackEndActivationResponseSchema = z.object({
   changed: z.boolean(),
   activation: StackActivationSchema,
+});
+
+export const StackReconcileActivationRequestSchema = z.object({
+  client: ClientCompatibilitySchema,
+});
+
+export const StackProviderEvidenceSchema = z.object({
+  component: StackNameSchema,
+  endpoint: StackNameSchema,
+  port: PortSchema,
+  bindingKind: z.enum(['process', 'docker']),
+  status: z.enum(['active', 'gone', 'unknown']),
+  reason: z.string().min(1),
+  listeners: z.number().int().min(0),
+  runId: IdentifierSchema.nullable(),
+  containerId: z.string().min(12).max(64).nullable(),
+});
+
+export const StackReconcileActivationResponseSchema = z.object({
+  changed: z.boolean(),
+  activation: StackActivationSchema,
+  providers: z.array(StackProviderEvidenceSchema),
+});
+
+export const StackPruneRequestSchema = z.object({
+  client: ClientCompatibilitySchema,
+  olderThanMilliseconds: z.number().int().min(0).max(315_576_000_000),
+  dryRun: z.boolean(),
+});
+
+export const StackPruneCandidateSchema = z.object({
+  stack: StackRecordSchema,
+  claimIds: z.array(IdentifierSchema),
+  reason: z.literal('workspace-missing'),
+});
+
+export const StackPruneBlockerSchema = z.object({
+  stack: StackRecordSchema,
+  reasons: z.array(z.string().min(1)).min(1),
+});
+
+export const StackPruneResultSchema = z.object({
+  dryRun: z.boolean(),
+  candidates: z.array(StackPruneCandidateSchema),
+  blocked: z.array(StackPruneBlockerSchema),
+  deletedStackIds: z.array(IdentifierSchema),
+  deletedClaimIds: z.array(IdentifierSchema),
+  skipped: z.array(
+    z.object({
+      stackId: IdentifierSchema,
+      reason: z.string().min(1),
+    }),
+  ),
 });
 
 const StackNetworkHostSchema = z

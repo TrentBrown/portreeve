@@ -40,7 +40,7 @@ describe('SQLite registry', () => {
     const createdAt = new Date('2026-07-30T12:00:00.000Z');
     const first = openRegistry(filename);
 
-    expect(first.schemaVersion()).toBe(5);
+    expect(first.schemaVersion()).toBe(6);
     const claim = first.insertClaim(
       {
         identity: identity(),
@@ -52,7 +52,7 @@ describe('SQLite registry', () => {
     first.close();
 
     const second = openRegistry(filename);
-    expect(second.schemaVersion()).toBe(5);
+    expect(second.schemaVersion()).toBe(6);
     expect(second.findClaim(identity())).toEqual(claim);
     expect(second.listHistory().map(({ eventType }) => eventType)).toEqual([
       'claim.created',
@@ -118,7 +118,7 @@ describe('SQLite registry', () => {
     database.close();
 
     const registry = openRegistry(filename);
-    expect(registry.schemaVersion()).toBe(5);
+    expect(registry.schemaVersion()).toBe(6);
     expect(registry.getClaim('11111111-1111-4111-8111-111111111111')).toMatchObject({
       identity: {
         service: 'website',
@@ -137,6 +137,78 @@ describe('SQLite registry', () => {
       registry.listListenerFingerprintsForRun('33333333-3333-4333-8333-333333333333'),
     ).toHaveLength(1);
     expect(registry.listHistory()).toHaveLength(1);
+    expect(registry.database.query('PRAGMA foreign_key_check').all()).toEqual([]);
+    registry.close();
+  });
+
+  test('migrates version-5 activations and admits the non-live lost state', async () => {
+    const filename = await databasePath();
+    const database = new Database(filename, { create: true, strict: true });
+    for (const migration of MIGRATIONS.filter(({ version }) => version <= 5)) {
+      const rebuilds =
+        'rebuildsForeignKeyTable' in migration &&
+        migration.rebuildsForeignKeyTable === true;
+      database.exec(`PRAGMA foreign_keys = ${rebuilds ? 'OFF' : 'ON'}`);
+      database.exec(migration.sql);
+      database
+        .query(
+          `INSERT INTO schema_migrations (version, name, applied_at)
+           VALUES ($version, $name, '2026-08-06T12:00:00.000Z')`,
+        )
+        .run({ version: migration.version, name: migration.name });
+      database.exec(`PRAGMA user_version = ${migration.version}`);
+    }
+    database.exec(`
+      PRAGMA foreign_keys = ON;
+      INSERT INTO stacks (
+        id, project, workspace_root, current_revision,
+        created_at, updated_at, last_used_at
+      ) VALUES (
+        '11111111-1111-4111-8111-111111111111', 'caregiver', '/missing/v5',
+        '${'a'.repeat(64)}', '2026-08-06T12:00:00.000Z',
+        '2026-08-06T12:00:00.000Z', '2026-08-06T12:00:00.000Z'
+      );
+      INSERT INTO stack_definition_revisions (
+        stack_id, revision, definition_json, created_at
+      ) VALUES (
+        '11111111-1111-4111-8111-111111111111', '${'a'.repeat(64)}',
+        '{"version":1,"project":"caregiver","components":{}}',
+        '2026-08-06T12:00:00.000Z'
+      );
+      INSERT INTO stack_generations (
+        id, stack_id, revision, state, created_at, invalidated_at
+      ) VALUES (
+        '22222222-2222-4222-8222-222222222222',
+        '11111111-1111-4111-8111-111111111111', '${'a'.repeat(64)}', 'valid',
+        '2026-08-06T12:00:00.000Z', NULL
+      );
+      INSERT INTO stack_activations (
+        id, stack_id, generation_id, state, created_at, updated_at,
+        confirmed_at, ended_at
+      ) VALUES (
+        '33333333-3333-4333-8333-333333333333',
+        '11111111-1111-4111-8111-111111111111',
+        '22222222-2222-4222-8222-222222222222', 'confirmed',
+        '2026-08-06T12:00:00.000Z', '2026-08-06T12:00:00.000Z',
+        '2026-08-06T12:00:00.000Z', NULL
+      );
+    `);
+    database.close();
+
+    const registry = openRegistry(filename);
+    expect(registry.schemaVersion()).toBe(6);
+    expect(
+      registry.getStackActivation('33333333-3333-4333-8333-333333333333')?.state,
+    ).toBe('confirmed');
+    registry.database
+      .query(
+        `UPDATE stack_activations SET state = 'lost'
+         WHERE id = '33333333-3333-4333-8333-333333333333'`,
+      )
+      .run();
+    expect(
+      registry.getStackActivation('33333333-3333-4333-8333-333333333333')?.state,
+    ).toBe('lost');
     expect(registry.database.query('PRAGMA foreign_key_check').all()).toEqual([]);
     registry.close();
   });

@@ -206,6 +206,38 @@ test('applies and inspects a stack definition through the official client', asyn
   });
 });
 
+test('previews and executes missing-worktree stack pruning through the official client', async () => {
+  const { socketPath, registry } = await startFixture();
+  const client = new PortreeveClient({ socketPath });
+  const workspaceRoot = await mkdtemp(join(tmpdir(), 'portreeve-prune-stack-'));
+  const applied = await client.applyStack({
+    workspaceRoot,
+    definition: {
+      version: 1,
+      project: 'prune-client',
+      components: {
+        api: { endpoints: { http: { allocation: { preferredPort: 43100 } } } },
+      },
+    },
+  });
+  await rm(workspaceRoot, { force: true, recursive: true });
+
+  expect(
+    await client.pruneStacks({ olderThanMilliseconds: 0, dryRun: true }),
+  ).toMatchObject({
+    dryRun: true,
+    candidates: [{ stack: { id: applied.stack.id } }],
+    deletedStackIds: [],
+  });
+  expect(
+    await client.pruneStacks({ olderThanMilliseconds: 0, dryRun: false }),
+  ).toMatchObject({
+    dryRun: false,
+    deletedStackIds: [applied.stack.id],
+  });
+  expect(registry.getStack(applied.stack.id)).toBeNull();
+});
+
 test('prepares and confirms a process-backed activation through the official client', async () => {
   const { socketPath } = await startFixture();
   const client = new PortreeveClient({ socketPath });
@@ -280,15 +312,18 @@ test('prepares and confirms a process-backed activation through the official cli
 
     expect(activation.state).toBe('degraded');
     expect(await client.getStackActivation(activation.id)).toEqual(activation);
-    const runId = activation.endpoints.find(
-      ({ state }) => state === 'confirmed',
-    )?.runId;
-    if (runId === null || runId === undefined) {
-      throw new Error('Expected a confirmed process run.');
-    }
+    expect(await client.reconcileStackActivation(activation.id)).toMatchObject({
+      changed: false,
+      activation: { state: 'degraded' },
+      providers: [{ status: 'active', bindingKind: 'process' }],
+    });
     listener.stop(true);
     listener = undefined;
-    await client.release(runId);
+    expect(await client.reconcileStackActivation(activation.id)).toMatchObject({
+      changed: true,
+      activation: { state: 'lost' },
+      providers: [{ status: 'gone', bindingKind: 'process' }],
+    });
     expect(await client.getStackGeneration(prepared.generation.id)).toEqual(
       prepared.generation,
     );

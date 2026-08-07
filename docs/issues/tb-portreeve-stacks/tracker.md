@@ -68,7 +68,7 @@ Append PR boundary entries here.
 ### PR #10 - Docker evidence and mixed activations
 
 - **PR:** [#10](https://github.com/TrentBrown/portreeve/pull/10)
-- **Status:** ready for human review
+- **Status:** merged
 - **Scope:** P5 dynamic `docker-evidence-v1` capability, per-component process/Docker
   placement, exact activation labels, fresh container and host-publication confirmation,
   schema-v5 Docker run evidence, Docker-managed inventory, launcher-only reclamation,
@@ -79,4 +79,5 @@ Append PR boundary entries here.
   capability-gated Docker surface and remains open for P6-P7. Independent judge: PASS
   WITH CONCERNS; code review: PASS with no remaining findings. The pinned Bun 1.3.14
   gate passes all 206 tests, and a temporary real Docker Desktop container completed the
-  full apply/prepare/begin/confirm/inventory path before being removed.
+  full apply/prepare/begin/confirm/inventory path before being removed. Merged to `main`
+  as `655f1ac` on 2026-08-06.

@@ -74,6 +74,8 @@ describe('Portreeve CLI', () => {
       'abandon',
       'skip',
       'end',
+      'reconcile',
+      'prune',
       'resolve',
       'snapshot',
     ]);

@@ -180,3 +180,33 @@ Select process or Docker binding per component at activation begin, defaulting t
 
 **Alternatives considered:**
 Treat the Docker backend PID as the run root - rejected because it can be shared across containers; store Docker confirmation only on the activation endpoint - rejected because claim exclusivity and inventory need one canonical active-run model; let unsafeAnyOwner kill the backend - rejected because exact-port intent cannot safely authorize terminating shared Docker infrastructure; expose all inspected container labels - rejected because unrelated labels may carry private metadata
+
+## [8] Persist lost activations as non-live evidence outcomes
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** SQLite schema v6, activation state schemas, coordination service, server protocol, official client, CLI, discovery guards, and migration fixtures
+
+Add lost as an explicit persisted activation state excluded from the one-live-activation index. Reconciliation freshly evaluates every confirmed process or Docker provider. Only conclusive absence of every provider marks the activation lost and releases its stored run evidence; surviving or unobservable providers keep it live. Return per-provider evidence in the reconciliation response, while retaining confirmed and degraded as the activation health states. Evidence-gated end uses the same evaluator and may end only when every provider is conclusively gone.
+
+**Triggered by:** P6 requires launcher-loss recovery from fresh process and Docker evidence while permitting replacement activation without trusting stored launcher or PID liveness.
+
+**Alternatives considered:**
+Represent lost only as failed - rejected because startup failure and post-confirmation provider loss have different recovery meaning; infer launcher loss from a stored PID or heartbeat - rejected by the approved authority boundary; leave the activation confirmed until a caller manually ends it - rejected because it permanently blocks safe replacement after all providers disappear.
+
+## [9] Split stack-prune evidence planning from atomic deletion
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Stack administration service, registry deletion transaction, protocol and client schemas, CLI consent flow, and durable history
+
+The administration layer produces candidate and blocker plans from filesystem, activation, listener, and Docker evidence and repeats that evaluation immediately before execution. The registry then atomically rechecks database-owned live work, deletes the inactive stack coordination graph and its endpoint claims, and appends a final stack.pruned identity and summary event. Pruning never invokes reclamation or process/container lifecycle operations.
+
+**Triggered by:** P6 requires previewable missing-worktree pruning, fresh process and Docker blockers, execution-time revalidation, no reclamation, and retained history.
+
+**Alternatives considered:**
+Delete stacks and claims piecemeal through existing public methods - rejected because partial deletion could strand coordination records; put filesystem and Docker checks inside the registry - rejected because the registry owns durable transactions rather than platform adapters; omit blockers from dry-run - rejected by the approved operator contract.

@@ -38,6 +38,8 @@ import {
   endStackActivationCommand,
   listStacksCommand,
   prepareStackCommand,
+  pruneStacksCommand,
+  reconcileStackActivationCommand,
   renewStackActivationCommand,
   resolveStackEndpointsCommand,
   showStackCommand,
@@ -349,10 +351,31 @@ export function createProgram() {
 
   stacks
     .command('end <activation-id>')
-    .description('End an activation only after its process listeners have stopped')
+    .description('End an activation only after every provider has stopped')
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output')
     .action(endStackActivationCommand);
+
+  stacks
+    .command('reconcile <activation-id>')
+    .description('Reconcile one activation from fresh process and Docker evidence')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(reconcileStackActivationCommand);
+
+  stacks
+    .command('prune')
+    .description('Delete old missing-worktree stacks with no live provider evidence')
+    .option(
+      '--older-than <duration>',
+      'minimum age such as 12h or 7d',
+      DEFAULT_PRUNE_AGE,
+    )
+    .option('--dry-run', 'report eligible and blocked stacks without mutation')
+    .option('--yes', 'execute without an interactive confirmation')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(pruneStacksCommand);
 
   stacks
     .command('resolve <activation-id>')

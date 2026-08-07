@@ -204,12 +204,43 @@ export interface StackActivation {
   id: string;
   stackId: string;
   generationId: string;
-  state: 'starting' | 'confirmed' | 'degraded' | 'failed' | 'ended';
+  state: 'starting' | 'confirmed' | 'degraded' | 'failed' | 'lost' | 'ended';
   endpoints: StackActivationEndpoint[];
   createdAt: string;
   updatedAt: string;
   confirmedAt: string | null;
   endedAt: string | null;
+}
+
+export interface StackProviderEvidence {
+  component: string;
+  endpoint: string;
+  port: number;
+  bindingKind: 'process' | 'docker';
+  status: 'active' | 'gone' | 'unknown';
+  reason: string;
+  listeners: number;
+  runId: string | null;
+  containerId: string | null;
+}
+
+export interface StackReconcileResult {
+  changed: boolean;
+  activation: StackActivation;
+  providers: StackProviderEvidence[];
+}
+
+export interface StackPruneResult {
+  dryRun: boolean;
+  candidates: Array<{
+    stack: StackRecord;
+    claimIds: string[];
+    reason: 'workspace-missing';
+  }>;
+  blocked: Array<{ stack: StackRecord; reasons: string[] }>;
+  deletedStackIds: string[];
+  deletedClaimIds: string[];
+  skipped: Array<{ stackId: string; reason: string }>;
 }
 
 export interface StackActivationLease {
@@ -412,6 +443,11 @@ export declare class PortreeveClient {
     changed: boolean;
     activation: StackActivation;
   }>;
+  reconcileStackActivation(activationId: string): Promise<StackReconcileResult>;
+  pruneStacks(options: {
+    olderThanMilliseconds: number;
+    dryRun: boolean;
+  }): Promise<StackPruneResult>;
   resolveStackEndpoints(
     activationId: string,
     component: string,
