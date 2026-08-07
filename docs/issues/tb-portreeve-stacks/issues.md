@@ -108,7 +108,7 @@ human review and merge.
 
 ## I-5 - Complete activation recovery and safe stack pruning
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P6
 - **Rubric criteria:** R6
@@ -161,9 +161,12 @@ stack-status contract for trusted inspection surfaces, and packaged macOS verifi
 The desktop remains a Portreeve coordinator rather than a project process or container
 orchestrator.
 
+**Merged 2026-08-07.** PR #12 merged to `main` as `0fc3865` after the complete
+desktop, protocol, client, CLI, package, and boundary gates passed.
+
 ## I-7 - Complete integrated verification and feature evidence
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P8
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
@@ -173,3 +176,6 @@ orchestrator.
 Finish public documentation and representative examples, run mixed-stack and legacy
 end-to-end matrices on supported native environments and the packaged desktop, execute
 every workflow gate, and preserve the feature-final evidence and completion report.
+
+**Started 2026-08-07.** Final sequential delivery branch
+`tb-portreeve-stacks-07-feature-final` begins from merged `main` at `0fc3865`.

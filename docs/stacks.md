@@ -34,6 +34,10 @@ The checked-in definition is `portreeve.stack.json` at the worktree root:
 }
 ```
 
+The repository includes a complete
+[mixed process and Docker launcher example](../examples/mixed-stack/README.md) that
+shows how one project-owned launcher consumes the returned leases and addresses.
+
 The schema is strict. Unknown fields are rejected. Component and endpoint names are
 stable logical identities. An omitted dependency endpoint means `default`. Endpoint
 defaults are TCP, published, and required. Use `publish: false` for an endpoint that

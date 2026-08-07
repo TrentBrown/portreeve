@@ -103,7 +103,7 @@ Append PR boundary entries here.
 ### PR #12 - Desktop stack coordination
 
 - **PR:** [#12](https://github.com/TrentBrown/portreeve/pull/12)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P7 desktop Stacks views, definition apply, preparation, reconciliation,
   evidence-gated activation ending, snapshot/address copy, previewed confirmed pruning,
   actionable failures, and the aggregate read-only stack-status surface used by the
@@ -115,3 +115,4 @@ Append PR boundary entries here.
   test stack and claims were pruned. Independent judge: PASS WITH CONCERNS; code review:
   PASS with no remaining findings. Native Linux and assembled mixed-stack release
   verification remain I-7/P8.
+- **Merged:** `0fc3865` on 2026-08-07.

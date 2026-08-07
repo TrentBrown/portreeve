@@ -25,6 +25,21 @@ test('protocol documentation covers every public endpoint', async () => {
     '/v1/leases/{leaseId}/confirm',
     '/v1/leases/{leaseId}/abandon',
     '/v1/runs/{runId}/release',
+    '/v1/stacks',
+    '/v1/stacks/{stackId}',
+    '/v1/stacks/apply',
+    '/v1/stacks/prune',
+    '/v1/stacks/{stackId}/status',
+    '/v1/stacks/{stackId}/prepare',
+    '/v1/stack-activations/begin',
+    '/v1/stack-activations/{id}',
+    '/v1/stack-generations/{id}',
+    '/v1/stack-activations/{id}/renew',
+    '/v1/stack-activations/{id}/confirm',
+    '/v1/stack-activations/{id}/abandon',
+    '/v1/stack-activations/{id}/skip',
+    '/v1/stack-activations/{id}/reconcile',
+    '/v1/stack-activations/{id}/end',
     '/v1/stack-activations/{id}/resolve',
     '/v1/stack-activations/{id}/snapshot',
   ]) {
@@ -68,10 +83,31 @@ test('release workflow runs full and lifecycle gates on every native target', as
   expect(workflow).toContain('runner: ubuntu-24.04-arm');
   expect(workflow).not.toContain('self-hosted');
   expect(workflow).toContain('Restore executable artifact modes');
+  expect(workflow.match(/run: bun run stacks:verify/gu)).toHaveLength(1);
+  expect(workflow).toContain("if: startsWith(matrix.platform, 'linux-')");
   expect(workflow).toContain('Require public repository for release distribution');
   expect(workflow).toContain('Require npm publishing authority');
   expect(workflow).toContain('Require unpublished npm version');
   expect(workflow.match(/needs: release-policy/gu)).toHaveLength(2);
+});
+
+test('public guides cover desktop and one representative mixed-stack launcher', async () => {
+  const [desktop, example, definition] = await Promise.all([
+    readFile(resolve('docs', 'desktop.md'), 'utf8'),
+    readFile(resolve('examples', 'mixed-stack', 'README.md'), 'utf8'),
+    readFile(resolve('examples', 'mixed-stack', 'portreeve.stack.json'), 'utf8'),
+  ]);
+  expect(desktop).toContain('never starts or stops a project process or container');
+  expect(desktop).toContain('actionable');
+  expect(example).toContain('bun run stacks:verify');
+  expect(example).toContain('PORTREEVE_ENDPOINTS_FILE');
+  expect(JSON.parse(definition)).toMatchObject({
+    version: 1,
+    components: {
+      api: { docker: { service: 'api' } },
+      website: { dependencies: { backend: { component: 'api' } } },
+    },
+  });
 });
 
 test('public documentation explains Docker evidence without transferring launcher authority', async () => {

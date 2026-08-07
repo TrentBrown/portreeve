@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "project": "mixed-stack-example",
+  "components": {
+    "api": {
+      "docker": {
+        "service": "api"
+      },
+      "endpoints": {
+        "http": {
+          "allocation": {
+            "preferredPort": 8080
+          },
+          "docker": {
+            "containerPort": 3000
+          }
+        }
+      }
+    },
+    "website": {
+      "endpoints": {
+        "http": {
+          "allocation": {
+            "preferredPort": 3000
+          }
+        }
+      },
+      "dependencies": {
+        "backend": {
+          "component": "api",
+          "endpoint": "http"
+        }
+      }
+    }
+  }
+}

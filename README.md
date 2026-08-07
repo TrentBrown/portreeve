@@ -51,6 +51,8 @@ const running = await portreeve.withPort(
 - [Socket protocol](docs/protocol.md)
 - [CLI automation contract](docs/cli-contract.md)
 - [Stack definitions](docs/stacks.md)
+- [Desktop application](docs/desktop.md)
+- [Mixed process and Docker example](examples/mixed-stack/README.md)
 - [Migration from project-local remapping](docs/migration.md)
 - [Safety model](docs/safety.md)
 - [Troubleshooting](docs/troubleshooting.md)

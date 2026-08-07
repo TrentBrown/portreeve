@@ -225,3 +225,18 @@ Add a read-only stack status operation under the existing stack-activations-v1 c
 
 **Alternatives considered:**
 Reconstruct status from history in the desktop - rejected because history is an audit trail rather than a current-state index; add database access to the desktop - rejected by the existing trust boundary; show only definitions and prepared results from the current desktop session - rejected because the desktop must inspect stacks created by project launchers and survive restarts.
+
+## [11] Make the assembled mixed-stack smoke launcher-owned and release-gated
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Native verification script, package scripts, Linux release jobs, mixed-stack example, and feature-final evidence
+
+Add one explicit native verification harness that acts as a temporary trusted project launcher. It starts a disposable process listener and a uniquely named disposable Docker container, but it drives Portreeve exclusively through the official client and validates apply, prepare, mixed activation confirmation, scoped resolution, redacted snapshot publication and reading, current status, live-provider refusal, reconciliation, ending, pruning, and retained history. It owns exact cleanup for everything it creates. Run it manually on macOS Docker Desktop and in both Linux native release jobs; keep it out of the ordinary source test command because Docker is an optional runtime capability.
+
+**Triggered by:** P8 requires one representative process-plus-Docker lifecycle across every public coordination phase without transferring project lifecycle authority to Portreeve
+
+**Alternatives considered:**
+Extend Portreeve itself with a stack launcher - rejected because application lifecycle remains project-owned; rely only on isolated deterministic tests - rejected because P8 requires assembled native evidence; run the native smoke on every macOS GitHub runner - rejected because hosted macOS runners do not provide the Docker Desktop environment required by the product contract
