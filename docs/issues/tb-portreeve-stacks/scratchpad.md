@@ -183,7 +183,7 @@ Treat the Docker backend PID as the run root - rejected because it can be shared
 
 ## [8] Persist lost activations as non-live evidence outcomes
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -198,7 +198,7 @@ Represent lost only as failed - rejected because startup failure and post-confir
 
 ## [9] Split stack-prune evidence planning from atomic deletion
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

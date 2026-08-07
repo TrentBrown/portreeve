@@ -108,12 +108,12 @@ human review and merge.
 
 ## I-5 - Complete activation recovery and safe stack pruning
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P6
 - **Rubric criteria:** R6
 - **Depends on:** I-2, I-4
-- **PR:** -
+- **PR:** [#11](https://github.com/TrentBrown/portreeve/pull/11)
 
 Reconcile launcher loss and surviving providers from fresh evidence, implement
 evidence-gated activation ending, and add missing-worktree stack pruning with preview,
@@ -127,8 +127,13 @@ recovery, fresh process and Docker provider reconciliation, evidence-gated endin
 previewed and consent-gated missing-worktree stack pruning, execution-time
 revalidation, atomic coordination and claim deletion, retained history, and matching
 protocol, official client, CLI, migration, documentation, and compiled-runtime coverage.
-The pinned Bun 1.3.14 gate passes all 214 tests with 861 assertions. Awaiting the formal
-PR boundary.
+The pinned Bun 1.3.14 gate passes all 214 tests with 865 assertions.
+
+**In review 2026-08-06.** Draft PR #11 completes P6 recovery and safe pruning. R6 now
+passes across fresh process and Docker reconciliation, signal-free Docker handling,
+consent modes, execution-time revalidation, and retained history. R7 now passes across
+the complete capability-gated protocol, official client, CLI, compiled runtime, and
+documentation contract; the separate desktop experience remains I-6/P7 and R8.
 
 ## I-6 - Add the desktop Stacks experience and failure details
 
