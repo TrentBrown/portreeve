@@ -25,7 +25,7 @@ Append PR boundary entries here.
 ### PR #14 - Stack-root contract and server authority
 
 - **PR:** [#14](https://github.com/TrentBrown/portreeve/pull/14)
-- **Status:** in review
+- **Status:** merged 2026-08-07 (`757bb1a3b554fd3aa630ef5294761baeaefb4389`)
 - **Scope:** P1-P2 / I-1-I-2: strict public `stackRoot`, exact-directory
   canonicalization, transactional root overlap and live-activation safety, exact-root
   claim adoption, pruning/history terminology, and current desktop contract reduction.

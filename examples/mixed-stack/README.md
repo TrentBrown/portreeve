@@ -1,20 +1,21 @@
 # Mixed process and Docker stack
 
 This example models a process-backed `website` and Docker-backed `api` as one
-independently runnable worktree stack. Portreeve allocates both host publications and
-verifies their evidence. The project launcher still owns the website child process,
-Docker or Compose invocation, environment injection, startup order, health checks, and
-shutdown.
+independently runnable stack. Portreeve allocates both host publications and verifies
+their evidence. The project launcher still owns the website child process, Docker or
+Compose invocation, environment injection, startup order, health checks, and shutdown.
 
-Copy [`portreeve.stack.json`](portreeve.stack.json) to the root of a disposable worktree
-or adapt its project and component names there. The file declares topology and preferred
-ports only; it contains no command, secret, environment value, or lease credential.
+Copy [`portreeve.stack.json`](portreeve.stack.json) to the root of a disposable stack or
+adapt its project and component names there. The root may be a non-Git parent containing
+several child repositories. The file declares topology and preferred ports only; it
+contains no command, secret, environment value, or lease credential.
 
 ## Launcher sequence
 
 1. Apply and prepare before deriving any environment or Compose override:
 
    ```sh
+   # This may run at the stack root or inside any child repository.
    portreeve stacks apply --json
    portreeve stacks prepare STACK_ID --json
    ```
@@ -78,5 +79,5 @@ bun run stacks:verify
 That harness creates a uniquely named disposable container and process listener and
 drives this complete lifecycle through the official JavaScript client: apply, prepare,
 begin, both confirmations, status, resolution, sandbox snapshot write/read, live end
-refusal, reconciliation, end, missing-worktree prune, and retained-history inspection.
-It removes every process, container, worktree, and Portreeve data path it creates.
+refusal, reconciliation, end, missing-stack-root prune, and retained-history inspection.
+It removes every process, container, stack root, and Portreeve data path it creates.

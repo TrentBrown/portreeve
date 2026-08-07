@@ -230,7 +230,8 @@ export function createProgram() {
   stacks
     .command('apply')
     .description('Validate and apply a stack-root definition')
-    .option('--file <path>', 'override portreeve.stack.json')
+    .option('--file <path>', 'select an explicit stack definition file')
+    .option('--stack-root <path>', 'select a root containing portreeve.stack.json')
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output')
     .action(applyStackCommand);
@@ -253,9 +254,9 @@ export function createProgram() {
 
   stacks
     .command('status')
-    .description('Show the stack registered for a canonical stack root')
+    .description('Show the enclosing or explicitly selected registered stack')
     .option('--project <name>', 'select a project namespace')
-    .option('--stack-root <path>', 'override the current stack root')
+    .option('--stack-root <path>', 'select an explicit stack root')
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output')
     .action(stackStatusCommand);

@@ -2,7 +2,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { createInterface } from 'node:readline/promises';
-import { dirname, join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import {
   PortreeveClient,
   canonicalStackRoot,
@@ -15,25 +15,26 @@ import {
 import { EXIT_CODES } from '../../protocol/constants.js';
 import { CliUsageError, setExitCode } from '../exit.js';
 import { renderOutput } from '../output/render.js';
+import {
+  findEnclosingStackDefinition,
+  selectRegisteredEnclosingStack,
+  selectStackDefinition,
+} from '../stack-selection.js';
 import { DEFAULT_PRUNE_AGE, parseDuration, pruneConsentMode } from './claims.js';
 
-export const DEFAULT_STACK_DEFINITION = 'portreeve.stack.json';
-
-/** @param {{file?: string, socket?: string, json?: boolean}} options */
+/** @param {{file?: string, stackRoot?: string, socket?: string, json?: boolean}} options */
 export async function applyStackCommand(options) {
-  const filename = options.file
-    ? resolve(options.file)
-    : join(await canonicalStackRoot(process.cwd()), DEFAULT_STACK_DEFINITION);
+  const selection = await selectStackDefinition(options);
   let definition;
   try {
-    definition = JSON.parse(await readFile(filename, 'utf8'));
+    definition = JSON.parse(await readFile(selection.filename, 'utf8'));
   } catch (error) {
     throw new CliUsageError(
-      `Unable to read a valid stack definition from ${filename}: ${safeMessage(error)}`,
+      `Unable to read a valid stack definition from ${selection.filename}: ${safeMessage(error)}`,
     );
   }
   const result = await clientFor(options.socket).applyStack({
-    stackRoot: dirname(filename),
+    stackRoot: selection.stackRoot,
     definition,
   });
   if (!result.changed) setExitCode(EXIT_CODES.stateDifference);
@@ -326,11 +327,35 @@ export async function snapshotStackEndpointsCommand(activationIdArgument, option
 
 /** @param {{project?: string, stackRoot?: string, socket?: string, json?: boolean}} options */
 export async function stackStatusCommand(options) {
-  const stackRoot = await canonicalStackRoot(options.stackRoot ?? process.cwd());
-  const stacks = await clientFor(options.socket).listStacks({
-    stackRoot,
-    ...(options.project ? { project: options.project } : {}),
-  });
+  const client = clientFor(options.socket);
+  let stackRoot;
+  let stacks;
+  if (options.stackRoot) {
+    stackRoot = await canonicalStackRoot(options.stackRoot);
+    stacks = await client.listStacks({
+      stackRoot,
+      ...(options.project ? { project: options.project } : {}),
+    });
+  } else {
+    const currentDirectory = await canonicalStackRoot(process.cwd());
+    const definition = await findEnclosingStackDefinition(currentDirectory);
+    if (definition !== null) {
+      stackRoot = definition.stackRoot;
+      stacks = await client.listStacks({
+        stackRoot,
+        ...(options.project ? { project: options.project } : {}),
+      });
+    } else {
+      const registered = selectRegisteredEnclosingStack(
+        await client.listStacks({
+          ...(options.project ? { project: options.project } : {}),
+        }),
+        currentDirectory,
+      );
+      stackRoot = registered?.stackRoot ?? currentDirectory;
+      stacks = registered === null ? [] : [registered];
+    }
+  }
   if (stacks.length === 0) {
     setExitCode(EXIT_CODES.stateDifference);
     renderOutput(options.json ?? false, 'stack', null, [
@@ -345,10 +370,7 @@ export async function stackStatusCommand(options) {
   }
   const stack = stacks[0];
   if (stack === undefined) return;
-  renderStackStatus(
-    await clientFor(options.socket).getStackStatus(stack.id),
-    options.json ?? false,
-  );
+  renderStackStatus(await client.getStackStatus(stack.id), options.json ?? false);
 }
 
 /** @param {import('../../../packages/client/src/index.js').StackRecord} stack @param {boolean} json */
