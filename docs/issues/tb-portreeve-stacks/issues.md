@@ -141,7 +141,7 @@ human review and merge.
 
 ## I-6 - Add the desktop Stacks experience and failure details
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 3d
 - **Plan steps:** P7
 - **Rubric criteria:** R8
@@ -171,7 +171,7 @@ desktop, protocol, client, CLI, package, and boundary gates passed.
 - **Plan steps:** P8
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
 - **Depends on:** I-3, I-5, I-6
-- **PR:** -
+- **PR:** [#13](https://github.com/TrentBrown/portreeve/pull/13)
 
 Finish public documentation and representative examples, run mixed-stack and legacy
 end-to-end matrices on supported native environments and the packaged desktop, execute
@@ -179,3 +179,10 @@ every workflow gate, and preserve the feature-final evidence and completion repo
 
 **Started 2026-08-07.** Final sequential delivery branch
 `tb-portreeve-stacks-07-feature-final` begins from merged `main` at `0fc3865`.
+
+**Implementation complete 2026-08-07.** PR #13 adds public desktop and representative
+mixed-stack launcher guides plus a disposable assembled process/Docker lifecycle gate.
+The first Linux run exposed that Docker Engine kernel-NAT publication has no userspace
+listener; binding-appropriate Docker inspection replaced that false portability
+assumption. The corrected matrix passes on Linux x64/ARM64 and macOS x64/ARM64, and the
+packaged macOS ARM64 desktop launches with healthy service and Stacks evidence.

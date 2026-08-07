@@ -74,3 +74,14 @@ The global Definition of Done in the software development workflow applies.
 ## Changes
 
 Append spec amendments here. Do not remove or weaken original criteria.
+
+### 2026-08-07 - AC3 Docker publication evidence portability
+
+The AC3 phrase "fresh listener evidence" remains literal for process-backed endpoints.
+For Docker-backed endpoints, fresh publication evidence is binding-appropriate: exact
+fresh Docker inspection must prove the submitted container is running, carries every
+activation label, and publishes the allocated loopback host port to the declared
+container port. A userspace listener observed by `lsof` is corroborating evidence, but
+its absence is not a failure because supported Linux Docker Engine configurations may
+publish through kernel NAT. A stored container ID alone remains insufficient, Docker
+never uses process lineage, and Portreeve still makes no application-health claim.
