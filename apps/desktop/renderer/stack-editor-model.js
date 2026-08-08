@@ -56,7 +56,7 @@ export function loadStackDraft(definition) {
   let draft = createEmptyStackDraft(String(definition.project ?? ''));
   /** @type {Map<string, string>} */
   const componentIds = new Map();
-  /** @type {Map<string, string>} */
+  /** @type {Map<string, Map<string, string>>} */
   const endpointIds = new Map();
 
   for (const [componentName, componentDefinition] of Object.entries(
@@ -68,6 +68,8 @@ export function loadStackDraft(definition) {
     });
     draft = added.draft;
     componentIds.set(componentName, added.id);
+    const componentEndpointIds = new Map();
+    endpointIds.set(componentName, componentEndpointIds);
     for (const [endpointName, endpointDefinition] of Object.entries(
       componentDefinition?.endpoints ?? {},
     )) {
@@ -95,7 +97,7 @@ export function loadStackDraft(definition) {
             : String(endpointDefinition.docker.containerPort),
       });
       draft = endpoint.draft;
-      endpointIds.set(endpointKey(componentName, endpointName), endpoint.id);
+      componentEndpointIds.set(endpointName, endpoint.id);
     }
   }
 
@@ -108,12 +110,9 @@ export function loadStackDraft(definition) {
       componentDefinition?.dependencies ?? {},
     )) {
       const targetComponentId = componentIds.get(dependencyDefinition.component);
-      const targetEndpointId = endpointIds.get(
-        endpointKey(
-          dependencyDefinition.component,
-          dependencyDefinition.endpoint ?? 'default',
-        ),
-      );
+      const targetEndpointId = endpointIds
+        .get(dependencyDefinition.component)
+        ?.get(dependencyDefinition.endpoint ?? 'default');
       if (targetComponentId === undefined || targetEndpointId === undefined) {
         throw new TypeError('Invalid dependency target identity.');
       }
@@ -531,28 +530,38 @@ function validateDraft(draft) {
 
 /** @param {StackDraft} draft */
 function definitionFromDraft(draft) {
-  /** @type {Record<string, any>} */
-  const components = {};
+  /** @type {Array<[string, any]>} */
+  const componentEntries = [];
   for (const component of draft.components) {
-    /** @type {Record<string, any>} */
-    const endpoints = {};
+    /** @type {Array<[string, any]>} */
+    const endpointEntries = [];
     for (const endpoint of component.endpoints) {
-      endpoints[endpoint.name] = endpointDefinition(endpoint);
+      endpointEntries.push([endpoint.name, endpointDefinition(endpoint)]);
     }
-    /** @type {Record<string, any>} */
-    const dependencies = {};
+    /** @type {Array<[string, any]>} */
+    const dependencyEntries = [];
     for (const dependency of component.dependencies) {
-      dependencies[dependency.alias] = dependencyDefinition(draft, dependency);
+      dependencyEntries.push([
+        dependency.alias,
+        dependencyDefinition(draft, dependency),
+      ]);
     }
-    components[component.name] = {
-      endpoints,
-      dependencies,
-      ...(component.dockerService === ''
-        ? {}
-        : { docker: { service: component.dockerService } }),
-    };
+    componentEntries.push([
+      component.name,
+      {
+        endpoints: Object.fromEntries(endpointEntries),
+        dependencies: Object.fromEntries(dependencyEntries),
+        ...(component.dockerService === ''
+          ? {}
+          : { docker: { service: component.dockerService } }),
+      },
+    ]);
   }
-  return { version: 1, project: draft.project, components };
+  return {
+    version: 1,
+    project: draft.project,
+    components: Object.fromEntries(componentEntries),
+  };
 }
 
 /** @param {StackDraft} draft */
@@ -764,11 +773,6 @@ function assignAllowed(target, values, keys) {
   for (const key of keys) {
     if (key in values) target[key] = values[key];
   }
-}
-
-/** @param {string} component @param {string} endpoint */
-function endpointKey(component, endpoint) {
-  return `${component}\u0000${endpoint}`;
 }
 
 /**

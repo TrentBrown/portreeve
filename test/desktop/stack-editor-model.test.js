@@ -15,6 +15,7 @@ import {
   updateDraftDependency,
   updateDraftEndpoint,
 } from '../../apps/desktop/renderer/stack-editor-model.js';
+import { StackDefinitionSchema } from '../../src/protocol/schemas.js';
 
 test('new drafts infer only the project and expose progressive validation', () => {
   let draft = createEmptyStackDraft('customer-stack');
@@ -59,6 +60,9 @@ test('round-trips every variable field while omitting schema defaults', () => {
   const serialized = serializeStackDraft(draft);
 
   expect(serialized.definition).toEqual(definition);
+  expect(StackDefinitionSchema.parse(JSON.parse(serialized.content))).toEqual(
+    /** @type {any} */ (definition),
+  );
   expect(serialized.content).toContain('"preferredPort": 4100');
   expect(serialized.content).toContain('"exactPort": 4200');
   expect(serialized.content).toContain('"containerPort": 3000');
@@ -278,6 +282,62 @@ test('preserves editor order even for integer-like schema names', () => {
   expect(content.indexOf('"2"')).toBeLessThan(content.indexOf('"alpha"'));
   expect(content.endsWith('\n')).toBe(true);
 });
+
+test('round-trips delimiter-bearing names without endpoint lookup collisions', () => {
+  const definition = {
+    version: 1,
+    project: 'edge-names',
+    components: Object.fromEntries([
+      [
+        'a',
+        {
+          endpoints: Object.fromEntries([['b\0c', endpointFixture()]]),
+          dependencies: {},
+        },
+      ],
+      [
+        'a\0b',
+        {
+          endpoints: { c: endpointFixture() },
+          dependencies: {},
+        },
+      ],
+      [
+        'consumer',
+        {
+          endpoints: {},
+          dependencies: Object.fromEntries([
+            ['first', { component: 'a', endpoint: 'b\0c', required: true }],
+            ['second', { component: 'a\0b', endpoint: 'c', required: true }],
+          ]),
+        },
+      ],
+    ]),
+  };
+  const serialized = serializeStackDraft(loadStackDraft(definition));
+  const parsed = JSON.parse(serialized.content);
+
+  expect(parsed.components.consumer.dependencies.first).toEqual({
+    component: 'a',
+    endpoint: 'b\0c',
+  });
+  expect(parsed.components.consumer.dependencies.second).toEqual({
+    component: 'a\0b',
+    endpoint: 'c',
+  });
+  expect(StackDefinitionSchema.parse(parsed)).toEqual(
+    /** @type {any} */ (serialized.definition),
+  );
+});
+
+function endpointFixture() {
+  return {
+    transport: 'tcp',
+    publish: true,
+    required: true,
+    allocation: {},
+  };
+}
 
 function fullDefinition() {
   return {
