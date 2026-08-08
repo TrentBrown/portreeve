@@ -46,3 +46,17 @@ Append PR boundary entries here.
 - **Result:** R2 passes. R1 and R3 remain passing from PR #14; R8 and the desktop editor
   criteria remain `NOT YET` for later slices. The pinned native Bun gate passes 235
   tests and 976 assertions. Independent judge: PASS. Code review: PASS with no findings.
+
+### PR #16 - Trusted desktop definition-document boundary
+
+- **PR:** [#16](https://github.com/TrentBrown/portreeve/pull/16)
+- **Status:** open for review
+- **Scope:** P4 / I-4: canonical directory and known-stack resolution, opaque document
+  and conflict capabilities, bounded strict validation, exclusive create, atomic
+  replacement, safe invalid-file recovery, save-before-apply, and evidence-checked retry.
+- **Evidence packet:** [pr-16](pr-16/)
+- **Result:** R4, R6, R7, and R8 advance but correctly remain `NOT YET` pending the
+  editor model and visible P5-P8 flows. The pinned native Bun gate passes 245 tests and
+  1,043 assertions; the focused desktop boundary suite passes 28 tests and 143
+  assertions. The final source packages and reaches a loaded renderer. Independent
+  judge: PASS. Code review: PASS with no findings.
