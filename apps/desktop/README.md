@@ -9,11 +9,13 @@ stack coordination evidence from the official JavaScript client, and confirmed
 lifecycle/reset workflows through a narrow named preload API. The CLI and server remain
 the authorities for every mutation and all filesystem deletion safety.
 
-The Stacks tab can apply a checked-in `portreeve.stack.json` through a main-process file
-picker, prepare allocations, reconcile or end existing activations, preview discovery
-documents, copy resolved addresses, and preview-confirm stale-stack pruning. It never
-starts or stops project processes, invokes Docker Compose, stops containers, or handles
-lease credentials; those responsibilities remain with each trusted project launcher.
+The Stacks tab can create or edit `portreeve.stack.json` through structured fields and
+an opaque main-process document session, reopen a registered stack with **Edit
+Definition**, retain manual file-based apply, prepare allocations, reconcile or end
+existing activations, preview discovery documents, copy resolved addresses, and
+preview-confirm stale-stack pruning. It never starts or stops project processes, invokes
+Docker Compose, stops containers, or handles lease credentials; those responsibilities
+remain with each trusted project launcher.
 
 Update discovery is separately notification-only. The main process checks the strict
 fixed manifest documented in [`docs/desktop-updates.md`](../../docs/desktop-updates.md)
@@ -36,6 +38,11 @@ Create an unsigned local macOS application bundle with:
 ```sh
 bun run desktop:package
 ```
+
+Rerun `release:build` before every package used for runtime verification. Packaging
+consumes and verifies the existing `dist/release` candidate but intentionally does not
+rebuild it; an old candidate may share the same development version while speaking an
+older internal contract.
 
 The packaging script selects the host's physical ARM64 or x64 architecture, verifies the
 candidate filename and SHA-256 digest against `dist/release/manifest.json`, and copies

@@ -109,30 +109,38 @@
         </div>
       </section>
       <section id="stacks" aria-labelledby="stacks-title" hidden>
-        <div class="section-heading">
-          <div>
-            <h2 id="stacks-title">Stacks</h2>
-            <p>
-              Persistent definitions and current Portreeve coordination evidence.
-              Project processes and containers remain launcher-owned.
-            </p>
+        <div id="stacks-browser">
+          <div class="section-heading">
+            <div>
+              <h2 id="stacks-title">Stacks</h2>
+              <p>
+                Persistent definitions and current Portreeve coordination evidence.
+                Project processes and containers remain launcher-owned.
+              </p>
+            </div>
+            <div class="actions">
+              <button id="create-edit-stack" class="primary" type="button">
+                Create or Edit Stack…
+              </button>
+              <button id="apply-stack-definition" type="button">
+                Apply definition…
+              </button>
+              <button id="preview-stack-prune" type="button">
+                Prune stale stacks…
+              </button>
+            </div>
           </div>
-          <div class="actions">
-            <button id="apply-stack-definition" class="primary" type="button">
-              Apply definition…
-            </button>
-            <button id="preview-stack-prune" type="button">Prune stale stacks…</button>
+          <div class="stacks-grid">
+            <div id="stack-list" class="stack-list" aria-label="Known stacks"></div>
+            <aside id="stack-detail" class="panel stack-detail" aria-live="polite">
+              <h3>Stack details</h3>
+              <p class="muted">
+                Select a stack to inspect its current coordination state.
+              </p>
+            </aside>
           </div>
         </div>
-        <div class="stacks-grid">
-          <div id="stack-list" class="stack-list" aria-label="Known stacks"></div>
-          <aside id="stack-detail" class="panel stack-detail" aria-live="polite">
-            <h3>Stack details</h3>
-            <p class="muted">
-              Select a stack to inspect its current coordination state.
-            </p>
-          </aside>
-        </div>
+        <div id="stack-editor" class="stack-editor" hidden></div>
       </section>
     </main>
 
@@ -143,6 +151,20 @@
         <div class="dialog-actions">
           <button value="cancel">Cancel</button>
           <button id="confirmation-accept" value="confirm">Confirm</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="discard-editor-dialog" aria-labelledby="discard-editor-title">
+      <form method="dialog">
+        <h2 id="discard-editor-title">Discard unsaved stack changes?</h2>
+        <p>
+          The current draft has changes that have not been saved to
+          portreeve.stack.json.
+        </p>
+        <div class="dialog-actions">
+          <button value="keep">Keep editing</button>
+          <button class="danger" value="discard">Discard changes</button>
         </div>
       </form>
     </dialog>

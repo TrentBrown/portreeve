@@ -44,8 +44,11 @@ arbitrary executable paths are not exposed.
 The Stacks tab reads definitions and current generation, activation, resolution, and
 fresh provider evidence through the official client. It supports:
 
+- creating or editing a stack from structured project, component, endpoint, Docker,
+  and dependency fields after selecting its root directory;
+- reopening a registered stack directly from its details with **Edit Definition**;
 - selecting and applying a checked-in `portreeve.stack.json` through the native file
-  picker;
+  picker as a compatibility and recovery workflow;
 - preparing or reusing one complete allocation generation;
 - inspecting components, endpoints, dependencies, placements, host addresses,
   Docker-network addresses, and provider evidence;
@@ -55,7 +58,7 @@ fresh provider evidence through the official client. It supports:
 - requesting evidence-gated activation ending after the project launcher stops its
   providers;
 - previewing seven-day missing-stack-root pruning and typing `PRUNE` before
-execution.
+  execution.
 
 The desktop's stack editor uses a fixed `portreeve.stack.json` at the selected or
 registered stack root. Directory selection, file inspection, schema validation, and
@@ -64,6 +67,11 @@ the editable definition, a root display name, and reduced validation issues; it 
 receive the full path or file fingerprint. Missing files are created exclusively, and
 existing regular files are replaced atomically only after the exact bytes observed when
 the editor opened are rechecked.
+
+The dedicated editor replaces the normal Stacks list and details while it is open. New
+drafts prefill only the selected root's basename as the project name and leave the
+topology for the user to define. Navigation to another top-level tab, Back, Cancel, or
+window close offers **Keep editing** or **Discard changes** whenever the draft is dirty.
 
 If another program changes the file, Portreeve offers Overwrite or Cancel. Overwrite is
 authorized by a one-use conflict capability bound to the newly observed bytes; a second
@@ -117,6 +125,11 @@ bun run release:build
 bun run desktop:package
 open dist/desktop/Portreeve-darwin-arm64/Portreeve.app
 ```
+
+Always rebuild `dist/release` before packaging a development candidate. The desktop
+packager deliberately consumes and verifies the existing release manifest; it does not
+recompile the CLI, so skipping `release:build` can bundle an older server contract that
+still reports the same development version.
 
 The packaging script selects the physical host architecture and verifies the bundled
 CLI against the generated release manifest and SHA-256 digest. This local bundle is a

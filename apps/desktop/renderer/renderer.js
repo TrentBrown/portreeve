@@ -8,6 +8,7 @@ import {
   stackRenderSignature,
   updatePresentation,
 } from './state.js';
+import { createStackEditorView } from './stack-editor-view.js';
 
 /** @type {any} */
 let snapshot = null;
@@ -37,6 +38,8 @@ const operationMessage = requiredElement('operation-message');
 const operationDetails = requiredElement('operation-details');
 const stackList = requiredElement('stack-list');
 const stackDetail = requiredElement('stack-detail');
+const stacksBrowser = requiredElement('stacks-browser');
+const stackEditorRoot = requiredElement('stack-editor');
 const filterInput = /** @type {HTMLInputElement} */ (requiredElement('port-filter'));
 const confirmationDialog = /** @type {HTMLDialogElement} */ (
   requiredElement('confirmation-dialog')
@@ -58,7 +61,54 @@ const stackPruneAccept = /** @type {HTMLButtonElement} */ (
 const snapshotDialog = /** @type {HTMLDialogElement} */ (
   requiredElement('snapshot-dialog')
 );
+const discardEditorDialog = /** @type {HTMLDialogElement} */ (
+  requiredElement('discard-editor-dialog')
+);
 let snapshotJson = '';
+
+const stackEditor = createStackEditorView({
+  root: stackEditorRoot,
+  normalView: stacksBrowser,
+  api: window.portreeveDesktop,
+  confirmDiscard: async () => {
+    discardEditorDialog.showModal();
+    return (await dialogResult(discardEditorDialog)) === 'discard';
+  },
+  confirmDelete: (impact) =>
+    confirmAction(
+      `Delete ${impact.label}?`,
+      impact.dependencies.length === 0
+        ? 'This removes the selected item from the draft.'
+        : `This also removes ${impact.dependencies.length} dependent entr${impact.dependencies.length === 1 ? 'y' : 'ies'}: ${impact.dependencies.map((/** @type {any} */ entry) => `${entry.consumerComponentName}.${entry.alias}`).join(', ')}.`,
+      impact.dependencies.length === 0 ? 'Delete' : 'Delete and cascade',
+    ),
+  confirmOverwrite: (reason) =>
+    confirmAction(
+      'Overwrite the changed stack definition?',
+      overwriteMessage(reason),
+      'Overwrite',
+    ),
+  confirmInvalid: (documentState) =>
+    confirmAction(
+      'Replace the invalid stack definition?',
+      `${documentState.issues.map((/** @type {any} */ issue) => issue.message).join(' ')} ${
+        documentState.seedSource === 'applied'
+          ? 'The editor can start from the currently applied definition.'
+          : 'The editor can start a new replacement draft.'
+      } The existing file is not changed unless you later choose Save and Apply and confirm overwrite.`,
+      documentState.seedSource === 'applied'
+        ? 'Use applied definition'
+        : 'Start replacement draft',
+    ),
+  onSnapshot: render,
+  onApplied: (stackId, message, details) => {
+    selectedStack = stackId;
+    renderedStacksSignature = null;
+    renderStacks(true);
+    showOperation(message, details);
+  },
+  onOperation: showOperation,
+});
 
 /** @type {Readonly<Record<string, {label: string, title?: string, message?: string, confirm: boolean}>>} */
 const actionDefinitions = Object.freeze({
@@ -89,16 +139,31 @@ const actionDefinitions = Object.freeze({
 });
 
 for (const tab of document.querySelectorAll('.tab')) {
-  tab.addEventListener('click', () => {
-    for (const candidate of document.querySelectorAll('.tab')) {
-      candidate.classList.toggle('active', candidate === tab);
-    }
+  tab.addEventListener('click', async () => {
     const view = /** @type {HTMLElement} */ (tab).dataset.view;
-    requiredElement('overview').hidden = view !== 'overview';
-    requiredElement('ports').hidden = view !== 'ports';
-    requiredElement('stacks').hidden = view !== 'stacks';
+    if (view !== 'stacks' && stackEditor.isOpen()) {
+      if (!(await stackEditor.requestClose())) return;
+    }
+    activateTab(tab, view);
   });
 }
+
+let closeAfterDiscard = false;
+let closePromptOpen = false;
+window.addEventListener('beforeunload', (event) => {
+  if (closeAfterDiscard || !stackEditor.isDirty()) return;
+  event.preventDefault();
+  event.returnValue = false;
+  if (closePromptOpen) return;
+  closePromptOpen = true;
+  discardEditorDialog.showModal();
+  void dialogResult(discardEditorDialog).then((result) => {
+    closePromptOpen = false;
+    if (result !== 'discard') return;
+    closeAfterDiscard = true;
+    window.close();
+  });
+});
 
 requiredElement('refresh').addEventListener('click', async () => {
   await runBusy(async () => {
@@ -121,6 +186,9 @@ requiredElement('uninstall').addEventListener('click', async () => {
 requiredElement('preview-purge').addEventListener('click', previewPurge);
 requiredElement('apply-stack-definition').addEventListener('click', async () => {
   await invokeStack(() => window.portreeveDesktop.applyStackDefinition());
+});
+requiredElement('create-edit-stack').addEventListener('click', async () => {
+  await stackEditor.openSelected();
 });
 requiredElement('preview-stack-prune').addEventListener('click', previewStackPrune);
 openDownloadPage.addEventListener('click', async () => {
@@ -383,6 +451,7 @@ function renderPortDetail(entry) {
 /** @param {boolean} [force] */
 function renderStacks(force = false) {
   if (snapshot === null) return;
+  if (stackEditor.isOpen()) return;
   const signature = stackRenderSignature(snapshot);
   if (!force && signature === renderedStacksSignature) return;
   renderedStacksSignature = signature;
@@ -449,6 +518,9 @@ function renderStackDetail(stack) {
   );
   const actions = document.createElement('div');
   actions.className = 'actions stack-actions';
+  actions.append(
+    actionButton('Edit Definition', () => stackEditor.openKnown(stack.id)),
+  );
   const allowedActions = availableStackActions(snapshot, stack);
   if (allowedActions.includes('prepare')) {
     actions.append(
@@ -763,6 +835,27 @@ function actionGuidance(lifecycle, actions) {
   }
   if (actions.length === 0) return 'No service action is currently needed.';
   return 'Available actions reflect fresh lifecycle evidence and are revalidated by the CLI.';
+}
+
+/** @param {Element} tab @param {string|undefined} view */
+function activateTab(tab, view) {
+  for (const candidate of document.querySelectorAll('.tab')) {
+    candidate.classList.toggle('active', candidate === tab);
+  }
+  requiredElement('overview').hidden = view !== 'overview';
+  requiredElement('ports').hidden = view !== 'ports';
+  requiredElement('stacks').hidden = view !== 'stacks';
+}
+
+/** @param {string} reason */
+function overwriteMessage(reason) {
+  if (reason === 'invalid-file-replacement') {
+    return 'The existing invalid portreeve.stack.json will be replaced by this validated draft. This cannot be merged automatically.';
+  }
+  if (reason === 'appeared-after-open') {
+    return 'A portreeve.stack.json file appeared after this draft opened. Overwrite replaces that unseen file; Cancel keeps editing without writing.';
+  }
+  return 'portreeve.stack.json changed outside Portreeve after this editor opened. Overwrite replaces the newly observed bytes; Cancel keeps editing without writing.';
 }
 
 /** @param {string} title @param {string} message @param {string} acceptLabel */

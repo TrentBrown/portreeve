@@ -1,6 +1,6 @@
 // @ts-check
 
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { PortreeveClient } from '../../packages/client/src/index.js';
@@ -14,11 +14,18 @@ import { PortreeveClient } from '../../packages/client/src/index.js';
  * @param {string} prefix
  */
 export async function startCliRuntime(prefix) {
-  const directory = await mkdtemp(join(tmpdir(), `${prefix}-`));
+  const directory = await realpath(await mkdtemp(join(tmpdir(), `${prefix}-`)));
   const socketPath = join(directory, 'portreeve.sock');
   const server = Bun.spawn(
     [process.execPath, resolve('src/cli/main.js'), 'serve', '--home', directory],
-    { stdout: 'pipe', stderr: 'pipe' },
+    {
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: {
+        ...process.env,
+        PORTREEVE_DOCKER_EXECUTABLE: 'portreeve-test-docker-unavailable',
+      },
+    },
   );
   const client = new PortreeveClient({ socketPath });
   let healthy = false;

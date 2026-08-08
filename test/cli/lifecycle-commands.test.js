@@ -1,7 +1,7 @@
 // @ts-check
 
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -26,7 +26,9 @@ afterEach(async () => {
 });
 
 async function isolatedHome() {
-  const home = await mkdtemp(join(tmpdir(), 'portreeve-lifecycle-command-'));
+  const home = await realpath(
+    await mkdtemp(join(tmpdir(), 'portreeve-lifecycle-command-')),
+  );
   homes.push(home);
   return home;
 }
