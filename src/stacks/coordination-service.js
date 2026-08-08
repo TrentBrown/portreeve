@@ -5,6 +5,7 @@ import { DockerCliAdapter } from '../docker/adapter.js';
 import {
   assertDockerEvidence,
   expectedDockerLabels,
+  publishedContainerPorts,
   verifyDockerEvidence,
 } from '../docker/evidence.js';
 import { detectEphemeralPortRange } from '../platform/ephemeral-ports.js';
@@ -353,13 +354,7 @@ export class StackCoordinationService {
                   definitionRevision: generation.revision,
                   generationId: generation.id,
                   activationId: begun.activation.id,
-                  endpoints: Object.fromEntries(
-                    Object.entries(component.endpoints).flatMap(([name, definition]) =>
-                      definition.publish && definition.docker !== undefined
-                        ? [[name, definition.docker.containerPort]]
-                        : [],
-                    ),
-                  ),
+                  endpoints: publishedContainerPorts(component),
                 }),
               }
             : null;
@@ -426,15 +421,8 @@ export class StackCoordinationService {
         { leaseId: request.leaseId, reason: 'binding_kind_mismatch' },
       );
     }
-    const generation = this.getGeneration(activation.generationId);
-    const stack = this.registry.getStack(activation.stackId);
-    const component = stack?.definition.components[endpoint.component];
-    const endpointDefinition = component?.endpoints[endpoint.endpoint];
-    if (
-      stack === null ||
-      component?.docker === undefined ||
-      endpointDefinition?.docker === undefined
-    ) {
+    const binding = this.#resolveDockerBinding(activation, endpoint);
+    if (binding === null) {
       throw new RegistryError(
         'conflict',
         `Docker definition for ${endpoint.component}.${endpoint.endpoint} is unavailable.`,
@@ -449,27 +437,11 @@ export class StackCoordinationService {
         { containerId: request.containerId, reason: inspected.reason },
       );
     }
-    const endpoints = Object.fromEntries(
-      Object.entries(component.endpoints).flatMap(([name, definition]) =>
-        definition.publish && definition.docker !== undefined
-          ? [[name, definition.docker.containerPort]]
-          : [],
-      ),
-    );
-    const expectedLabels = expectedDockerLabels({
-      stackId: stack.id,
-      component: endpoint.component,
-      definitionRevision: generation.revision,
-      generationId: generation.id,
+    const { expectedLabels, verification } = verifyDockerBinding({
       activationId: activation.id,
-      endpoints,
-    });
-    const verification = verifyDockerEvidence({
+      binding,
       container: inspected.container,
-      expectedLabels,
-      endpoint: endpoint.endpoint,
-      containerPort: endpointDefinition.docker.containerPort,
-      hostPort: endpoint.port,
+      endpoint,
     });
     assertDockerEvidence(verification, request.containerId);
     this.registry.confirmDockerLease(
@@ -480,13 +452,41 @@ export class StackCoordinationService {
         providerEvidence: {
           expectedLabels,
           endpoint: endpoint.endpoint,
-          containerPort: endpointDefinition.docker.containerPort,
+          containerPort: binding.containerPort,
           hostPort: endpoint.port,
         },
         activationId,
       },
       this.now(),
     );
+  }
+
+  /**
+   * Resolve the definition backing one Docker endpoint of an activation, or
+   * `null` when the stack no longer defines that Docker binding.
+   *
+   * @param {{stackId: string, generationId: string}} activation
+   * @param {{component: string, endpoint: string}} endpoint
+   */
+  #resolveDockerBinding(activation, endpoint) {
+    const generation = this.getGeneration(activation.generationId);
+    const stack = this.registry.getStack(activation.stackId);
+    const component = stack?.definition.components[endpoint.component];
+    const endpointDefinition = component?.endpoints[endpoint.endpoint];
+    if (
+      stack === null ||
+      stack === undefined ||
+      component?.docker === undefined ||
+      endpointDefinition?.docker === undefined
+    ) {
+      return null;
+    }
+    return {
+      stack,
+      component,
+      containerPort: endpointDefinition.docker.containerPort,
+      generation,
+    };
   }
 
   /** @param {{protocol: {minimum: number, maximum: number}, requiredCapabilities: string[]}} client */
@@ -752,41 +752,19 @@ export class StackCoordinationService {
         reason: inspected.reason ?? 'container-unobservable',
       };
     }
-    const generation = this.getGeneration(activation.generationId);
-    const stack = this.registry.getStack(activation.stackId);
-    const component = stack?.definition.components[endpoint.component];
-    const endpointDefinition = component?.endpoints[endpoint.endpoint];
-    if (
-      stack === null ||
-      component?.docker === undefined ||
-      endpointDefinition?.docker === undefined
-    ) {
+    const binding = this.#resolveDockerBinding(activation, endpoint);
+    if (binding === null) {
       return {
         ...base,
         status: /** @type {const} */ ('unknown'),
         reason: 'docker-definition-missing',
       };
     }
-    const expectedLabels = expectedDockerLabels({
-      stackId: stack.id,
-      component: endpoint.component,
-      definitionRevision: generation.revision,
-      generationId: generation.id,
+    const { verification } = verifyDockerBinding({
       activationId: activation.id,
-      endpoints: Object.fromEntries(
-        Object.entries(component.endpoints).flatMap(([name, definition]) =>
-          definition.publish && definition.docker !== undefined
-            ? [[name, definition.docker.containerPort]]
-            : [],
-        ),
-      ),
-    });
-    const verification = verifyDockerEvidence({
+      binding,
       container: inspected.container,
-      expectedLabels,
-      endpoint: endpoint.endpoint,
-      containerPort: endpointDefinition.docker.containerPort,
-      hostPort: endpoint.port,
+      endpoint,
     });
     return verification.verified
       ? {
@@ -820,6 +798,41 @@ export class StackCoordinationService {
     }
     return true;
   }
+}
+
+/**
+ * Verify freshly inspected container evidence against the labels the recorded
+ * Docker binding requires.
+ *
+ * @param {{
+ *   activationId: string,
+ *   binding: {
+ *     stack: {id: string},
+ *     component: Parameters<typeof publishedContainerPorts>[0],
+ *     containerPort: number,
+ *     generation: {id: string, revision: string}
+ *   },
+ *   container: Parameters<typeof verifyDockerEvidence>[0]['container'],
+ *   endpoint: {component: string, endpoint: string, port: number}
+ * }} input
+ */
+function verifyDockerBinding(input) {
+  const expectedLabels = expectedDockerLabels({
+    stackId: input.binding.stack.id,
+    component: input.endpoint.component,
+    definitionRevision: input.binding.generation.revision,
+    generationId: input.binding.generation.id,
+    activationId: input.activationId,
+    endpoints: publishedContainerPorts(input.binding.component),
+  });
+  const verification = verifyDockerEvidence({
+    container: input.container,
+    expectedLabels,
+    endpoint: input.endpoint.endpoint,
+    containerPort: input.binding.containerPort,
+    hostPort: input.endpoint.port,
+  });
+  return { expectedLabels, verification };
 }
 
 /** @param {{component: string, endpoint: string}} endpoint */

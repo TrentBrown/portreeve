@@ -1,7 +1,7 @@
 // @ts-check
 
-import { lstat } from 'node:fs/promises';
 import { detectEphemeralPortRange } from '../platform/ephemeral-ports.js';
+import { workspacePathExists } from '../platform/files.js';
 import {
   ClaimDeleteRequestSchema,
   ClaimPruneRequestSchema,
@@ -287,25 +287,6 @@ function reassignmentCandidates(request, settings, ephemeralRange) {
     }
   }
   return candidates;
-}
-
-/**
- * @param {string} path
- */
-async function workspacePathExists(path) {
-  try {
-    await lstat(path);
-    return true;
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      'code' in error &&
-      /** @type {{code?: string}} */ (error).code === 'ENOENT'
-    ) {
-      return false;
-    }
-    return true;
-  }
 }
 
 /**

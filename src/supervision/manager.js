@@ -6,10 +6,14 @@ import {
   PortreeveClientError,
 } from '../../packages/client/src/index.js';
 import { PORTREEVE_VERSION } from '../version.js';
+import { compareSemanticVersions } from '../domain/semantic-version.js';
+import { delay } from '../domain/time.js';
+import { ignoreMissingFile, isMissingFile } from '../platform/errors.js';
+import { readOptionalFile } from '../platform/files.js';
 import { prepareRuntimeDirectories } from '../platform/paths.js';
 import { HealthResponseSchema } from '../protocol/schemas.js';
 import { runCommand, assertCommandSucceeded } from './command.js';
-import { promoteExecutable, readOptionalFile, restoreExecutable } from './files.js';
+import { promoteExecutable, restoreExecutable } from './files.js';
 import {
   executePurge as executePurgeOperation,
   previewPurge as previewPurgeOperation,
@@ -19,7 +23,6 @@ import {
   SemanticVersionSchema,
   lifecycleError,
 } from './schemas.js';
-import { compareSemanticVersions } from './version.js';
 
 export class LifecycleConflictError extends PortreeveClientError {
   /** @param {string} message */
@@ -331,8 +334,8 @@ export class LifecycleManager {
       }
     }
     await this.supervisor.uninstall();
-    await unlink(this.paths.managedExecutablePath).catch(ignoreMissing);
-    await unlink(this.paths.rollbackExecutablePath).catch(ignoreMissing);
+    await unlink(this.paths.managedExecutablePath).catch(ignoreMissingFile);
+    await unlink(this.paths.rollbackExecutablePath).catch(ignoreMissingFile);
     return {
       installed: false,
       active: false,
@@ -345,16 +348,10 @@ export class LifecycleManager {
     this.assertPerUser();
     const status = await this.status();
     this.assertMutationCompatible(status);
-    if (status.installation.state !== 'installed') {
-      throw new LifecycleConflictError(
-        'Portreeve is not installed for native supervision. Run "portreeve install" first.',
-      );
-    }
-    if (status.mode === 'manual' || status.mode === 'ambiguous') {
-      throw new LifecycleConflictError(
-        'A manual Portreeve server is already running. Stop it before starting the supervised service.',
-      );
-    }
+    this.assertSupervisable(
+      status,
+      'A manual Portreeve server is already running. Stop it before starting the supervised service.',
+    );
     if (status.supervisor.state !== 'active') {
       await this.supervisor.start();
     }
@@ -365,16 +362,10 @@ export class LifecycleManager {
     this.assertPerUser();
     const status = await this.status();
     this.assertMutationCompatible(status);
-    if (status.installation.state !== 'installed') {
-      throw new LifecycleConflictError(
-        'Portreeve is not installed for native supervision. Run "portreeve install" first.',
-      );
-    }
-    if (status.mode === 'manual' || status.mode === 'ambiguous') {
-      throw new LifecycleConflictError(
-        'A manual Portreeve server is running. Portreeve will not adopt or replace it.',
-      );
-    }
+    this.assertSupervisable(
+      status,
+      'A manual Portreeve server is running. Portreeve will not adopt or replace it.',
+    );
     if (
       status.supervisor.state === 'active' ||
       status.supervisor.state === 'starting'
@@ -477,6 +468,24 @@ export class LifecycleManager {
       throw new LifecycleConflictError(
         'Native supervisor state could not be observed safely.',
       );
+    }
+  }
+
+  /**
+   * Refuse supervision mutations without a managed installation, and refuse to
+   * touch a manual server.
+   *
+   * @param {import('zod').infer<typeof LifecycleStatusSchema>} status
+   * @param {string} manualServerMessage
+   */
+  assertSupervisable(status, manualServerMessage) {
+    if (status.installation.state !== 'installed') {
+      throw new LifecycleConflictError(
+        'Portreeve is not installed for native supervision. Run "portreeve install" first.',
+      );
+    }
+    if (status.mode === 'manual' || status.mode === 'ambiguous') {
+      throw new LifecycleConflictError(manualServerMessage);
     }
   }
 
@@ -626,32 +635,5 @@ async function executableVersion(executable, runner) {
     throw new Error(
       `Portreeve executable returned an invalid version: ${result.stdout.trim()}`,
     );
-  }
-}
-
-/**
- * @param {unknown} error
- */
-function isMissingFile(error) {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    /** @type {{code?: string}} */ (error).code === 'ENOENT'
-  );
-}
-
-/** @param {number} milliseconds */
-function delay(milliseconds) {
-  return new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
-}
-
-/** @param {unknown} error */
-function ignoreMissing(error) {
-  if (!(
-    error instanceof Error &&
-    'code' in error &&
-    /** @type {{code?: string}} */ (error).code === 'ENOENT'
-  )) {
-    throw error;
   }
 }

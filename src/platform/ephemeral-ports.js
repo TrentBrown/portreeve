@@ -18,39 +18,42 @@ export async function detectEphemeralPortRange() {
       const exitCode = await child.exited;
       const output = await new Response(child.stdout).text();
       if (exitCode === 0) {
-        const [start, end] = output
-          .trim()
-          .split(/\s+/)
-          .map((value) => Number.parseInt(value, 10));
-        if (isPortRange(start, end)) {
-          return {
-            start: /** @type {number} */ (start),
-            end: /** @type {number} */ (end),
-            source: 'sysctl',
-          };
-        }
+        const range = parsePortRange(output, 'sysctl');
+        if (range !== null) return range;
       }
     }
 
     if (process.platform === 'linux') {
       const output = await readFile('/proc/sys/net/ipv4/ip_local_port_range', 'utf8');
-      const [start, end] = output
-        .trim()
-        .split(/\s+/)
-        .map((value) => Number.parseInt(value, 10));
-      if (isPortRange(start, end)) {
-        return {
-          start: /** @type {number} */ (start),
-          end: /** @type {number} */ (end),
-          source: 'procfs',
-        };
-      }
+      const range = parsePortRange(output, 'procfs');
+      if (range !== null) return range;
     }
   } catch {
     // Use the conservative fallback when platform discovery is unavailable.
   }
 
   return CONSERVATIVE_EPHEMERAL_RANGE;
+}
+
+/**
+ * Read one whitespace-separated `start end` port range as the platform
+ * reports it.
+ *
+ * @param {string} output
+ * @param {string} source
+ */
+function parsePortRange(output, source) {
+  const [start, end] = output
+    .trim()
+    .split(/\s+/)
+    .map((value) => Number.parseInt(value, 10));
+  return isPortRange(start, end)
+    ? {
+        start: /** @type {number} */ (start),
+        end: /** @type {number} */ (end),
+        source,
+      }
+    : null;
 }
 
 /**

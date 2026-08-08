@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { PortreeveClient } from '../packages/client/src/index.js';
+import { isMissingFile } from '../src/platform/errors.js';
 import {
   LifecycleMutationResultSchema,
   LifecycleStatusSchema,
@@ -560,11 +561,7 @@ async function assertMissing(path) {
   try {
     await access(path);
   } catch (error) {
-    if (
-      error instanceof Error &&
-      'code' in error &&
-      /** @type {{code?: unknown}} */ (error).code === 'ENOENT'
-    ) {
+    if (isMissingFile(error)) {
       return;
     }
     throw error;

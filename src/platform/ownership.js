@@ -4,6 +4,7 @@ import { lstat, open, readFile, readdir, realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, join, parse, resolve } from 'node:path';
 import { z } from 'zod';
+import { isAlreadyExists, isMissingFile } from './errors.js';
 
 export const OWNERSHIP_MARKER_FILENAME = '.portreeve-owner.json';
 
@@ -243,26 +244,4 @@ function recognizedEntryNames(paths, applicationDirectory) {
     }
   }
   return entries;
-}
-
-/** @param {unknown} error */
-function isMissingFile(error) {
-  return hasCode(error, 'ENOENT');
-}
-
-/** @param {unknown} error */
-function isAlreadyExists(error) {
-  return hasCode(error, 'EEXIST');
-}
-
-/**
- * @param {unknown} error
- * @param {string} code
- */
-function hasCode(error, code) {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    /** @type {{code?: string}} */ (error).code === code
-  );
 }

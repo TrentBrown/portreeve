@@ -39,6 +39,25 @@ export function expectedDockerLabels(identity) {
 }
 
 /**
+ * Collect the container ports of every published Docker endpoint of one
+ * component, in the shape `expectedDockerLabels` records.
+ *
+ * @param {{
+ *   endpoints: Record<string, {publish: boolean, docker?: {containerPort: number} | undefined}>
+ * }} component
+ * @returns {Record<string, number>}
+ */
+export function publishedContainerPorts(component) {
+  return Object.fromEntries(
+    Object.entries(component.endpoints).flatMap(([name, definition]) =>
+      definition.publish && definition.docker !== undefined
+        ? [[name, definition.docker.containerPort]]
+        : [],
+    ),
+  );
+}
+
+/**
  * @param {{
  *   container: {id: string, running: boolean, labels: Readonly<Record<string, string>>, ports: ReadonlyArray<{containerPort: number, hostIp: string, hostPort: number}>},
  *   expectedLabels: Record<string, string>,

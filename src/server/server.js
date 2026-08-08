@@ -6,6 +6,7 @@ import { createConnection } from 'node:net';
 import { z } from 'zod';
 import { AdministrationService } from '../administration/service.js';
 import { ServerSettingsSchema } from '../domain/settings.js';
+import { hasErrorCode, isMissingFile } from '../platform/errors.js';
 import { CAPABILITIES, DOCKER_CAPABILITY } from '../protocol/constants.js';
 import {
   AbandonRequestSchema,
@@ -953,25 +954,11 @@ function socketAcceptsConnections(socketPath) {
     });
     socket.once('error', (error) => {
       socket.destroy();
-      if (
-        'code' in error &&
-        (error.code === 'ECONNREFUSED' || error.code === 'ENOENT')
-      ) {
+      if (hasErrorCode(error, 'ECONNREFUSED') || isMissingFile(error)) {
         resolvePromise(false);
         return;
       }
       reject(error);
     });
   });
-}
-
-/**
- * @param {unknown} error
- */
-function isMissingFile(error) {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    /** @type {{code?: string}} */ (error).code === 'ENOENT'
-  );
 }

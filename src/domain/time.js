@@ -17,3 +17,11 @@ export function toTimestamp(date) {
 export function hasExpired(timestamp, now) {
   return Date.parse(timestamp) <= now.getTime();
 }
+
+/**
+ * @param {number} milliseconds
+ * @returns {Promise<void>}
+ */
+export function delay(milliseconds) {
+  return new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
+}

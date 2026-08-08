@@ -2,26 +2,14 @@
 
 import { z } from 'zod';
 import {
-  ClaimIdentitySchema,
-  ClaimModeSchema,
+  CLAIM_RECORD_FIELDS,
   IdentifierSchema,
   PortSchema,
   TimestampSchema,
 } from '../protocol/schemas.js';
 
 export const ClaimRecordSchema = z
-  .object({
-    id: IdentifierSchema,
-    identity: ClaimIdentitySchema,
-    mode: ClaimModeSchema,
-    assignedPort: PortSchema.nullable(),
-    preferredPort: PortSchema.nullable(),
-    exactPort: PortSchema.nullable(),
-    assignmentExpiresAt: TimestampSchema.nullable(),
-    createdAt: TimestampSchema,
-    updatedAt: TimestampSchema,
-    lastUsedAt: TimestampSchema,
-  })
+  .object(CLAIM_RECORD_FIELDS)
   .refine(
     ({ exactPort, preferredPort }) => exactPort === null || preferredPort === null,
     {
