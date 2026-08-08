@@ -503,7 +503,7 @@ export class StackCoordinationService {
     if (!result.compatible) {
       throw new RegistryError(
         availability.available ? 'incompatible_protocol' : 'unavailable',
-        'Docker evidence is not available for this Portreeve server.',
+        'Docker evidence is not available for this PortReeve server.',
         { ...result, docker: availability },
       );
     }
@@ -864,7 +864,7 @@ function assertCompatible(client) {
   if (!result.compatible) {
     throw new RegistryError(
       'incompatible_protocol',
-      'Client and Portreeve stack activation requirements do not overlap.',
+      'Client and PortReeve stack activation requirements do not overlap.',
       result,
     );
   }

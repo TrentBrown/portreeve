@@ -19,7 +19,7 @@ export async function listClaimsCommand(options) {
     'claims',
     claims,
     claims.length === 0
-      ? ['No Portreeve claims.']
+      ? ['No PortReeve claims.']
       : claims.map(
           (claim) =>
             `${claim.id}  ${claim.identity.project}/${claim.identity.service}  ${

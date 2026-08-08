@@ -4,13 +4,13 @@ const expectedBunVersion = '1.3.14';
 
 if (typeof Bun === 'undefined') {
   throw new Error(
-    `Portreeve requires Bun ${expectedBunVersion} to run project scripts.`,
+    `PortReeve requires Bun ${expectedBunVersion} to run project scripts.`,
   );
 }
 
 if (Bun.version !== expectedBunVersion) {
   throw new Error(
-    `Portreeve requires Bun ${expectedBunVersion}; received ${Bun.version} from ${process.execPath}.`,
+    `PortReeve requires Bun ${expectedBunVersion}; received ${Bun.version} from ${process.execPath}.`,
   );
 }
 

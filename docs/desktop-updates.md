@@ -1,6 +1,6 @@
-# Portreeve Desktop updates
+# PortReeve Desktop updates
 
-Portreeve Desktop performs notification-only update discovery. At application
+PortReeve Desktop performs notification-only update discovery. At application
 launch, the Electron main process may fetch this fixed manifest URL:
 
 ```text
@@ -23,7 +23,7 @@ The document is strict JSON:
 }
 ```
 
-`desktopVersion` is the latest published Portreeve Desktop semantic version.
+`desktopVersion` is the latest published PortReeve Desktop semantic version.
 The manifest supplies no executable or navigation URL. When a newer version is
 available, the application can open only the compile-time approved page:
 
@@ -32,6 +32,6 @@ https://github.com/TrentBrown/portreeve/releases
 ```
 
 The first release remains manual: update discovery never downloads, installs,
-restarts, or replaces the desktop application or managed Portreeve service.
+restarts, or replaces the desktop application or managed PortReeve service.
 Publishing automation must update the manifest only after the corresponding
 signed and notarized desktop artifacts are available from the Releases page.

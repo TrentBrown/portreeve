@@ -113,8 +113,8 @@ const stackEditor = createStackEditorView({
 /** @type {Readonly<Record<string, {label: string, title?: string, message?: string, confirm: boolean}>>} */
 const actionDefinitions = Object.freeze({
   installAndStart: {
-    label: 'Install and Start Portreeve',
-    title: 'Install and start Portreeve?',
+    label: 'Install and Start PortReeve',
+    title: 'Install and start PortReeve?',
     message:
       'This installs the bundled CLI under your user account, configures native supervision, and starts the service.',
     confirm: true,
@@ -124,16 +124,16 @@ const actionDefinitions = Object.freeze({
   restart: { label: 'Restart', confirm: false },
   stopManual: {
     label: 'Stop manual server',
-    title: 'Stop the manual Portreeve server?',
+    title: 'Stop the manual PortReeve server?',
     message:
-      'This asks the independently started Portreeve server to stop. It does not adopt it into supervision.',
+      'This asks the independently started PortReeve server to stop. It does not adopt it into supervision.',
     confirm: true,
   },
   upgrade: {
     label: 'Upgrade managed service',
-    title: 'Upgrade the managed Portreeve service?',
+    title: 'Upgrade the managed PortReeve service?',
     message:
-      'This replaces the managed CLI with the verified bundled version. Portreeve refuses downgrades and unsafe states.',
+      'This replaces the managed CLI with the verified bundled version. PortReeve refuses downgrades and unsafe states.',
     confirm: true,
   },
 });
@@ -174,7 +174,7 @@ requiredElement('refresh').addEventListener('click', async () => {
 requiredElement('uninstall').addEventListener('click', async () => {
   if (
     !(await confirmAction(
-      'Uninstall the Portreeve service?',
+      'Uninstall the PortReeve service?',
       'Native supervision and the managed executable will be removed. Claims, history, and settings will be preserved.',
       'Uninstall service',
     ))
@@ -194,7 +194,7 @@ requiredElement('preview-stack-prune').addEventListener('click', previewStackPru
 openDownloadPage.addEventListener('click', async () => {
   await runBusy(async () => {
     await window.portreeveDesktop.openDownloadPage();
-    showOperation('Opened the Portreeve download page.', [
+    showOperation('Opened the PortReeve download page.', [
       'Desktop installation remains manual. Managed-service upgrades require separate confirmation.',
     ]);
   });
@@ -323,7 +323,7 @@ async function previewPurge() {
     const preview = await window.portreeveDesktop.previewPurge();
     requiredElement('purge-summary').textContent = preview.allowed
       ? `${preview.paths.length} paths beneath ${preview.root} are eligible for deletion.`
-      : 'Portreeve refused this reset preview. Review the evidence below.';
+      : 'PortReeve refused this reset preview. Review the evidence below.';
     requiredElement('purge-paths').replaceChildren(
       ...preview.paths.map((/** @type {any} */ entry) => {
         const item = document.createElement('li');
@@ -540,7 +540,7 @@ function renderStackDetail(stack) {
           if (
             await confirmAction(
               'End this stack activation?',
-              'Portreeve will verify current provider evidence and release its coordination records. It will not stop project processes or containers.',
+              'PortReeve will verify current provider evidence and release its coordination records. It will not stop project processes or containers.',
               'End activation',
             )
           ) {
@@ -855,7 +855,7 @@ function overwriteMessage(reason) {
   if (reason === 'appeared-after-open') {
     return 'A portreeve.stack.json file appeared after this draft opened. Overwrite replaces that unseen file; Cancel keeps editing without writing.';
   }
-  return 'portreeve.stack.json changed outside Portreeve after this editor opened. Overwrite replaces the newly observed bytes; Cancel keeps editing without writing.';
+  return 'portreeve.stack.json changed outside PortReeve after this editor opened. Overwrite replaces the newly observed bytes; Cancel keeps editing without writing.';
 }
 
 /** @param {string} title @param {string} message @param {string} acceptLabel */
@@ -887,7 +887,7 @@ async function runBusy(work) {
     showOperation('The operation could not be completed.', [
       error instanceof Error && error.message.trim() !== ''
         ? error.message
-        : 'Refresh Portreeve evidence, then try again.',
+        : 'Refresh PortReeve evidence, then try again.',
     ]);
   } finally {
     busy = false;

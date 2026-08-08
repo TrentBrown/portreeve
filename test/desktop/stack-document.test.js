@@ -180,7 +180,7 @@ test('recovers a known invalid file, preserves a save across apply failure, and 
         applyAttempts += 1;
         if (applyAttempts === 1) {
           throw Object.assign(
-            new Error('Portreeve is unavailable at /private/secret/socket.'),
+            new Error('PortReeve is unavailable at /private/secret/socket.'),
             { code: 'unavailable' },
           );
         }
@@ -228,7 +228,7 @@ test('recovers a known invalid file, preserves a save across apply failure, and 
       applied: false,
       error: {
         code: 'unavailable',
-        message: 'The Portreeve server is unavailable.',
+        message: 'The PortReeve server is unavailable.',
       },
     });
     expect(await readFile(filename, 'utf8')).toBe(candidate);

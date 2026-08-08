@@ -127,12 +127,12 @@ test('keeps stack rendering stable across evidence timestamps while noticing mat
 test('presents update discovery without implying automatic installation', () => {
   expect(updatePresentation({ status: 'available', latestVersion: '0.2.0' })).toEqual({
     message:
-      'Portreeve Desktop 0.2.0 is available. Downloading the desktop remains a separate, manual action.',
+      'PortReeve Desktop 0.2.0 is available. Downloading the desktop remains a separate, manual action.',
     canOpenDownloadPage: true,
   });
   expect(updatePresentation({ status: 'unavailable', latestVersion: null })).toEqual({
     message:
-      'Update information is unavailable. Local Portreeve management is unaffected.',
+      'Update information is unavailable. Local PortReeve management is unaffected.',
     canOpenDownloadPage: false,
   });
 });

@@ -2,7 +2,7 @@
   "name": "portreeve-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Portreeve desktop management console",
+  "description": "PortReeve desktop management console",
   "license": "MIT",
   "type": "module",
   "main": "main/index.js",

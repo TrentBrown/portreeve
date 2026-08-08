@@ -224,7 +224,7 @@ function assertCompatible(client) {
   if (!result.compatible) {
     throw new RegistryError(
       'incompatible_protocol',
-      'Client and Portreeve stack administration requirements do not overlap.',
+      'Client and PortReeve stack administration requirements do not overlap.',
       result,
     );
   }

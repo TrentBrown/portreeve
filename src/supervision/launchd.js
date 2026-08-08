@@ -111,7 +111,7 @@ ${argumentsXml}
       }
       await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
     }
-    throw new Error('launchd did not finish unloading the Portreeve service.');
+    throw new Error('launchd did not finish unloading the PortReeve service.');
   }
 
   async uninstall() {

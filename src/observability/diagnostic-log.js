@@ -105,13 +105,13 @@ function validateExistingLog(path) {
   }
   const information = lstatSync(path);
   if (!information.isFile() || information.isSymbolicLink()) {
-    throw new Error(`Unsafe Portreeve diagnostic log path: ${path}`);
+    throw new Error(`Unsafe PortReeve diagnostic log path: ${path}`);
   }
   if (typeof process.getuid === 'function' && information.uid !== process.getuid()) {
-    throw new Error(`Portreeve diagnostic log has another owner: ${path}`);
+    throw new Error(`PortReeve diagnostic log has another owner: ${path}`);
   }
   if ((information.mode & 0o077) !== 0) {
-    throw new Error(`Portreeve diagnostic log is not private: ${path}`);
+    throw new Error(`PortReeve diagnostic log is not private: ${path}`);
   }
 }
 

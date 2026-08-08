@@ -186,7 +186,7 @@ export async function executeLifecycleMutation(
  */
 function renderMutation(json, result) {
   const lines = [
-    `Portreeve ${result.operation}: ${result.outcome}.`,
+    `PortReeve ${result.operation}: ${result.outcome}.`,
     `Before: ${statusSummary(result.before)}.`,
     `After: ${statusSummary(result.after)}.`,
     ...(result.error === null ? [] : [`${result.error.code}: ${result.error.message}`]),
@@ -199,7 +199,7 @@ function renderMutation(json, result) {
  */
 function statusLines(status) {
   return [
-    `Portreeve mode: ${status.mode}; observed ${status.observedAt}.`,
+    `PortReeve mode: ${status.mode}; observed ${status.observedAt}.`,
     `Installation: ${status.installation.state}; managed version ${status.versions.managed ?? 'unavailable'}.`,
     `Supervisor: ${status.supervisor.state} (${status.supervisor.kind}); pid ${status.supervisor.mainPid ?? 'unavailable'}.`,
     `Socket: ${status.socket.state} at ${status.socket.path}; running version ${status.versions.running ?? 'unavailable'}.`,
@@ -229,7 +229,7 @@ function purgePreviewLines(preview) {
  */
 function purgeResultLines(result) {
   return [
-    `Portreeve purge: ${result.outcome}.`,
+    `PortReeve purge: ${result.outcome}.`,
     `Removed: ${String(result.removed.length)}; retained: ${String(
       result.retained.length,
     )}; missing: ${String(result.missing.length)}.`,

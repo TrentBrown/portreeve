@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Portreeve</title>
+    <title>PortReeve</title>
     <link rel="stylesheet" href="./styles.css" />
     <script type="module" src="./renderer.js"></script>
   </head>
@@ -11,7 +11,7 @@
     <header class="app-header">
       <div>
         <p class="eyebrow">Local port authority</p>
-        <h1>Portreeve</h1>
+        <h1>PortReeve</h1>
       </div>
       <button id="refresh" type="button">Refresh</button>
     </header>
@@ -21,7 +21,7 @@
       <button class="tab" type="button" data-view="stacks">Stacks</button>
     </nav>
     <main>
-      <p id="notice" class="notice" role="status">Loading Portreeve status…</p>
+      <p id="notice" class="notice" role="status">Loading PortReeve status…</p>
       <section id="operation-result" class="operation-result" aria-live="polite" hidden>
         <h2>Last operation</h2>
         <p id="operation-message"></p>
@@ -52,7 +52,7 @@
           </article>
         </div>
         <details class="danger-zone">
-          <summary>Uninstall or reset Portreeve</summary>
+          <summary>Uninstall or reset PortReeve</summary>
           <div class="danger-content">
             <section>
               <h3>Uninstall service</h3>
@@ -79,7 +79,7 @@
         <div class="section-heading">
           <div>
             <h2 id="ports-title">Ports</h2>
-            <p>Claims and live listeners reported by Portreeve.</p>
+            <p>Claims and live listeners reported by PortReeve.</p>
           </div>
           <input
             id="port-filter"
@@ -114,7 +114,7 @@
             <div>
               <h2 id="stacks-title">Stacks</h2>
               <p>
-                Persistent definitions and current Portreeve coordination evidence.
+                Persistent definitions and current PortReeve coordination evidence.
                 Project processes and containers remain launcher-owned.
               </p>
             </div>
@@ -171,7 +171,7 @@
 
     <dialog id="purge-dialog" aria-labelledby="purge-title">
       <form method="dialog">
-        <h2 id="purge-title">Delete all Portreeve data</h2>
+        <h2 id="purge-title">Delete all PortReeve data</h2>
         <p id="purge-summary"></p>
         <div id="purge-refusals" class="refusals" hidden></div>
         <div class="path-list-wrap">
@@ -212,7 +212,7 @@
       <form method="dialog">
         <h2 id="snapshot-title">Discovery snapshot preview</h2>
         <p>
-          This is a credential-free preview. Portreeve does not write it or launch the
+          This is a credential-free preview. PortReeve does not write it or launch the
           component.
         </p>
         <pre id="snapshot-content" class="snapshot-content"></pre>

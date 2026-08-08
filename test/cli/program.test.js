@@ -3,7 +3,7 @@
 import { describe, expect, test } from 'bun:test';
 import { createProgram } from '../../src/cli/program.js';
 
-describe('Portreeve CLI', () => {
+describe('PortReeve CLI', () => {
   test('exposes the stable command identity', () => {
     const program = createProgram();
 

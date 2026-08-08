@@ -1,12 +1,12 @@
 # Stack definitions
 
-Portreeve coordinates a project-defined independently runnable stack for a canonical
+PortReeve coordinates a project-defined independently runnable stack for a canonical
 stack root. The root is the exact real path of an existing directory and need not be a
 Git repository; it may contain multiple child repositories. Stack identity is project
 plus canonical stack root, and only one activation may be current for a root at a time.
 Registered roots may be siblings but may not overlap as equal, ancestor, or descendant
 paths. The project remains the authority for how its
-processes and containers are launched. Portreeve stores coordination state; it does not
+processes and containers are launched. PortReeve stores coordination state; it does not
 store commands, environment secrets, Compose files, or health-check logic.
 
 The checked-in definition is `portreeve.stack.json` at the stack root:
@@ -44,7 +44,7 @@ shows how one project-owned launcher consumes the returned leases and addresses.
 The schema is strict. Unknown fields are rejected. Component and endpoint names are
 stable logical identities. An omitted dependency endpoint means `default`. Endpoint
 defaults are TCP, published, and required. Use `publish: false` for an endpoint that
-Portreeve should understand but should not assign a host port; a dependency cannot
+PortReeve should understand but should not assign a host port; a dependency cannot
 target an unpublished endpoint. `preferredPort` permits later fallback allocation;
 `exactPort` does not. They are mutually exclusive.
 
@@ -57,9 +57,9 @@ selection walks upward from the current real directory to the nearest
 `portreeve.stack.json`; child Git repository boundaries do not stop the search. Use
 `--stack-root <path>` to select the standard file at another root, or `--file <path>` to
 select an explicit file whose parent is the stack root. The two selectors are mutually
-exclusive, and apply never reconstructs a missing definition from Portreeve's database.
+exclusive, and apply never reconstructs a missing definition from PortReeve's database.
 
-The CLI and JavaScript client send the same definition over the private socket. Portreeve
+The CLI and JavaScript client send the same definition over the private socket. PortReeve
 normalizes defaults, canonicalizes object-key order, hashes the JSON, and records the
 SHA-256 value as an immutable definition revision. Reapplying equivalent content is
 idempotent. A changed definition creates or reuses its revision and updates the stack's
@@ -79,14 +79,14 @@ portreeve stacks status --json
 ```
 
 Status uses an explicit `--stack-root` when supplied. Otherwise it first uses the
-nearest enclosing definition file. If that file is missing, it asks Portreeve for the
+nearest enclosing definition file. If that file is missing, it asks PortReeve for the
 single registered stack root enclosing the current real directory, which keeps a known
 stack inspectable while its project-owned definition is repaired. If neither source
 resolves a stack, status reports an ordinary state difference.
 
 Use `stacks show STACK_ID` when only the registered definition is needed.
 
-## Edit through Portreeve Desktop
+## Edit through PortReeve Desktop
 
 The desktop **Stacks** tab can create or edit the fixed `portreeve.stack.json` through
 structured fields. New drafts infer only the selected root's basename as the editable
@@ -146,11 +146,11 @@ portreeve stacks confirm-docker ACTIVATION_ID \
   --container-id CONTAINER_ID
 ```
 
-The container ID is only a lookup key. Portreeve freshly verifies running state, every
+The container ID is only a lookup key. PortReeve freshly verifies running state, every
 stack/component/revision/generation/activation/endpoint label, the exact publication,
 and the declared container port. A listener found by `lsof` is retained as corroborating
 evidence, but its absence does not reject a Linux Docker Engine publication implemented
-through kernel NAT. Portreeve never applies process lineage to Docker's backend.
+through kernel NAT. PortReeve never applies process lineage to Docker's backend.
 Required endpoints must confirm. Optional endpoints may be named with
 `--skip-endpoint component.endpoint`; after all required endpoints confirm, a skipped or
 failed optional endpoint makes the activation `degraded`. A required dependency on an
@@ -167,7 +167,7 @@ remaining unconfirmed lease as one batch. A still-valid allocation generation ma
 reused for the next attempt.
 
 `stacks generation` and `stacks activation` provide token-free inspection. A replacement
-launcher can run `stacks reconcile ACTIVATION_ID` after a launcher crash. Portreeve
+launcher can run `stacks reconcile ACTIVATION_ID` after a launcher crash. PortReeve
 freshly checks every confirmed process or Docker provider. A surviving or unobservable
 provider keeps the activation live; only conclusive absence of every provider marks it
 `lost`, releases its stored run evidence, and permits another activation to reuse a
@@ -208,7 +208,7 @@ summary event.
 
 ## Resolve dependencies and publish sandbox discovery
 
-Dependencies are address references, not startup-order edges. Portreeve resolves each
+Dependencies are address references, not startup-order edges. PortReeve resolves each
 consumer from one activation generation and returns two non-overlapping maps: its own
 published endpoints and its declared dependency aliases. It never reveals unrelated
 components. Circular address references are permitted because every address was prepared
@@ -233,12 +233,12 @@ portreeve stacks snapshot ACTIVATION_ID \
   --file /private/runtime/endpoints.json
 ```
 
-The launcher chooses the platform gateway. Portreeve substitutes it for loopback while
+The launcher chooses the platform gateway. PortReeve substitutes it for loopback while
 retaining the allocated host ports, but does not claim that gateway as an independently
 owned listener. The strict document contains only revision, generation, activation,
 consumer, and scoped TCP addresses. It excludes stack-root paths, claims, lease tokens,
 runs, process and Docker identifiers, the daemon socket, and mutation authority.
 
-Mount the file read-only instead of exposing Portreeve's socket. The official JavaScript
+Mount the file read-only instead of exposing PortReeve's socket. The official JavaScript
 reader accepts an explicit path or `PORTREEVE_ENDPOINTS_FILE` and can reject a document
 whose expected generation or activation no longer matches.

@@ -71,7 +71,7 @@ function snapshot() {
       server: null,
       error: {
         code: 'unavailable',
-        message: 'Portreeve is not running.',
+        message: 'PortReeve is not running.',
       },
     },
     mode: /** @type {'none'} */ ('none'),

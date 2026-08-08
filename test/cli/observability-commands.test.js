@@ -53,7 +53,7 @@ test('reports a healthy server in both output modes', async () => {
   const human = await captureOutput(() =>
     statusCommand({ socket: runtime.socketPath }),
   );
-  expect(human.lines[0]).toBe(`Portreeve is running at ${runtime.socketPath}.`);
+  expect(human.lines[0]).toBe(`PortReeve is running at ${runtime.socketPath}.`);
   expect(human.lines[1]).toMatch(/^Server version: /u);
 });
 
@@ -62,7 +62,7 @@ test('reports an unavailable server as a state difference without failing', asyn
   const unavailable = await captureOutput(() => statusCommand({ socket: socketPath }));
 
   expect(unavailable.exitCode).toBe(EXIT_CODES.stateDifference);
-  expect(unavailable.lines).toEqual([`Portreeve is not running at ${socketPath}.`]);
+  expect(unavailable.lines).toEqual([`PortReeve is not running at ${socketPath}.`]);
 });
 
 test('renders recorded history events and empty filtered results', async () => {
@@ -91,7 +91,7 @@ test('renders recorded history events and empty filtered results', async () => {
       since: '2020-01-01T00:00:00.000Z',
     }),
   );
-  expect(empty.lines).toEqual(['No matching Portreeve history events.']);
+  expect(empty.lines).toEqual(['No matching PortReeve history events.']);
 });
 
 test('renders diagnostic log entries with aligned levels', async () => {
@@ -99,7 +99,7 @@ test('renders diagnostic log entries with aligned levels', async () => {
     logsCommand({ socket: runtime.socketPath, limit: '10' }),
   );
   expect(human.lines.length).toBeGreaterThan(0);
-  expect(human.lines.some((line) => line.includes('Portreeve server started.'))).toBe(
+  expect(human.lines.some((line) => line.includes('PortReeve server started.'))).toBe(
     true,
   );
 

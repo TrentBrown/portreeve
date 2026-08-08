@@ -78,14 +78,14 @@ export async function validateExistingDatabase(databasePath) {
   }
 
   if (!information.isFile() || information.isSymbolicLink()) {
-    throw new Error(`Unsafe Portreeve database path: ${databasePath}`);
+    throw new Error(`Unsafe PortReeve database path: ${databasePath}`);
   }
   if (typeof process.getuid === 'function' && information.uid !== process.getuid()) {
-    throw new Error(`Portreeve database has another owner: ${databasePath}`);
+    throw new Error(`PortReeve database has another owner: ${databasePath}`);
   }
   if ((information.mode & 0o077) !== 0) {
     throw new Error(
-      `Portreeve database is not private: ${databasePath} (mode ${(information.mode & 0o777).toString(8)})`,
+      `PortReeve database is not private: ${databasePath} (mode ${(information.mode & 0o777).toString(8)})`,
     );
   }
 }
@@ -108,18 +108,18 @@ async function ensurePrivateDirectory(directory) {
     information = await lstat(directory);
   }
   if (!information.isDirectory() || information.isSymbolicLink()) {
-    throw new Error(`Unsafe Portreeve runtime directory: ${directory}`);
+    throw new Error(`Unsafe PortReeve runtime directory: ${directory}`);
   }
   if (typeof process.getuid === 'function' && information.uid !== process.getuid()) {
-    throw new Error(`Portreeve runtime directory has another owner: ${directory}`);
+    throw new Error(`PortReeve runtime directory has another owner: ${directory}`);
   }
   if ((information.mode & 0o077) !== 0) {
     throw new Error(
-      `Portreeve runtime directory is not private: ${directory} (mode ${(information.mode & 0o777).toString(8)})`,
+      `PortReeve runtime directory is not private: ${directory} (mode ${(information.mode & 0o777).toString(8)})`,
     );
   }
   if (existed && (information.mode & 0o700) !== 0o700) {
-    throw new Error(`Portreeve runtime directory lacks owner access: ${directory}`);
+    throw new Error(`PortReeve runtime directory lacks owner access: ${directory}`);
   }
 }
 
@@ -152,18 +152,18 @@ async function ensurePrivateFile(path) {
     }
   }
   if (!information.isFile() || information.isSymbolicLink()) {
-    throw new Error(`Unsafe Portreeve runtime file: ${path}`);
+    throw new Error(`Unsafe PortReeve runtime file: ${path}`);
   }
   if (typeof process.getuid === 'function' && information.uid !== process.getuid()) {
-    throw new Error(`Portreeve runtime file has another owner: ${path}`);
+    throw new Error(`PortReeve runtime file has another owner: ${path}`);
   }
   if ((information.mode & 0o077) !== 0) {
     throw new Error(
-      `Portreeve runtime file is not private: ${path} (mode ${(information.mode & 0o777).toString(8)})`,
+      `PortReeve runtime file is not private: ${path} (mode ${(information.mode & 0o777).toString(8)})`,
     );
   }
   if ((information.mode & 0o600) !== 0o600) {
-    throw new Error(`Portreeve runtime file lacks owner access: ${path}`);
+    throw new Error(`PortReeve runtime file lacks owner access: ${path}`);
   }
 }
 

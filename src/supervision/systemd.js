@@ -36,7 +36,7 @@ export class SystemdUserSupervisor {
       .map(quoteSystemdArgument)
       .join(' ');
     return `[Unit]
-Description=Portreeve local development port authority
+Description=PortReeve local development port authority
 
 [Service]
 Type=simple

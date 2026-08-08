@@ -71,8 +71,8 @@ test('coalesces overlapping refreshes and preserves successful evidence as stale
   expect(stale.errors.map(({ source }) => source)).toEqual(['lifecycle', 'inventory']);
   expect(JSON.stringify(stale.errors)).not.toContain('secret');
   expect(stale.errors.map(({ message }) => message)).toEqual([
-    'Portreeve lifecycle status is unavailable.',
-    'Portreeve port inventory is unavailable.',
+    'PortReeve lifecycle status is unavailable.',
+    'PortReeve port inventory is unavailable.',
   ]);
 });
 
@@ -161,7 +161,7 @@ test('serializes mutations with refresh and returns the mutation final snapshot'
   const refresh = coordinator.refresh();
   expect(statusCalls).toBe(0);
   expect(() => coordinator.stopService()).toThrow(
-    'Another Portreeve operation is already in progress.',
+    'Another PortReeve operation is already in progress.',
   );
   releaseStart();
   const result = await mutation;
@@ -221,7 +221,7 @@ test('preserves safe lifecycle error codes and messages for the renderer', async
           changed: false,
           error: {
             code: 'internal',
-            message: 'Portreeve runtime file is not private; change its mode to 0600.',
+            message: 'PortReeve runtime file is not private; change its mode to 0600.',
           },
         });
       },
@@ -241,14 +241,14 @@ test('preserves safe lifecycle error codes and messages for the renderer', async
     errorCode: 'internal',
     error: {
       code: 'internal',
-      message: 'Portreeve runtime file is not private; change its mode to 0600.',
+      message: 'PortReeve runtime file is not private; change its mode to 0600.',
     },
     steps: [
       {
         operation: 'restart',
         error: {
           code: 'internal',
-          message: 'Portreeve runtime file is not private; change its mode to 0600.',
+          message: 'PortReeve runtime file is not private; change its mode to 0600.',
         },
       },
     ],
@@ -457,7 +457,7 @@ test('preserves saved-not-applied document state and safely reduces unexpected f
           issues: [],
           error: {
             code: 'unavailable',
-            message: 'The Portreeve server is unavailable.',
+            message: 'The PortReeve server is unavailable.',
           },
         };
       },
@@ -482,7 +482,7 @@ test('preserves saved-not-applied document state and safely reduces unexpected f
     stackId,
     error: {
       code: 'unavailable',
-      message: 'The Portreeve server is unavailable.',
+      message: 'The PortReeve server is unavailable.',
     },
     snapshot: { stale: false },
   });

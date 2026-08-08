@@ -10,7 +10,7 @@ export function browserWindowOptions(preload) {
     minWidth: 760,
     minHeight: 560,
     show: false,
-    title: 'Portreeve',
+    title: 'PortReeve',
     backgroundColor: '#f5f1e8',
     webPreferences: {
       preload,

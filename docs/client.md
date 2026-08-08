@@ -8,7 +8,7 @@ npm install portreeve
 
 It supports ESM on Node.js 22 or newer and Bun 1.3.14 or newer. All production
 operations use the public Unix-socket protocol. The package has no runtime dependencies
-and does not start or install Portreeve.
+and does not start or install PortReeve.
 
 ## High-level startup helper
 
@@ -80,7 +80,7 @@ may be siblings but cannot be equal, ancestors, or descendants of one another.
 
 The client accepts an already parsed definition and does not discover, read, or write
 `portreeve.stack.json`. Project CLIs may use the documented upward file discovery in
-the Portreeve CLI, while Portreeve Desktop uses its separate trusted document boundary.
+the PortReeve CLI, while PortReeve Desktop uses its separate trusted document boundary.
 In every case the socket request contains the canonical `stackRoot` and strict
 definition; applying never prepares allocations or starts providers.
 
@@ -201,9 +201,9 @@ const endpoints = await readEndpointSnapshot(undefined, {
 });
 ```
 
-The snapshot contains no Portreeve socket or mutation credential. Mount it read-only in
+The snapshot contains no PortReeve socket or mutation credential. Mount it read-only in
 the sandbox; the host launcher remains responsible for selecting the correct gateway and
 replacing the document when activation identity changes.
 
 Migrated services should fail loudly on `code === "unavailable"`. They must not fall
-back to legacy probing or silently start/install Portreeve.
+back to legacy probing or silently start/install PortReeve.

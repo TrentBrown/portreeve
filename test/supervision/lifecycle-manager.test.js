@@ -214,7 +214,7 @@ describe('lifecycle manager', () => {
     await writeExecutable(fixture.source, '1.9.9');
 
     await expect(fixture.manager.install()).rejects.toThrow(
-      'will not replace newer Portreeve 2.0.0',
+      'will not replace newer PortReeve 2.0.0',
     );
     expect(await readFile(fixture.paths.managedExecutablePath, 'utf8')).toContain(
       '2.0.0',

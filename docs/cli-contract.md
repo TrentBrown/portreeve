@@ -1,6 +1,6 @@
-# Portreeve CLI contract
+# PortReeve CLI contract
 
-Portreeve defaults to concise human-readable output. Operational commands accept
+PortReeve defaults to concise human-readable output. Operational commands accept
 `--json` and emit one JSON document with `"version": 1`. Successful documents and
 evidence-bearing lifecycle mutation outcomes are written to standard output.
 Command-usage failures and top-level failures that cannot construct lifecycle evidence
@@ -27,7 +27,7 @@ output.
 |    `0` | Command completed successfully                                                                            |
 |   `10` | Command completed and reported an ordinary state difference, such as a stopped server or cancelled prompt |
 |   `20` | Lifecycle, claim, port, listener, or reclamation conflict                                                 |
-|   `30` | The Portreeve server is unavailable                                                                       |
+|   `30` | The PortReeve server is unavailable                                                                       |
 |   `40` | Client/server protocol or capability incompatibility                                                      |
 |   `50` | Invalid command, option, JSON value, or request input                                                     |
 |   `70` | Unexpected internal failure                                                                               |
@@ -98,7 +98,7 @@ either name itself contains a dot, pass a JSON object such as
 `--required-endpoint '{"component":"api.v2","endpoint":"http.internal"}'`.
 Use `--docker-component NAME` once per component that the trusted launcher will run in
 Docker. The returned leases identify their `bindingKind`; Docker leases also include the
-Compose service, container port, and exact Portreeve labels the launcher must apply.
+Compose service, container port, and exact PortReeve labels the launcher must apply.
 
 Renewal reads a JSON credential array from `--leases-file`. Confirm, abandon, and skip
 read one `{ "leaseId", "leaseToken" }` object from `--lease-file`, keeping tokens out of
@@ -106,7 +106,7 @@ the process argument list. Process confirmation also requires `--root-pid`. Laun
 credential files with mode `0600`, remove them after use, and use
 `stacks activation <activation-id>` or `stacks generation <generation-id>` for
 token-free inspection. For Docker-backed leases, use `stacks confirm-docker` with the
-same credential file and `--container-id`; Portreeve freshly verifies the running
+same credential file and `--container-id`; PortReeve freshly verifies the running
 container, exact labels, loopback publication, and host listener. After the launcher
 stops providers, `stacks reconcile <activation-id>` inspects every confirmed process or
 Docker provider. Only conclusive absence of every provider marks the activation `lost`;
@@ -126,8 +126,8 @@ Docker-network address facts are separate; neither represents application health
 requests a redacted activation-scoped sandbox document and atomically replaces `PATH`
 with mode `0600`. The gateway is supplied by the trusted launcher—for example,
 `host.docker.internal` on macOS Docker Desktop or a launcher-discovered bridge address
-on Linux. Portreeve does not infer or verify sandbox topology. Mount the resulting
-document read-only and never mount the Portreeve control socket into the sandbox.
+on Linux. PortReeve does not infer or verify sandbox topology. Mount the resulting
+document read-only and never mount the PortReeve control socket into the sandbox.
 
 ## Prune consent
 
@@ -231,14 +231,14 @@ lifecycle evidence from being constructed.
 - macOS uses `~/Library/LaunchAgents/com.portreeve.server.plist`;
 - Linux uses `~/.config/systemd/user/portreeve.service`, or the corresponding path below
   `XDG_CONFIG_HOME`;
-- the managed executable is stored below Portreeve's private application directory at
+- the managed executable is stored below PortReeve's private application directory at
   `bin/portreeve`;
 - installation and upgrade never require or accept root;
 - a newly installed or already inactive service remains inactive until
   `portreeve start`;
 - an active upgrade is stopped, atomically promoted, restarted, and health-checked;
   activation failure restores the prior executable, definition, and active state; and
-- the CLI never replaces a newer managed or running Portreeve version with an older
+- the CLI never replaces a newer managed or running PortReeve version with an older
   source executable.
 
 `start` and `restart` require an installed native service and refuse to adopt or replace
@@ -252,9 +252,9 @@ managed executables, and preserves the registry, settings, history, and diagnost
 ### Complete reset
 
 Every initialized application home contains a private `.portreeve-owner.json` marker
-binding the Portreeve product, schema, canonical root, and user ID. Portreeve creates it
+binding the PortReeve product, schema, canonical root, and user ID. PortReeve creates it
 for a new empty private home or migrates an existing private home only when every entry
-is recognized Portreeve state. Missing, malformed, mismatched, nonprivate, or symlinked
+is recognized PortReeve state. Missing, malformed, mismatched, nonprivate, or symlinked
 markers block reset.
 
 Complete reset is a two-command evidence-bound operation:

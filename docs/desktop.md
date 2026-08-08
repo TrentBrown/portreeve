@@ -1,7 +1,7 @@
 # Desktop application
 
-Portreeve Desktop is the graphical inspection and coordination surface for the same
-per-user Portreeve installation managed by the CLI. It does not install a second server,
+PortReeve Desktop is the graphical inspection and coordination surface for the same
+per-user PortReeve installation managed by the CLI. It does not install a second server,
 keep a separate registry, or bypass the HTTP/JSON Unix-socket protocol. The application
 bundles a verified CLI artifact and can install that artifact into the one managed
 per-user location used by native supervision.
@@ -15,12 +15,12 @@ executable, run a shell command, or search `PATH`.
 
 Available actions follow current evidence:
 
-- install and start the managed Portreeve service;
+- install and start the managed PortReeve service;
 - start, stop, or restart native per-user supervision;
 - stop an explicitly manual `portreeve serve` process without adopting it;
 - upgrade the managed CLI after version and artifact verification;
-- uninstall supervision while retaining Portreeve data;
-- preview and confirm a complete Portreeve data reset.
+- uninstall supervision while retaining PortReeve data;
+- preview and confirm a complete PortReeve data reset.
 
 Install, reset, and upgrade decisions remain explicit. Update discovery only reports a
 new desktop release and opens one fixed project download page after confirmation; it
@@ -73,7 +73,7 @@ drafts prefill only the selected root's basename as the project name and leave t
 topology for the user to define. Navigation to another top-level tab, Back, Cancel, or
 window close offers **Keep editing** or **Discard changes** whenever the draft is dirty.
 
-If another program changes the file, Portreeve offers Overwrite or Cancel. Overwrite is
+If another program changes the file, PortReeve offers Overwrite or Cancel. Overwrite is
 authorized by a one-use conflict capability bound to the newly observed bytes; a second
 external change requires another confirmation. Malformed regular files can be replaced
 after confirmation, but oversized files, symbolic links, and other non-regular
@@ -92,7 +92,7 @@ Valid output uses two-space indentation, a final newline, editor order, and omit
 defaults such as TCP transport, required or published `true`, automatic allocation, and
 the dependency endpoint when it is `default`.
 
-Portreeve Desktop never starts or stops a project process or container, invokes Docker
+PortReeve Desktop never starts or stops a project process or container, invokes Docker
 Compose, owns application startup order, maps project environment variables, or asserts
 application health. Those remain responsibilities of the project launcher. Stale stack
 evidence remains visible for diagnosis but withholds stack mutation controls until
@@ -108,7 +108,7 @@ renderer frame and owns the native file picker, clipboard write, fixed download-
 navigation, exact CLI execution, and official client connection.
 
 The desktop receives no general filesystem, shell, network-navigation, SQLite, Docker,
-or Portreeve-socket capability. Stack view models omit full stack-root paths, claim and
+or PortReeve-socket capability. Stack view models omit full stack-root paths, claim and
 lease identifiers, run identifiers, Docker labels, and credentials. Discovery previews
 contain only their documented component-scoped address contract.
 
@@ -123,7 +123,7 @@ PORTREEVE_RELEASE_BASE_URL=https://github.com/TrentBrown/portreeve/releases/down
 bun run release:build
 
 bun run desktop:package
-open dist/desktop/Portreeve-darwin-arm64/Portreeve.app
+open dist/desktop/PortReeve-darwin-arm64/PortReeve.app
 ```
 
 Always rebuild `dist/release` before packaging a development candidate. The desktop

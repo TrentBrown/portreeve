@@ -116,7 +116,7 @@ export function createUpdateAdapter(options) {
       if (current.status !== 'available') {
         throw updateError(
           'desktop_update_not_available',
-          'No newer Portreeve Desktop release is currently available.',
+          'No newer PortReeve Desktop release is currently available.',
         );
       }
       await options.openExternal(DESKTOP_DOWNLOAD_PAGE_URL);

@@ -10,8 +10,8 @@ import { SystemdUserSupervisor } from '../../src/supervision/systemd.js';
 
 const definition = {
   executable: '/Users/Example User/.portreeve/bin/portreeve',
-  applicationDirectory: '/Users/Example User/Portreeve & Data',
-  socketPath: '/Users/Example User/Portreeve & Data/server.sock',
+  applicationDirectory: '/Users/Example User/PortReeve & Data',
+  socketPath: '/Users/Example User/PortReeve & Data/server.sock',
   standardOutputPath: '/tmp/portreeve % output.log',
   standardErrorPath: '/tmp/portreeve error.log',
 };
@@ -64,7 +64,7 @@ describe('native supervisor adapters', () => {
     try {
       const content = supervisor.renderDefinition(definition);
       expect(content).toContain('<string>com.portreeve.test</string>');
-      expect(content).toContain('Portreeve &amp; Data');
+      expect(content).toContain('PortReeve &amp; Data');
       expect(content).toContain('<key>PORTREEVE_SUPERVISED</key>');
       await supervisor.installDefinition(content);
       expect((await supervisor.state()).installed).toBe(true);

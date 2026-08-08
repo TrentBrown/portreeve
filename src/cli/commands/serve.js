@@ -44,7 +44,7 @@ export async function serveCommand(options) {
       diagnosticLog,
       mode: process.env.PORTREEVE_SUPERVISED === '1' ? 'supervised' : 'manual',
     });
-    console.log(`Portreeve ${process.pid} serving on ${paths.socketPath}`);
+    console.log(`PortReeve ${process.pid} serving on ${paths.socketPath}`);
     const terminate = () => {
       void server?.stop();
     };
