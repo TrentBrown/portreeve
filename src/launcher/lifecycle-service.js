@@ -303,6 +303,7 @@ export class LauncherLifecycleService {
     context.input.signal?.addEventListener('abort', externalAbort, { once: true });
     let renewalFailure = /** @type {{code: string, message: string} | null} */ (null);
     let renewalTimer = /** @type {ReturnType<typeof setTimeout> | null} */ (null);
+    let renewalInFlight = Promise.resolve();
     let renewalStopped = false;
     const renew = async () => {
       if (renewalStopped) return;
@@ -319,7 +320,9 @@ export class LauncherLifecycleService {
     };
     const scheduleRenewal = (/** @type {number} */ milliseconds) => {
       if (renewalStopped) return;
-      renewalTimer = setTimeout(renew, milliseconds);
+      renewalTimer = setTimeout(() => {
+        renewalInFlight = renew();
+      }, milliseconds);
       renewalTimer.unref?.();
     };
     scheduleRenewal(context.session.renewAfterMilliseconds);
@@ -394,6 +397,7 @@ export class LauncherLifecycleService {
     } finally {
       renewalStopped = true;
       if (renewalTimer !== null) clearTimeout(renewalTimer);
+      await renewalInFlight;
       context.input.signal?.removeEventListener('abort', externalAbort);
     }
     if (renewalFailure !== null) {

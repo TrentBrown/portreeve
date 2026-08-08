@@ -76,16 +76,18 @@ function launcher(options = {}) {
   };
 }
 
-/** @param {'stopped' | 'partial' | 'fully-observed' | 'verified' | 'conflicting' | 'uncertain'} classification @param {Partial<{trusted: boolean, daemonUnavailable: boolean, hasGeneration: boolean, commandOutcome: 'succeeded' | 'failed' | 'cancelled' | 'timed-out', renewFailure: boolean, changeGenerationAtBegin: boolean}>} [options] */
+/** @param {'stopped' | 'partial' | 'fully-observed' | 'verified' | 'conflicting' | 'uncertain'} classification @param {Partial<{trusted: boolean, daemonUnavailable: boolean, hasGeneration: boolean, commandOutcome: 'succeeded' | 'failed' | 'cancelled' | 'timed-out', renewFailure: boolean, slowRenewal: boolean, changeGenerationAtBegin: boolean}>} [options] */
 function harness(classification, options = {}) {
   let currentClassification = classification;
   let currentGeneration = options.hasGeneration === false ? null : generation;
+  let renewing = false;
   const calls = /** @type {any} */ ({
     environments: [],
     commands: [],
     begins: [],
     completions: [],
     renewals: 0,
+    completionRaced: false,
     locals: 0,
   });
   const status = () => ({
@@ -122,12 +124,18 @@ function harness(classification, options = {}) {
       return {
         operation: { id: '44444444-4444-4444-8444-444444444444' },
         credential: 'credential',
-        renewAfterMilliseconds: options.renewFailure ? 1 : 10_000,
+        renewAfterMilliseconds:
+          options.renewFailure || options.slowRenewal ? 1 : 10_000,
       };
     },
     async renewLauncherOperation() {
       calls.renewals += 1;
       if (options.renewFailure) throw codedError('unavailable', 'renew failed');
+      if (options.slowRenewal) {
+        renewing = true;
+        await new Promise((resolvePromise) => setTimeout(resolvePromise, 20));
+        renewing = false;
+      }
       return { renewAfterMilliseconds: 10_000 };
     },
     async completeLauncherOperation(
@@ -135,6 +143,7 @@ function harness(classification, options = {}) {
       /** @type {string} */ _credential,
       /** @type {any} */ completion,
     ) {
+      calls.completionRaced = renewing;
       calls.completions.push(completion);
       return {
         operation: { id: '44444444-4444-4444-8444-444444444444', ...completion },
@@ -195,6 +204,9 @@ function harness(classification, options = {}) {
             input.signal.addEventListener('abort', resolvePromise, { once: true });
           });
           return commandResult('cancelled');
+        }
+        if (options.slowRenewal) {
+          await new Promise((resolvePromise) => setTimeout(resolvePromise, 3));
         }
         return commandResult(options.commandOutcome ?? 'succeeded');
       },
@@ -415,6 +427,18 @@ test('cancels execution when operation-session renewal is lost', async () => {
     outcome: 'failed',
     failure: { step: 'coordination-renew' },
   });
+});
+
+test('settles an in-flight renewal before completing the operation session', async () => {
+  const fixture = harness('stopped', { slowRenewal: true });
+  const result = await fixture.service.execute({
+    operation: 'start',
+    stack,
+    launcher: launcher(),
+  });
+  expect(result.outcome).toBe('succeeded');
+  expect(fixture.calls.renewals).toBe(1);
+  expect(fixture.calls.completionRaced).toBe(false);
 });
 
 test('executes through the official Unix-socket client and persists only safe history', async () => {
