@@ -10,13 +10,13 @@
 | # | Criterion (short) | Status | PR | Notes |
 |---|-------------------|--------|----|-------|
 | R1 | Launcher configuration and trust | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25) | P1/I-1 implements the strict document, contained paths, exact revision, and shared trust primitives; CLI and Desktop workflows remain |
-| R2 | Setup and endpoint environment | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25) | P1/I-1 implements conservative manifest and endpoint suggestions with provenance; operation-time resolution and UI remain |
-| R3 | Command-only lifecycle | NOT YET | - | Planned for P3-P5, P8-P9 / I-3-I-5, I-8-I-9 |
+| R2 | Setup and endpoint environment | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#27](https://github.com/TrentBrown/portreeve/pull/27) | P1/I-1 implements suggestions; P3/I-3 resolves every host and Docker mapping at operation time and caches nonsecret exact-revision context; CLI and UI remain |
+| R3 | Command-only lifecycle | NOT YET | [#27](https://github.com/TrentBrown/portreeve/pull/27) | P3/I-3 implements stopped, partial, fully observed, conflicting, and uncertain evidence states; lifecycle action policy and execution remain |
 | R4 | Attached execution | NOT YET | - | Planned for P6-P9 / I-6-I-9 |
-| R5 | Verified activation | NOT YET | - | Planned for P3, P6, P8-P9 / I-3, I-6, I-8-I-9 |
-| R6 | Shared engine and coordination | NOT YET | [#26](https://github.com/TrentBrown/portreeve/pull/26) | P2/I-2 adds strict daemon sessions, per-root admission, hashed renewable credentials, idempotent completion, and loss recovery; shared CLI/Desktop execution remains |
+| R5 | Verified activation | NOT YET | [#27](https://github.com/TrentBrown/portreeve/pull/27) | P3/I-3 reserves verified for a current matching activation with fresh active required-provider evidence; attached activation and UI transitions remain |
+| R6 | Shared engine and coordination | NOT YET | [#26](https://github.com/TrentBrown/portreeve/pull/26), [#27](https://github.com/TrentBrown/portreeve/pull/27) | P2/I-2 adds daemon sessions; P3/I-3 adds shared environment and evidence services; shared command engine and CLI/Desktop integrations remain |
 | R7 | Desktop operation and diagnostics | NOT YET | [#26](https://github.com/TrentBrown/portreeve/pull/26) | P2/I-2 adds bounded safe operation records and global history events; the Desktop result and history UI remains |
-| R8 | Degraded and platform behavior | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#26](https://github.com/TrentBrown/portreeve/pull/26) | P1/I-1 places shared cache state inside reset scope; P2/I-2 expires abandoned sessions to lost without process action and preserves additive non-launcher behavior; degraded execution remains |
+| R8 | Degraded and platform behavior | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#26](https://github.com/TrentBrown/portreeve/pull/26), [#27](https://github.com/TrentBrown/portreeve/pull/27) | P1-P2 establish cache/reset and loss behavior; P3 adds explicitly local uncoordinated lsof evidence that cannot claim ownership; degraded command policy remains |
 
 ## PR Log
 
@@ -52,3 +52,16 @@ Append PR boundary entries here.
   CLI, Desktop boundary, renderer, and degraded operation slices. Pinned verification
   passes toolchain, typecheck, lint, compiled build, 114 focused tests, npm packaging,
   and every unique repository test across the normal run plus isolated lifecycle rerun.
+
+### PR #27 - Launcher environment and evidence services
+
+- **PR:** [#27](https://github.com/TrentBrown/portreeve/pull/27)
+- **Status:** in review
+- **Scope:** P3 / I-3: operation-time host and Docker endpoint resolution, fixed
+  reserved context, exact-revision private cache, fresh daemon evidence state table,
+  verified-activation matching, and explicitly local degraded lsof evidence.
+- **Evidence packet:** [pr-27](pr-27/)
+- **Result:** R2, R3, R5, R6, and R8 advance but remain `NOT YET` pending command
+  execution, CLI, attached activation, and Desktop slices. Pinned verification passes
+  toolchain, typecheck, lint, build, 100 affected tests, real Unix-socket integration,
+  and all 332 repository tests across host-isolated runs.

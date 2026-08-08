@@ -109,7 +109,7 @@ Put mutation verbs under each stack - obscures operation identity and makes insp
 
 ## [6] Separate observed listeners from verified activation ownership
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

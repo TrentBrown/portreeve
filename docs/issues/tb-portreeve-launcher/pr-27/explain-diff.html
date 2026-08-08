@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PortReeve PR #27 — Environment and evidence</title>
+    <style>
+      :root { --ink:#17231f; --muted:#5d6c65; --paper:#f6f2e8; --card:#fffdf8; --line:#d8d5c8; --green:#176b52; --soft:#e5f2eb; --amber:#a96813; --amber-soft:#fff0d3; --red:#a43f31; }
+      * { box-sizing:border-box } html { scroll-behavior:smooth } body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.62 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif }
+      h1,h2,h3 { font-family:Georgia,"Times New Roman",serif; line-height:1.18 } h1 { margin:.3rem 0 1rem; font-size:clamp(2.6rem,7vw,5rem) } h2 { margin-top:0; font-size:clamp(1.8rem,4vw,2.55rem) } h3 { font-size:1.3rem }
+      a { color:var(--green) } code,pre { font-family:ui-monospace,SFMono-Regular,Menlo,monospace } code { padding:.1rem .3rem; border-radius:4px; background:#edf0eb } pre { overflow:auto; white-space:pre; padding:1rem; border-radius:10px; background:#17231f; color:#eaf4ee } pre code { padding:0; background:none }
+      .hero { padding:5rem max(1.5rem,calc((100vw - 1160px)/2)); border-bottom:1px solid var(--line); background:radial-gradient(circle at 82% 20%,#cbe6d8 0,transparent 30%),#f1ecdf }
+      .hero p { max-width:780px; color:var(--muted); font-size:1.15rem } .eyebrow { color:var(--green); font-size:.78rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase } .pin { display:inline-block; max-width:100%; margin-top:1rem; padding:.55rem .8rem; overflow-wrap:anywhere; border:1px solid var(--line); border-radius:8px; background:#ffffffa8; font-size:.78rem }
+      .layout { display:grid; grid-template-columns:230px minmax(0,860px); gap:3rem; max-width:1160px; margin:auto; padding:3rem 1.5rem 6rem } nav { position:sticky; top:1rem; align-self:start; padding:1.1rem; border:1px solid var(--line); border-radius:12px; background:var(--card); box-shadow:0 10px 35px #16221d17 } nav strong,nav a { display:block } nav a { padding:.35rem 0; text-decoration:none }
+      main { min-width:0 } section { margin-bottom:3rem; padding:clamp(1.3rem,4vw,2.4rem); border:1px solid var(--line); border-radius:16px; background:var(--card); box-shadow:0 10px 35px #16221d12 }
+      .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem } .card { padding:1rem; border:1px solid var(--line); border-radius:10px; background:white } .card h3 { margin:.1rem 0 .4rem }
+      .callout { margin:1rem 0; padding:1rem 1.2rem; border-left:4px solid var(--amber); border-radius:0 8px 8px 0; background:var(--amber-soft) }
+      .flow { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:.7rem; align-items:center; margin:1.4rem 0 } .node { min-height:120px; display:grid; place-items:center; padding:1rem; text-align:center; font-weight:700; border:2px solid var(--green); border-radius:13px; background:var(--soft) } .arrow { color:var(--green); font-size:1.8rem }
+      .states { display:grid; grid-template-columns:repeat(3,1fr); gap:.7rem } .state { padding:.8rem; text-align:center; border-radius:9px; border:1px solid var(--line); background:white } .state strong { display:block; color:var(--green) }
+      table { width:100%; border-collapse:collapse } th,td { padding:.75rem; text-align:left; vertical-align:top; border-bottom:1px solid var(--line) } th { color:var(--muted); font-size:.76rem; letter-spacing:.06em; text-transform:uppercase }
+      .quiz { margin:1rem 0; padding:1rem; border:1px solid var(--line); border-radius:10px } fieldset { border:0; padding:0 } legend { margin-bottom:.6rem; font-weight:700 } label { display:block; padding:.3rem 0 } .feedback { min-height:1.5rem; margin:.5rem 0 0; font-weight:700 } .correct { color:var(--green) } .incorrect { color:var(--red) } button { cursor:pointer; padding:.65rem 1rem; border:0; border-radius:8px; background:var(--green); color:white; font-weight:700 } #score { margin-left:.8rem; font-weight:700 }
+      @media(max-width:760px){.layout{grid-template-columns:1fr}.layout nav{position:static}.grid,.states{grid-template-columns:1fr}.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg);text-align:center}}
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="eyebrow">PortReeve · PR #27 · P3</div>
+      <h1>Addresses become context.<br />Listeners become evidence.</h1>
+      <p>This slice builds the translation layer between PortReeve's durable stack allocations and a project's future launcher commands. It resolves endpoint-derived environment values and reduces fresh observations into honest lifecycle states—without executing a command or pretending that occupancy proves ownership.</p>
+      <div class="pin">Pinned diff: 12f4b014abcc422c59a30bc922432d2beda97130..2da42e61e849b7af9175ffc110a39bc7fbd75384</div>
+    </header>
+    <div class="layout">
+      <nav aria-label="Table of contents"><strong>Contents</strong><a href="#background">1. Background</a><a href="#intuition">2. Intuition</a><a href="#environment">3. Environment</a><a href="#evidence">4. Evidence</a><a href="#code">5. Code tour</a><a href="#quiz">6. Quiz</a></nav>
+      <main>
+        <section id="background">
+          <div class="eyebrow">Background</div><h2>Two truths must meet just before execution</h2>
+          <p>The checked-in <code>portreeve.launcher.json</code> says which endpoint should populate each environment variable, but deliberately contains no assigned port. SQLite owns the current generation and its host ports. The future command engine therefore needs a fresh, validated join between those two sources.</p>
+          <div class="grid"><article class="card"><h3>Project-owned</h3><p>Commands, endpoint references, mapping names, schemes, working directory, and exact trusted launcher revision.</p></article><article class="card"><h3>PortReeve-owned</h3><p>Canonical stack identity, allocation generation, host ports, activation state, listeners, Docker evidence, and history.</p></article></div>
+          <div class="callout"><strong>P3 is still not a launcher.</strong> It creates shared environment and evidence services. P4 will add finite command execution and action policy.</div>
+        </section>
+        <section id="intuition">
+          <div class="eyebrow">Intuition</div><h2>Resolve facts; preserve uncertainty</h2>
+          <div class="flow"><div class="node">Trusted launcher<br /><small>API_URL → api.http</small></div><div class="arrow">→</div><div class="node">Current generation<br /><small>api.http → 43100</small></div><div class="arrow">→</div><div class="node">Command context<br /><small>API_URL=http://127.0.0.1:43100</small></div></div>
+          <p>Resolution is exact: the stack root, revision, generation, endpoint, and optional activation must agree. Observation is deliberately less absolute. A listener on port 43100 proves that something is listening; only a matching current activation and fresh provider evidence can prove PortReeve's verified ownership relation.</p>
+        </section>
+        <section id="environment">
+          <div class="eyebrow">Environment</div><h2>Four mapping forms, five reserved facts</h2>
+          <table><thead><tr><th>Mapping</th><th>Example</th><th>Source</th></tr></thead><tbody><tr><td>host-port</td><td><code>43100</code></td><td>generation host port</td></tr><tr><td>host-url</td><td><code>http://127.0.0.1:43100</code></td><td>scheme + generation</td></tr><tr><td>container-port</td><td><code>8080</code></td><td>stack Docker endpoint fact</td></tr><tr><td>docker-network-url</td><td><code>http://api:8080</code></td><td>Docker service + endpoint fact</td></tr></tbody></table>
+          <pre><code>PORTREEVE_STACK_ROOT=/worktrees/example
+PORTREEVE_STACK_ID=11111111-...
+PORTREEVE_GENERATION_ID=22222222-...
+PORTREEVE_SOCKET=/Users/me/Library/.../portreeve.sock
+PORTREEVE_ACTIVATION_ID=33333333-...   # only while active</code></pre>
+          <p>The successful result is cached by canonical root and exact launcher revision. The cache contains only resolved strings and endpoint facts—never commands, literal secrets, or raw output. Supplying an existing generation lets later Stop and Status preserve the address plan instead of reallocating around a command-only listener.</p>
+        </section>
+        <section id="evidence">
+          <div class="eyebrow">Evidence</div><h2>A state table that does not confuse presence with provenance</h2>
+          <div class="states"><div class="state"><strong>stopped</strong>none observed</div><div class="state"><strong>partial</strong>some observed</div><div class="state"><strong>fully-observed</strong>all observed, ownership unproven</div><div class="state"><strong>verified</strong>current activation + active providers</div><div class="state"><strong>conflicting</strong>mismatched durable ownership</div><div class="state"><strong>uncertain</strong>evidence missing or unavailable</div></div>
+          <p>The daemon path combines stack status with an inventory inspection for each generation endpoint. A fresh listener with no confirmed run is valid command-only observation, not automatically a conflict. A confirmed provider that disappears or belongs to another claim is a conflict. A confirmed endpoint with no provider row is uncertain.</p>
+          <div class="callout"><strong>Degraded mode is weaker by construction.</strong> Fresh local <code>lsof</code> plus cached endpoint ports may report stopped, partial, or fully observed. Its source is always <code>local</code>; it can never report verified or conflicting ownership.</div>
+        </section>
+        <section id="code">
+          <div class="eyebrow">Code</div><h2>Three production changes, two test suites</h2>
+          <table><thead><tr><th>File</th><th>Role</th></tr></thead><tbody><tr><td><code>environment-service.js</code></td><td>Validates the immutable execution document, prepares or accepts a generation, resolves mappings and reserved context, and writes the cache.</td></tr><tr><td><code>evidence-service.js</code></td><td>Collects daemon or local observations and reduces them into bounded endpoint details and a protocol-compatible summary.</td></tr><tr><td><code>local-state.js</code></td><td>Adds published endpoint facts to the private cache while defaulting old cache records to an empty list.</td></tr><tr><td><code>environment-service.test.js</code></td><td>Covers all mappings, stale identity, explicit ports, caching, and a real Unix-socket workflow.</td></tr><tr><td><code>evidence-service.test.js</code></td><td>Covers every evidence state, verified degradation, missing/stale providers, conflicts, and local lsof.</td></tr></tbody></table>
+          <p>The pinned review caught and fixed two subtle cross-generation cases before this explanation was written: old provider rows no longer affect a new generation, and missing provider evidence can no longer fall through to fully observed.</p>
+        </section>
+        <section id="quiz">
+          <div class="eyebrow">Quiz</div><h2>Check your model</h2>
+          <form id="form">
+            <div class="quiz" data-answer="b"><fieldset><legend>1. Why can Stop supply an existing generation?</legend><label><input type="radio" name="q1" value="a" /> To bypass launcher revision validation</label><label><input type="radio" name="q1" value="b" /> To preserve the address plan around an observed stack</label><label><input type="radio" name="q1" value="c" /> To convert command-only evidence into verified ownership</label></fieldset><p class="feedback"></p></div>
+            <div class="quiz" data-answer="c"><fieldset><legend>2. What is required for verified?</legend><label><input type="radio" name="q2" value="a" /> Every expected port has any listener</label><label><input type="radio" name="q2" value="b" /> The launcher command exited successfully</label><label><input type="radio" name="q2" value="c" /> Current activation and fresh active required-provider evidence agree</label></fieldset><p class="feedback"></p></div>
+            <div class="quiz" data-answer="a"><fieldset><legend>3. What may degraded local evidence claim?</legend><label><input type="radio" name="q3" value="a" /> Listener observation, explicitly local and uncoordinated</label><label><input type="radio" name="q3" value="b" /> Verified process ownership from a matching cached port</label><label><input type="radio" name="q3" value="c" /> A conflict whenever an unexpected PID is listening</label></fieldset><p class="feedback"></p></div>
+            <div class="quiz" data-answer="b"><fieldset><legend>4. Why key the cache by launcher revision?</legend><label><input type="radio" name="q4" value="a" /> So ports may be written back into the launcher file</label><label><input type="radio" name="q4" value="b" /> So stale mappings cannot be reused after the checked-in contract changes</label><label><input type="radio" name="q4" value="c" /> So the daemon can execute the trusted commands itself</label></fieldset><p class="feedback"></p></div>
+            <div class="quiz" data-answer="c"><fieldset><legend>5. What remains outside PR #27?</legend><label><input type="radio" name="q5" value="a" /> Docker-network URL resolution</label><label><input type="radio" name="q5" value="b" /> Unix-socket client integration</label><label><input type="radio" name="q5" value="c" /> Shell execution, lifecycle policy, CLI, and Desktop controls</label></fieldset><p class="feedback"></p></div>
+            <button type="submit">Check answers</button><span id="score" aria-live="polite"></span>
+          </form>
+        </section>
+      </main>
+    </div>
+    <script>document.getElementById("form").addEventListener("submit",e=>{e.preventDefault();const items=[...document.querySelectorAll(".quiz")];let score=0;items.forEach(item=>{const chosen=item.querySelector("input:checked"),ok=chosen&&chosen.value===item.dataset.answer,feedback=item.querySelector(".feedback");if(ok)score++;feedback.textContent=ok?"Correct.":chosen?"Not quite—review the section above.":"Choose an answer.";feedback.className=`feedback ${ok?"correct":"incorrect"}`});document.getElementById("score").textContent=`${score} of ${items.length} correct`});</script>
+  </body>
+</html>
