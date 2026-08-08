@@ -140,7 +140,7 @@ verification.
 - Create separate PRs for opening and saving the editor - rejected because neither
   slice would be a coherent, manually verifiable user workflow.
 
-**Promoted:** 2026-08-08. PR: pending.
+**Promoted:** 2026-08-08. PR: #22.
 
 ---
 
@@ -166,7 +166,7 @@ selecting a valid disposable stack root.
 - Leave controls disabled until another renderer refresh - rejected because opening a
   new stack is otherwise unusable and no refresh is guaranteed.
 
-**Promoted:** 2026-08-08. PR: pending.
+**Promoted:** 2026-08-08. PR: #22.
 
 ---
 
@@ -197,4 +197,28 @@ unrelated running containers made each inventory request take roughly 3.5 second
 - Disable Docker evidence globally - rejected because Docker-specific suites must
   continue to verify the capability explicitly.
 
-**Promoted:** 2026-08-08. PR: pending.
+**Promoted:** 2026-08-08. PR: #22.
+
+---
+
+## Hide retry while the draft differs from the saved definition
+
+**Confidence:** HIGH
+
+**Blast Radius:** Desktop saved-not-applied recovery controls
+
+Show `Retry Apply` only while the current editor draft still exactly matches the
+definition that was successfully saved. Any unsaved topology or field change hides the
+retry action until the draft returns to that baseline, preventing the user from applying
+an older saved definition while viewing newer unsaved content.
+
+**Triggered by:** Pinned code review found that structural add and delete actions could
+leave the saved-not-applied status visible while making the draft dirty.
+
+**Alternatives considered:**
+- Apply the visible dirty draft from Retry Apply - rejected because retry must not write
+  a new file or silently become another Save and Apply operation.
+- Leave Retry Apply visible with an explanatory warning - rejected because hiding an
+  inapplicable recovery action is clearer and prevents accidental stale apply.
+
+**Promoted:** 2026-08-08. PR: #22.

@@ -187,7 +187,7 @@ unrelated running containers made each inventory request take roughly 3.5 second
 
 ## [9] Hide retry while the draft differs from the saved definition
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

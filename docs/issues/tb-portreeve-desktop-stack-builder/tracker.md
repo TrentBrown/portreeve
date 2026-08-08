@@ -12,11 +12,11 @@
 | R1 | Stack-root contract | PASS | [#14](https://github.com/TrentBrown/portreeve/pull/14) | P1/I-1: strict public `stackRoot`, exact real-path canonicalization, standalone `workspaceRoot` preservation, and current-surface documentation pass |
 | R2 | CLI discovery | PASS | [#15](https://github.com/TrentBrown/portreeve/pull/15) | P3/I-3: explicit selectors, upward real-path discovery across child repositories, missing-file status fallback, and apply refusal pass |
 | R3 | Server safety | PASS | [#14](https://github.com/TrentBrown/portreeve/pull/14) | P2/I-2: overlap refusal, sibling acceptance, exact-root adoption, missing-root pruning, and live-activation definition protection pass |
-| R4 | Desktop containment | NOT YET | [#16](https://github.com/TrentBrown/portreeve/pull/16) | P4/I-4 adds opaque main-process document capabilities and keeps roots, evidence, filesystem access, and socket access out of the renderer; entry views and packaged UI smoke remain P6-P8 |
-| R5 | Complete editor | NOT YET | [#21](https://github.com/TrentBrown/portreeve/pull/21) | P5/I-5 adds the complete schema draft model, stable identities, dependency-safe rename/delete, allocation modes, and round-trip tests; visible form controls remain P6-P8 |
-| R6 | Validation and output | NOT YET | [#21](https://github.com/TrentBrown/portreeve/pull/21) | P4 adds trusted revalidation; P5/I-5 adds progressive draft validation, first-error targeting, latest-valid preview, and concise ordered serialization; accessible visible UI remains P6-P8 |
-| R7 | File safety and recovery | NOT YET | [#16](https://github.com/TrentBrown/portreeve/pull/16) | P4/I-4 adds exclusive create, atomic replace, exact-byte conflict capabilities, missing/invalid recovery primitives, and non-regular-file refusal; renderer flows remain P6-P8 |
-| R8 | Save/apply lifecycle | NOT YET | [#16](https://github.com/TrentBrown/portreeve/pull/16) | PR #14 establishes server refusal; P4/I-4 adds save-before-apply and safe retry primitives; actionable packaged UI behavior remains P7-P8 |
+| R4 | Desktop containment | PASS | [#22](https://github.com/TrentBrown/portreeve/pull/22) | P6-P7/I-6 adds both entry points, a guarded dedicated view, opaque document calls only, containment tests, and packaged macOS smoke |
+| R5 | Complete editor | PASS | [#22](https://github.com/TrentBrown/portreeve/pull/22) | P5-P7 expose every current schema field, automatic/preferred/exact allocation controls, stable rename propagation, and confirmation-gated cascading deletion |
+| R6 | Validation and output | PASS | [#22](https://github.com/TrentBrown/portreeve/pull/22) | Progressive inline and summary validation, first-error focus, latest-valid preview, and exact concise save bytes pass focused tests and packaged UI smoke |
+| R7 | File safety and recovery | PASS | [#22](https://github.com/TrentBrown/portreeve/pull/22) | P4 trusted exclusive/atomic/conflict primitives are now wired to visible overwrite/cancel and missing/invalid recovery flows without renderer path authority |
+| R8 | Save/apply lifecycle | PASS | [#22](https://github.com/TrentBrown/portreeve/pull/22) | Save-before-apply, visible failure details, saved-not-applied persistence, clean-baseline retry, successful retry, live refusal, and explicit preparation are actionable in the packaged app |
 
 ## PR Log
 
@@ -72,3 +72,19 @@ Append PR boundary entries here.
 - **Result:** R5 and R6 advance but correctly remain `NOT YET` pending the visible and
   accessible P6-P8 editor. The pinned native Bun gate passes 253 tests and 1,084
   assertions; the focused model/security suite passes 13 tests and 64 assertions.
+
+### PR #22 - Desktop stack definition editor
+
+- **PR:** [#22](https://github.com/TrentBrown/portreeve/pull/22)
+- **Status:** in review
+- **Scope:** P6-P7 / I-6: both Stacks-tab editor entry points, a dedicated guarded
+  view, complete accessible field controls, exact preview, trusted save/apply and
+  overwrite flows, missing/invalid recovery, visible failure details, and clean-baseline
+  retry.
+- **Evidence packet:** [pr-22](pr-22/)
+- **Result:** R4-R8 pass. The full suite passed 299 tests and 1,277 assertions before
+  the final retry-visibility review correction; the exact final retry source passes
+  typecheck, lint, and the focused editor/security suite with 16 tests and 91
+  assertions. The release and desktop package build, and packaged macOS smoke covers
+  creation, validation focus, preview, dirty guards, save/apply failure details,
+  successful retry, direct editing, advanced fields, and window-close discard behavior.

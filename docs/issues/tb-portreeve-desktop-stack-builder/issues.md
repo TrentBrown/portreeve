@@ -72,12 +72,12 @@ progressive validation, concise serialization, and exact preview with focused un
 
 ## I-6 - Deliver the dedicated Stacks-tab editor
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P6, P7
 - **Rubric criteria:** R3, R4, R5, R6, R7, R8
 - **Depends on:** I-3, I-4, I-5
-- **PR:** -
+- **PR:** [#22](https://github.com/TrentBrown/portreeve/pull/22)
 
 Build and integrate the in-tab UI, entry actions, accessible fields and confirmations,
 dirty guards, file recovery, save/apply outcomes, retry, live-activation refusal, and
