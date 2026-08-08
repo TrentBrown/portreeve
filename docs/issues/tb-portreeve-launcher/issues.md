@@ -47,7 +47,7 @@ and classify fresh daemon or explicitly local listener and activation evidence.
 
 ## I-4 - Implement finite command-only execution
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P4
 - **Rubric criteria:** R3, R6, R7, R8

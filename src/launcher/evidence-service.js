@@ -49,10 +49,12 @@ export class LauncherEvidenceService {
     this.now = now;
   }
 
-  /** @param {unknown} stackInput */
-  async inspectDaemon(stackInput) {
+  /** @param {unknown} stackInput @param {unknown} [statusInput] */
+  async inspectDaemon(stackInput, statusInput) {
     const stack = StackRecordSchema.parse(stackInput);
-    const status = StackStatusSchema.parse(await this.client.getStackStatus(stack.id));
+    const status = StackStatusSchema.parse(
+      statusInput ?? (await this.client.getStackStatus(stack.id)),
+    );
     if (
       status.stack.id !== stack.id ||
       status.stack.stackRoot !== stack.stackRoot ||
