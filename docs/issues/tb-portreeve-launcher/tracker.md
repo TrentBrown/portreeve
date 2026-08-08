@@ -21,3 +21,17 @@
 ## PR Log
 
 Append PR boundary entries here.
+
+### PR #25 - Launcher configuration and trust foundations
+
+- **PR:** [#25](https://github.com/TrentBrown/portreeve/pull/25)
+- **Status:** in review
+- **Scope:** P1 / I-1: strict launcher schema, structured endpoint mappings,
+  deterministic exact-byte revisions, canonical contained documents, conservative
+  manifest suggestions, private shared trust/cache state, and reset placement.
+- **Evidence packet:** [pr-25](pr-25/)
+- **Result:** R1, R2, and R8 advance but correctly remain `NOT YET`; later CLI,
+  engine, daemon, and Desktop slices complete them. Focused verification passes 23 tests
+  and 69 assertions. Judge: PASS WITH CONCERNS only for unavailable pinned Bun 1.3.14.
+  Code review: PASS with no findings after token-bound stale-lock and manifest-error
+  corrections. Pattern review is not applicable because no rule scope is configured.
