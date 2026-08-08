@@ -10,6 +10,11 @@ adapt its project and component names there. The root may be a non-Git parent co
 several child repositories. The file declares topology and preferred ports only; it
 contains no command, secret, environment value, or lease credential.
 
+You may also select that disposable root with **Create or Edit Stack…** in Portreeve
+Desktop and enter the same topology through structured fields. Desktop Save and Apply
+creates or updates the checked-in file, but the launcher sequence below remains
+unchanged because editing never prepares or starts the stack.
+
 ## Launcher sequence
 
 1. Apply and prepare before deriving any environment or Compose override:

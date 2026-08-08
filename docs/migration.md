@@ -60,3 +60,26 @@ components in one activation:
 If Docker or its daemon is unavailable, `docker-evidence-v1` is not advertised and a
 Docker-backed begin or confirm fails explicitly. Existing process-only allocation and
 stack activations continue to work.
+
+## Migrating an existing stack orchestrator
+
+Retain the project launcher and move only address coordination into Portreeve:
+
+1. Choose the exact directory representing the one independently runnable stack. It may
+   be a non-Git parent containing multiple child repositories.
+2. Create `portreeve.stack.json` with component, endpoint, dependency, allocation, and
+   optional Docker placement metadata. Do not move commands, secrets, health checks, or
+   startup ordering into the definition.
+3. Apply and prepare the whole topology before starting providers. Resolve consumer
+   addresses from that one immutable generation instead of allocating one service at a
+   time and injecting ports opportunistically.
+4. Keep the launcher responsible for starting processes or containers, mapping resolved
+   addresses into each service's environment, checking application health, confirming
+   listener/container evidence, and stopping providers before ending the activation.
+5. During transition, continue using standalone `withPort` claims for services not yet
+   represented in the stack. Exact-root adoption can preserve a compatible standalone
+   default endpoint assignment when the stack definition is first applied.
+
+Portreeve Desktop can create or edit the definition, but it does not replace the
+launcher. Applying through either the CLI, client, or desktop never prepares ports or
+starts the stack.

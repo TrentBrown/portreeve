@@ -180,6 +180,11 @@ refused while an activation is `starting`, `confirmed`, or `degraded`; otherwise
 updates the stack's current revision without changing an existing port assignment. See
 [Stack definitions](stacks.md).
 
+The protocol has no project-file operation: callers supply the parsed definition and
+canonical root. File discovery, exact-byte conflict handling, and atomic replacement
+belong to the CLI or trusted desktop boundary. Apply does not prepare a generation or
+start providers.
+
 ## Stack generations and activations
 
 Preparation accepts `client` and the path-selected `stackId`. It returns `reused` and a

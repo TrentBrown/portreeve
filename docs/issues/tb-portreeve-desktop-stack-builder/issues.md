@@ -72,7 +72,7 @@ progressive validation, concise serialization, and exact preview with focused un
 
 ## I-6 - Deliver the dedicated Stacks-tab editor
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P6, P7
 - **Rubric criteria:** R3, R4, R5, R6, R7, R8
@@ -85,7 +85,7 @@ explicit preparation behavior.
 
 ## I-7 - Verify and document the assembled feature
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1d
 - **Plan steps:** P8
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8

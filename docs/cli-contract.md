@@ -77,6 +77,10 @@ enclosing definition; it never falls back to registered database state. The offi
 client canonicalizes the exact root before the request. Equivalent normalized content
 is an ordinary state difference and exits `10`; changed content exits `0`.
 
+Apply records topology and durable endpoint claims only. It does not prepare a
+generation, start an activation, launch a process or container, or inject environment
+variables. Launchers invoke `stacks prepare` and the activation commands explicitly.
+
 `stacks list` accepts `--project` and `--stack-root`. `stacks status` accepts those same
 disambiguating options. Without an explicit root, status first discovers the nearest
 enclosing definition file. When no such file exists, it may select the one registered

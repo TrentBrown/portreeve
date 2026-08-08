@@ -76,7 +76,7 @@ Append PR boundary entries here.
 ### PR #22 - Desktop stack definition editor
 
 - **PR:** [#22](https://github.com/TrentBrown/portreeve/pull/22)
-- **Status:** in review
+- **Status:** merged 2026-08-08 (`bd70b34bffdcb5115527278c7ac42fb63f49cf83`)
 - **Scope:** P6-P7 / I-6: both Stacks-tab editor entry points, a dedicated guarded
   view, complete accessible field controls, exact preview, trusted save/apply and
   overwrite flows, missing/invalid recovery, visible failure details, and clean-baseline

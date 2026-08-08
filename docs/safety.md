@@ -52,6 +52,21 @@ their endpoint claims while retaining durable history.
 observed process fingerprint, and supports `--dry-run`. It can terminate an
 unrelated same-user process; callers should inspect the evidence first.
 
+## Stack definition editing
+
+Stack definitions remain project-owned files. The desktop renderer cannot choose an
+arbitrary path, read or write the filesystem, open the Portreeve socket, or execute the
+CLI. A trusted main-process document session resolves the canonical root, exposes only
+an opaque ID and display basename, bounds and strictly validates file content, refuses
+symlinks and non-regular paths, creates missing files exclusively, and atomically
+replaces existing regular files.
+
+Existing writes are conditional on the exact bytes observed when the document opened.
+If those bytes change, the user must explicitly choose Overwrite or Cancel; the
+one-use overwrite capability is bound to the newly observed bytes and cannot authorize
+a later race. Invalid JSON is never partially interpreted. Saving precedes daemon
+apply, and Retry Apply is available only for the unchanged saved definition.
+
 ## Lifecycle safety
 
 Native lifecycle operations are per-user and reject root. Managed executables

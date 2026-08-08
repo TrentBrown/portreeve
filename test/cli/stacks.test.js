@@ -16,6 +16,7 @@ import { AllocationService } from '../../src/allocation/service.js';
 import { prepareRuntimeDirectories } from '../../src/platform/paths.js';
 import { startPortreeveServer } from '../../src/server/server.js';
 import { openRegistry } from '../../src/storage/registry.js';
+import { idlePort } from '../fixtures/ports.js';
 
 test('stack commands share definition discovery and versioned JSON contracts', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'portreeve-stack-cli-'));
@@ -345,7 +346,7 @@ test('stack CLI begins and confirms a Docker-backed component', async () => {
   const socketPath = join(directory, 'runtime', 'portreeve.sock');
   const applicationDirectory = join(directory, 'data');
   const containerId = 'e'.repeat(64);
-  const port = await unusedPort();
+  const port = await idlePort();
   /** @type {null | {id: string, running: boolean, labels: Readonly<Record<string, string>>, ports: Array<{containerPort: number, hostIp: string, hostPort: number}>}} */
   let container = null;
   /** @type {Bun.Server<undefined> | undefined} */
@@ -467,14 +468,6 @@ test('stack CLI begins and confirms a Docker-backed component', async () => {
     await rm(directory, { force: true, recursive: true });
   }
 });
-
-async function unusedPort() {
-  const probe = Bun.serve({ port: 0, fetch: () => new Response('probe') });
-  const port = probe.port;
-  probe.stop(true);
-  if (port === undefined) throw new Error('TCP probe did not expose a port.');
-  return port;
-}
 
 /**
  * @param {string[]} arguments_

@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { PortreeveClient } from '../../packages/client/src/index.js';
+import { idlePort } from '../fixtures/ports.js';
 
 /** @type {Array<() => Promise<void>>} */
 const cleanups = [];
@@ -62,19 +63,6 @@ async function runCliWithHome(arguments_, home) {
     new Response(child.stderr).text(),
   ]);
   return { exitCode, stdout, stderr };
-}
-
-async function unusedPort() {
-  const probe = Bun.serve({
-    port: 0,
-    fetch: () => new Response('probe'),
-  });
-  const port = probe.port;
-  probe.stop(true);
-  if (port === undefined) {
-    throw new Error('Probe did not expose a port.');
-  }
-  return port;
 }
 
 test('operational commands expose stable JSON and exit-code contracts', async () => {
@@ -138,7 +126,7 @@ test('operational commands expose stable JSON and exit-code contracts', async ()
 
   const workspace = join(directory, 'deleted-workspace');
   await mkdir(workspace);
-  const port = await unusedPort();
+  const port = await idlePort();
   const lease = await client.acquire({
     claim: {
       project: 'cli-tests',

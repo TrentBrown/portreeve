@@ -130,3 +130,41 @@ test('public documentation explains Docker evidence without transferring launche
   expect(safety).toContain('never signal Docker Desktop');
   expect(safety).toContain('trusted launcher');
 });
+
+test('public guides describe the final stack-root and desktop editor contract', async () => {
+  const [
+    readme,
+    protocol,
+    stacks,
+    desktop,
+    client,
+    cli,
+    migration,
+    safety,
+    troubleshooting,
+  ] = await Promise.all(
+    [
+      'README.md',
+      'docs/protocol.md',
+      'docs/stacks.md',
+      'docs/desktop.md',
+      'docs/client.md',
+      'docs/cli-contract.md',
+      'docs/migration.md',
+      'docs/safety.md',
+      'docs/troubleshooting.md',
+    ].map((filename) => readFile(resolve(filename), 'utf8')),
+  );
+
+  expect(readme).toContain('one independently runnable stack');
+  expect(stacks).toMatch(/need not be a\s+Git repository/u);
+  expect(client).toMatch(/does not discover, read, or write/u);
+  expect(cli).toMatch(/does not prepare a\s+generation/u);
+  expect(protocol).toMatch(/protocol has no project-file operation/u);
+  expect(desktop).toContain('Create or Edit Stack');
+  expect(desktop).toContain('opaque document ID');
+  expect(safety).toMatch(/exact bytes observed/u);
+  expect(migration).toMatch(/Retain the project launcher/u);
+  expect(troubleshooting).toContain('Saved, but not applied');
+  expect(troubleshooting).toContain('external definition change');
+});

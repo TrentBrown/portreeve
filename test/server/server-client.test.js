@@ -12,6 +12,7 @@ import { AllocationService } from '../../src/allocation/service.js';
 import { prepareRuntimeDirectories } from '../../src/platform/paths.js';
 import { startPortreeveServer } from '../../src/server/server.js';
 import { openRegistry } from '../../src/storage/registry.js';
+import { idlePort } from '../fixtures/ports.js';
 
 /** @type {Array<() => Promise<void>>} */
 const cleanups = [];
@@ -55,21 +56,6 @@ function claim(service = 'website', workspaceRoot = tmpdir()) {
     service,
     transport: /** @type {const} */ ('tcp'),
   };
-}
-
-async function unusedPort() {
-  const probe = Bun.serve({
-    port: 0,
-    fetch() {
-      return new Response('probe');
-    },
-  });
-  const port = probe.port;
-  probe.stop(true);
-  if (port === undefined) {
-    throw new Error('TCP probe did not expose a port');
-  }
-  return port;
 }
 
 test('serves health only through a private Unix socket', async () => {
@@ -327,8 +313,8 @@ test('prepares and confirms a process-backed activation through the official cli
   const client = new PortreeveClient({ socketPath });
   const workspaceRoot = await mkdtemp(join(tmpdir(), 'portreeve-activation-'));
   cleanups.push(() => rm(workspaceRoot, { force: true, recursive: true }));
-  const exactPort = await unusedPort();
-  const optionalPort = await unusedPort();
+  const exactPort = await idlePort();
+  const optionalPort = await idlePort();
   let listener;
 
   try {
@@ -455,7 +441,7 @@ test('advertises and confirms Docker evidence through the official socket client
   const client = new PortreeveClient({ socketPath });
   const workspaceRoot = await mkdtemp(join(tmpdir(), 'portreeve-docker-activation-'));
   cleanups.push(() => rm(workspaceRoot, { force: true, recursive: true }));
-  const exactPort = await unusedPort();
+  const exactPort = await idlePort();
   expect((await client.health()).capabilities).toContain('docker-evidence-v1');
   const applied = await client.applyStack({
     stackRoot: workspaceRoot,
@@ -544,7 +530,7 @@ test('omits unavailable Docker capability without impairing process-only invento
 test('acquires, binds, confirms, releases, and reuses a sticky assignment', async () => {
   const { socketPath, registry } = await startFixture();
   const client = new PortreeveClient({ socketPath });
-  const preferredPort = await unusedPort();
+  const preferredPort = await idlePort();
   /** @type {Bun.Server<undefined> | undefined} */
   let listener;
 
@@ -604,7 +590,7 @@ test('acquires, binds, confirms, releases, and reuses a sticky assignment', asyn
 test('confirms and inventories a listener descended from the run root', async () => {
   const { socketPath } = await startFixture();
   const client = new PortreeveClient({ socketPath });
-  const exactPort = await unusedPort();
+  const exactPort = await idlePort();
   /** @type {Bun.Subprocess<'ignore', 'pipe', 'pipe'> | undefined} */
   let child;
 
@@ -673,7 +659,7 @@ test('preserves a sticky assignment across a server and database restart', async
   const socketPath = join(directory, 'runtime', 'portreeve.sock');
   const databasePath = join(applicationDirectory, 'registry.sqlite');
   await prepareRuntimeDirectories({ applicationDirectory, socketPath });
-  const preferredPort = await unusedPort();
+  const preferredPort = await idlePort();
   /** @type {Bun.Server<undefined> | undefined} */
   let serviceListener;
   let firstServer;
@@ -841,7 +827,7 @@ test('exposes evidence-bound reclaim and explicit unsafe dry-run APIs', async ()
 test('serializes concurrent acquisitions onto distinct ports', async () => {
   const { socketPath } = await startFixture();
   const client = new PortreeveClient({ socketPath });
-  const preferredPort = await unusedPort();
+  const preferredPort = await idlePort();
 
   const [first, second] = await Promise.all([
     client.acquire({
@@ -864,7 +850,7 @@ test('serializes concurrent acquisitions onto distinct ports', async () => {
 test('high-level helper retries a bind collision through the server', async () => {
   const { socketPath } = await startFixture();
   const client = new PortreeveClient({ socketPath });
-  const preferredPort = await unusedPort();
+  const preferredPort = await idlePort();
   /** @type {Bun.Server<undefined> | undefined} */
   let collisionListener;
   /** @type {Bun.Server<undefined> | undefined} */
@@ -978,7 +964,7 @@ test('global inventory reports an unclaimed live listener', async () => {
 test('administers claims, settings, pruning, and history through the public API', async () => {
   const { socketPath, registry } = await startFixture();
   const client = new PortreeveClient({ socketPath });
-  const exactPort = await unusedPort();
+  const exactPort = await idlePort();
   const lease = await client.acquire({
     claim: claim('admin-api'),
     allocation: { exactPort },
