@@ -22,12 +22,12 @@ retention behavior without executing project commands.
 
 ## I-2 - Add daemon operation coordination
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R6, R7, R8
 - **Depends on:** none
-- **PR:** -
+- **PR:** [#26](https://github.com/TrentBrown/portreeve/pull/26)
 
 Add the database migration, public protocol capability, official-client surface,
 transactional operation sessions, renewable credentials, lost-session expiry, bounded

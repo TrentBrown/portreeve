@@ -94,7 +94,7 @@ or native dependency, so the same module bundles into Electron and compiles with
 
 ## [5] Use resource-oriented launcher-operation routes and bounded summaries
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
