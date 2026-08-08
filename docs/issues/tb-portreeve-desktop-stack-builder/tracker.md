@@ -50,7 +50,7 @@ Append PR boundary entries here.
 ### PR #16 - Trusted desktop definition-document boundary
 
 - **PR:** [#16](https://github.com/TrentBrown/portreeve/pull/16)
-- **Status:** open for review
+- **Status:** merged 2026-08-07 (`0654648f3ef348ed02c1cbbbb58ecc528a57d268`)
 - **Scope:** P4 / I-4: canonical directory and known-stack resolution, opaque document
   and conflict capabilities, bounded strict validation, exclusive create, atomic
   replacement, safe invalid-file recovery, save-before-apply, and evidence-checked retry.

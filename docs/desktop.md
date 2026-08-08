@@ -73,6 +73,17 @@ definition paths are refused. Saving precedes server apply, so a valid file rema
 saved if the daemon is unavailable and can be applied later with an explicit retry.
 Editing never prepares a stack generation automatically.
 
+The editor keeps components, endpoints, and dependencies as ordered records with
+stable local identities. Dependency selectors retain those identities, so renaming a
+provider automatically updates the serialized reference. Removing a referenced
+component or endpoint requires explicit confirmation and also removes the named
+dependent entries. Incomplete drafts remain editable: touched fields show local
+validation, submission shows the complete summary and first invalid field, and the
+read-only JSON preview retains the latest valid result until the draft is valid again.
+Valid output uses two-space indentation, a final newline, editor order, and omits schema
+defaults such as TCP transport, required or published `true`, automatic allocation, and
+the dependency endpoint when it is `default`.
+
 Portreeve Desktop never starts or stops a project process or container, invokes Docker
 Compose, owns application startup order, maps project environment variables, or asserts
 application health. Those remain responsibilities of the project launcher. Stale stack

@@ -75,3 +75,31 @@ experience without widening renderer filesystem authority.
 - Send the canonical path and fingerprint to the renderer - rejected because it widens the renderer's authority and makes the overwrite check caller-controlled.
 - Accept a plain `overwrite: true` flag - rejected because it can bypass the required two-step conflict review and can overwrite a second unseen external change.
 - Follow symbolic links and permit unbounded local files - rejected because the editor should mutate only the fixed regular definition file at the trusted stack root.
+
+## [5] Preserve editor order with an ordered serializer
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Desktop editor draft conversion, JSON preview and saved definition
+bytes, and renderer-model tests
+
+Serialize the stack editor's valid draft through an explicit ordered-record renderer
+while independently producing the normalized definition object used by trusted
+validation. This preserves the exact component, endpoint, and dependency order shown in
+the editor even when a legal schema name resembles an integer property key. The output
+remains ordinary deterministic JSON with two-space indentation, a final newline, and
+schema defaults omitted.
+
+**Triggered by:** JavaScript object enumeration sorts integer-index property names ahead
+of other keys, so passing an editor-ordered object to `JSON.stringify` can silently
+violate the approved order guarantee.
+
+**Alternatives considered:**
+- Rely on `JSON.stringify` object order - rejected because legal names such as `"10"`
+  and `"2"` are reordered.
+- Reject integer-like names - rejected because it narrows the public stack schema only
+  for a desktop implementation detail.
+- Alphabetically sort all records - rejected because the approved preview and file
+  contract preserves the user's editor order.

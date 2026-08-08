@@ -47,7 +47,7 @@ coverage for non-Git parent roots with child repositories.
 
 ## I-4 - Build the trusted desktop document boundary
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P4
 - **Rubric criteria:** R4, R6, R7, R8
@@ -60,7 +60,7 @@ tests.
 
 ## I-5 - Implement the complete editor model
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1d
 - **Plan steps:** P5
 - **Rubric criteria:** R5, R6
