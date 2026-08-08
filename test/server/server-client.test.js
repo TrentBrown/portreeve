@@ -1,9 +1,9 @@
 // @ts-check
 
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtemp, realpath, rm, stat, symlink } from 'node:fs/promises';
+import { chmod, mkdtemp, realpath, rm, stat, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import {
   PortreeveClient,
   PortreeveClientError,
@@ -911,6 +911,59 @@ test('high-level helper retries a bind collision through the server', async () =
     serviceListener?.stop(true);
   }
 });
+
+test('surfaces a lease abandon failure alongside the startup failure', async () => {
+  const { socketPath } = await startFixture();
+  const client = new PortreeveClient({ socketPath });
+  const startupError = new Error('service startup failed');
+  client.abandon = () => Promise.reject(new Error('abandon rejected'));
+
+  const failure = await client
+    .withPort({ claim: claim('abandon-failure') }, async () => {
+      throw startupError;
+    })
+    .then(
+      () => null,
+      (error) => error,
+    );
+
+  expect(failure).toBeInstanceOf(PortreeveClientError);
+  expect(failure).toMatchObject({
+    code: 'lease_abandon_failed',
+    details: {
+      startupError: 'service startup failed',
+      abandonError: 'abandon rejected',
+    },
+  });
+  expect(/** @type {Error} */ (failure).cause).toBe(startupError);
+});
+
+test.skipIf(typeof process.getuid === 'function' && process.getuid() === 0)(
+  'propagates a failed shutdown through waitUntilStopped',
+  async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'portreeve-shutdown-'));
+    const socketPath = join(directory, 'runtime', 'portreeve.sock');
+    await prepareRuntimeDirectories({
+      applicationDirectory: join(directory, 'data'),
+      socketPath,
+    });
+    const registry = openRegistry(join(directory, 'data', 'registry.sqlite'));
+    const server = await startPortreeveServer({
+      socketPath,
+      allocationService: new AllocationService({ registry }),
+    });
+    await chmod(dirname(socketPath), 0o500);
+
+    try {
+      await expect(server.stop()).rejects.toMatchObject({ code: 'EACCES' });
+      await expect(server.waitUntilStopped()).rejects.toMatchObject({ code: 'EACCES' });
+    } finally {
+      await chmod(dirname(socketPath), 0o700);
+      registry.close();
+      await rm(directory, { force: true, recursive: true });
+    }
+  },
+);
 
 test('works from a separate Node process through the public protocol', async () => {
   const { socketPath } = await startFixture();

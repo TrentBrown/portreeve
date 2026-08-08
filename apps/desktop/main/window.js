@@ -1,5 +1,7 @@
 // @ts-check
 
+import { reportBackgroundFailure } from './diagnostics.js';
+
 export const RENDERER_URL = 'app://portreeve/index.html';
 
 /** @param {string} preload */
@@ -52,7 +54,9 @@ export function bindWindowRefresh(window, coordinator) {
   };
   const refreshIfVisible = () => {
     if (window.isVisible() && !window.isMinimized()) {
-      void coordinator.refresh();
+      coordinator.refresh().catch((error) => {
+        reportBackgroundFailure('window evidence refresh', error);
+      });
       coordinator.start();
     }
   };

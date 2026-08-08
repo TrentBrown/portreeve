@@ -59,6 +59,20 @@ describe('lifecycle manager', () => {
     );
   });
 
+  test('reports rollback failures instead of claiming a restored installation', async () => {
+    const fixture = await createFixture('1.0.0');
+    await fixture.manager.install();
+    await fixture.manager.start();
+
+    await writeExecutable(fixture.source, '2.0.0');
+    fixture.client.rejectedVersion = '2.0.0';
+    fixture.supervisor.startFailure = new Error('systemctl start refused');
+
+    await expect(fixture.manager.install()).rejects.toThrow(
+      /prior installation was not fully restored \(restarting the previous supervised service failed: systemctl start refused/u,
+    );
+  });
+
   test('health-checks a successful active upgrade and keeps supervision active', async () => {
     const fixture = await createFixture('1.0.0');
     await fixture.manager.install();
@@ -307,6 +321,8 @@ class FakeSupervisor {
     this.installed = false;
     this.active = false;
     this.startCount = 0;
+    /** @type {Error | null} */
+    this.startFailure = null;
   }
 
   state() {
@@ -330,6 +346,9 @@ class FakeSupervisor {
   }
 
   start() {
+    if (this.startFailure !== null) {
+      return Promise.reject(this.startFailure);
+    }
     this.active = true;
     this.startCount += 1;
     return Promise.resolve();

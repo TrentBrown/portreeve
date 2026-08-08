@@ -7,6 +7,7 @@ import {
   DesktopUpdateManifestSchema,
   DesktopUpdateStateSchema,
 } from '../shared/schemas.js';
+import { reportBackgroundFailure } from './diagnostics.js';
 
 export const DESKTOP_UPDATE_MANIFEST_URL =
   'https://raw.githubusercontent.com/TrentBrown/portreeve/main/distribution/desktop-update.json';
@@ -96,7 +97,8 @@ export function createUpdateAdapter(options) {
       } finally {
         clearTimeout(timeout);
       }
-    } catch {
+    } catch (error) {
+      reportBackgroundFailure('desktop update manifest check', error);
       result = DesktopUpdateStateSchema.parse({
         status: 'unavailable',
         checkedAt,
@@ -105,7 +107,9 @@ export function createUpdateAdapter(options) {
     }
 
     current = result;
-    await writeCachedState(options.statePath, result).catch(() => undefined);
+    await writeCachedState(options.statePath, result).catch((error) => {
+      reportBackgroundFailure('desktop update state cache write', error);
+    });
     return current;
   }
 
@@ -172,7 +176,14 @@ function isFresh(checkedAt, observedAt) {
 async function readCachedState(path) {
   try {
     return DesktopUpdateStateSchema.parse(JSON.parse(await readFile(path, 'utf8')));
-  } catch {
+  } catch (error) {
+    if (!(
+      error instanceof Error &&
+      'code' in error &&
+      /** @type {{code?: unknown}} */ (error).code === 'ENOENT'
+    )) {
+      reportBackgroundFailure('desktop update state cache read', error);
+    }
     return null;
   }
 }

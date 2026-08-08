@@ -46,7 +46,7 @@ export async function serveCommand(options) {
     });
     console.log(`Portreeve ${process.pid} serving on ${paths.socketPath}`);
     const terminate = () => {
-      void server?.stop();
+      server?.stop().catch(() => {});
     };
     process.once('SIGINT', terminate);
     process.once('SIGTERM', terminate);
@@ -54,7 +54,15 @@ export async function serveCommand(options) {
     process.off('SIGINT', terminate);
     process.off('SIGTERM', terminate);
   } finally {
-    await server?.stop();
+    try {
+      await server?.stop();
+    } catch (error) {
+      console.error(
+        `Portreeve server shutdown failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
     registry.close();
   }
 }

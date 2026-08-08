@@ -286,27 +286,55 @@ export class LifecycleManager {
         supervisor: this.supervisor.kind,
       };
     } catch (error) {
-      await this.supervisor.stop().catch(() => {});
+      /** @type {string[]} */
+      const rollbackFailures = [];
+      /**
+       * @param {string} step
+       * @param {() => Promise<unknown>} work
+       */
+      const rollbackStep = async (step, work) => {
+        try {
+          await work();
+        } catch (rollbackError) {
+          rollbackFailures.push(`${step} failed: ${errorMessage(rollbackError)}`);
+        }
+      };
+
+      await rollbackStep('stopping the supervised service', () =>
+        this.supervisor.stop(),
+      );
       if (promotion !== null) {
-        await restoreExecutable(
-          this.paths.managedExecutablePath,
-          this.paths.rollbackExecutablePath,
-          promotion.hadPrevious,
+        await rollbackStep('restoring the previous executable', () =>
+          restoreExecutable(
+            this.paths.managedExecutablePath,
+            this.paths.rollbackExecutablePath,
+            /** @type {{hadPrevious: boolean}} */ (promotion).hadPrevious,
+          ),
         );
       }
       if (priorDefinition === null) {
-        await this.supervisor.uninstall().catch(() => {});
+        await rollbackStep('removing the supervisor definition', () =>
+          this.supervisor.uninstall(),
+        );
       } else {
-        await this.supervisor.installDefinition(priorDefinition);
+        await rollbackStep('restoring the previous supervisor definition', () =>
+          this.supervisor.installDefinition(priorDefinition),
+        );
       }
       if (priorActive) {
-        await this.supervisor.start();
-        await this.waitUntilHealthy().catch(() => {});
+        await rollbackStep('restarting the previous supervised service', () =>
+          this.supervisor.start(),
+        );
+        await rollbackStep('waiting for the restarted server to become healthy', () =>
+          this.waitUntilHealthy(),
+        );
       }
       throw new Error(
-        `Portreeve upgrade activation failed and the prior installation was restored: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        rollbackFailures.length === 0
+          ? `Portreeve upgrade activation failed and the prior installation was restored: ${errorMessage(error)}`
+          : `Portreeve upgrade activation failed and the prior installation was not fully restored (${rollbackFailures.join(
+              '; ',
+            )}): ${errorMessage(error)}`,
         { cause: error },
       );
     }
@@ -627,6 +655,11 @@ async function executableVersion(executable, runner) {
       `Portreeve executable returned an invalid version: ${result.stdout.trim()}`,
     );
   }
+}
+
+/** @param {unknown} error */
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**

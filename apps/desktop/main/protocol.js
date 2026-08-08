@@ -2,6 +2,7 @@
 
 import { readFile, realpath } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
+import { reportBackgroundFailure } from './diagnostics.js';
 
 /** @type {Readonly<Record<string, string>>} */
 const contentTypes = Object.freeze({
@@ -42,8 +43,20 @@ export function registerRendererProtocol(protocol, rendererRoot) {
             "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'",
         },
       });
-    } catch {
+    } catch (error) {
+      if (!isMissingPath(error)) {
+        reportBackgroundFailure(`renderer asset request for ${relativePath}`, error);
+      }
       return new Response('Not found', { status: 404 });
     }
   });
+}
+
+/** @param {unknown} error */
+function isMissingPath(error) {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    ['ENOENT', 'ENOTDIR'].includes(String(/** @type {{code?: unknown}} */ (error).code))
+  );
 }

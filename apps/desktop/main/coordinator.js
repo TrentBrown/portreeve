@@ -13,6 +13,7 @@ import {
   DesktopStackPruneResultSchema,
   DesktopUpdateStateSchema,
 } from '../shared/schemas.js';
+import { reportBackgroundFailure } from './diagnostics.js';
 import { NOT_CHECKED_UPDATE_STATE } from './update.js';
 import { createDesktopSnapshot, reduceStackEndpointSnapshot } from './view-model.js';
 import { basename } from 'node:path';
@@ -271,7 +272,12 @@ export function createStateCoordinator(options) {
       return () => subscribers.delete(subscriber);
     },
     startPolling() {
-      if (timer === null) timer = schedule(() => void refresh(), intervalMilliseconds);
+      if (timer === null)
+        timer = schedule(() => {
+          refresh().catch((error) => {
+            reportBackgroundFailure('scheduled evidence refresh', error);
+          });
+        }, intervalMilliseconds);
     },
     stopPolling() {
       if (timer !== null) cancel(timer);
