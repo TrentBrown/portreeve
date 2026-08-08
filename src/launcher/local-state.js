@@ -62,8 +62,8 @@ export function createLauncherLocalStateStore(options) {
       await writeState(options.path, LauncherLocalStateSchema.parse(state));
       return state;
     } finally {
-      await lock.close();
-      await unlink(lockPath).catch(() => {});
+      await lock.handle.close();
+      await releaseLock(lockPath, lock.token);
     }
   }
 
@@ -115,7 +115,11 @@ export function createLauncherLocalStateStore(options) {
 async function acquireLock(lockPath, observedAt) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      return await open(lockPath, 'wx', 0o600);
+      const handle = await open(lockPath, 'wx', 0o600);
+      const token = randomUUID();
+      await handle.writeFile(token, 'utf8');
+      await handle.sync();
+      return { handle, token };
     } catch (error) {
       if (!hasCode(error, 'EEXIST')) throw error;
       const entry = await lstat(lockPath).catch((inspectionError) => {
@@ -144,6 +148,15 @@ async function acquireLock(lockPath, observedAt) {
     }
   }
   throw stateError('launcher_state_busy');
+}
+
+/** @param {string} lockPath @param {string} token */
+async function releaseLock(lockPath, token) {
+  try {
+    if ((await readFile(lockPath, 'utf8')) === token) await unlink(lockPath);
+  } catch (error) {
+    if (!hasCode(error, 'ENOENT')) throw error;
+  }
 }
 
 /** @param {z.infer<typeof LauncherLocalStateSchema>} state @param {string} stackRoot */

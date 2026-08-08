@@ -29,8 +29,13 @@ export async function discoverLauncherCommands(workingDirectory) {
   const packageContent = await optionalFile(packageFilename);
   if (packageContent !== null) {
     inspectedFiles.push(packageFilename);
+    let packageDefinition = null;
     try {
-      const packageDefinition = JSON.parse(packageContent);
+      packageDefinition = JSON.parse(packageContent);
+    } catch {
+      // An invalid manifest is visible through inspectedFiles but never executed or guessed.
+    }
+    if (packageDefinition !== null) {
       const runner = await packageRunner(workingDirectory, packageDefinition);
       for (const operation of OPERATIONS) {
         if (
@@ -47,8 +52,6 @@ export async function discoverLauncherCommands(workingDirectory) {
           );
         }
       }
-    } catch {
-      // An invalid manifest is visible through inspectedFiles but never executed or guessed.
     }
   }
 
