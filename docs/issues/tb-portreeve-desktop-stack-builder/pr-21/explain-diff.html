@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #21 · Desktop stack editor draft model</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #14231e;
+        --muted: #586a63;
+        --paper: #f6f1e7;
+        --card: #fffdf8;
+        --line: #d8d1c4;
+        --green: #17644d;
+        --green-soft: #dcece5;
+        --amber: #9b5b19;
+        --amber-soft: #f8ead6;
+        --red: #9b302b;
+        --shadow: 0 12px 32px rgb(42 54 48 / 10%);
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 16px/1.62 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      header, main, footer { width: min(1050px, calc(100% - 32px)); margin: 0 auto; }
+      header { padding: 64px 0 34px; }
+      h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; line-height: 1.15; }
+      h1 { max-width: 850px; margin: 8px 0 18px; font-size: clamp(2.4rem, 7vw, 5rem); }
+      h2 { margin-top: 0; font-size: clamp(1.8rem, 4vw, 2.8rem); }
+      h3 { margin-bottom: 8px; font-size: 1.35rem; }
+      p { max-width: 78ch; }
+      a { color: var(--green); }
+      code { padding: 2px 5px; border-radius: 5px; background: #ece7dc; }
+      pre {
+        overflow-x: auto;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #17221e;
+        color: #eef7f2;
+        white-space: pre-wrap;
+      }
+      .eyebrow { color: var(--green); font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+      .lede { max-width: 760px; color: var(--muted); font-size: 1.18rem; }
+      .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+      .pill { padding: 6px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); }
+      nav {
+        position: sticky;
+        z-index: 2;
+        top: 0;
+        border-block: 1px solid var(--line);
+        background: rgb(246 241 231 / 94%);
+        backdrop-filter: blur(10px);
+      }
+      nav ol { display: flex; width: min(1050px, calc(100% - 32px)); margin: 0 auto; padding: 12px 0; gap: 20px; overflow-x: auto; list-style: none; }
+      nav a { color: var(--ink); font-weight: 700; text-decoration: none; white-space: nowrap; }
+      section { margin: 34px 0; padding: clamp(24px, 5vw, 48px); border: 1px solid var(--line); border-radius: 20px; background: var(--card); box-shadow: var(--shadow); }
+      .callout { margin: 24px 0; padding: 18px 20px; border-left: 5px solid var(--green); border-radius: 8px; background: var(--green-soft); }
+      .callout.amber { border-color: var(--amber); background: var(--amber-soft); }
+      .flow { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 10px; margin: 24px 0; align-items: stretch; }
+      .node { position: relative; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+      .node:not(:last-child)::after { content: "→"; position: absolute; right: -18px; top: 42%; z-index: 1; color: var(--green); font-size: 1.4rem; font-weight: 800; }
+      .node strong { display: block; margin-bottom: 6px; }
+      .node small { color: var(--muted); }
+      .identity-map { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; margin: 24px 0; align-items: center; }
+      .identity-map > div { padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+      .arrow { border: 0 !important; color: var(--green); font-size: 2rem; font-weight: 800; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+      .card { padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+      .card p:last-child { margin-bottom: 0; }
+      table { width: 100%; border-collapse: collapse; margin: 22px 0; }
+      th, td { padding: 11px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+      th { color: var(--muted); font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
+      .quiz { margin: 22px 0; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+      .answers { display: grid; gap: 8px; }
+      button { padding: 11px 13px; border: 1px solid #aeb9b3; border-radius: 9px; background: #fafbf9; color: var(--ink); text-align: left; cursor: pointer; }
+      button:hover { border-color: var(--green); }
+      button.correct { border-color: var(--green); background: var(--green-soft); }
+      button.wrong { border-color: var(--red); background: #f8deda; }
+      .feedback { min-height: 1.6em; margin: 10px 0 0; color: var(--muted); }
+      footer { padding: 20px 0 60px; color: var(--muted); }
+      @media (max-width: 760px) {
+        .flow { grid-template-columns: 1fr; }
+        .node:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -22px; }
+        .grid { grid-template-columns: 1fr; }
+        .identity-map { grid-template-columns: 1fr; }
+        .arrow { text-align: center; transform: rotate(90deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="eyebrow">Portreeve · PR #21</div>
+      <h1>The editor learns a stack before it draws one</h1>
+      <p class="lede">
+        This change supplies the pure model beneath the future Stacks-tab editor. It can
+        hold an incomplete definition, preserve dependency intent through renames,
+        explain invalid fields, and render exactly the concise JSON that will eventually
+        be saved.
+      </p>
+      <div class="meta">
+        <span class="pill">P5 / I-5</span>
+        <span class="pill">253 tests pass</span>
+        <span class="pill">No visible UI yet</span>
+        <span class="pill">Pinned head 4fb4a5c</span>
+      </div>
+    </header>
+
+    <nav aria-label="Page contents">
+      <ol>
+        <li><a href="#background">Background</a></li>
+        <li><a href="#intuition">Intuition</a></li>
+        <li><a href="#code">Code</a></li>
+        <li><a href="#edges">Edge cases</a></li>
+        <li><a href="#quiz">Quiz</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <section id="background">
+        <h2>Background</h2>
+        <h3>The file is the durable contract</h3>
+        <p>
+          A Portreeve stack is described by <code>portreeve.stack.json</code>. Its
+          project contains components; components provide endpoints and declare
+          dependencies on other endpoints. The file can also express automatic,
+          preferred, or exact host-port allocation and optional Docker placement.
+        </p>
+        <p>
+          Earlier PRs established the server contract, filesystem safety, and an opaque
+          main-process document capability. The missing middle was an editor-friendly
+          representation. A form cannot simply mutate the parsed JSON object: names are
+          both labels and reference targets, while incomplete rows must temporarily be
+          invalid without destroying the user's work.
+        </p>
+        <div class="flow" aria-label="Editor data flow">
+          <div class="node"><strong>Definition</strong><small>Trusted, validated v1 object</small></div>
+          <div class="node"><strong>Draft</strong><small>Ordered records with local IDs</small></div>
+          <div class="node"><strong>Validation</strong><small>Touched or submit issue views</small></div>
+          <div class="node"><strong>Preview</strong><small>Exact concise JSON bytes</small></div>
+          <div class="node"><strong>P6/P7</strong><small>Visible form and trusted save</small></div>
+        </div>
+        <div class="callout amber">
+          <strong>Boundary:</strong> PR #21 does not add the visible editor and cannot
+          write a file. It is a renderer-safe state machine that P6 will drive.
+        </div>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <h3>Names are editable; identities are stable</h3>
+        <p>
+          Suppose <code>website.backend</code> points to <code>api.default</code>. If a
+          developer renames <code>api</code> to <code>backend</code>, a name-based draft
+          could leave the dependency dangling. The model instead gives the component
+          and endpoint private local IDs and stores those IDs in the dependency.
+        </p>
+        <div class="identity-map">
+          <div>
+            <strong>Before rename</strong><br />
+            component-1 · “api”<br />endpoint-2 · “default”<br />
+            dependency → component-1 / endpoint-2
+          </div>
+          <div class="arrow">→</div>
+          <div>
+            <strong>After rename</strong><br />
+            component-1 · “backend”<br />endpoint-2 · “http”<br />
+            serialized target → backend.http
+          </div>
+        </div>
+        <p>
+          The same identity graph makes deletion predictable. A delete request first
+          returns the consumers and aliases that would be removed. Without explicit
+          cascade confirmation, the original draft is returned untouched.
+        </p>
+
+        <h3>Invalid drafts are ordinary editing states</h3>
+        <p>
+          Adding an endpoint produces an unnamed row. That is invalid as a final file,
+          but normal while typing. Evaluation therefore returns all issues, a filtered
+          set for touched controls, and—on submit—the first invalid control to focus.
+          If yesterday's draft was valid and today's keystroke is not, the preview keeps
+          yesterday's valid JSON and marks it as stale.
+        </p>
+        <pre><code>{
+  valid: false,
+  preview: previousValidJson,
+  previewCurrent: false,
+  visibleIssues: issuesForTouchedControls,
+  firstInvalidControlId: "endpoint:endpoint-2:host-port"
+}</code></pre>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>1. Draft construction</h3>
+            <p>
+              <code>createEmptyStackDraft</code> pre-fills only the project.
+              <code>loadStackDraft</code> reconstructs stable component and endpoint
+              identities before resolving dependencies in a second pass.
+            </p>
+          </article>
+          <article class="card">
+            <h3>2. Immutable mutation</h3>
+            <p>
+              Add, update, and delete functions clone the draft. Dependencies retain
+              target IDs through provider renames. Delete impact is calculated before a
+              referenced target can be removed.
+            </p>
+          </article>
+          <article class="card">
+            <h3>3. Progressive validation</h3>
+            <p>
+              The validator mirrors schema v1 with control-specific issue IDs: trimmed
+              unique names, booleans, port ranges, Docker coupling, valid published
+              dependency targets, and unique local identities.
+            </p>
+          </article>
+          <article class="card">
+            <h3>4. Two outputs</h3>
+            <p>
+              A normalized definition carries explicit schema defaults for trusted
+              use. The preview renderer independently emits concise bytes, omitting
+              defaults while preserving the editor's record order.
+            </p>
+          </article>
+        </div>
+
+        <h3>Concise does not mean ambiguous</h3>
+        <table>
+          <thead><tr><th>Draft choice</th><th>Saved JSON</th><th>Schema meaning</th></tr></thead>
+          <tbody>
+            <tr><td>TCP</td><td>omitted</td><td><code>transport: "tcp"</code></td></tr>
+            <tr><td>Published / required</td><td>omitted when true</td><td>true by default</td></tr>
+            <tr><td>Automatic host port</td><td>allocation omitted</td><td>no preferred or exact port</td></tr>
+            <tr><td>Default dependency endpoint</td><td>endpoint omitted</td><td><code>default</code></td></tr>
+          </tbody>
+        </table>
+        <pre><code>{
+  "version": 1,
+  "project": "customer",
+  "components": {
+    "api": {
+      "endpoints": {
+        "http": { "allocation": { "preferredPort": 4100 } }
+      }
+    },
+    "website": {
+      "dependencies": {
+        "backend": { "component": "api", "endpoint": "http" }
+      }
+    }
+  }
+}</code></pre>
+      </section>
+
+      <section id="edges">
+        <h2>Why a custom ordered renderer?</h2>
+        <p>
+          JavaScript normally preserves object insertion order, with one important
+          exception: integer-like property names are enumerated numerically first. A
+          draft ordered as <code>"10"</code>, <code>"2"</code>,
+          <code>"alpha"</code> would become <code>"2"</code>, <code>"10"</code>,
+          <code>"alpha"</code> through ordinary <code>JSON.stringify</code>.
+        </p>
+        <div class="callout">
+          The ordered renderer operates on arrays of key/value entries, uses
+          <code>JSON.stringify</code> only for individual strings and primitive values,
+          and controls object layout itself. The result remains ordinary JSON.
+        </div>
+        <p>
+          Review also found that joining component and endpoint names with a delimiter
+          could collide when that legal delimiter appeared inside a name. The final
+          loader uses nested maps instead: component name selects one map, then endpoint
+          name selects the ID. The regression fixture proves both ambiguous-looking
+          pairs resolve to their intended targets and pass the authoritative schema.
+        </p>
+        <h3>Security posture</h3>
+        <p>
+          The module has no imports. It cannot read a path, contact the daemon, invoke a
+          shell, open SQLite, or write a file. Its output is still untrusted input when
+          P7 submits it: the main process and server independently validate the complete
+          definition before mutation.
+        </p>
+      </section>
+
+      <section id="quiz">
+        <h2>Check your understanding</h2>
+        <div class="quiz" data-answer="1">
+          <h3>1. Why do dependencies store local IDs in the draft?</h3>
+          <div class="answers">
+            <button>To make IDs part of the public JSON protocol</button>
+            <button>To preserve targets while provider names are edited</button>
+            <button>To let the renderer bypass server validation</button>
+          </div><p class="feedback"></p>
+        </div>
+        <div class="quiz" data-answer="2">
+          <h3>2. What happens when an invalid edit follows a valid one?</h3>
+          <div class="answers">
+            <button>The invalid JSON replaces the preview immediately</button>
+            <button>The preview is cleared until every field is valid</button>
+            <button>The latest valid preview remains, marked as not current</button>
+          </div><p class="feedback"></p>
+        </div>
+        <div class="quiz" data-answer="0">
+          <h3>3. Why not rely entirely on JSON.stringify for the preview?</h3>
+          <div class="answers">
+            <button>Integer-like object keys can move ahead of editor order</button>
+            <button>JSON.stringify cannot escape component names safely</button>
+            <button>JSON.stringify always expands schema defaults</button>
+          </div><p class="feedback"></p>
+        </div>
+        <div class="quiz" data-answer="1">
+          <h3>4. What authorizes deletion of a referenced endpoint?</h3>
+          <div class="answers">
+            <button>A valid host-port allocation on the provider</button>
+            <button>An explicit cascade after showing affected dependencies</button>
+            <button>A successful connection to the Portreeve daemon</button>
+          </div><p class="feedback"></p>
+        </div>
+        <div class="quiz" data-answer="2">
+          <h3>5. Which capability does this PR give the renderer?</h3>
+          <div class="answers">
+            <button>Direct access to portreeve.stack.json</button>
+            <button>Direct access to the Portreeve Unix socket</button>
+            <button>None; it adds only pure draft and serialization logic</button>
+          </div><p class="feedback"></p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      Pinned explanation for
+      <code>0654648f3ef3…4fb4a5c41eab</code>. The next slice connects this model to
+      the dedicated Stacks-tab editor.
+    </footer>
+    <script>
+      document.querySelectorAll('.quiz').forEach((quiz) => {
+        const answer = Number(quiz.dataset.answer);
+        const buttons = [...quiz.querySelectorAll('button')];
+        const feedback = quiz.querySelector('.feedback');
+        buttons.forEach((button, index) => {
+          button.addEventListener('click', () => {
+            buttons.forEach((item) => item.classList.remove('correct', 'wrong'));
+            if (index === answer) {
+              button.classList.add('correct');
+              feedback.textContent = 'Correct — that is the invariant this model protects.';
+            } else {
+              button.classList.add('wrong');
+              buttons[answer].classList.add('correct');
+              feedback.textContent = 'Not quite. The highlighted answer matches the model contract.';
+            }
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

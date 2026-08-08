@@ -47,7 +47,7 @@ coverage for non-Git parent roots with child repositories.
 
 ## I-4 - Build the trusted desktop document boundary
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P4
 - **Rubric criteria:** R4, R6, R7, R8
@@ -60,12 +60,12 @@ tests.
 
 ## I-5 - Implement the complete editor model
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P5
 - **Rubric criteria:** R5, R6
 - **Depends on:** I-1
-- **PR:** -
+- **PR:** [#21](https://github.com/TrentBrown/portreeve/pull/21)
 
 Implement full-schema drafts, stable identities, dependency-aware rename/delete,
 progressive validation, concise serialization, and exact preview with focused unit tests.
