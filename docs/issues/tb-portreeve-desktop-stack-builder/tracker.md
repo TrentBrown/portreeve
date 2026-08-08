@@ -12,11 +12,11 @@
 | R1 | Stack-root contract | PASS | [#14](https://github.com/TrentBrown/portreeve/pull/14) | P1/I-1: strict public `stackRoot`, exact real-path canonicalization, standalone `workspaceRoot` preservation, and current-surface documentation pass |
 | R2 | CLI discovery | PASS | [#15](https://github.com/TrentBrown/portreeve/pull/15) | P3/I-3: explicit selectors, upward real-path discovery across child repositories, missing-file status fallback, and apply refusal pass |
 | R3 | Server safety | PASS | [#14](https://github.com/TrentBrown/portreeve/pull/14) | P2/I-2: overlap refusal, sibling acceptance, exact-root adoption, missing-root pruning, and live-activation definition protection pass |
-| R4 | Desktop containment | NOT YET | - | Planned for P4, P6-P8 / I-4, I-6-I-7 |
+| R4 | Desktop containment | NOT YET | [#16](https://github.com/TrentBrown/portreeve/pull/16) | P4/I-4 adds opaque main-process document capabilities and keeps roots, evidence, filesystem access, and socket access out of the renderer; entry views and packaged UI smoke remain P6-P8 |
 | R5 | Complete editor | NOT YET | - | Planned for P5-P8 / I-5-I-7 |
-| R6 | Validation and output | NOT YET | - | Planned for P4-P8 / I-4-I-7 |
-| R7 | File safety and recovery | NOT YET | - | Planned for P4, P6-P8 / I-4, I-6-I-7 |
-| R8 | Save/apply lifecycle | NOT YET | [#14](https://github.com/TrentBrown/portreeve/pull/14) | PR #14 establishes the strict apply and live-activation server boundary; desktop save/retry behavior remains P4/P7 |
+| R6 | Validation and output | NOT YET | [#16](https://github.com/TrentBrown/portreeve/pull/16) | P4/I-4 adds bounded JSON and strict schema validation before write; progressive form validation and exact preview remain P5-P8 |
+| R7 | File safety and recovery | NOT YET | [#16](https://github.com/TrentBrown/portreeve/pull/16) | P4/I-4 adds exclusive create, atomic replace, exact-byte conflict capabilities, missing/invalid recovery primitives, and non-regular-file refusal; renderer flows remain P6-P8 |
+| R8 | Save/apply lifecycle | NOT YET | [#16](https://github.com/TrentBrown/portreeve/pull/16) | PR #14 establishes server refusal; P4/I-4 adds save-before-apply and safe retry primitives; actionable packaged UI behavior remains P7-P8 |
 
 ## PR Log
 

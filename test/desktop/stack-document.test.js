@@ -179,9 +179,10 @@ test('recovers a known invalid file, preserves a save across apply failure, and 
       async applyStack(input) {
         applyAttempts += 1;
         if (applyAttempts === 1) {
-          throw Object.assign(new Error('The Portreeve server is unavailable.'), {
-            code: 'unavailable',
-          });
+          throw Object.assign(
+            new Error('Portreeve is unavailable at /private/secret/socket.'),
+            { code: 'unavailable' },
+          );
         }
         return { changed: true, stack: stackRecord(stackRoot, input.definition) };
       },
@@ -225,7 +226,10 @@ test('recovers a known invalid file, preserves a save across apply failure, and 
       outcome: 'saved-not-applied',
       saved: true,
       applied: false,
-      error: { code: 'unavailable' },
+      error: {
+        code: 'unavailable',
+        message: 'The Portreeve server is unavailable.',
+      },
     });
     expect(await readFile(filename, 'utf8')).toBe(candidate);
 
@@ -321,6 +325,51 @@ test('does not expose client failure details while resolving a known stack docum
       message: 'The selected stack definition is unavailable.',
     });
     expect(String(error)).not.toContain('/private/socket');
+  }
+});
+
+test('refuses to replace an oversized definition without reading it into the editor', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'portreeve-stack-document-'));
+  const stackRoot = join(directory, 'oversized-stack');
+  const filename = join(stackRoot, 'portreeve.stack.json');
+  await mkdir(stackRoot);
+  await writeFile(filename, 'x'.repeat(257));
+  const service = createStackDocumentService(
+    /** @type {any} */ ({
+      async listStacks() {
+        return [];
+      },
+    }),
+    {
+      maxBytes: 256,
+      async selectStackRoot() {
+        return stackRoot;
+      },
+    },
+  );
+
+  try {
+    const opened = await service.openSelected();
+    expect(opened).toMatchObject({
+      document: {
+        fileState: 'invalid',
+        definition: null,
+        issues: [{ code: 'definition_too_large' }],
+      },
+    });
+    const documentId = opened.document?.documentId;
+    if (documentId === undefined) throw new Error('Expected an open document.');
+    expect(
+      await service.save({ documentId, content: definitionContent('bounded') }),
+    ).toMatchObject({
+      outcome: 'failed',
+      saved: false,
+      conflict: null,
+      error: { code: 'stack_definition_too_large' },
+    });
+    expect(await readFile(filename, 'utf8')).toBe('x'.repeat(257));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });
 

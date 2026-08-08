@@ -68,10 +68,10 @@ the editor opened are rechecked.
 If another program changes the file, Portreeve offers Overwrite or Cancel. Overwrite is
 authorized by a one-use conflict capability bound to the newly observed bytes; a second
 external change requires another confirmation. Malformed regular files can be replaced
-after confirmation, but symbolic links and other non-regular definition paths are
-refused. Saving precedes server apply, so a valid file remains saved if the daemon is
-unavailable and can be applied later with an explicit retry. Editing never prepares a
-stack generation automatically.
+after confirmation, but oversized files, symbolic links, and other non-regular
+definition paths are refused. Saving precedes server apply, so a valid file remains
+saved if the daemon is unavailable and can be applied later with an explicit retry.
+Editing never prepares a stack generation automatically.
 
 Portreeve Desktop never starts or stops a project process or container, invokes Docker
 Compose, owns application startup order, maps project environment variables, or asserts

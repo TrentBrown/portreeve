@@ -129,8 +129,8 @@ export function createStackDocumentService(client, options) {
     }
 
     let current = await inspectDefinition(session.filename, maxBytes);
-    if (current.kind === 'non-regular') {
-      return nonRegularResult(session);
+    if (current.kind === 'non-regular' || current.kind === 'oversized') {
+      return unsupportedTargetResult(session, current.kind);
     }
     const conflictReason = saveConflictReason(session, current.evidence);
     const authorized =
@@ -161,8 +161,8 @@ export function createStackDocumentService(client, options) {
       }
       if (isCode(error, 'stack_definition_changed_during_save')) {
         current = await inspectDefinition(session.filename, maxBytes);
-        return current.kind === 'non-regular'
-          ? nonRegularResult(session)
+        return current.kind === 'non-regular' || current.kind === 'oversized'
+          ? unsupportedTargetResult(session, current.kind)
           : conflictResult(
               session,
               current.evidence,
@@ -302,17 +302,22 @@ export function createStackDocumentService(client, options) {
   });
 }
 
-/** @param {any} session */
-function nonRegularResult(session) {
+/** @param {any} session @param {'non-regular'|'oversized'} kind */
+function unsupportedTargetResult(session, kind) {
+  const oversized = kind === 'oversized';
   return mutationResult(session, {
     outcome: 'failed',
     saved: false,
     applied: false,
     changed: null,
-    message: 'The stack definition path is not a regular file.',
+    message: oversized
+      ? 'The existing stack definition is too large to replace safely.'
+      : 'The stack definition path is not a regular file.',
     error: {
-      code: 'stack_definition_not_regular',
-      message: 'The stack definition path is not a regular file.',
+      code: oversized ? 'stack_definition_too_large' : 'stack_definition_not_regular',
+      message: oversized
+        ? 'The existing stack definition is too large to replace safely.'
+        : 'The stack definition path is not a regular file.',
     },
   });
 }
@@ -618,8 +623,13 @@ function reduceError(error, fallbackCode) {
   const code =
     error instanceof Error && 'code' in error && typeof error.code === 'string'
       ? error.code
-      : fallbackCode;
-  return { code, message: safeMessage(error, 'The operation failed.') };
+      : null;
+  if (code === 'unavailable') {
+    return { code, message: 'The Portreeve server is unavailable.' };
+  }
+  return code === null
+    ? { code: fallbackCode, message: 'The operation failed.' }
+    : { code, message: safeMessage(error, 'The operation failed.') };
 }
 
 /** @param {unknown} error @param {string} fallback */
