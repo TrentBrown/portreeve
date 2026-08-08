@@ -22,7 +22,7 @@ retention behavior without executing project commands.
 
 ## I-2 - Add daemon operation coordination
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R6, R7, R8
@@ -35,7 +35,7 @@ safe metadata, and recent history.
 
 ## I-3 - Implement environment and evidence services
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1d
 - **Plan steps:** P3
 - **Rubric criteria:** R2, R3, R5, R6, R8

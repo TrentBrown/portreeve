@@ -7,7 +7,15 @@ import { z } from 'zod';
 import { TimestampSchema } from '../protocol/schemas.js';
 
 const RevisionSchema = z.string().regex(/^[a-f0-9]{64}$/);
-const CacheSchema = z
+export const LauncherCachedEndpointSchema = z
+  .object({
+    component: z.string().min(1).max(128),
+    endpoint: z.string().min(1).max(128),
+    hostPort: z.number().int().min(1).max(65_535),
+    required: z.boolean(),
+  })
+  .strict();
+export const LauncherEnvironmentCacheSchema = z
   .object({
     revision: RevisionSchema,
     resolvedAt: TimestampSchema,
@@ -16,6 +24,7 @@ const CacheSchema = z
     activationId: z.uuid().nullable(),
     socketPath: z.string().min(1),
     environment: z.record(z.string(), z.string()),
+    endpoints: z.array(LauncherCachedEndpointSchema).default([]),
   })
   .strict();
 const EntrySchema = z
@@ -23,7 +32,7 @@ const EntrySchema = z
     stackRoot: z.string().min(1),
     trustedRevision: RevisionSchema.nullable(),
     trustedAt: TimestampSchema.nullable(),
-    cache: CacheSchema.nullable(),
+    cache: LauncherEnvironmentCacheSchema.nullable(),
   })
   .strict();
 export const LauncherLocalStateSchema = z
@@ -86,9 +95,9 @@ export function createLauncherLocalStateStore(options) {
       );
       return entry?.trustedRevision === revision;
     },
-    /** @param {string} stackRoot @param {z.input<typeof CacheSchema>} cache */
+    /** @param {string} stackRoot @param {z.input<typeof LauncherEnvironmentCacheSchema>} cache */
     async cache(stackRoot, cache) {
-      const parsed = CacheSchema.parse(cache);
+      const parsed = LauncherEnvironmentCacheSchema.parse(cache);
       return update((state) => {
         requireEntry(state, stackRoot).cache = parsed;
       });

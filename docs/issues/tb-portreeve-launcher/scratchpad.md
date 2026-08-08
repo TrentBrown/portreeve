@@ -106,3 +106,18 @@ Expose POST /v1/launcher-operations/begin, POST /v1/launcher-operations/{id}/ren
 
 **Alternatives considered:**
 Put mutation verbs under each stack - obscures operation identity and makes inspect/renew/complete less uniform; accept arbitrary metadata objects - would permit accidental command, environment, or output persistence; delete terminal rows after history emission - would prevent the required stack-local recent-operation view and idempotent completion.
+
+## [6] Separate observed listeners from verified activation ownership
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Shared launcher environment, CLI and Desktop integration, project launcher contract, evidence gates, degraded behavior, and local cache
+
+Inject only PORTREEVE_STACK_ROOT, PORTREEVE_STACK_ID, PORTREEVE_GENERATION_ID, PORTREEVE_SOCKET, and PORTREEVE_ACTIVATION_ID when an activation exists. Launcher mappings remain forbidden from using the reserved PORTREEVE_ prefix. Treat a fresh listener or matching Docker publication on a generation endpoint as observed for command-only classification even when no confirmed run exists. Reserve verified for a current matching activation whose required providers have fresh active evidence. A conflicting result requires mismatched durable claim, run, or provider evidence; the absence of a confirmed run alone is not a conflict. Degraded local lsof inspection may report stopped, partial, fully-observed, or uncertain with source local, but can never claim verified ownership.
+
+**Triggered by:** P3 must define exact reserved context names and turn existing port-level inventory into lifecycle evidence without overstating command-only ownership.
+
+**Alternatives considered:**
+Use current inventory classification directly - would label every command-only listener on a claimed port as conflicting; treat every expected listener as verified - would violate the approved ownership boundary; expose arbitrary context names - would destabilize the project-launcher contract and collision rules.

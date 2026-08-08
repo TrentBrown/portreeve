@@ -42,7 +42,7 @@ Append PR boundary entries here.
 ### PR #26 - Daemon launcher-operation coordination
 
 - **PR:** [#26](https://github.com/TrentBrown/portreeve/pull/26)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P2 / I-2: strict `launcher-operations-v1` schemas and routes,
   version-7 durable sessions, one-way credential storage, transactional per-root
   admission, renewal, idempotent completion, lazy and startup expiry, bounded safe
