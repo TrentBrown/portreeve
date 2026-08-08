@@ -88,3 +88,14 @@ Append PR boundary entries here.
   assertions. The release and desktop package build, and packaged macOS smoke covers
   creation, validation focus, preview, dirty guards, save/apply failure details,
   successful retry, direct editing, advanced fields, and window-close discard behavior.
+
+### PR #23 - Assembled feature completion
+
+- **PR:** [#23](https://github.com/TrentBrown/portreeve/pull/23)
+- **Status:** draft
+- **Scope:** P8 / I-7 and the complete feature: final public contract, migration,
+  safety, troubleshooting, launcher-boundary, release, mixed-stack, and packaged desktop
+  acceptance documentation; active-host test-port robustness; feature-wide evaluation.
+- **Evidence packet:** [pr-23](pr-23/)
+- **Result:** Pending the formal feature-final evidence packet. Retention is already
+  confirmed tracked; every current feature-record file is in Git.

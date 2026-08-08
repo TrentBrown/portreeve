@@ -209,7 +209,7 @@ leave the saved-not-applied status visible while making the draft dirty.
 
 ## [10] Randomize test port probes outside OS dynamic ranges
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

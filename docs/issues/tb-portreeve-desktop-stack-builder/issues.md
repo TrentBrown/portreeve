@@ -85,12 +85,12 @@ explicit preparation behavior.
 
 ## I-7 - Verify and document the assembled feature
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P8
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
 - **Depends on:** I-3, I-6
-- **PR:** -
+- **PR:** [#23](https://github.com/TrentBrown/portreeve/pull/23)
 
 Update all user and contract documentation, run the complete automated and packaged
 runtime matrix, perform focused manual desktop acceptance, evaluate the full rubric, and
