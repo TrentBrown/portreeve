@@ -64,7 +64,7 @@ Append PR boundary entries here.
 ### PR #21 - Desktop stack editor draft model
 
 - **PR:** [#21](https://github.com/TrentBrown/portreeve/pull/21)
-- **Status:** open for review
+- **Status:** merged 2026-08-08 (`62cad2e05f159b085644c34a3180e2a3a9208099`)
 - **Scope:** P5 / I-5: full-schema renderer drafts, stable component, endpoint, and
   dependency identities, allocation modes, dependency-safe rename/delete, progressive
   validation, latest-valid preview, and deterministic concise serialization.

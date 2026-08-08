@@ -58,6 +58,7 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
     'apps/desktop/preload/index.cjs',
     'apps/desktop/renderer/renderer.js',
     'apps/desktop/renderer/stack-editor-model.js',
+    'apps/desktop/renderer/stack-editor-view.js',
   ];
   const source = (await Promise.all(files.map((file) => readFile(file, 'utf8')))).join(
     '\n',

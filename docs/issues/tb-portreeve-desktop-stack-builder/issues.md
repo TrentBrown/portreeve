@@ -60,7 +60,7 @@ tests.
 
 ## I-5 - Implement the complete editor model
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P5
 - **Rubric criteria:** R5, R6
@@ -72,7 +72,7 @@ progressive validation, concise serialization, and exact preview with focused un
 
 ## I-6 - Deliver the dedicated Stacks-tab editor
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P6, P7
 - **Rubric criteria:** R3, R4, R5, R6, R7, R8

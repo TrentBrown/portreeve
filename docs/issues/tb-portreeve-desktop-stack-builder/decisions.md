@@ -111,3 +111,90 @@ violate the approved order guarantee.
   contract preserves the user's editor order.
 
 **Promoted:** 2026-08-07. PR: #21.
+
+---
+
+## Deliver the editor view with trusted document integration
+
+**Confidence:** HIGH
+
+**Blast Radius:** Desktop renderer entry points, stack editor view, navigation guards,
+trusted document mutations, and packaged application verification
+
+Deliver plan steps P6 and P7 as one coherent PR slice. The visible editor opens through
+the already-merged opaque document capabilities, and its primary action performs the
+approved save-then-apply flow, conflict confirmation, saved-not-applied recovery, and
+successful return to stack details. A visible editor with a disabled or placeholder
+save action would not provide an independently useful workflow, and issue I-6 already
+owns both plan steps.
+
+**Triggered by:** Implementing the first visible Stacks-tab editor entry point required
+a meaningful primary action and complete outcome handling to support packaged runtime
+verification.
+
+**Alternatives considered:**
+- Ship the form with no save action - rejected because users could build a draft but
+  could not complete the advertised task.
+- Expose Save and Apply but defer its outcomes - rejected because conflict and
+  saved-not-applied states are part of the same filesystem mutation boundary.
+- Create separate PRs for opening and saving the editor - rejected because neither
+  slice would be a coherent, manually verifiable user workflow.
+
+**Promoted:** 2026-08-08. PR: pending.
+
+---
+
+## Re-enable editor controls after an open operation
+
+**Confidence:** HIGH
+
+**Blast Radius:** Desktop stack editor controls immediately after native directory or
+known-stack selection
+
+Clear the editor's local busy state and explicitly re-enable its freshly rendered
+controls when an open operation settles. The initial render intentionally occurs while
+the native document operation is still marked busy, so its controls are disabled; the
+same render must not remain permanently disabled after the operation completes.
+
+**Triggered by:** Packaged macOS smoke testing showed every control disabled after
+selecting a valid disposable stack root.
+
+**Alternatives considered:**
+- Render only after clearing busy - rejected because the editor should become visible
+  and focusable as part of the successful open path while retaining one consistent
+  operation cleanup point.
+- Leave controls disabled until another renderer refresh - rejected because opening a
+  new stack is otherwise unusable and no refresh is guaranteed.
+
+**Promoted:** 2026-08-08. PR: pending.
+
+---
+
+## Isolate generic CLI tests from host Docker state
+
+**Confidence:** HIGH
+
+**Blast Radius:** Shared in-process CLI test runtime, lifecycle command tests, and every
+command test that uses the shared runtime
+
+Canonicalize temporary runtime and lifecycle-test directories before returning them to
+tests, and start the shared command-test server with an intentionally unavailable Docker
+executable. This keeps workspace filters and purge evidence aligned with the server's
+canonical path contract and prevents a developer's unrelated running containers from
+adding Docker inspection latency to non-Docker command tests. Dedicated Docker adapter,
+stack evidence, compiled runtime, and server-client suites retain real or explicit
+Docker coverage.
+
+**Triggered by:** Full and isolated verification failed when macOS exposed the same
+temporary directory as `/var` to the test and `/private/var` to the server, while four
+unrelated running containers made each inventory request take roughly 3.5 seconds.
+
+**Alternatives considered:**
+- Raise the five-second test timeout - rejected because it would retain host-container
+  coupling and would not fix the canonical workspace assertion.
+- Stop the developer's containers during tests - rejected because tests must not mutate
+  unrelated local workloads.
+- Disable Docker evidence globally - rejected because Docker-specific suites must
+  continue to verify the capability explicitly.
+
+**Promoted:** 2026-08-08. PR: pending.

@@ -18,7 +18,8 @@ body {
   min-width: 720px;
 }
 button,
-input {
+input,
+select {
   font: inherit;
 }
 .app-header {
@@ -70,6 +71,7 @@ button {
 button:hover,
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
 summary:focus-visible {
   border-color: #24634f;
   outline: 3px solid rgb(36 99 79 / 22%);
@@ -250,6 +252,13 @@ input {
   background: #fffdf7;
   padding: 9px 12px;
 }
+select {
+  border: 1px solid #b9beb8;
+  border-radius: 9px;
+  background: #fffdf7;
+  color: inherit;
+  padding: 9px 12px;
+}
 .ports-grid {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(280px, 2fr);
@@ -318,6 +327,214 @@ input {
 .stack-detail {
   max-height: 68vh;
   overflow: auto;
+}
+.stack-editor {
+  display: grid;
+  gap: 18px;
+}
+.stack-editor-header {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.stack-editor-header h2 {
+  margin-bottom: 7px;
+}
+.stack-editor-header .eyebrow {
+  margin-bottom: 5px;
+}
+.stack-editor > .editor-field {
+  max-width: 560px;
+}
+.stack-editor-workspace {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr);
+  gap: 18px;
+  align-items: start;
+}
+.editor-components,
+.editor-detail {
+  min-width: 0;
+}
+.editor-components {
+  position: sticky;
+  top: 18px;
+}
+.editor-subheading,
+.editor-detail-heading,
+.editor-record-heading,
+.stack-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.editor-subheading {
+  margin: 24px 0 12px;
+  border-top: 1px solid #e4e1d9;
+  padding-top: 18px;
+}
+.editor-components .editor-subheading {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+.editor-subheading h3,
+.editor-detail-heading h3,
+.editor-record-heading h4 {
+  margin-bottom: 0;
+}
+.editor-component-list,
+.editor-record-list {
+  display: grid;
+  gap: 10px;
+}
+.editor-component-button {
+  width: 100%;
+  border-radius: 10px;
+  padding: 11px 13px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.editor-component-button.selected {
+  border-color: #24634f;
+  background: #edf5ef;
+  color: #174a3a;
+  font-weight: 700;
+}
+.editor-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.editor-field {
+  min-width: 0;
+}
+.editor-field > label:not(.checkbox-field label) {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.editor-field > input:not([type='checkbox']),
+.editor-field > select {
+  width: 100%;
+}
+.checkbox-field {
+  align-self: end;
+  padding-bottom: 9px;
+}
+.checkbox-field label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 600;
+}
+.checkbox-field input {
+  width: 18px;
+  height: 18px;
+}
+.editor-record {
+  border: 1px solid #e0dcd3;
+  border-radius: 12px;
+  background: #fffefb;
+  padding: 16px;
+}
+.editor-record-heading {
+  margin-bottom: 14px;
+}
+.editor-advanced {
+  margin-top: 14px;
+  border-top: 1px solid #e7e3da;
+  padding-top: 12px;
+}
+.editor-advanced summary,
+.editor-preview summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.editor-advanced .editor-field-grid {
+  margin-top: 14px;
+}
+.editor-preview {
+  padding: 18px 20px;
+}
+.editor-preview > p {
+  margin: 12px 0;
+}
+.editor-json {
+  max-height: 360px;
+  margin-bottom: 0;
+}
+.editor-validation,
+.editor-status {
+  border: 1px solid #d9af84;
+  border-radius: 10px;
+  background: #fff4e7;
+  color: #713d12;
+  padding: 14px 18px;
+}
+.editor-status.info {
+  border-color: #a9c6b9;
+  background: #edf5ef;
+  color: #174a3a;
+}
+.editor-status.error {
+  border-color: #d79b94;
+  background: #fff0ed;
+  color: #812d24;
+}
+.editor-validation h3,
+.editor-status h3 {
+  margin-bottom: 7px;
+  font-family: inherit;
+  font-size: 15px;
+}
+.editor-validation ul,
+.editor-status ul {
+  margin-bottom: 0;
+}
+.validation-link {
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.field-error,
+.warning-text {
+  color: #8d4d16;
+}
+.field-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+.editor-empty {
+  margin-bottom: 0;
+  border: 1px dashed #d6d2c8;
+  border-radius: 10px;
+  padding: 14px;
+}
+.stack-editor-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  border: 1px solid #d6d2c8;
+  border-radius: 14px;
+  background: rgb(255 253 247 / 96%);
+  box-shadow: 0 -8px 30px rgb(40 50 44 / 10%);
+  padding: 14px 18px;
+  backdrop-filter: blur(10px);
+}
+.stack-editor-actions p {
+  margin-bottom: 0;
+}
+button.small {
+  padding: 6px 11px;
+  font-size: 12px;
 }
 .stack-actions {
   margin-top: 18px;
@@ -498,8 +715,12 @@ dialog form > input {
 @media (max-width: 900px) {
   .overview-grid,
   .ports-grid,
-  .stacks-grid {
+  .stacks-grid,
+  .stack-editor-workspace {
     grid-template-columns: 1fr;
+  }
+  .editor-components {
+    position: static;
   }
   .cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -518,5 +739,8 @@ dialog form > input {
   .cards,
   .danger-content {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .editor-field-grid {
+    grid-template-columns: 1fr;
   }
 }
