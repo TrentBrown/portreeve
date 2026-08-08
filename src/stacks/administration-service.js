@@ -137,7 +137,11 @@ export class StackAdministrationService {
    */
   async #evaluate(stack, now) {
     this.registry.expirePendingLeases(now);
+    this.registry.expireLauncherOperations(now);
     const reasons = new Set();
+    for (const operation of this.registry.listActiveLauncherOperations(stack.id)) {
+      reasons.add(`launcher-operation-active:${operation.operation}`);
+    }
     const claims = this.registry.listStackClaims(stack.id);
     const liveActivation = this.registry.getLiveStackActivationForStack(stack.id);
     const conclusivelyGoneRunIds = new Set();

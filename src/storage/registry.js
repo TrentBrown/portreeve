@@ -15,9 +15,18 @@ import { createLeaseToken, verifyLeaseToken } from '../domain/lease-token.js';
 import { DEFAULT_SERVER_SETTINGS, ServerSettingsSchema } from '../domain/settings.js';
 import { hasExpired, toTimestamp } from '../domain/time.js';
 import {
+  LAUNCHER_OPERATION_HISTORY_LIMIT,
+  LAUNCHER_OPERATION_TTL_MILLISECONDS,
+} from '../protocol/constants.js';
+import {
   ClaimIdentitySchema,
   ClaimModeSchema,
   IdentifierSchema,
+  LauncherExecutionModeSchema,
+  LauncherOperationCompletionSchema,
+  LauncherOperationNameSchema,
+  LauncherOperationRecordSchema,
+  LauncherOperationTerminalMetadataSchema,
   PortSchema,
   StackActivationSchema,
   StackDefinitionSchema,
@@ -28,6 +37,7 @@ import {
 import { applyMigrations } from './migrations.js';
 
 /** @typedef {import('zod').infer<typeof LeaseRecordSchema>} LeaseRecord */
+/** @typedef {{id: string, stack_id: string, state: 'active' | 'terminal', credential_hash: string, completion_json: string | null}} LauncherOperationCredentialRow */
 
 const ClaimRowSchema = z.object({
   id: IdentifierSchema,
@@ -81,6 +91,24 @@ const StackRowSchema = z.object({
   created_at: TimestampSchema,
   updated_at: TimestampSchema,
   last_used_at: TimestampSchema,
+});
+
+const LauncherOperationRowSchema = z.object({
+  id: IdentifierSchema,
+  stack_id: IdentifierSchema,
+  stack_root: z.string().min(1),
+  operation: LauncherOperationNameSchema,
+  execution_mode: LauncherExecutionModeSchema,
+  launcher_revision: z.string().regex(/^[a-f0-9]{64}$/u),
+  caller_operation_id: IdentifierSchema,
+  generation_id: IdentifierSchema.nullable(),
+  state: z.enum(['active', 'terminal']),
+  credential_hash: z.string().regex(/^[a-f0-9]{64}$/u),
+  deadline_at: TimestampSchema,
+  started_at: TimestampSchema,
+  renewed_at: TimestampSchema,
+  completed_at: TimestampSchema.nullable(),
+  completion_json: z.string().nullable(),
 });
 
 export class RegistryError extends Error {
@@ -334,6 +362,7 @@ export class Registry {
       );
     }
     const timestamp = toTimestamp(now);
+    this.expireLauncherOperations(now);
     let stackId = '';
     let changed = false;
 
@@ -370,6 +399,28 @@ export class Registry {
       changed = existing === null || existing.current_revision !== revision;
       if (!changed) return;
       if (existing !== null) {
+        const activeLauncherOperation = this.database
+          .query(
+            `SELECT id FROM launcher_operations
+             WHERE stack_id = $stackId AND state = 'active'
+             LIMIT 1`,
+          )
+          .get({ stackId: existing.id });
+        if (activeLauncherOperation !== null) {
+          const parsed = z
+            .object({ id: IdentifierSchema })
+            .parse(activeLauncherOperation);
+          throw new RegistryError(
+            'conflict',
+            `Stack ${existing.id} has an active launcher operation and cannot change definition.`,
+            {
+              stackId: existing.id,
+              stackRoot,
+              operationId: parsed.id,
+              reason: 'launcher_operation_active',
+            },
+          );
+        }
         const liveActivation = this.database
           .query(
             `SELECT id FROM stack_activations
@@ -2447,6 +2498,7 @@ export class Registry {
   deleteStack(stackId, now = new Date()) {
     const id = IdentifierSchema.parse(stackId);
     const timestamp = toTimestamp(now);
+    this.expireLauncherOperations(now);
     const remove = this.database.transaction(() => {
       const stack = this.getStack(id);
       if (stack === null) {
@@ -2461,6 +2513,20 @@ export class Registry {
             stackId: id,
             activationId: liveActivation.id,
             reason: 'activation_live',
+          },
+        );
+      }
+      const activeLauncherOperations = this.#listActiveLauncherOperations(id);
+      if (activeLauncherOperations.length > 0) {
+        throw new RegistryError(
+          'conflict',
+          `Stack ${id} still has an active launcher operation.`,
+          {
+            stackId: id,
+            operationIds: activeLauncherOperations.map(
+              ({ id: operationId }) => operationId,
+            ),
+            reason: 'launcher_operation_active',
           },
         );
       }
@@ -2527,6 +2593,381 @@ export class Registry {
       };
     });
     return remove.immediate();
+  }
+
+  /**
+   * @param {{
+   *   stackId: unknown,
+   *   operation: unknown,
+   *   executionMode: unknown,
+   *   launcherRevision: unknown,
+   *   callerOperationId: unknown,
+   *   generationId?: unknown
+   * }} input
+   * @param {Date} [now]
+   */
+  beginLauncherOperation(input, now = new Date()) {
+    const stackId = IdentifierSchema.parse(input.stackId);
+    const operation = LauncherOperationNameSchema.parse(input.operation);
+    const executionMode = LauncherExecutionModeSchema.parse(input.executionMode);
+    const launcherRevision = z
+      .string()
+      .regex(/^[a-f0-9]{64}$/u)
+      .parse(input.launcherRevision);
+    const callerOperationId = IdentifierSchema.parse(input.callerOperationId);
+    const generationId =
+      input.generationId === undefined || input.generationId === null
+        ? null
+        : IdentifierSchema.parse(input.generationId);
+    if (executionMode === 'attached' && operation !== 'start') {
+      throw new RegistryError(
+        'invalid_input',
+        'Attached launcher execution is available only for Start.',
+        { operation, executionMode, reason: 'attached_operation_invalid' },
+      );
+    }
+    this.expireLauncherOperations(now);
+    const timestamp = toTimestamp(now);
+    const deadlineAt = new Date(
+      now.getTime() + LAUNCHER_OPERATION_TTL_MILLISECONDS,
+    ).toISOString();
+    const { token: credential, tokenHash: credentialHash } = createLeaseToken();
+    const id = randomUUID();
+
+    const begin = this.database.transaction(() => {
+      const stack = this.getStack(stackId);
+      if (stack === null) {
+        throw new RegistryError('not_found', `Stack ${stackId} was not found.`, {
+          stackId,
+        });
+      }
+      if (generationId !== null) {
+        const generation = this.getStackGeneration(generationId);
+        if (generation === null) {
+          throw new RegistryError(
+            'not_found',
+            `Stack generation ${generationId} was not found.`,
+            { stackId, generationId },
+          );
+        }
+        if (generation.stackId !== stackId) {
+          throw new RegistryError(
+            'invalid_input',
+            `Stack generation ${generationId} does not belong to stack ${stackId}.`,
+            { stackId, generationId, reason: 'generation_stack_mismatch' },
+          );
+        }
+      }
+      const duplicate = this.database
+        .query(
+          `SELECT id FROM launcher_operations
+           WHERE stack_id = $stackId AND caller_operation_id = $callerOperationId`,
+        )
+        .get({ stackId, callerOperationId });
+      if (duplicate !== null) {
+        const parsed = z.object({ id: IdentifierSchema }).parse(duplicate);
+        throw new RegistryError(
+          'conflict',
+          `Caller operation ${callerOperationId} already exists for stack ${stackId}.`,
+          {
+            stackId,
+            callerOperationId,
+            operationId: parsed.id,
+            reason: 'caller_operation_exists',
+          },
+        );
+      }
+
+      const active = this.#listActiveLauncherOperations(stackId);
+      const attachedStart = active.find(
+        (candidate) =>
+          candidate.operation === 'start' && candidate.executionMode === 'attached',
+      );
+      const attachedCompanionAllowed =
+        active.length === 1 &&
+        attachedStart !== undefined &&
+        executionMode === 'finite' &&
+        ['status', 'stop'].includes(operation);
+      if (active.length > 0 && !attachedCompanionAllowed) {
+        throw new RegistryError(
+          'conflict',
+          `Stack ${stackId} already has an incompatible launcher operation.`,
+          {
+            stackId,
+            requestedOperation: operation,
+            requestedExecutionMode: executionMode,
+            activeOperations: active.map((candidate) => ({
+              id: candidate.id,
+              operation: candidate.operation,
+              executionMode: candidate.executionMode,
+              deadlineAt: candidate.deadlineAt,
+            })),
+            reason: 'launcher_operation_active',
+          },
+        );
+      }
+
+      this.database
+        .query(
+          `INSERT INTO launcher_operations (
+             id, stack_id, operation, execution_mode, launcher_revision,
+             caller_operation_id, generation_id, state, credential_hash,
+             deadline_at, started_at, renewed_at, completed_at, completion_json
+           ) VALUES (
+             $id, $stackId, $operation, $executionMode, $launcherRevision,
+             $callerOperationId, $generationId, 'active', $credentialHash,
+             $deadlineAt, $timestamp, $timestamp, NULL, NULL
+           )`,
+        )
+        .run({
+          id,
+          stackId,
+          operation,
+          executionMode,
+          launcherRevision,
+          callerOperationId,
+          generationId,
+          credentialHash,
+          deadlineAt,
+          timestamp,
+        });
+      const record = this.getLauncherOperation(id);
+      if (record === null) {
+        throw new RegistryError(
+          'internal',
+          `Launcher operation ${id} disappeared after creation.`,
+        );
+      }
+      this.#appendHistory(
+        'launcher.operation.began',
+        'launcher-operation',
+        id,
+        record,
+        timestamp,
+      );
+    });
+    begin.immediate();
+    const operationRecord = this.getLauncherOperation(id);
+    if (operationRecord === null) {
+      throw new RegistryError(
+        'internal',
+        `Launcher operation ${id} disappeared after creation.`,
+      );
+    }
+    return { operation: operationRecord, credential };
+  }
+
+  /** @param {string} operationId */
+  getLauncherOperation(operationId) {
+    const id = IdentifierSchema.parse(operationId);
+    const row = this.database
+      .query(
+        `SELECT launcher_operations.*, stacks.workspace_root AS stack_root
+         FROM launcher_operations
+         JOIN stacks ON stacks.id = launcher_operations.stack_id
+         WHERE launcher_operations.id = $id`,
+      )
+      .get({ id });
+    return row === null ? null : launcherOperationFromRow(row);
+  }
+
+  /**
+   * @param {string} stackId
+   * @param {number} [limit]
+   */
+  listLauncherOperations(stackId, limit = LAUNCHER_OPERATION_HISTORY_LIMIT) {
+    const id = IdentifierSchema.parse(stackId);
+    const maximum = z
+      .number()
+      .int()
+      .min(1)
+      .max(LAUNCHER_OPERATION_HISTORY_LIMIT)
+      .parse(limit);
+    return this.database
+      .query(
+        `SELECT launcher_operations.*, stacks.workspace_root AS stack_root
+         FROM launcher_operations
+         JOIN stacks ON stacks.id = launcher_operations.stack_id
+         WHERE launcher_operations.stack_id = $stackId
+         ORDER BY
+           COALESCE(launcher_operations.completed_at, launcher_operations.started_at) DESC,
+           launcher_operations.rowid DESC
+         LIMIT $limit`,
+      )
+      .all({ stackId: id, limit: maximum })
+      .map(launcherOperationFromRow);
+  }
+
+  /** @param {string} stackId */
+  listActiveLauncherOperations(stackId) {
+    return this.#listActiveLauncherOperations(IdentifierSchema.parse(stackId));
+  }
+
+  /**
+   * @param {string} operationId
+   * @param {string} credential
+   * @param {Date} [now]
+   */
+  renewLauncherOperation(operationId, credential, now = new Date()) {
+    const id = IdentifierSchema.parse(operationId);
+    const parsedCredential = z.string().min(43).max(128).parse(credential);
+    this.expireLauncherOperations(now);
+    const timestamp = toTimestamp(now);
+    const deadlineAt = new Date(
+      now.getTime() + LAUNCHER_OPERATION_TTL_MILLISECONDS,
+    ).toISOString();
+    const renew = this.database.transaction(() => {
+      const row = this.#getLauncherOperationCredentialRow(id);
+      this.#assertLauncherOperationCredential(row, parsedCredential);
+      if (row.state !== 'active') {
+        throw new RegistryError(
+          'conflict',
+          `Launcher operation ${id} is already ${row.state}.`,
+          { operationId: id, reason: 'launcher_operation_terminal' },
+        );
+      }
+      this.database
+        .query(
+          `UPDATE launcher_operations
+           SET deadline_at = $deadlineAt, renewed_at = $timestamp
+           WHERE id = $id AND state = 'active'`,
+        )
+        .run({ id, deadlineAt, timestamp });
+    });
+    renew.immediate();
+    const operation = this.getLauncherOperation(id);
+    if (operation === null) {
+      throw new RegistryError('internal', `Launcher operation ${id} disappeared.`);
+    }
+    return operation;
+  }
+
+  /**
+   * @param {string} operationId
+   * @param {string} credential
+   * @param {unknown} completion
+   * @param {Date} [now]
+   */
+  completeLauncherOperation(operationId, credential, completion, now = new Date()) {
+    const id = IdentifierSchema.parse(operationId);
+    const parsedCredential = z.string().min(43).max(128).parse(credential);
+    const parsedCompletion = LauncherOperationCompletionSchema.parse(completion);
+    this.expireLauncherOperations(now);
+    const timestamp = toTimestamp(now);
+    let changed = false;
+    const complete = this.database.transaction(() => {
+      const row = this.#getLauncherOperationCredentialRow(id);
+      this.#assertLauncherOperationCredential(row, parsedCredential);
+      if (row.state === 'terminal') {
+        const stored = LauncherOperationTerminalMetadataSchema.parse(
+          JSON.parse(row.completion_json ?? 'null'),
+        );
+        if (!isDeepStrictEqual(stored, parsedCompletion)) {
+          throw new RegistryError(
+            'conflict',
+            `Launcher operation ${id} was completed with different metadata.`,
+            { operationId: id, reason: 'launcher_completion_mismatch' },
+          );
+        }
+        return;
+      }
+      this.database
+        .query(
+          `UPDATE launcher_operations
+           SET state = 'terminal', completed_at = $timestamp,
+               completion_json = $completionJson
+           WHERE id = $id AND state = 'active'`,
+        )
+        .run({ id, timestamp, completionJson: JSON.stringify(parsedCompletion) });
+      changed = true;
+      const record = this.getLauncherOperation(id);
+      if (record === null) {
+        throw new RegistryError(
+          'internal',
+          `Launcher operation ${id} disappeared after completion.`,
+        );
+      }
+      this.#appendHistory(
+        'launcher.operation.completed',
+        'launcher-operation',
+        id,
+        record,
+        timestamp,
+      );
+      this.#pruneLauncherOperationHistory(row.stack_id);
+    });
+    complete.immediate();
+    const operation = this.getLauncherOperation(id);
+    if (operation === null) {
+      throw new RegistryError('internal', `Launcher operation ${id} disappeared.`);
+    }
+    return { changed, operation };
+  }
+
+  /** @param {Date} [now] */
+  expireLauncherOperations(now = new Date()) {
+    const timestamp = toTimestamp(now);
+    const expired = this.database.transaction(() => {
+      const rows = this.database
+        .query(
+          `SELECT id, stack_id, started_at, deadline_at
+           FROM launcher_operations
+           WHERE state = 'active' AND deadline_at <= $timestamp
+           ORDER BY deadline_at, rowid`,
+        )
+        .all({ timestamp })
+        .map((row) =>
+          z
+            .object({
+              id: IdentifierSchema,
+              stack_id: IdentifierSchema,
+              started_at: TimestampSchema,
+              deadline_at: TimestampSchema,
+            })
+            .parse(row),
+        );
+      for (const row of rows) {
+        const completion = LauncherOperationTerminalMetadataSchema.parse({
+          outcome: 'lost',
+          exitCode: null,
+          signal: null,
+          degraded: false,
+          beforeEvidence: null,
+          afterEvidence: null,
+          failure: {
+            step: 'coordination',
+            code: 'client_lost',
+            message:
+              'The launcher operation credential was not renewed before its deadline.',
+          },
+        });
+        this.database
+          .query(
+            `UPDATE launcher_operations
+             SET state = 'terminal', completed_at = $completedAt,
+                 completion_json = $completionJson
+             WHERE id = $id AND state = 'active'`,
+          )
+          .run({
+            id: row.id,
+            completedAt: row.deadline_at,
+            completionJson: JSON.stringify(completion),
+          });
+        const record = this.getLauncherOperation(row.id);
+        if (record !== null) {
+          this.#appendHistory(
+            'launcher.operation.lost',
+            'launcher-operation',
+            row.id,
+            record,
+            timestamp,
+          );
+        }
+        this.#pruneLauncherOperationHistory(row.stack_id);
+      }
+      return rows.length;
+    });
+    return expired.immediate();
   }
 
   getSettings() {
@@ -2647,6 +3088,78 @@ export class Registry {
       parsed.payload,
       toTimestamp(now),
     );
+  }
+
+  /** @param {string} stackId */
+  #listActiveLauncherOperations(stackId) {
+    return this.database
+      .query(
+        `SELECT launcher_operations.*, stacks.workspace_root AS stack_root
+         FROM launcher_operations
+         JOIN stacks ON stacks.id = launcher_operations.stack_id
+         WHERE launcher_operations.stack_id = $stackId
+           AND launcher_operations.state = 'active'
+         ORDER BY launcher_operations.started_at, launcher_operations.rowid`,
+      )
+      .all({ stackId })
+      .map(launcherOperationFromRow);
+  }
+
+  /** @param {string} operationId */
+  #getLauncherOperationCredentialRow(operationId) {
+    const row = this.database
+      .query(
+        `SELECT id, stack_id, state, credential_hash, completion_json
+         FROM launcher_operations WHERE id = $operationId`,
+      )
+      .get({ operationId });
+    if (row === null) {
+      throw new RegistryError(
+        'not_found',
+        `Launcher operation ${operationId} was not found.`,
+        { operationId },
+      );
+    }
+    return /** @type {LauncherOperationCredentialRow} */ (
+      z
+        .object({
+          id: IdentifierSchema,
+          stack_id: IdentifierSchema,
+          state: z.enum(['active', 'terminal']),
+          credential_hash: z.string().regex(/^[a-f0-9]{64}$/u),
+          completion_json: z.string().nullable(),
+        })
+        .parse(row)
+    );
+  }
+
+  /**
+   * @param {LauncherOperationCredentialRow} row
+   * @param {string} credential
+   */
+  #assertLauncherOperationCredential(row, credential) {
+    if (!verifyLeaseToken(credential, row.credential_hash)) {
+      throw new RegistryError(
+        'invalid_operation_credential',
+        'Launcher operation credential does not match.',
+        { operationId: row.id },
+      );
+    }
+  }
+
+  /** @param {string} stackId */
+  #pruneLauncherOperationHistory(stackId) {
+    this.database
+      .query(
+        `DELETE FROM launcher_operations
+         WHERE stack_id = $stackId AND state = 'terminal' AND rowid NOT IN (
+           SELECT rowid FROM launcher_operations
+           WHERE stack_id = $stackId AND state = 'terminal'
+           ORDER BY completed_at DESC, rowid DESC
+           LIMIT $limit
+         )`,
+      )
+      .run({ stackId, limit: LAUNCHER_OPERATION_HISTORY_LIMIT });
   }
 
   /** @param {string} activationId @param {string} timestamp */
@@ -2937,6 +3450,44 @@ function stackFromRow(row) {
     createdAt: parsed.created_at,
     updatedAt: parsed.updated_at,
     lastUsedAt: parsed.last_used_at,
+  });
+}
+
+/** @param {unknown} row */
+function launcherOperationFromRow(row) {
+  const parsed = LauncherOperationRowSchema.parse(row);
+  const completion =
+    parsed.completion_json === null
+      ? null
+      : LauncherOperationTerminalMetadataSchema.parse(
+          JSON.parse(parsed.completion_json),
+        );
+  const completedAt = parsed.completed_at;
+  return LauncherOperationRecordSchema.parse({
+    id: parsed.id,
+    stackId: parsed.stack_id,
+    stackRoot: parsed.stack_root,
+    operation: parsed.operation,
+    executionMode: parsed.execution_mode,
+    launcherRevision: parsed.launcher_revision,
+    callerOperationId: parsed.caller_operation_id,
+    generationId: parsed.generation_id,
+    state: parsed.state,
+    outcome: completion?.outcome ?? null,
+    deadlineAt: parsed.deadline_at,
+    startedAt: parsed.started_at,
+    renewedAt: parsed.renewed_at,
+    completedAt,
+    durationMilliseconds:
+      completedAt === null
+        ? null
+        : Math.max(0, Date.parse(completedAt) - Date.parse(parsed.started_at)),
+    exitCode: completion?.exitCode ?? null,
+    signal: completion?.signal ?? null,
+    degraded: completion?.degraded ?? false,
+    beforeEvidence: completion?.beforeEvidence ?? null,
+    afterEvidence: completion?.afterEvidence ?? null,
+    failure: completion?.failure ?? null,
   });
 }
 

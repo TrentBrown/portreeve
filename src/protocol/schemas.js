@@ -433,6 +433,210 @@ export const StackStatusSchema = z.object({
   providers: z.array(StackProviderEvidenceSchema),
 });
 
+export const LauncherOperationNameSchema = z.enum([
+  'start',
+  'stop',
+  'restart',
+  'status',
+]);
+
+export const LauncherExecutionModeSchema = z.enum(['finite', 'attached']);
+
+export const LauncherEvidenceSummarySchema = z
+  .object({
+    classification: z.enum([
+      'stopped',
+      'partial',
+      'fully-observed',
+      'verified',
+      'conflicting',
+      'uncertain',
+    ]),
+    source: z.enum(['daemon', 'local', 'cached', 'unavailable']),
+    observedAt: TimestampSchema.nullable(),
+    generationId: IdentifierSchema.nullable(),
+    activationId: IdentifierSchema.nullable(),
+    listenerCount: z.number().int().min(0).max(10_000),
+    reasonCodes: z
+      .array(
+        z
+          .string()
+          .min(1)
+          .max(64)
+          .regex(/^[a-z0-9_-]+$/u),
+      )
+      .max(32),
+  })
+  .strict();
+
+export const LauncherFailureSummarySchema = z
+  .object({
+    step: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(/^[a-z0-9_-]+$/u),
+    code: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(/^[a-z0-9_-]+$/u),
+    message: z.string().min(1).max(1_024),
+  })
+  .strict();
+
+export const LauncherOperationCompletionSchema = z
+  .object({
+    outcome: z.enum(['succeeded', 'failed', 'cancelled', 'timed-out']),
+    exitCode: z.number().int().min(0).max(255).nullable().default(null),
+    signal: z
+      .string()
+      .min(4)
+      .max(32)
+      .regex(/^SIG[A-Z0-9]+$/u)
+      .nullable()
+      .default(null),
+    degraded: z.boolean().default(false),
+    beforeEvidence: LauncherEvidenceSummarySchema.nullable().default(null),
+    afterEvidence: LauncherEvidenceSummarySchema.nullable().default(null),
+    failure: LauncherFailureSummarySchema.nullable().default(null),
+  })
+  .strict();
+
+export const LauncherOperationOutcomeSchema = z.enum([
+  'succeeded',
+  'failed',
+  'cancelled',
+  'timed-out',
+  'lost',
+]);
+
+export const LauncherOperationTerminalMetadataSchema =
+  LauncherOperationCompletionSchema.extend({
+    outcome: LauncherOperationOutcomeSchema,
+  }).strict();
+
+export const LauncherOperationRecordSchema = z
+  .object({
+    id: IdentifierSchema,
+    stackId: IdentifierSchema,
+    stackRoot: z.string().min(1),
+    operation: LauncherOperationNameSchema,
+    executionMode: LauncherExecutionModeSchema,
+    launcherRevision: z.string().regex(/^[a-f0-9]{64}$/u),
+    callerOperationId: IdentifierSchema,
+    generationId: IdentifierSchema.nullable(),
+    state: z.enum(['active', 'terminal']),
+    outcome: LauncherOperationOutcomeSchema.nullable(),
+    deadlineAt: TimestampSchema,
+    startedAt: TimestampSchema,
+    renewedAt: TimestampSchema,
+    completedAt: TimestampSchema.nullable(),
+    durationMilliseconds: z.number().int().min(0).nullable(),
+    exitCode: z.number().int().min(0).max(255).nullable(),
+    signal: z
+      .string()
+      .min(4)
+      .max(32)
+      .regex(/^SIG[A-Z0-9]+$/u)
+      .nullable(),
+    degraded: z.boolean(),
+    beforeEvidence: LauncherEvidenceSummarySchema.nullable(),
+    afterEvidence: LauncherEvidenceSummarySchema.nullable(),
+    failure: LauncherFailureSummarySchema.nullable(),
+  })
+  .strict()
+  .superRefine((operation, context) => {
+    if (operation.executionMode === 'attached' && operation.operation !== 'start') {
+      context.addIssue({
+        code: 'custom',
+        path: ['executionMode'],
+        message: 'attached execution is available only for Start',
+      });
+    }
+    const hasTerminalIdentity =
+      operation.outcome !== null &&
+      operation.completedAt !== null &&
+      operation.durationMilliseconds !== null;
+    const hasTerminalDetails =
+      operation.exitCode !== null ||
+      operation.signal !== null ||
+      operation.degraded ||
+      operation.beforeEvidence !== null ||
+      operation.afterEvidence !== null ||
+      operation.failure !== null;
+    if (
+      (operation.state === 'active' && (hasTerminalIdentity || hasTerminalDetails)) ||
+      (operation.state === 'terminal' && !hasTerminalIdentity)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['state'],
+        message:
+          'active operations cannot contain terminal fields and terminal operations require outcome timing',
+      });
+    }
+  });
+
+export const LauncherOperationBeginRequestSchema = z
+  .object({
+    client: ClientCompatibilitySchema,
+    stackId: IdentifierSchema,
+    operation: LauncherOperationNameSchema,
+    executionMode: LauncherExecutionModeSchema.default('finite'),
+    launcherRevision: z.string().regex(/^[a-f0-9]{64}$/u),
+    callerOperationId: IdentifierSchema,
+    generationId: IdentifierSchema.nullable().default(null),
+  })
+  .strict()
+  .refine(
+    ({ executionMode, operation }) =>
+      executionMode === 'finite' || operation === 'start',
+    {
+      path: ['executionMode'],
+      message: 'attached execution is available only for Start',
+    },
+  );
+
+export const LauncherOperationBeginResponseSchema = z
+  .object({
+    operation: LauncherOperationRecordSchema,
+    credential: LeaseTokenSchema,
+    renewAfterMilliseconds: z.literal(10_000),
+  })
+  .strict();
+
+export const LauncherOperationRenewRequestSchema = z
+  .object({
+    client: ClientCompatibilitySchema,
+    credential: LeaseTokenSchema,
+  })
+  .strict();
+
+export const LauncherOperationRenewResponseSchema = z
+  .object({
+    operation: LauncherOperationRecordSchema,
+    renewAfterMilliseconds: z.literal(10_000),
+  })
+  .strict();
+
+export const LauncherOperationCompleteRequestSchema = z
+  .object({
+    client: ClientCompatibilitySchema,
+    credential: LeaseTokenSchema,
+    completion: LauncherOperationCompletionSchema,
+  })
+  .strict();
+
+export const LauncherOperationCompleteResponseSchema = z
+  .object({
+    changed: z.boolean(),
+    operation: LauncherOperationRecordSchema,
+  })
+  .strict();
+
+export const LauncherOperationListSchema = z.array(LauncherOperationRecordSchema);
+
 export const StackPruneRequestSchema = z.object({
   client: ClientCompatibilitySchema,
   olderThanMilliseconds: z.number().int().min(0).max(315_576_000_000),
@@ -802,6 +1006,7 @@ export const ErrorCodeSchema = z.enum([
   ERROR_CODES.incompatibleProtocol,
   ERROR_CODES.invalidInput,
   ERROR_CODES.invalidLeaseToken,
+  ERROR_CODES.invalidOperationCredential,
   ERROR_CODES.leaseExpired,
   ERROR_CODES.leaseNotPending,
   ERROR_CODES.notFound,

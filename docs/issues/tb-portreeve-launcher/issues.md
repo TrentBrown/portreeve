@@ -9,7 +9,7 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Define launcher configuration and trust
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R2, R8
@@ -22,7 +22,7 @@ retention behavior without executing project commands.
 
 ## I-2 - Add daemon operation coordination
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R6, R7, R8

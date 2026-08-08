@@ -25,7 +25,7 @@ Append PR boundary entries here.
 ### PR #25 - Launcher configuration and trust foundations
 
 - **PR:** [#25](https://github.com/TrentBrown/portreeve/pull/25)
-- **Status:** in review
+- **Status:** merged 2026-08-08
 - **Scope:** P1 / I-1: strict launcher schema, structured endpoint mappings,
   deterministic exact-byte revisions, canonical contained documents, conservative
   manifest suggestions, private shared trust/cache state, and reset placement.

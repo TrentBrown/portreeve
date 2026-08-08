@@ -344,6 +344,44 @@ export const MIGRATIONS = Object.freeze([
         ON stack_activations (generation_id, created_at DESC);
     `,
   }),
+  Object.freeze({
+    version: 7,
+    name: 'launcher-operation-coordination',
+    sql: `
+      CREATE TABLE launcher_operations (
+        id TEXT PRIMARY KEY,
+        stack_id TEXT NOT NULL REFERENCES stacks(id) ON DELETE CASCADE,
+        operation TEXT NOT NULL
+          CHECK (operation IN ('start', 'stop', 'restart', 'status')),
+        execution_mode TEXT NOT NULL
+          CHECK (execution_mode IN ('finite', 'attached')),
+        launcher_revision TEXT NOT NULL CHECK (length(launcher_revision) = 64),
+        caller_operation_id TEXT NOT NULL,
+        generation_id TEXT REFERENCES stack_generations(id) ON DELETE SET NULL,
+        state TEXT NOT NULL CHECK (state IN ('active', 'terminal')),
+        credential_hash TEXT NOT NULL UNIQUE CHECK (length(credential_hash) = 64),
+        deadline_at TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        renewed_at TEXT NOT NULL,
+        completed_at TEXT,
+        completion_json TEXT,
+        CHECK (execution_mode = 'finite' OR operation = 'start'),
+        CHECK (
+          (state = 'active' AND completed_at IS NULL AND completion_json IS NULL)
+          OR
+          (state = 'terminal' AND completed_at IS NOT NULL AND completion_json IS NOT NULL)
+        ),
+        UNIQUE (stack_id, caller_operation_id)
+      );
+
+      CREATE INDEX launcher_operations_stack_recent
+        ON launcher_operations (stack_id, started_at DESC);
+
+      CREATE INDEX launcher_operations_active_deadline
+        ON launcher_operations (deadline_at)
+        WHERE state = 'active';
+    `,
+  }),
 ]);
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.at(-1)?.version ?? 0;

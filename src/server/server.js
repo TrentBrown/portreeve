@@ -27,6 +27,14 @@ import {
   InventoryClassificationSchema,
   InventoryEntrySchema,
   InventoryListSchema,
+  LauncherOperationBeginRequestSchema,
+  LauncherOperationBeginResponseSchema,
+  LauncherOperationCompleteRequestSchema,
+  LauncherOperationCompleteResponseSchema,
+  LauncherOperationListSchema,
+  LauncherOperationRecordSchema,
+  LauncherOperationRenewRequestSchema,
+  LauncherOperationRenewResponseSchema,
   MutationAcknowledgementSchema,
   PORTREEVE_HEALTH,
   PortSchema,
@@ -72,6 +80,7 @@ import { StackCoordinationService } from '../stacks/coordination-service.js';
 import { StackAdministrationService } from '../stacks/administration-service.js';
 import { StackDiscoveryService } from '../stacks/discovery-service.js';
 import { StackDefinitionService } from '../stacks/service.js';
+import { LauncherOperationService } from '../launcher/operation-service.js';
 
 /**
  * @param {{
@@ -84,6 +93,7 @@ import { StackDefinitionService } from '../stacks/service.js';
  *   stackCoordinationService?: StackCoordinationService,
  *   stackAdministrationService?: StackAdministrationService,
  *   stackDiscoveryService?: StackDiscoveryService,
+ *   launcherOperationService?: LauncherOperationService,
  *   dockerAdapter?: import('../docker/adapter.js').DockerEvidenceAdapter | null,
  *   diagnosticLog?: import('../observability/diagnostic-log.js').DiagnosticLog,
  *   mode?: 'manual' | 'supervised'
@@ -144,6 +154,10 @@ export async function startPortreeveServer(options) {
       inventoryService,
       dockerAdapter,
     });
+  const launcherOperationService =
+    options.launcherOperationService ??
+    new LauncherOperationService({ registry: options.allocationService.registry });
+  launcherOperationService.expire();
   const diagnosticLog = options.diagnosticLog;
   let stopped = false;
   let resolveStopped = () => {};
@@ -183,6 +197,7 @@ export async function startPortreeveServer(options) {
         stackCoordinationService,
         stackDiscoveryService,
         stackAdministrationService,
+        launcherOperationService,
         capabilities,
         diagnosticLog,
         options.mode ?? 'manual',
@@ -228,6 +243,7 @@ export async function startPortreeveServer(options) {
  * @param {StackCoordinationService} stackCoordinationService
  * @param {StackDiscoveryService} stackDiscoveryService
  * @param {StackAdministrationService} stackAdministrationService
+ * @param {LauncherOperationService} launcherOperationService
  * @param {readonly string[]} capabilities
  * @param {import('../observability/diagnostic-log.js').DiagnosticLog | undefined} diagnosticLog
  * @param {'manual' | 'supervised'} mode
@@ -243,6 +259,7 @@ async function handleRequest(
   stackCoordinationService,
   stackDiscoveryService,
   stackAdministrationService,
+  launcherOperationService,
   capabilities,
   diagnosticLog,
   mode,
@@ -287,6 +304,33 @@ async function handleRequest(
               ? {}
               : { stackRoot: await canonicalStackRootForRequest(stackRoot) }),
           }),
+        ),
+      );
+    }
+    const showLauncherOperation = pathname.match(
+      /^\/v1\/launcher-operations\/([0-9a-f-]+)$/,
+    );
+    if (request.method === 'GET' && showLauncherOperation !== null) {
+      return success(
+        requestId,
+        LauncherOperationRecordSchema.parse(
+          launcherOperationService.get(
+            IdentifierSchema.parse(showLauncherOperation[1]),
+          ),
+        ),
+      );
+    }
+    const recentLauncherOperations = pathname.match(
+      /^\/v1\/stacks\/([0-9a-f-]+)\/launcher-operations$/,
+    );
+    if (request.method === 'GET' && recentLauncherOperations !== null) {
+      return success(
+        requestId,
+        LauncherOperationListSchema.parse(
+          launcherOperationService.recent(
+            IdentifierSchema.parse(recentLauncherOperations[1]),
+            queryLimit(url, 20),
+          ),
         ),
       );
     }
@@ -417,6 +461,44 @@ async function handleRequest(
           await stackAdministrationService.prune(StackPruneRequestSchema.parse(body)),
         ),
       );
+    }
+    if (pathname === '/v1/launcher-operations/begin') {
+      return success(
+        requestId,
+        LauncherOperationBeginResponseSchema.parse(
+          launcherOperationService.begin(
+            LauncherOperationBeginRequestSchema.parse(body),
+          ),
+        ),
+      );
+    }
+    const launcherOperationMutation = pathname.match(
+      /^\/v1\/launcher-operations\/([0-9a-f-]+)\/(renew|complete)$/,
+    );
+    if (launcherOperationMutation !== null) {
+      const operationId = IdentifierSchema.parse(launcherOperationMutation[1]);
+      switch (launcherOperationMutation[2]) {
+        case 'renew':
+          return success(
+            requestId,
+            LauncherOperationRenewResponseSchema.parse(
+              launcherOperationService.renew(
+                operationId,
+                LauncherOperationRenewRequestSchema.parse(body),
+              ),
+            ),
+          );
+        case 'complete':
+          return success(
+            requestId,
+            LauncherOperationCompleteResponseSchema.parse(
+              launcherOperationService.complete(
+                operationId,
+                LauncherOperationCompleteRequestSchema.parse(body),
+              ),
+            ),
+          );
+      }
     }
     const stackStatus = pathname.match(/^\/v1\/stacks\/([0-9a-f-]+)\/status$/);
     if (stackStatus !== null) {

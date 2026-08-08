@@ -5,6 +5,8 @@ import {
   AcquireRequestSchema,
   ConfigSetRequestSchema,
   HealthResponseSchema,
+  LauncherOperationBeginRequestSchema,
+  LauncherOperationCompleteRequestSchema,
   PORTREEVE_HEALTH,
   ReclamationResultSchema,
   StackBeginActivationRequestSchema,
@@ -267,6 +269,60 @@ describe('protocol schemas', () => {
       ConfigSetRequestSchema.parse({
         client,
         updates: { unknownSetting: true },
+      }),
+    ).toThrow();
+  });
+
+  test('keeps launcher coordination strict and excludes executable data', () => {
+    const stackId = crypto.randomUUID();
+    expect(
+      LauncherOperationBeginRequestSchema.parse({
+        client,
+        stackId,
+        operation: 'start',
+        launcherRevision: 'a'.repeat(64),
+        callerOperationId: crypto.randomUUID(),
+      }),
+    ).toMatchObject({
+      stackId,
+      operation: 'start',
+      executionMode: 'finite',
+      generationId: null,
+    });
+    expect(() =>
+      LauncherOperationBeginRequestSchema.parse({
+        client,
+        stackId,
+        operation: 'stop',
+        executionMode: 'attached',
+        launcherRevision: 'a'.repeat(64),
+        callerOperationId: crypto.randomUUID(),
+      }),
+    ).toThrow('available only for Start');
+    expect(() =>
+      LauncherOperationBeginRequestSchema.parse({
+        client,
+        stackId,
+        operation: 'start',
+        launcherRevision: 'a'.repeat(64),
+        callerOperationId: crypto.randomUUID(),
+        command: 'npm start',
+      }),
+    ).toThrow();
+    expect(() =>
+      LauncherOperationCompleteRequestSchema.parse({
+        client,
+        credential: 't'.repeat(43),
+        completion: {
+          outcome: 'failed',
+          failure: {
+            step: 'execute',
+            code: 'command_failed',
+            message: 'The command exited unsuccessfully.',
+          },
+          environment: { SECRET: 'not allowed' },
+          rawOutput: 'not allowed',
+        },
       }),
     ).toThrow();
   });

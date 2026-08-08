@@ -73,6 +73,7 @@ Version 1 capabilities are:
 - `stack-definitions-v1`
 - `stack-activations-v1`
 - `stack-discovery-v1`
+- `launcher-operations-v1`
 - `docker-evidence-v1` when the configured host Docker CLI and daemon are available
 
 ## Allocation workflow
@@ -160,11 +161,37 @@ policy.
 | `POST /v1/stack-activations/{id}/end`      | End only after fresh evidence shows every confirmed process or Docker provider has stopped                                           |
 | `POST /v1/stack-activations/{id}/resolve`  | Resolve one consumer's own endpoints and declared dependencies from its activation generation; requires `stack-discovery-v1`         |
 | `POST /v1/stack-activations/{id}/snapshot` | Render one redacted sandbox discovery document using a launcher-supplied gateway; requires `stack-discovery-v1`                      |
+| `POST /v1/launcher-operations/begin`       | Begin one renewable per-stack launcher coordination session; returns a one-time credential                                        |
+| `GET /v1/launcher-operations/{id}`         | Inspect one active or retained terminal launcher operation without returning its credential                                        |
+| `POST /v1/launcher-operations/{id}/renew`  | Renew an active launcher operation using its credential                                                                               |
+| `POST /v1/launcher-operations/{id}/complete` | Idempotently complete an operation with strict safe outcome metadata                                                                |
+| `GET /v1/stacks/{stackId}/launcher-operations` | Read up to the latest twenty retained launcher operations for one stack                                                          |
 
 Inventory classifications are `available`, `verified`, `idle`, `pending`, `unclaimed`,
 `conflicting`, `mixed`, and `docker-managed`. A live PID alone never establishes
 ownership; PortReeve compares fresh listener and binding-appropriate process or Docker
 evidence.
+
+## Launcher-operation coordination
+
+`launcher-operations-v1` coordinates Desktop and CLI lifecycle work without moving
+project-command authority into the daemon. Begin identifies the stack, fixed lifecycle
+operation, finite or attached execution mode, exact launcher revision, caller operation
+ID, and optional allocation generation. The response contains the safe operation record,
+a one-time credential, and a 10-second renewal interval. The credential is never returned
+by inspect or history routes and only its SHA-256 hash is stored.
+
+An operation expires 30 seconds after begin or its latest renewal. Expiry records the
+terminal outcome `lost`; it never runs a command, adopts a process, or signals anything.
+Same-stack sessions serialize by default. An attached Start may admit one finite Status
+or Stop companion, while different stack roots remain independent.
+
+Completion accepts only bounded outcome, exit or signal, degraded flag, evidence
+summaries, and failure summary fields. Unknown fields are rejected, so commands,
+environment values, credentials, and raw stdout or stderr cannot enter this contract.
+An identical completion retry returns `changed: false`; different metadata conflicts.
+PortReeve retains the latest twenty terminal records per stack plus active sessions and
+also emits begin, complete, and lost events through the existing global history surface.
 
 ## Stack definitions
 

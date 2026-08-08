@@ -152,6 +152,41 @@ providers.
 missing-stack-root stacks. Passing `dryRun: false` requests execution-time revalidation and
 atomic deletion; CLI-style interactive or `--yes` consent remains a CLI responsibility.
 
+## Launcher-operation coordination
+
+Project commands remain outside PortReeve, but independent launchers coordinate their
+lifecycle operations through renewable daemon sessions:
+
+```js
+const session = await client.beginLauncherOperation(result.stack.id, {
+  operation: 'start',
+  launcherRevision,
+  generationId: generation.id,
+});
+
+const renewal = setInterval(() => {
+  void client.renewLauncherOperation(session.operation.id, session.credential);
+}, session.renewAfterMilliseconds);
+
+try {
+  await projectLauncher.start();
+  await client.completeLauncherOperation(
+    session.operation.id,
+    session.credential,
+    { outcome: 'succeeded', exitCode: 0 },
+  );
+} finally {
+  clearInterval(renewal);
+}
+```
+
+Begin preflights `launcher-operations-v1`. The server stores only a hash of the returned
+credential. Renew before the 30-second deadline; abandoned sessions become `lost`
+without PortReeve adopting or terminating project processes. Completion accepts only
+strict safe metadata and is idempotent when retried identically. Use
+`getLauncherOperation` and `listLauncherOperations` for credential-free inspection. Raw
+command output and environment values are not accepted by any launcher-operation method.
+
 ## Low-level API
 
 The `PortreeveClient` exposes `health`, `acquire`, `confirm`, `abandon`, `release`,
@@ -161,6 +196,8 @@ The `PortreeveClient` exposes `health`, `acquire`, `confirm`, `abandon`, `releas
 `prepareStack`, `beginStackActivation`, `getStackActivation`, `renewStackActivation`,
 `confirmStackEndpoint`, `abandonStackEndpoint`, `skipStackEndpoint`,
 `getStackGeneration`, `reconcileStackActivation`, `endStackActivation`, `pruneStacks`,
+`beginLauncherOperation`, `renewLauncherOperation`, `completeLauncherOperation`,
+`getLauncherOperation`, `listLauncherOperations`,
 `getConfig`, `setConfig`, `history`, `logs`,
 `resolveStackEndpoints`, `createStackEndpointSnapshot`, and `stopServer`.
 
