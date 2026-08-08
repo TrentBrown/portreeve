@@ -255,7 +255,9 @@ export function createStackEditorView(options) {
       actionButton('Cancel', async () => {
         await requestClose();
       }),
-      ...(localStatus?.kind === 'warning' && documentState.lastSaved === true
+      ...(localStatus?.kind === 'warning' &&
+      documentState.lastSaved === true &&
+      !isDirty()
         ? [actionButton('Retry Apply', retryApply, 'primary')]
         : []),
       actionButton('Save and Apply', save, 'primary'),

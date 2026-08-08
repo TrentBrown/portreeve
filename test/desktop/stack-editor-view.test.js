@@ -99,6 +99,7 @@ test('wires both editor entry points, guards navigation, and exposes no raw edit
 
   expect(view).toContain("actionButton('Save and Apply'");
   expect(view).toContain("actionButton('Retry Apply'");
+  expect(view).toMatch(/documentState\.lastSaved === true &&\s*!isDirty\(\)/u);
   expect(view).toContain('options.api.saveStackDocument(');
   expect(view).toContain('options.api.retryStackDocumentApply(');
   expect(view).toContain('firstInvalidControlId');
