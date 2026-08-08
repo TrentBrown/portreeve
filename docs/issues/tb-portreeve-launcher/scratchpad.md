@@ -8,7 +8,7 @@ to `decisions.md`.
 
 ## [1] Use structured endpoint references in the launcher file
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -27,7 +27,7 @@ strict topology validation without an escaping convention.
 
 ## [2] Keep shared trust and degraded cache in one private application-home state file
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -50,7 +50,7 @@ outside the application home and survive.
 
 ## [3] Use tokenized thirty-second daemon operation sessions
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -72,7 +72,7 @@ runs a command, adopts a process, or sends a signal.
 
 ## [4] Use a dependency-free POSIX process-group command session with a bounded tail
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

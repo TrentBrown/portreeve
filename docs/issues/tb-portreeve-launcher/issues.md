@@ -9,12 +9,12 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Define launcher configuration and trust
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R2, R8
 - **Depends on:** none
-- **PR:** -
+- **PR:** [#25](https://github.com/TrentBrown/portreeve/pull/25)
 
 Implement the strict launcher document, endpoint-reference validation, safe discovery,
 contained paths, atomic editing, exact-revision trust, private shared state, and reset
