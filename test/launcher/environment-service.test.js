@@ -159,6 +159,17 @@ test('resolves every endpoint mapping and caches only nonsecret immutable contex
         },
       ],
     });
+
+    const defaultPortGeneration = {
+      ...generation(),
+      endpoints: [{ ...generation().endpoints[0], port: 80 }],
+    };
+    const defaultPort = await service.resolve({
+      stack: stack(),
+      launcher: launcher(),
+      generation: defaultPortGeneration,
+    });
+    expect(defaultPort.environment.API_URL).toBe('http://127.0.0.1:80');
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

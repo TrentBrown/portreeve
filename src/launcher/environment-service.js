@@ -285,9 +285,10 @@ function resolveMapping(mapping, stack, generation) {
 
 /** @param {'http' | 'https' | undefined} scheme @param {string} host @param {number} port */
 function endpointUrl(scheme, host, port) {
+  const value = `${scheme}://${host}:${port}`;
   try {
-    const url = new URL(`${scheme}://${host}:${port}`);
-    return url.origin;
+    new URL(value);
+    return value;
   } catch {
     throw environmentError(
       'launcher_endpoint_url_invalid',

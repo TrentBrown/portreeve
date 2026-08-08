@@ -114,8 +114,12 @@ export class LauncherEvidenceService {
         };
       }
       const inventory = InventoryEntrySchema.parse(inspected.value);
-      const provider = providerByEndpoint.get(endpointKey(endpoint));
-      const activationEndpoint = activationByEndpoint.get(endpointKey(endpoint));
+      const provider = activationMatches
+        ? providerByEndpoint.get(endpointKey(endpoint))
+        : undefined;
+      const activationEndpoint = activationMatches
+        ? activationByEndpoint.get(endpointKey(endpoint))
+        : undefined;
       return endpointEvidence({
         endpoint,
         inventory,
@@ -130,6 +134,7 @@ export class LauncherEvidenceService {
     const currentActivation =
       activationMatches &&
       activation !== null &&
+      endpoints.length > 0 &&
       ['confirmed', 'degraded'].includes(activation.state);
     const requiredVerified = endpoints
       .filter(({ required }) => required)
@@ -141,7 +146,12 @@ export class LauncherEvidenceService {
     const anyConflict = endpoints.some(({ conflicting }) => conflicting);
     const anyUncertain = endpoints.some(({ reasonCodes: reasons }) =>
       reasons.some((reason) =>
-        ['inventory-unavailable', 'provider-unknown', 'lease-pending'].includes(reason),
+        [
+          'inventory-unavailable',
+          'provider-missing',
+          'provider-unknown',
+          'lease-pending',
+        ].includes(reason),
       ),
     );
     const observed = endpoints.filter((endpoint) => endpoint.observed).length;
@@ -273,6 +283,13 @@ function endpointEvidence({
     reasons.add(dockerObserved ? 'docker-publication-observed' : 'listener-observed');
   else reasons.add('listener-missing');
   if (inventory.classification === 'pending') reasons.add('lease-pending');
+  if (
+    activationMatches &&
+    activationEndpoint?.state === 'confirmed' &&
+    provider === undefined
+  ) {
+    reasons.add('provider-missing');
+  }
   if (provider?.status === 'unknown') reasons.add('provider-unknown');
   if (providerConflict) reasons.add('provider-replaced');
   if (ownershipConflict) reasons.add('ownership-conflict');

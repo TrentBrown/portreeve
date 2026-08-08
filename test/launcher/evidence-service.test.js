@@ -248,6 +248,64 @@ test('requires matching activation and fresh provider evidence for verified', as
     activationId: activation.id,
     reasonCodes: expect.arrayContaining(['activation-degraded', 'provider-verified']),
   });
+
+  const missingProvider = service(
+    new Map([
+      [
+        requiredEndpoint.port,
+        inventory(requiredEndpoint, {
+          observed: true,
+          classification: 'verified',
+          run: { claimId: requiredEndpoint.claimId },
+        }),
+      ],
+      [optionalEndpoint.port, inventory(optionalEndpoint)],
+    ]),
+    { activation, providers: [] },
+  );
+  expect((await missingProvider.inspectDaemon(stack)).summary).toMatchObject({
+    classification: 'uncertain',
+    reasonCodes: expect.arrayContaining(['provider-missing']),
+  });
+});
+
+test('ignores provider rows from a stale activation generation', async () => {
+  const staleActivation = {
+    id: '88888888-8888-4888-8888-888888888888',
+    stackId: stack.id,
+    generationId: '99999999-9999-4999-8999-999999999999',
+    state: 'confirmed',
+    endpoints: [],
+    createdAt: '2026-08-08T19:00:00.000Z',
+    updatedAt: '2026-08-08T19:00:00.000Z',
+    confirmedAt: '2026-08-08T19:00:00.000Z',
+    endedAt: null,
+  };
+  const observed = service(
+    new Map(
+      endpoints.map((endpoint) => [
+        endpoint.port,
+        inventory(endpoint, { observed: true, classification: 'conflicting' }),
+      ]),
+    ),
+    {
+      activation: staleActivation,
+      providers: endpoints.map((endpoint) => ({
+        component: endpoint.component,
+        endpoint: endpoint.endpoint,
+        port: endpoint.port,
+        bindingKind: 'process',
+        status: 'gone',
+        reason: 'provider-replaced',
+        listeners: 1,
+        runId: null,
+        containerId: null,
+      })),
+    },
+  );
+  expect((await observed.inspectDaemon(stack)).summary.classification).toBe(
+    'fully-observed',
+  );
 });
 
 test('labels cached lsof observations as local and never verified', async () => {
