@@ -53,6 +53,7 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
     'apps/desktop/main/cli-adapter.js',
     'apps/desktop/main/inventory-adapter.js',
     'apps/desktop/main/stack-adapter.js',
+    'apps/desktop/main/stack-document.js',
     'apps/desktop/main/update.js',
     'apps/desktop/preload/index.cjs',
     'apps/desktop/renderer/renderer.js',
@@ -70,6 +71,16 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
   expect(source).not.toContain('openDownloadPage: async (url) =>');
   expect(source.match(/clipboard\.writeText/g)).toHaveLength(1);
   expect(source).not.toContain('navigator.clipboard');
+});
+
+test('keeps stack file paths and evidence out of the preload document API', async () => {
+  const preload = await readFile('apps/desktop/preload/index.cjs', 'utf8');
+  expect(preload).toContain('openStackDocument: async () =>');
+  expect(preload).toContain('saveStackDocument: async (documentId, content');
+  expect(preload).not.toMatch(/saveStackDocument:\s*async\s*\([^)]*path/i);
+  expect(preload).not.toContain('fingerprint');
+  expect(preload).not.toContain('readFile');
+  expect(preload).not.toContain('writeFile');
 });
 
 test('sets a distinct Electron user-data root before startup', async () => {

@@ -11,6 +11,10 @@ import {
   DesktopSnapshotSchema,
   DesktopStackActionRequestSchema,
   DesktopStackActionResultSchema,
+  DesktopStackDocumentMutationResultSchema,
+  DesktopStackDocumentOpenResultSchema,
+  DesktopStackDocumentRetryRequestSchema,
+  DesktopStackDocumentSaveRequestSchema,
   DesktopStackEndpointSnapshotSchema,
   DesktopStackPruneExecutionRequestSchema,
   DesktopStackPrunePreviewSchema,
@@ -41,6 +45,8 @@ export function isTrustedRenderer(event) {
  *     uninstall(): Promise<unknown>, previewPurge(): Promise<unknown>,
  *     executePurge(): Promise<unknown>, openDownloadPage(): Promise<unknown>,
  *     applyStackDefinition(): Promise<unknown>, prepareStack(id: string): Promise<unknown>,
+ *     openStackDocument(): Promise<unknown>, openKnownStackDocument(id: string): Promise<unknown>,
+ *     saveStackDocument(request: unknown): Promise<unknown>, retryStackDocumentApply(id: string): Promise<unknown>,
  *     reconcileStack(id: string): Promise<unknown>, endStack(id: string): Promise<unknown>,
  *     previewStackPrune(): Promise<unknown>, executeStackPrune(): Promise<unknown>,
  *     previewStackSnapshot(activationId: string, component: string, gatewayHost: string): Promise<unknown>
@@ -101,6 +107,43 @@ export function registerDesktopIpc(options) {
       }
       return DesktopOpenDownloadResultSchema.parse(
         await options.coordinator.openDownloadPage(),
+      );
+    },
+  );
+  options.ipcMain.handle(
+    IPC_CHANNELS.openStackDocument,
+    async (event, ...arguments_) => {
+      requireTrusted(event);
+      requireNoArguments('Stack document selection', arguments_);
+      return DesktopStackDocumentOpenResultSchema.parse(
+        await options.coordinator.openStackDocument(),
+      );
+    },
+  );
+  options.ipcMain.handle(
+    IPC_CHANNELS.openKnownStackDocument,
+    async (event, request) => {
+      requireTrusted(event);
+      const { id } = DesktopStackActionRequestSchema.parse(request);
+      return DesktopStackDocumentOpenResultSchema.parse(
+        await options.coordinator.openKnownStackDocument(id),
+      );
+    },
+  );
+  options.ipcMain.handle(IPC_CHANNELS.saveStackDocument, async (event, request) => {
+    requireTrusted(event);
+    const input = DesktopStackDocumentSaveRequestSchema.parse(request);
+    return DesktopStackDocumentMutationResultSchema.parse(
+      await options.coordinator.saveStackDocument(input),
+    );
+  });
+  options.ipcMain.handle(
+    IPC_CHANNELS.retryStackDocumentApply,
+    async (event, request) => {
+      requireTrusted(event);
+      const { documentId } = DesktopStackDocumentRetryRequestSchema.parse(request);
+      return DesktopStackDocumentMutationResultSchema.parse(
+        await options.coordinator.retryStackDocumentApply(documentId),
       );
     },
   );

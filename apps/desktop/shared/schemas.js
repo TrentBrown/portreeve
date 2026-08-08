@@ -1,6 +1,7 @@
 // @ts-check
 
 import { z } from 'zod';
+import { StackDefinitionSchema } from '../../../src/protocol/schemas.js';
 
 const TimestampSchema = z.iso.datetime({ offset: true });
 const SemanticVersionSchema = z
@@ -187,6 +188,57 @@ export const DesktopCopyTextRequestSchema = z
 
 export const DesktopCopyTextResultSchema = z
   .object({ schemaVersion: z.literal(1), copied: z.literal(true) })
+  .strict();
+
+const DesktopStackDocumentIssueSchema = z
+  .object({
+    code: z.string().min(1),
+    message: z.string().min(1),
+    path: z.array(z.union([z.string(), z.number().int().nonnegative()])),
+  })
+  .strict();
+
+export const DesktopStackDocumentSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    documentId: IdentifierSchema,
+    stackId: IdentifierSchema.nullable(),
+    stackRootName: z.string().min(1),
+    fileState: z.enum(['valid', 'missing', 'invalid']),
+    seedSource: z.enum(['file', 'applied', 'new']),
+    definition: StackDefinitionSchema.nullable(),
+    suggestedProject: z.string().min(1),
+    issues: z.array(DesktopStackDocumentIssueSchema),
+  })
+  .strict();
+
+export const DesktopStackDocumentOpenResultSchema = z.discriminatedUnion('outcome', [
+  z
+    .object({
+      schemaVersion: z.literal(1),
+      outcome: z.literal('opened'),
+      document: DesktopStackDocumentSchema,
+    })
+    .strict(),
+  z
+    .object({
+      schemaVersion: z.literal(1),
+      outcome: z.literal('cancelled'),
+      document: z.null(),
+    })
+    .strict(),
+]);
+
+export const DesktopStackDocumentSaveRequestSchema = z
+  .object({
+    documentId: IdentifierSchema,
+    content: z.string().max(1_048_576),
+    conflictToken: IdentifierSchema.nullable().optional(),
+  })
+  .strict();
+
+export const DesktopStackDocumentRetryRequestSchema = z
+  .object({ documentId: IdentifierSchema })
   .strict();
 
 export const DesktopSnapshotSchema = z
@@ -393,6 +445,41 @@ export const DesktopStackActionResultSchema = z
   })
   .strict();
 
+export const DesktopStackDocumentMutationResultSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    documentId: IdentifierSchema,
+    outcome: z.enum([
+      'invalid',
+      'conflict',
+      'saved-and-applied',
+      'saved-not-applied',
+      'applied',
+      'failed',
+    ]),
+    saved: z.boolean(),
+    applied: z.boolean(),
+    changed: z.boolean().nullable(),
+    stackId: IdentifierSchema.nullable(),
+    message: z.string().min(1),
+    conflict: z
+      .object({
+        reason: z.enum([
+          'appeared-after-open',
+          'changed-after-open',
+          'invalid-file-replacement',
+          'changed-before-retry',
+        ]),
+        token: IdentifierSchema.nullable(),
+      })
+      .strict()
+      .nullable(),
+    issues: z.array(DesktopStackDocumentIssueSchema),
+    error: SafeErrorSchema.nullable(),
+    snapshot: DesktopSnapshotSchema,
+  })
+  .strict();
+
 const DesktopStackPruneCandidateSchema = z
   .object({
     stackId: IdentifierSchema,
@@ -508,6 +595,10 @@ export const IPC_CHANNELS = Object.freeze({
   executePurge: 'portreeve:desktop:execute-purge',
   openDownloadPage: 'portreeve:desktop:open-download-page',
   applyStackDefinition: 'portreeve:desktop:apply-stack-definition',
+  openStackDocument: 'portreeve:desktop:open-stack-document',
+  openKnownStackDocument: 'portreeve:desktop:open-known-stack-document',
+  saveStackDocument: 'portreeve:desktop:save-stack-document',
+  retryStackDocumentApply: 'portreeve:desktop:retry-stack-document-apply',
   prepareStack: 'portreeve:desktop:prepare-stack',
   reconcileStack: 'portreeve:desktop:reconcile-stack',
   endStack: 'portreeve:desktop:end-stack',

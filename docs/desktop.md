@@ -55,7 +55,23 @@ fresh provider evidence through the official client. It supports:
 - requesting evidence-gated activation ending after the project launcher stops its
   providers;
 - previewing seven-day missing-stack-root pruning and typing `PRUNE` before
-  execution.
+execution.
+
+The desktop's stack editor uses a fixed `portreeve.stack.json` at the selected or
+registered stack root. Directory selection, file inspection, schema validation, and
+writes remain in the trusted main process. The renderer receives an opaque document ID,
+the editable definition, a root display name, and reduced validation issues; it does not
+receive the full path or file fingerprint. Missing files are created exclusively, and
+existing regular files are replaced atomically only after the exact bytes observed when
+the editor opened are rechecked.
+
+If another program changes the file, Portreeve offers Overwrite or Cancel. Overwrite is
+authorized by a one-use conflict capability bound to the newly observed bytes; a second
+external change requires another confirmation. Malformed regular files can be replaced
+after confirmation, but oversized files, symbolic links, and other non-regular
+definition paths are refused. Saving precedes server apply, so a valid file remains
+saved if the daemon is unavailable and can be applied later with an explicit retry.
+Editing never prepares a stack generation automatically.
 
 Portreeve Desktop never starts or stops a project process or container, invokes Docker
 Compose, owns application startup order, maps project environment variables, or asserts

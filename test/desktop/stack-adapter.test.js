@@ -14,6 +14,8 @@ test('uses the official client for current stack status and component resolution
     throw new Error('Expected a resolution fixture.');
   /** @type {string[]} */
   const resolved = [];
+  /** @type {string[]} */
+  const remembered = [];
   const adapter = createStackAdapter(
     /** @type {any} */ ({
       async listStacks() {
@@ -38,6 +40,12 @@ test('uses the official client for current stack status and component resolution
       async selectDefinitionFile() {
         return null;
       },
+      documents: {
+        /** @param {any} stack */
+        rememberStack(stack) {
+          remembered.push(stack.id);
+        },
+      },
     },
   );
   const result = await adapter.list();
@@ -46,6 +54,57 @@ test('uses the official client for current stack status and component resolution
   const first = result[0];
   if (first === undefined) throw new Error('Expected one stack.');
   expect(first.resolutions.every(({ error }) => error === null)).toBe(true);
+  expect(remembered).toEqual([fixture.stack.id]);
+});
+
+test('routes only opaque document capabilities to the trusted document service', async () => {
+  /** @type {any[]} */
+  const calls = [];
+  const documents = {
+    async openSelected() {
+      calls.push(['open-selected']);
+      return { outcome: 'cancelled' };
+    },
+    /** @param {string} stackId */
+    async openKnown(stackId) {
+      calls.push(['open-known', stackId]);
+      return { outcome: 'opened' };
+    },
+    /** @param {any} request */
+    async save(request) {
+      calls.push(['save', request]);
+      return { outcome: 'saved-and-applied' };
+    },
+    /** @param {string} documentId */
+    async retryApply(documentId) {
+      calls.push(['retry', documentId]);
+      return { outcome: 'applied' };
+    },
+  };
+  const adapter = createStackAdapter(/** @type {any} */ ({}), {
+    documents,
+    async selectDefinitionFile() {
+      return null;
+    },
+  });
+  const stackId = '44444444-4444-4444-8444-444444444444';
+  const documentId = '99999999-9999-4999-8999-999999999999';
+  const request = { documentId, content: '{}', conflictToken: null };
+
+  expect(await adapter.openStackDocument()).toEqual({ outcome: 'cancelled' });
+  expect(await adapter.openKnownStackDocument(stackId)).toEqual({ outcome: 'opened' });
+  expect(await adapter.saveStackDocument(request)).toEqual({
+    outcome: 'saved-and-applied',
+  });
+  expect(await adapter.retryStackDocumentApply(documentId)).toEqual({
+    outcome: 'applied',
+  });
+  expect(calls).toEqual([
+    ['open-selected'],
+    ['open-known', stackId],
+    ['save', request],
+    ['retry', documentId],
+  ]);
 });
 
 test('owns file selection and submits the selected definition directory as stack root', async () => {
