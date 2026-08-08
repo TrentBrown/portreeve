@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   prepareRuntimeDirectories,
+  resolveRuntimePaths,
   validateExistingDatabase,
 } from '../../src/platform/paths.js';
 
@@ -25,6 +26,13 @@ async function directory() {
   directories.add(path);
   return path;
 }
+
+test('places shared launcher state inside the marker-owned application home', () => {
+  const paths = resolveRuntimePaths({ PORTREEVE_HOME: '/private/portreeve-test-home' });
+  expect(paths.launcherStatePath).toBe(
+    '/private/portreeve-test-home/launcher-state.json',
+  );
+});
 
 test('creates private application and socket directories', async () => {
   const root = await directory();
