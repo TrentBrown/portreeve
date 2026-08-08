@@ -22,7 +22,7 @@ retention behavior without executing project commands.
 
 ## I-2 - Add daemon operation coordination
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R6, R7, R8
@@ -35,12 +35,12 @@ safe metadata, and recent history.
 
 ## I-3 - Implement environment and evidence services
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P3
 - **Rubric criteria:** R2, R3, R5, R6, R8
 - **Depends on:** I-1, I-2
-- **PR:** -
+- **PR:** [#27](https://github.com/TrentBrown/portreeve/pull/27)
 
 Resolve current endpoint-derived values and approved context, cache only nonsecret facts,
 and classify fresh daemon or explicitly local listener and activation evidence.
