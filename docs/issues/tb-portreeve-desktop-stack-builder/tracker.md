@@ -13,8 +13,8 @@
 | R2 | CLI discovery | PASS | [#15](https://github.com/TrentBrown/portreeve/pull/15) | P3/I-3: explicit selectors, upward real-path discovery across child repositories, missing-file status fallback, and apply refusal pass |
 | R3 | Server safety | PASS | [#14](https://github.com/TrentBrown/portreeve/pull/14) | P2/I-2: overlap refusal, sibling acceptance, exact-root adoption, missing-root pruning, and live-activation definition protection pass |
 | R4 | Desktop containment | NOT YET | [#16](https://github.com/TrentBrown/portreeve/pull/16) | P4/I-4 adds opaque main-process document capabilities and keeps roots, evidence, filesystem access, and socket access out of the renderer; entry views and packaged UI smoke remain P6-P8 |
-| R5 | Complete editor | NOT YET | - | Planned for P5-P8 / I-5-I-7 |
-| R6 | Validation and output | NOT YET | [#16](https://github.com/TrentBrown/portreeve/pull/16) | P4/I-4 adds bounded JSON and strict schema validation before write; progressive form validation and exact preview remain P5-P8 |
+| R5 | Complete editor | NOT YET | [#21](https://github.com/TrentBrown/portreeve/pull/21) | P5/I-5 adds the complete schema draft model, stable identities, dependency-safe rename/delete, allocation modes, and round-trip tests; visible form controls remain P6-P8 |
+| R6 | Validation and output | NOT YET | [#21](https://github.com/TrentBrown/portreeve/pull/21) | P4 adds trusted revalidation; P5/I-5 adds progressive draft validation, first-error targeting, latest-valid preview, and concise ordered serialization; accessible visible UI remains P6-P8 |
 | R7 | File safety and recovery | NOT YET | [#16](https://github.com/TrentBrown/portreeve/pull/16) | P4/I-4 adds exclusive create, atomic replace, exact-byte conflict capabilities, missing/invalid recovery primitives, and non-regular-file refusal; renderer flows remain P6-P8 |
 | R8 | Save/apply lifecycle | NOT YET | [#16](https://github.com/TrentBrown/portreeve/pull/16) | PR #14 establishes server refusal; P4/I-4 adds save-before-apply and safe retry primitives; actionable packaged UI behavior remains P7-P8 |
 
@@ -60,3 +60,15 @@ Append PR boundary entries here.
   1,043 assertions; the focused desktop boundary suite passes 28 tests and 143
   assertions. The final source packages and reaches a loaded renderer. Independent
   judge: PASS. Code review: PASS with no findings.
+
+### PR #21 - Desktop stack editor draft model
+
+- **PR:** [#21](https://github.com/TrentBrown/portreeve/pull/21)
+- **Status:** open for review
+- **Scope:** P5 / I-5: full-schema renderer drafts, stable component, endpoint, and
+  dependency identities, allocation modes, dependency-safe rename/delete, progressive
+  validation, latest-valid preview, and deterministic concise serialization.
+- **Evidence packet:** [pr-21](pr-21/)
+- **Result:** R5 and R6 advance but correctly remain `NOT YET` pending the visible and
+  accessible P6-P8 editor. The pinned native Bun gate passes 253 tests and 1,084
+  assertions; the focused model/security suite passes 13 tests and 64 assertions.
