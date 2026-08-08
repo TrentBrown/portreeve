@@ -69,6 +69,30 @@ may begin another activation against the generation if it remains valid. Stop su
 processes or containers through the project launcher before retrying reconciliation or
 ending.
 
+## Desktop says Saved, but not applied
+
+The project file write succeeded and is not rolled back. The editor shows the apply
+outcome, stable error code, message, and validation details returned by the trusted
+coordinator. Restore or upgrade the Portreeve service as indicated, then use **Retry
+Apply** while the draft still matches the saved definition. If you edit the draft,
+Retry is hidden because it would apply older bytes; use **Save and Apply** for the new
+draft instead.
+
+Applying still does not allocate ports. After a successful retry, return to stack
+details and choose **Prepare allocation** when the project launcher is ready.
+
+## Desktop reports an external definition change
+
+Portreeve compares the current bytes of `portreeve.stack.json` with those observed when
+the editor opened. Choose **Cancel** to preserve the external version and reopen it, or
+**Overwrite** only when the visible draft should replace those newly observed bytes. A
+second external change requires another confirmation. Symlinks, oversized files, and
+other non-regular definition paths are refused rather than overwritten.
+
+When a registered stack's file is missing, the editor can seed a replacement from its
+currently applied definition. When the file is invalid, replacement is explicit and the
+invalid bytes are never partially interpreted.
+
 ## Logs and history
 
 `portreeve logs --json` reads bounded diagnostic JSON Lines. `portreeve

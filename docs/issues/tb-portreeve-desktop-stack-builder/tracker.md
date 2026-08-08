@@ -76,7 +76,7 @@ Append PR boundary entries here.
 ### PR #22 - Desktop stack definition editor
 
 - **PR:** [#22](https://github.com/TrentBrown/portreeve/pull/22)
-- **Status:** in review
+- **Status:** merged 2026-08-08 (`bd70b34bffdcb5115527278c7ac42fb63f49cf83`)
 - **Scope:** P6-P7 / I-6: both Stacks-tab editor entry points, a dedicated guarded
   view, complete accessible field controls, exact preview, trusted save/apply and
   overwrite flows, missing/invalid recovery, visible failure details, and clean-baseline
@@ -88,3 +88,16 @@ Append PR boundary entries here.
   assertions. The release and desktop package build, and packaged macOS smoke covers
   creation, validation focus, preview, dirty guards, save/apply failure details,
   successful retry, direct editing, advanced fields, and window-close discard behavior.
+
+### PR #23 - Assembled feature completion
+
+- **PR:** [#23](https://github.com/TrentBrown/portreeve/pull/23)
+- **Status:** in review
+- **Scope:** P8 / I-7 and the complete feature: final public contract, migration,
+  safety, troubleshooting, launcher-boundary, release, mixed-stack, and packaged desktop
+  acceptance documentation; active-host test-port robustness; feature-wide evaluation.
+- **Evidence packet:** [pr-23](pr-23/)
+- **Result:** R1-R8 and AC1-AC8 pass with zero `NOT YET` or `FAIL`. Exact pinned source
+  passes 300 tests and 1,288 assertions plus release, real mixed-stack, native lifecycle,
+  desktop package, and packaged-app acceptance gates. Independent judge: PASS. Focused
+  code review: PASS with no findings. Retention: tracked.

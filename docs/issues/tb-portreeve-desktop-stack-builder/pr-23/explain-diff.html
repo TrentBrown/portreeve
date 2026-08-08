@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #23 — Completing the Portreeve desktop stack builder</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17231f;
+        --muted: #5d6d66;
+        --paper: #f5efe5;
+        --panel: #fffdf8;
+        --line: #d7cfc1;
+        --green: #19664f;
+        --green-soft: #dcece4;
+        --gold: #9a641b;
+        --gold-soft: #fff0d2;
+        --red: #8e3f34;
+        --red-soft: #f7dfda;
+        --code: #14221d;
+        --shadow: 0 18px 50px rgb(32 43 37 / 10%);
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 17px/1.65 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main { width: min(1120px, calc(100% - 32px)); margin: 0 auto 80px; }
+      .hero {
+        margin: 24px 0 28px;
+        padding: clamp(30px, 7vw, 72px);
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        background: linear-gradient(140deg, #fffdf8 0%, #e4eee8 65%, #f7e8cb 100%);
+        box-shadow: var(--shadow);
+      }
+      .eyebrow { color: var(--green); font-size: .78rem; font-weight: 850; letter-spacing: .15em; text-transform: uppercase; }
+      h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; line-height: 1.15; }
+      h1 { max-width: 900px; margin: 12px 0 18px; font-size: clamp(2.5rem, 7vw, 5.2rem); }
+      h2 { margin-top: 0; font-size: clamp(2rem, 4vw, 3rem); }
+      h3 { font-size: 1.35rem; }
+      .lede { max-width: 850px; color: var(--muted); font-size: 1.16rem; }
+      .sha { display: inline-block; margin-top: 12px; padding: 8px 11px; border-radius: 9px; background: var(--code); color: #eef8f2; font: .78rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+      nav {
+        position: sticky;
+        top: 12px;
+        z-index: 5;
+        display: flex;
+        gap: 7px;
+        flex-wrap: wrap;
+        margin-bottom: 28px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgb(255 253 248 / 92%);
+        backdrop-filter: blur(10px);
+      }
+      nav a { padding: 7px 11px; border-radius: 8px; color: var(--green); font-weight: 750; text-decoration: none; }
+      nav a:hover { background: var(--green-soft); }
+      section {
+        margin: 26px 0;
+        padding: clamp(24px, 5vw, 48px);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: var(--panel);
+        box-shadow: 0 8px 30px rgb(32 43 37 / 5%);
+      }
+      p, li { max-width: 86ch; }
+      code { padding: .12em .35em; border-radius: 5px; background: #eef1ec; font: .9em ui-monospace, SFMono-Regular, Menlo, monospace; }
+      pre { overflow-x: auto; padding: 20px; border-radius: 14px; background: var(--code); color: #eff9f3; white-space: pre-wrap; font: .88rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .callout { margin: 22px 0; padding: 18px 20px; border-left: 5px solid var(--green); border-radius: 9px; background: var(--green-soft); }
+      .callout.warn { border-color: var(--gold); background: var(--gold-soft); }
+      .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 22px 0; }
+      .card { padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: #fff; }
+      .card strong { display: block; margin-bottom: 7px; color: var(--green); }
+      .flow { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 10px; margin: 24px 0; align-items: stretch; }
+      .flow .node { position: relative; padding: 16px 12px; border: 1px solid var(--line); border-radius: 13px; background: #fff; text-align: center; }
+      .flow .node:not(:last-child)::after { content: "→"; position: absolute; right: -16px; top: 36%; z-index: 2; color: var(--green); font-size: 1.5rem; font-weight: 900; }
+      .node small { display: block; margin-top: 6px; color: var(--muted); }
+      .boundary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 22px 0; }
+      .boundary > div { padding: 20px; border-radius: 15px; }
+      .boundary .project { border: 2px solid var(--gold); background: var(--gold-soft); }
+      .boundary .portreeve { border: 2px solid var(--green); background: var(--green-soft); }
+      .boundary .desktop { border: 2px dashed var(--green); background: #f4faf7; }
+      .quiz { margin: 22px 0; padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+      .quiz h3 { margin-top: 0; }
+      .answers { display: grid; gap: 9px; }
+      .answers button { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); text-align: left; font: inherit; cursor: pointer; }
+      .answers button:hover { border-color: var(--green); background: var(--green-soft); }
+      .answers button.correct { border-color: var(--green); background: var(--green-soft); }
+      .answers button.incorrect { border-color: var(--red); background: var(--red-soft); }
+      .feedback { min-height: 1.6em; margin: 12px 0 0; color: var(--muted); font-weight: 650; }
+      footer { color: var(--muted); text-align: center; }
+      @media (max-width: 780px) {
+        .flow, .boundary { grid-template-columns: 1fr; }
+        .flow .node:not(:last-child)::after { content: "↓"; right: 48%; top: auto; bottom: -22px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <div class="eyebrow">Portreeve · PR #23 · Feature completion</div>
+        <h1>The last slice makes the whole stack builder legible—and its tests calmer.</h1>
+        <p class="lede">The production feature was delivered across five earlier pull requests. This final pull request explains the assembled contract in every public guide, verifies the packaged application, and removes a test-only habit that competed with active developer tools for kernel-selected ports.</p>
+        <span class="sha">bd70b34b…c71eb05</span>
+      </header>
+
+      <nav aria-label="Table of contents">
+        <a href="#background">Background</a>
+        <a href="#intuition">Intuition</a>
+        <a href="#code">Code</a>
+        <a href="#evidence">Evidence</a>
+        <a href="#quiz">Quiz</a>
+      </nav>
+
+      <section id="background">
+        <h2>Background</h2>
+        <h3>The larger problem</h3>
+        <p>A stack is not merely a collection of unused ports. It is a topology: an API publishes an HTTP endpoint; a browser client depends on it; a worker may depend on a database or queue. Portreeve coordinates the addresses, but it deliberately does not become a process supervisor for the project itself.</p>
+
+        <div class="boundary" aria-label="Authority boundary">
+          <div class="project"><strong>Project-owned file</strong><p><code>portreeve.stack.json</code> describes components, endpoints, dependencies, allocation preferences, and Docker placement hints.</p></div>
+          <div class="portreeve"><strong>Portreeve authority</strong><p>Canonical roots, durable assignments, generations, activations, leases, and fresh process or Docker evidence.</p></div>
+          <div class="desktop"><strong>Project launcher</strong><p>Commands, environment mapping, process and container startup, application health, shutdown, and cleanup.</p></div>
+        </div>
+
+        <p>A single canonical directory represents one independently runnable stack. It may be a non-Git parent containing several child repositories. Registered stack roots may be siblings, but not ancestors or descendants of each other.</p>
+
+        <h3>What the desktop adds</h3>
+        <p>The desktop Stacks tab can create and edit that same project-owned file. The renderer never receives the full path or a generic filesystem primitive. It manipulates a structured draft and sends an opaque document identifier to trusted main-process code, which performs strict parsing, exact-byte conflict detection, exclusive creation, and atomic replacement.</p>
+
+        <div class="callout"><strong>The important non-feature:</strong> Save and Apply does not prepare a generation or start a provider. The resulting stack details continue to say <em>Not prepared</em> until a launcher or developer explicitly requests preparation.</div>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <p>PR #23 has two jobs. First, make every public doorway tell the same architectural story. Second, make tests stop borrowing the operating system's next ephemeral port and assuming no other development tool will ask for it a moment later.</p>
+
+        <h3>One story through every public doorway</h3>
+        <div class="cards">
+          <div class="card"><strong>README</strong>Start at a canonical stack root, apply topology, then prepare explicitly.</div>
+          <div class="card"><strong>Protocol and client</strong>Callers supply a parsed definition and canonical root; the socket protocol does not read project files.</div>
+          <div class="card"><strong>Desktop and safety</strong>A trusted document session owns paths, exact bytes, conflict tokens, and atomic writes.</div>
+          <div class="card"><strong>Migration and troubleshooting</strong>Keep the launcher, move address coordination, and recover visibly from saved-not-applied or external changes.</div>
+        </div>
+
+        <h3>Why the original port probe raced</h3>
+        <div class="flow" aria-label="Old test port race">
+          <div class="node"><strong>Test binds port 0</strong><small>Kernel chooses 59353</small></div>
+          <div class="node"><strong>Probe closes</strong><small>The port becomes free</small></div>
+          <div class="node"><strong>IDE asks kernel</strong><small>It receives 59353 next</small></div>
+          <div class="node"><strong>Portreeve checks</strong><small><code>lsof</code> sees the IDE</small></div>
+          <div class="node"><strong>Correct refusal</strong><small>Test fails, listener survives</small></div>
+        </div>
+
+        <p>The failure was not evidence that Portreeve was wrong. It was evidence that the test had coupled itself to the same ephemeral allocation sequence used by Windsurf. A predictable low band was better, but VS Code Code Helper happened to select port 21060 during the same window.</p>
+
+        <div class="callout warn"><strong>The correction does not abolish the race.</strong> No probe can reserve a port after it closes. Instead, tests sample unpredictable, non-repeating candidates outside the default dynamic ranges, verify each with a real bind, and let Portreeve refuse any genuine later listener. No unrelated process is killed.</div>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <h3>1. A shared test-only allocator</h3>
+        <p>Four suites previously carried slight variations of the same <code>Bun.serve({ port: 0 })</code> helper. They now import one fixture:</p>
+        <pre>const firstTestPort = 10_240;
+const lastTestPort = 32_767;
+const attemptedPorts = new Set();
+
+// Pick an unpredictable candidate, bind it for verification,
+// skip EADDRINUSE, and never reuse it in this test process.</pre>
+        <p>The range ends immediately before the default Linux dynamic range and well before the default macOS range. The real bind filters ports already owned by services. Unpredictability avoids following either the kernel's next-port pointer or another tool's obvious low-port sequence.</p>
+
+        <h3>2. Call sites become boring</h3>
+        <p>The server-client, stack CLI, operations CLI, and shared runtime fixtures all import <code>idlePort</code>. Removing local copies matters: any future correction now changes one test boundary rather than four subtly different ones.</p>
+
+        <h3>3. Documentation closes the source-of-truth loop</h3>
+        <p>The public guides now make these statements explicit:</p>
+        <ul>
+          <li>The checked-in file owns topology, not assigned host ports.</li>
+          <li>Portreeve owns durable allocations, generations, activations, and evidence.</li>
+          <li>The client accepts an already parsed definition; the protocol has no project-file operation.</li>
+          <li>The desktop trusted boundary—not the sandboxed renderer—owns file discovery and mutation.</li>
+          <li>Apply records topology and claims; preparation and provider startup remain later, explicit actions.</li>
+        </ul>
+
+        <h3>4. Workflow records explain why</h3>
+        <p>The approved decision records both observed listeners and rejects two dangerous shortcuts: repeatedly rerunning until timing happens to work, and killing the legitimate process that won the port. The final issue and tracker entries also connect PR #23 to the original feature rubric rather than presenting it as an isolated documentation patch.</p>
+      </section>
+
+      <section id="evidence">
+        <h2>What was actually verified</h2>
+        <div class="cards">
+          <div class="card"><strong>300 tests</strong>1,288 assertions on exact pinned source under Bun 1.3.14.</div>
+          <div class="card"><strong>Real mixed stack</strong>Process and Docker-backed components completed a stack activation.</div>
+          <div class="card"><strong>Native lifecycle</strong>Release artifacts installed, started, stopped, and restored supervision.</div>
+          <div class="card"><strong>Packaged desktop</strong>Create, preview, Save and Apply, explicit Not prepared, reopen, and quit all worked.</div>
+        </div>
+        <p>The disposable GUI project was moved to Trash, its deleted-root stack was dry-run pruned and then removed, and retained history was left intact. The matching supervised 0.1.0 service was restored healthy afterward.</p>
+      </section>
+
+      <section id="quiz">
+        <h2>Check your understanding</h2>
+
+        <div class="quiz" data-correct="1" data-explanation="The file owns topology; Portreeve owns durable coordination state; the launcher owns provider lifecycle.">
+          <h3>1. Which authority split is correct?</h3>
+          <div class="answers">
+            <button>Portreeve owns topology, commands, and process lifecycle; the file is only a cache.</button>
+            <button>The file owns topology, Portreeve owns allocation/evidence, and the project launcher owns provider lifecycle.</button>
+            <button>The desktop renderer owns the file, while Portreeve owns only a list of free ports.</button>
+          </div>
+          <p class="feedback" aria-live="polite"></p>
+        </div>
+
+        <div class="quiz" data-correct="2" data-explanation="Apply persists topology and claims. Preparation and startup remain explicit and separate.">
+          <h3>2. What happens automatically after desktop Save and Apply succeeds?</h3>
+          <div class="answers">
+            <button>Every component process or container starts in dependency order.</button>
+            <button>Portreeve prepares a generation but leaves startup to the launcher.</button>
+            <button>The file and topology are saved/applied, while generation preparation remains explicit.</button>
+          </div>
+          <p class="feedback" aria-live="polite"></p>
+        </div>
+
+        <div class="quiz" data-correct="0" data-explanation="The protocol receives a canonical root and parsed definition. File authority belongs to the CLI or trusted desktop boundary.">
+          <h3>3. Why is there no project-file operation in the socket protocol?</h3>
+          <div class="answers">
+            <button>Callers own discovery and file mutation boundaries; the server receives a parsed definition and canonical root.</button>
+            <button>Unix sockets cannot transport JSON file content reliably.</button>
+            <button>The server stores only ports and has no concept of stack topology.</button>
+          </div>
+          <p class="feedback" aria-live="polite"></p>
+        </div>
+
+        <div class="quiz" data-correct="1" data-explanation="The old helper released the next kernel-selected ephemeral port, which another tool could immediately receive.">
+          <h3>4. Why did the original port-zero test helper fail on an active machine?</h3>
+          <div class="answers">
+            <button>Portreeve persisted the probe PID and later mistook it for the service owner.</button>
+            <button>The released probe followed the kernel's ephemeral sequence, so an IDE could acquire the same port before the test used it.</button>
+            <button><code>lsof</code> reported a listener that did not actually exist.</button>
+          </div>
+          <p class="feedback" aria-live="polite"></p>
+        </div>
+
+        <div class="quiz" data-correct="2" data-explanation="Fresh listener evidence remains authoritative. The helper only reduces systematic collisions and never kills another process.">
+          <h3>5. What should happen if an unrelated process still acquires a sampled test port?</h3>
+          <div class="answers">
+            <button>The test should kill it because the probe established prior ownership.</button>
+            <button>Portreeve should trust the test's stored PID and ignore current listener evidence.</button>
+            <button>Fresh evidence should win; the attempt may be refused without signaling the unrelated process.</button>
+          </div>
+          <p class="feedback" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <footer>Portreeve PR #23 · focused diff explanation · generated from the pinned feature-final boundary</footer>
+    </main>
+    <script>
+      for (const quiz of document.querySelectorAll('.quiz')) {
+        const correct = Number(quiz.dataset.correct);
+        const explanation = quiz.dataset.explanation;
+        const feedback = quiz.querySelector('.feedback');
+        const buttons = [...quiz.querySelectorAll('button')];
+        buttons.forEach((button, index) => {
+          button.addEventListener('click', () => {
+            buttons.forEach((candidate) => candidate.classList.remove('correct', 'incorrect'));
+            if (index === correct) {
+              button.classList.add('correct');
+              feedback.textContent = `Correct. ${explanation}`;
+            } else {
+              button.classList.add('incorrect');
+              buttons[correct].classList.add('correct');
+              feedback.textContent = `Not quite. ${explanation}`;
+            }
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

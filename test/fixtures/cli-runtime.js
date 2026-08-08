@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { PortreeveClient } from '../../packages/client/src/index.js';
 
+export { idlePort } from './ports.js';
+
 /**
  * Start a foreground Portreeve server on a private socket.
  *
@@ -94,17 +96,4 @@ export function parseRenderedJson(lines) {
     );
   }
   return JSON.parse(lines[0] ?? '');
-}
-
-/**
- * Reserve a port that is known to be idle at reservation time.
- */
-export async function idlePort() {
-  const probe = Bun.serve({ port: 0, fetch: () => new Response('probe') });
-  const { port } = probe;
-  probe.stop(true);
-  if (port === undefined) {
-    throw new Error('Probe did not expose a port.');
-  }
-  return port;
 }

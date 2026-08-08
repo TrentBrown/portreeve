@@ -44,6 +44,24 @@ const running = await portreeve.withPort(
 );
 ```
 
+Coordinate an independently runnable local stack from its project-owned definition:
+
+```sh
+# Run at the stack root or anywhere beneath it, including inside a child repository.
+portreeve stacks apply --json
+portreeve stacks prepare STACK_ID --json
+```
+
+`portreeve.stack.json` owns component and endpoint topology. Portreeve owns durable port
+assignments, generations, activations, and live evidence; the project launcher still
+owns process/container startup, environment mapping, health checks, and shutdown. One
+canonical stack root represents one independently runnable stack and may be a non-Git
+parent containing multiple child repositories.
+
+The desktop **Stacks** tab can create or edit the same checked-in definition through
+structured fields. Saving applies the definition but never prepares ports or launches
+project services automatically.
+
 ## Documentation
 
 - [Installation and releases](docs/installation.md)

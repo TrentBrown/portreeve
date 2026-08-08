@@ -44,8 +44,8 @@ arbitrary executable paths are not exposed.
 The Stacks tab reads definitions and current generation, activation, resolution, and
 fresh provider evidence through the official client. It supports:
 
-- creating or editing a stack from structured project, component, endpoint, Docker,
-  and dependency fields after selecting its root directory;
+- creating or editing a stack with **Create or Edit Stack…** from structured project,
+  component, endpoint, Docker, and dependency fields after selecting its root directory;
 - reopening a registered stack directly from its details with **Edit Definition**;
 - selecting and applying a checked-in `portreeve.stack.json` through the native file
   picker as a compatibility and recovery workflow;

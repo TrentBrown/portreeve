@@ -86,6 +86,24 @@ resolves a stack, status reports an ordinary state difference.
 
 Use `stacks show STACK_ID` when only the registered definition is needed.
 
+## Edit through Portreeve Desktop
+
+The desktop **Stacks** tab can create or edit the fixed `portreeve.stack.json` through
+structured fields. New drafts infer only the selected root's basename as the editable
+project name; users add every component, endpoint, Docker hint, allocation policy, and
+dependency explicitly. The preview is the exact concise JSON submitted for saving.
+
+Directory selection, file inspection, schema validation, exclusive creation, atomic
+replacement, and exact-byte conflict detection remain in the trusted Electron main
+process. The sandboxed renderer receives an opaque document ID and a display basename,
+not a full path or general filesystem/socket authority. A successful write survives an
+apply failure and can be retried while the visible draft still matches the saved bytes.
+See [Desktop application](desktop.md) for conflict, invalid-file, navigation, and trust
+details.
+
+Desktop **Save and Apply** has the same coordination boundary as CLI apply: it never
+prepares a generation, starts providers, or replaces project launcher orchestration.
+
 ## Prepare and activate
 
 Preparation creates or reuses one immutable allocation generation containing every

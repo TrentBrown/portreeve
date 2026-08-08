@@ -222,3 +222,39 @@ leave the saved-not-applied status visible while making the draft dirty.
   inapplicable recovery action is clearer and prevents accidental stale apply.
 
 **Promoted:** 2026-08-08. PR: #22.
+
+---
+
+## Randomize test port probes outside OS dynamic ranges
+
+**Confidence:** HIGH
+
+**Blast Radius:** Test-only helpers that select currently idle TCP ports
+
+Sample unpredictable, non-repeating candidates from ports 10240 through 32767 instead
+of asking the kernel for a dynamic port and releasing it for later reuse. Both macOS
+and default Linux dynamic ranges begin above this band, so unrelated tools that bind
+port zero do not immediately reclaim the selected test port. Random selection also
+avoids systematically colliding with another developer tool's preferred low-port
+sequence. Every candidate is still verified with a real bind and occupied candidates
+are skipped.
+
+**Triggered by:** The feature-final suite selected ports 59353 and 59358 through
+`Bun.serve({ port: 0 })`; after the probes closed, the Codex language server acquired
+both before Portreeve's tests used them, producing exact-port conflicts. Fresh `lsof`
+evidence identified PID 22141 as the listener for both failures.
+
+A first correction used a process-partitioned monotonic 20000-29999 band. A pinned
+rerun selected 21060 successfully, but VS Code Code Helper PID 9498 acquired it before
+Portreeve's next evidence check. That legitimate listener demonstrated that a narrow,
+predictable low-port sequence was still insufficient on an active development host.
+
+**Alternatives considered:**
+- Rerun the suite until the race does not occur - rejected because the final gate should
+  not depend on timing luck.
+- Kill the language server listeners - rejected because they are unrelated legitimate
+  processes and the tests must not mutate them.
+- Reserve each port until the Portreeve acquisition completes - rejected because the
+  reservation itself would correctly make the port unavailable to Portreeve.
+
+**Promoted:** 2026-08-08. PR: #23.

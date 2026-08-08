@@ -78,6 +78,12 @@ does not reinterpret that directory as a Git worktree root, so one runnable stac
 span a non-Git parent containing multiple child repositories. Registered stack roots
 may be siblings but cannot be equal, ancestors, or descendants of one another.
 
+The client accepts an already parsed definition and does not discover, read, or write
+`portreeve.stack.json`. Project CLIs may use the documented upward file discovery in
+the Portreeve CLI, while Portreeve Desktop uses its separate trusted document boundary.
+In every case the socket request contains the canonical `stackRoot` and strict
+definition; applying never prepares allocations or starts providers.
+
 `prepareStack(stackId)` creates or reuses a complete immutable allocation generation.
 `beginStackActivation(generationId, options)` then creates one activation and returns
 its activation-scoped lease tokens atomically. The launcher should renew pending leases
