@@ -5,15 +5,16 @@
 **Pinned diff:**
 `68fc6f906ba8e505d29fcbb5279378c6e936bd21..78b9fcd78d6f27611c1cfdbec4fc5f6a7f5b1c95`
 
-**Available toolchain:** Bun 1.2.18 on macOS x64; repository requires Bun 1.3.14
+**Verification toolchain:** Bun 1.3.14 on macOS arm64, resolved through an
+ephemeral `npx bun@1.3.14` installation without changing the user's global Bun
 
 ## Matrix
 
 | Category | Result | Evidence |
 | --- | --- | --- |
-| Build and typecheck | PASS WITH TOOLCHAIN LIMITATION | `bun run typecheck` passes; the pinned `bun run check` refuses before execution because the host Bun is 1.2.18 rather than 1.3.14 |
-| Lint and format | PASS | `bun run lint`, changed-file Prettier, and `git diff --check` pass |
-| Unit tests | PASS | Focused launcher, platform-path, and purge suite passes 23 tests and 69 assertions |
+| Build and typecheck | PASS | Pinned Bun 1.3.14 passes the repository toolchain check and `bun run typecheck` |
+| Lint and format | PASS WITH REPOSITORY LIMITATION | Pinned Bun 1.3.14 passes `bun run lint`, changed-file Prettier, and `git diff --check`; repository-wide Prettier stops only on the unrelated pre-existing `.handoffs/HANDOFF-main-codex-2026-08-08T1338.md` |
+| Unit tests | PASS WITH HOST-STATE ISOLATION | Focused launcher coverage passes 23 tests and 69 assertions. The complete suite records 309/312 passing while three lifecycle assertions observe the user's real active LaunchAgent; the affected lifecycle file passes 5/5 with an isolated supervisor identity, demonstrating all 312 unique tests passing across the two runs |
 | Integration tests | PASS | Real filesystem tests cover exclusive create, exact-byte replacement, symlink containment, private state, stale-lock recovery, and reset scope |
 | End-to-end/browser | N/A | This slice deliberately exposes no CLI or Desktop launcher workflow |
 | Application runtime | N/A | Command execution begins in P4; this slice contains no runtime command path |
@@ -22,10 +23,16 @@
 ## Commands
 
 ```sh
-bun run typecheck
-bun run lint
-bunx prettier --check src/launcher test/launcher src/platform/paths.js test/platform/paths.test.js docs/issues/tb-portreeve-launcher
-bun test test/launcher test/platform/paths.test.js test/supervision/purge.test.js
+PINNED_BUN=/Users/trent.brown/.npm/_npx/60c3515df86f25b1/node_modules/.bin/bun
+"$PINNED_BUN" run toolchain:check
+"$PINNED_BUN" run typecheck
+"$PINNED_BUN" run lint
+"$PINNED_BUN" x prettier --check src/launcher test/launcher src/platform/paths.js test/platform/paths.test.js docs/issues/tb-portreeve-launcher
+"$PINNED_BUN" test test/launcher test/platform/paths.test.js test/supervision/purge.test.js
+env -u PORTREEVE_SUPERVISOR_DEFINITION -u PORTREEVE_SUPERVISOR_LABEL -u PORTREEVE_SUPERVISOR_UNIT "$PINNED_BUN" test
+PORTREEVE_SUPERVISOR_DEFINITION="$(mktemp -d /tmp/portreeve-pr25-lifecycle.XXXXXX)/com.portreeve.pr25.plist" \
+  PORTREEVE_SUPERVISOR_LABEL=com.portreeve.pr25.test \
+  "$PINNED_BUN" test test/cli/lifecycle-commands.test.js
 python3 <workflow-root>/resources/scripts/validate_branch_docs.py docs/issues/tb-portreeve-launcher
 python3 <workflow-root>/resources/scripts/lint_issues.py docs/issues/tb-portreeve-launcher
 python3 <workflow-root>/resources/scripts/lint_tracker.py docs/issues/tb-portreeve-launcher
@@ -45,14 +52,15 @@ python3 <workflow-root>/resources/scripts/gate_triage.py docs/issues/tb-portreev
 - Shared state is strict, private, atomically replaced, cross-process locked, recoverable
   after stale locks without PIDs, and located inside complete-reset scope.
 
-## Known unrelated failures and manual checks
+## Known unrelated limitations and manual checks
 
-- `bun run toolchain:check` reports: repository requires Bun 1.3.14, but
-  `/Users/trent.brown/.bun/bin/bun` is 1.2.18. The old runtime emits an AVX warning to
-  stderr and fails the compiled-runtime dotenv-autoload assertion.
-- A broad source-suite run recorded 299 passes. Its remaining CLI JSON failures contain
-  the Bun warning in stderr, lifecycle isolation tests observe the user's active installed
-  LaunchAgent, and one real-process reclamation test times out under this mismatched host
-  runtime. None touches `src/launcher` or the added path field.
-- Re-run `bun run check` with repository-pinned Bun 1.3.14 in clean lifecycle isolation
-  before merging. No project-command or Desktop manual check applies to this slice.
+- The user's global Bun remains 1.2.18. Verification used Bun 1.3.14 ephemerally, so no
+  global toolchain or installed PortReeve state was changed.
+- A monolithic source-suite run sees the user's real active
+  `com.portreeve.server` LaunchAgent in three lifecycle-command assertions. The run
+  records 309 passes and 3 host-state failures. Re-running that affected file against a
+  temporary definition and supervisor label passes all 5 tests and 22 assertions.
+- Repository-wide `bun run check` reaches formatting after passing the pinned toolchain,
+  typecheck, and lint gates, then reports only the unrelated existing handoff file named
+  above. Changed-file formatting passes.
+- No project-command or Desktop manual check applies to this foundation slice.

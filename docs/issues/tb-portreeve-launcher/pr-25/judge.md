@@ -30,6 +30,9 @@
 
 ### Concerns
 
-The repository-pinned Bun 1.3.14 gate could not run on this host. Focused logic and
-filesystem integration pass under the available runtime, but the pinned gate must be
-repeated in CI or a corrected local toolchain before merge.
+The repository-pinned Bun 1.3.14 toolchain, typecheck, lint, focused tests, and
+changed-file formatting all pass. A monolithic full-suite run records 309 passes and
+three lifecycle failures because it observes the user's active installed LaunchAgent;
+the affected lifecycle file passes 5/5 with an isolated supervisor identity. The only
+remaining repository-wide `bun run check` interruption is Prettier reporting an unrelated
+pre-existing handoff document outside this branch's diff.

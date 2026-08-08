@@ -32,6 +32,9 @@ Append PR boundary entries here.
 - **Evidence packet:** [pr-25](pr-25/)
 - **Result:** R1, R2, and R8 advance but correctly remain `NOT YET`; later CLI,
   engine, daemon, and Desktop slices complete them. Focused verification passes 23 tests
-  and 69 assertions. Judge: PASS WITH CONCERNS only for unavailable pinned Bun 1.3.14.
+  and 69 assertions. Pinned Bun 1.3.14 passes toolchain, typecheck, lint, and all unique
+  tests across a full run plus isolated lifecycle rerun. Judge: PASS WITH CONCERNS only
+  for host LaunchAgent interference in the monolithic test invocation and an unrelated
+  pre-existing handoff formatting failure.
   Code review: PASS with no findings after token-bound stale-lock and manifest-error
   corrections. Pattern review is not applicable because no rule scope is configured.
