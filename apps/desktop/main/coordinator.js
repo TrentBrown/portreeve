@@ -69,7 +69,7 @@ export function createStateCoordinator(options) {
     if (activeKind === 'mutation') {
       throw desktopCoordinatorError(
         'desktop_busy',
-        'Another Portreeve operation is already in progress.',
+        'Another PortReeve operation is already in progress.',
       );
     }
     const prior = active;
@@ -314,7 +314,7 @@ export function createStateCoordinator(options) {
                     : {
                         code: 'supervised_health_verification_failed',
                         message:
-                          'Portreeve was installed, but the supervised server did not report matching healthy evidence.',
+                          'PortReeve was installed, but the supervised server did not report matching healthy evidence.',
                       },
             steps,
             snapshot: finalSnapshot,
@@ -500,7 +500,7 @@ export function createStateCoordinator(options) {
       if (options.updates === undefined || lastUpdate.status !== 'available') {
         throw desktopCoordinatorError(
           'desktop_update_not_available',
-          'No newer Portreeve Desktop release is currently available.',
+          'No newer PortReeve Desktop release is currently available.',
         );
       }
       return options.updates.openDownloadPage();
@@ -570,20 +570,20 @@ function installAndStartOutcome(install, start, healthy) {
 /** @param {string} action @param {string} outcome */
 function lifecycleMessage(action, outcome) {
   const label = action.replaceAll('-', ' ');
-  if (outcome === 'succeeded') return `Portreeve ${label} completed.`;
-  if (outcome === 'no-change') return `Portreeve ${label} required no change.`;
-  if (outcome === 'refused') return `Portreeve ${label} was safely refused.`;
-  if (outcome === 'partial') return `Portreeve ${label} completed only partially.`;
-  return `Portreeve ${label} failed without completing.`;
+  if (outcome === 'succeeded') return `PortReeve ${label} completed.`;
+  if (outcome === 'no-change') return `PortReeve ${label} required no change.`;
+  if (outcome === 'refused') return `PortReeve ${label} was safely refused.`;
+  if (outcome === 'partial') return `PortReeve ${label} completed only partially.`;
+  return `PortReeve ${label} failed without completing.`;
 }
 
 /** @param {'succeeded'|'refused'|'partial'} outcome */
 function purgeMessage(outcome) {
-  if (outcome === 'succeeded') return 'All Portreeve service data was deleted.';
+  if (outcome === 'succeeded') return 'All PortReeve service data was deleted.';
   if (outcome === 'partial') {
-    return 'Portreeve service data was only partially deleted.';
+    return 'PortReeve service data was only partially deleted.';
   }
-  return 'Portreeve service data deletion was safely refused.';
+  return 'PortReeve service data deletion was safely refused.';
 }
 
 /** @param {'lifecycle'|'inventory'|'stacks'} source @param {unknown} reason @param {string} observedAt */
@@ -595,10 +595,10 @@ function errorView(source, reason, observedAt) {
       'code' in error && typeof error.code === 'string' ? error.code : 'unavailable',
     message:
       source === 'lifecycle'
-        ? 'Portreeve lifecycle status is unavailable.'
+        ? 'PortReeve lifecycle status is unavailable.'
         : source === 'inventory'
-          ? 'Portreeve port inventory is unavailable.'
-          : 'Portreeve stack evidence is unavailable.',
+          ? 'PortReeve port inventory is unavailable.'
+          : 'PortReeve stack evidence is unavailable.',
     observedAt,
   };
 }

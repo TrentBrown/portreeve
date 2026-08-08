@@ -1,7 +1,7 @@
 # Mixed process and Docker stack
 
 This example models a process-backed `website` and Docker-backed `api` as one
-independently runnable stack. Portreeve allocates both host publications and verifies
+independently runnable stack. PortReeve allocates both host publications and verifies
 their evidence. The project launcher still owns the website child process, Docker or
 Compose invocation, environment injection, startup order, health checks, and shutdown.
 
@@ -10,7 +10,7 @@ adapt its project and component names there. The root may be a non-Git parent co
 several child repositories. The file declares topology and preferred ports only; it
 contains no command, secret, environment value, or lease credential.
 
-You may also select that disposable root with **Create or Edit Stack…** in Portreeve
+You may also select that disposable root with **Create or Edit Stack…** in PortReeve
 Desktop and enter the same topology through structured fields. Desktop Save and Apply
 creates or updates the checked-in file, but the launcher sequence below remains
 unchanged because editing never prepares or starts the stack.
@@ -56,7 +56,7 @@ unchanged because editing never prepares or starts the stack.
    when the API is healthy enough to start the website.
 
 5. For a Docker or Codex sandbox, the host launcher renders a separate read-only
-   discovery file instead of mounting the Portreeve socket:
+   discovery file instead of mounting the PortReeve socket:
 
    ```sh
    portreeve stacks snapshot ACTIVATION_ID \
@@ -85,4 +85,4 @@ That harness creates a uniquely named disposable container and process listener 
 drives this complete lifecycle through the official JavaScript client: apply, prepare,
 begin, both confirmations, status, resolution, sandbox snapshot write/read, live end
 refusal, reconciliation, end, missing-stack-root prune, and retained-history inspection.
-It removes every process, container, stack root, and Portreeve data path it creates.
+It removes every process, container, stack root, and PortReeve data path it creates.

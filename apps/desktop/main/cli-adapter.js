@@ -30,14 +30,14 @@ export function createLifecycleAdapter(options) {
     if (!('result' in envelope)) {
       throw desktopAdapterError(
         'invalid_lifecycle_envelope',
-        'Portreeve returned an unsupported lifecycle envelope.',
+        'PortReeve returned an unsupported lifecycle envelope.',
       );
     }
     const parsed = LifecycleMutationResultSchema.safeParse(envelope.result);
     if (!parsed.success || parsed.data.operation !== operation) {
       throw desktopAdapterError(
         'invalid_lifecycle_result',
-        'Portreeve returned an unsupported lifecycle result.',
+        'PortReeve returned an unsupported lifecycle result.',
       );
     }
     return parsed.data;
@@ -54,14 +54,14 @@ export function createLifecycleAdapter(options) {
       if (!('status' in envelope)) {
         throw desktopAdapterError(
           'invalid_lifecycle_envelope',
-          'Portreeve returned an unsupported lifecycle envelope.',
+          'PortReeve returned an unsupported lifecycle envelope.',
         );
       }
       const parsed = LifecycleStatusSchema.safeParse(envelope.status);
       if (!parsed.success) {
         throw desktopAdapterError(
           'invalid_lifecycle_status',
-          'Portreeve returned an unsupported lifecycle status.',
+          'PortReeve returned an unsupported lifecycle status.',
         );
       }
       return parsed.data;
@@ -84,14 +84,14 @@ export function createLifecycleAdapter(options) {
       if (!('preview' in envelope)) {
         throw desktopAdapterError(
           'invalid_purge_envelope',
-          'Portreeve returned an unsupported purge preview.',
+          'PortReeve returned an unsupported purge preview.',
         );
       }
       const parsed = PurgePreviewSchema.safeParse(envelope.preview);
       if (!parsed.success) {
         throw desktopAdapterError(
           'invalid_purge_preview',
-          'Portreeve returned an unsupported purge preview.',
+          'PortReeve returned an unsupported purge preview.',
         );
       }
       purgeToken = parsed.data.confirmationToken;
@@ -121,14 +121,14 @@ export function createLifecycleAdapter(options) {
       if (!('result' in envelope)) {
         throw desktopAdapterError(
           'invalid_purge_envelope',
-          'Portreeve returned an unsupported purge result.',
+          'PortReeve returned an unsupported purge result.',
         );
       }
       const parsed = PurgeResultSchema.safeParse(envelope.result);
       if (!parsed.success || parsed.data.confirmationToken !== token) {
         throw desktopAdapterError(
           'invalid_purge_result',
-          'Portreeve returned an unsupported purge result.',
+          'PortReeve returned an unsupported purge result.',
         );
       }
       return {
@@ -160,13 +160,13 @@ async function invokeJson(run, executablePath, arguments_, kind, timeoutMillisec
   } catch {
     throw desktopAdapterError(
       `invalid_${kind}_json`,
-      `Portreeve returned invalid ${kind} data.`,
+      `PortReeve returned invalid ${kind} data.`,
     );
   }
   if (typeof envelope !== 'object' || envelope === null || envelope.version !== 1) {
     throw desktopAdapterError(
       `invalid_${kind}_envelope`,
-      `Portreeve returned an unsupported ${kind} envelope.`,
+      `PortReeve returned an unsupported ${kind} envelope.`,
     );
   }
   return /** @type {Record<string, unknown>} */ (envelope);
@@ -218,7 +218,7 @@ export function runExecutable(
       reject(
         desktopAdapterError(
           'lifecycle_unavailable',
-          'The bundled Portreeve CLI could not be started.',
+          'The bundled PortReeve CLI could not be started.',
         ),
       );
     });
@@ -228,7 +228,7 @@ export function runExecutable(
         reject(
           desktopAdapterError(
             'lifecycle_timeout',
-            'The bundled Portreeve CLI did not respond in time.',
+            'The bundled PortReeve CLI did not respond in time.',
           ),
         );
         return;
@@ -237,7 +237,7 @@ export function runExecutable(
         reject(
           desktopAdapterError(
             'lifecycle_output_limit',
-            'The bundled Portreeve CLI exceeded its output limit.',
+            'The bundled PortReeve CLI exceeded its output limit.',
           ),
         );
         return;

@@ -61,7 +61,7 @@ await writeFile(
   JSON.stringify(
     {
       name: 'portreeve-desktop',
-      productName: 'Portreeve',
+      productName: 'PortReeve',
       version: metadata.version,
       private: true,
       type: 'module',
@@ -85,7 +85,7 @@ await cp(artifact.executablePath, resolve(resources, artifact.filename));
 const paths = await packager({
   dir: stage,
   out: output,
-  name: 'Portreeve',
+  name: 'PortReeve',
   platform,
   arch: architecture,
   electronVersion: '43.2.0',

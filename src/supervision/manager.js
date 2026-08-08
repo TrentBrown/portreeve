@@ -235,7 +235,7 @@ export class LifecycleManager {
     this.assertMutationCompatible(priorStatus);
     if (priorStatus.mode === 'manual' || priorStatus.mode === 'ambiguous') {
       throw new LifecycleConflictError(
-        'A manual Portreeve server is running. Stop it before installing or upgrading the supervised service.',
+        'A manual PortReeve server is running. Stop it before installing or upgrading the supervised service.',
       );
     }
 
@@ -250,7 +250,7 @@ export class LifecycleManager {
     for (const installedVersion of comparisonVersions) {
       if (compareSemanticVersions(version, installedVersion) < 0) {
         throw new LifecycleConflictError(
-          `Portreeve ${version} will not replace newer Portreeve ${installedVersion}.`,
+          `PortReeve ${version} will not replace newer PortReeve ${installedVersion}.`,
         );
       }
     }
@@ -304,7 +304,7 @@ export class LifecycleManager {
         await this.waitUntilHealthy().catch(() => {});
       }
       throw new Error(
-        `Portreeve upgrade activation failed and the prior installation was restored: ${
+        `PortReeve upgrade activation failed and the prior installation was restored: ${
           error instanceof Error ? error.message : String(error)
         }`,
         { cause: error },
@@ -318,7 +318,7 @@ export class LifecycleManager {
     this.assertMutationCompatible(status);
     if (status.mode === 'manual' || status.mode === 'ambiguous') {
       throw new LifecycleConflictError(
-        'A manual or ambiguous Portreeve server is running. Stop it explicitly before uninstalling native supervision.',
+        'A manual or ambiguous PortReeve server is running. Stop it explicitly before uninstalling native supervision.',
       );
     }
     if (
@@ -347,12 +347,12 @@ export class LifecycleManager {
     this.assertMutationCompatible(status);
     if (status.installation.state !== 'installed') {
       throw new LifecycleConflictError(
-        'Portreeve is not installed for native supervision. Run "portreeve install" first.',
+        'PortReeve is not installed for native supervision. Run "portreeve install" first.',
       );
     }
     if (status.mode === 'manual' || status.mode === 'ambiguous') {
       throw new LifecycleConflictError(
-        'A manual Portreeve server is already running. Stop it before starting the supervised service.',
+        'A manual PortReeve server is already running. Stop it before starting the supervised service.',
       );
     }
     if (status.supervisor.state !== 'active') {
@@ -367,12 +367,12 @@ export class LifecycleManager {
     this.assertMutationCompatible(status);
     if (status.installation.state !== 'installed') {
       throw new LifecycleConflictError(
-        'Portreeve is not installed for native supervision. Run "portreeve install" first.',
+        'PortReeve is not installed for native supervision. Run "portreeve install" first.',
       );
     }
     if (status.mode === 'manual' || status.mode === 'ambiguous') {
       throw new LifecycleConflictError(
-        'A manual Portreeve server is running. Portreeve will not adopt or replace it.',
+        'A manual PortReeve server is running. PortReeve will not adopt or replace it.',
       );
     }
     if (
@@ -397,7 +397,7 @@ export class LifecycleManager {
       (status.mode === 'ambiguous' && !supervisorActive)
     ) {
       throw new LifecycleConflictError(
-        'A manual or ambiguous Portreeve server is running. Use "portreeve stop-manual" for explicit manual-server shutdown.',
+        'A manual or ambiguous PortReeve server is running. Use "portreeve stop-manual" for explicit manual-server shutdown.',
       );
     }
     if (status.socket.state === 'unavailable' && !supervisorActive) {
@@ -420,8 +420,8 @@ export class LifecycleManager {
     if (status.mode !== 'manual') {
       throw new LifecycleConflictError(
         status.mode === 'none'
-          ? 'No manual Portreeve server is running.'
-          : 'Portreeve will not stop an ambiguous or supervised server through the manual-server operation.',
+          ? 'No manual PortReeve server is running.'
+          : 'PortReeve will not stop an ambiguous or supervised server through the manual-server operation.',
       );
     }
     await this.client.stopServer();
@@ -453,7 +453,7 @@ export class LifecycleManager {
   assertPerUser() {
     if (this.uid === 0) {
       throw new LifecycleConflictError(
-        'Portreeve native lifecycle commands must run as the target user, not as root.',
+        'PortReeve native lifecycle commands must run as the target user, not as root.',
       );
     }
   }
@@ -464,13 +464,13 @@ export class LifecycleManager {
   assertMutationCompatible(status) {
     if (status.socket.state === 'incompatible') {
       throw new PortreeveClientError(
-        'The running Portreeve server is protocol-incompatible with this CLI.',
+        'The running PortReeve server is protocol-incompatible with this CLI.',
         { code: 'incompatible_protocol' },
       );
     }
     if (status.installation.state === 'invalid') {
       throw new LifecycleConflictError(
-        'The managed Portreeve installation is unsafe or unreadable.',
+        'The managed PortReeve installation is unsafe or unreadable.',
       );
     }
     if (status.supervisor.state === 'failed') {
@@ -505,7 +505,7 @@ export class LifecycleManager {
       await delay(100);
     }
     throw new Error(
-      `Portreeve did not become healthy: ${
+      `PortReeve did not become healthy: ${
         lastError instanceof Error ? lastError.message : String(lastError)
       }`,
     );
@@ -524,7 +524,7 @@ export class LifecycleManager {
       }
       await delay(100);
     }
-    throw new Error('Portreeve did not stop before the lifecycle timeout.');
+    throw new Error('PortReeve did not stop before the lifecycle timeout.');
   }
 }
 
@@ -560,14 +560,14 @@ function effectiveMode(supervisor, socket) {
  */
 function invalidExecutableReason(information, path, uid) {
   if (!information.isFile() || information.isSymbolicLink()) {
-    return new Error(`Unsafe managed Portreeve executable: ${path}`);
+    return new Error(`Unsafe managed PortReeve executable: ${path}`);
   }
   if (uid !== undefined && information.uid !== uid) {
-    return new Error(`Managed Portreeve executable has another owner: ${path}`);
+    return new Error(`Managed PortReeve executable has another owner: ${path}`);
   }
   if ((information.mode & 0o022) !== 0) {
     return new Error(
-      `Managed Portreeve executable is writable by another user: ${path}`,
+      `Managed PortReeve executable is writable by another user: ${path}`,
     );
   }
   return null;
@@ -578,13 +578,13 @@ async function validateSourceExecutable(path) {
   const canonical = await realpath(path);
   const information = await lstat(canonical);
   if (!information.isFile() || information.isSymbolicLink()) {
-    throw new Error(`Unsafe Portreeve executable: ${path}`);
+    throw new Error(`Unsafe PortReeve executable: ${path}`);
   }
   if ((information.mode & 0o111) === 0) {
-    throw new Error(`Portreeve executable is not executable: ${path}`);
+    throw new Error(`PortReeve executable is not executable: ${path}`);
   }
   if ((information.mode & 0o022) !== 0) {
-    throw new Error(`Portreeve executable is writable by another user: ${path}`);
+    throw new Error(`PortReeve executable is writable by another user: ${path}`);
   }
   return canonical;
 }
@@ -619,12 +619,12 @@ async function validateManagedExecutable(path, uid) {
  */
 async function executableVersion(executable, runner) {
   const result = await runner(executable, ['--version']);
-  assertCommandSucceeded(result, 'Portreeve executable validation');
+  assertCommandSucceeded(result, 'PortReeve executable validation');
   try {
     return SemanticVersionSchema.parse(result.stdout.trim());
   } catch {
     throw new Error(
-      `Portreeve executable returned an invalid version: ${result.stdout.trim()}`,
+      `PortReeve executable returned an invalid version: ${result.stdout.trim()}`,
     );
   }
 }

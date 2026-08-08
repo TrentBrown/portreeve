@@ -1,6 +1,6 @@
 # Safety model
 
-Portreeve is a same-user local authority, not a network service or privilege
+PortReeve is a same-user local authority, not a network service or privilege
 boundary.
 
 - The HTTP/JSON control plane uses a mode-`0600` Unix socket.
@@ -9,7 +9,7 @@ boundary.
 - Only the server normally owns SQLite migrations and transactions.
 - Lease tokens are random and stored only as one-way hashes.
 - Mutating requests negotiate protocol and required capabilities.
-- Portreeve does not load project `.env` files, executable configuration, or
+- PortReeve does not load project `.env` files, executable configuration, or
   plugins and sends no telemetry.
 
 ## Listener ownership and signals
@@ -25,12 +25,12 @@ after the grace period and another successful revalidation. Replacement
 processes are never inherited as targets.
 
 Docker-backed endpoints use a separate evidence path. Confirmation requires a fresh
-container inspection by exact container ID, a running container, exact Portreeve labels
+container inspection by exact container ID, a running container, exact PortReeve labels
 for the stack revision/generation/activation, an exact `127.0.0.1` host-to-container
 TCP publication, and exact container-port agreement. A stored container ID is only a
 lookup key, not proof. An observable host listener is corroborating evidence, but Linux
 Docker Engine may publish through kernel NAT without a userspace `LISTEN` socket.
-Portreeve does not infer Docker ownership from process ancestry.
+PortReeve does not infer Docker ownership from process ancestry.
 
 Normal reclamation and `ports unsafe-evict` never signal Docker Desktop, the Docker
 daemon, or a Docker port-forwarding process. They return a structured launcher action
@@ -55,7 +55,7 @@ unrelated same-user process; callers should inspect the evidence first.
 ## Stack definition editing
 
 Stack definitions remain project-owned files. The desktop renderer cannot choose an
-arbitrary path, read or write the filesystem, open the Portreeve socket, or execute the
+arbitrary path, read or write the filesystem, open the PortReeve socket, or execute the
 CLI. A trusted main-process document session resolves the canonical root, exposes only
 an opaque ID and display basename, bounds and strictly validates file content, refuses
 symlinks and non-regular paths, creates missing files exclusively, and atomically
@@ -77,7 +77,7 @@ evidence, and restore the previous binary and active state on failed health.
 
 Complete reset requires a strict private ownership marker matching the
 canonical application root and current user. Marker creation claims only a new
-empty home or recognized pre-marker Portreeve state with validated entry
+empty home or recognized pre-marker PortReeve state with validated entry
 types, ownership, permissions, and managed-bin contents. Purge preview inspects
 the complete tree with `lstat`, refuses symlinks, foreign ownership, nonprivate
 roots or markers, paths writable by another user, and live

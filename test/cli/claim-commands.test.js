@@ -142,5 +142,5 @@ test('reports an empty claim registry as a plain sentence', async () => {
     listClaimsCommand({ socket: runtime.socketPath }),
   );
 
-  expect(empty.lines).toEqual(['No Portreeve claims.']);
+  expect(empty.lines).toEqual(['No PortReeve claims.']);
 });

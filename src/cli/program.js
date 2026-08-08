@@ -51,7 +51,7 @@ import {
 } from './commands/stacks.js';
 
 /**
- * Create the Portreeve command tree.
+ * Create the PortReeve command tree.
  *
  * Keeping construction separate from execution lets tests exercise the public
  * CLI contract without mutating global process state.
@@ -66,23 +66,23 @@ export function createProgram() {
 
   program
     .command('serve')
-    .description('Run the Portreeve server in the foreground')
-    .option('--home <path>', 'override the Portreeve application directory')
+    .description('Run the PortReeve server in the foreground')
+    .option('--home <path>', 'override the PortReeve application directory')
     .option('--socket <path>', 'override the Unix socket path')
     .action(serveCommand);
 
   program
     .command('status')
     .description('Report server and native supervision state')
-    .option('--home <path>', 'override the Portreeve application directory')
+    .option('--home <path>', 'override the PortReeve application directory')
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output')
     .action(lifecycleStatusCommand);
 
   program
     .command('purge')
-    .description('Preview or execute complete Portreeve removal')
-    .option('--home <path>', 'override the Portreeve application directory')
+    .description('Preview or execute complete PortReeve removal')
+    .option('--home <path>', 'override the PortReeve application directory')
     .option('--socket <path>', 'override the Unix socket path')
     .option('--dry-run', 'inspect the exact deletion evidence without mutation')
     .option(
@@ -101,7 +101,7 @@ export function createProgram() {
     ],
     [
       'uninstall',
-      'Remove native supervision while preserving Portreeve data',
+      'Remove native supervision while preserving PortReeve data',
       uninstallCommand,
     ],
     ['start', 'Start the installed supervised server', startCommand],
@@ -117,7 +117,7 @@ export function createProgram() {
     program
       .command(name)
       .description(description)
-      .option('--home <path>', 'override the Portreeve application directory')
+      .option('--home <path>', 'override the PortReeve application directory')
       .option('--socket <path>', 'override the Unix socket path')
       .option('--json', 'emit versioned JSON output')
       .action(action);
@@ -151,7 +151,7 @@ export function createProgram() {
 
   ports
     .command('reclaim <port>')
-    .description('Reclaim a port from its verified Portreeve run')
+    .description('Reclaim a port from its verified PortReeve run')
     .option('--socket <path>', 'override the Unix socket path')
     .option(
       '--policy <policy>',
@@ -167,7 +167,7 @@ export function createProgram() {
     .description('Dangerously evict any observable listener from an exact port')
     .requiredOption(
       '--unsafe-any-owner',
-      'explicitly authorize bypassing Portreeve claim ownership',
+      'explicitly authorize bypassing PortReeve claim ownership',
     )
     .option('--force-after-grace', 'authorize SIGKILL after the grace period')
     .option('--dry-run', 'show the evidence-bound target plan without signaling')
@@ -177,7 +177,7 @@ export function createProgram() {
 
   const claims = program
     .command('claims')
-    .description('Administer durable Portreeve claims');
+    .description('Administer durable PortReeve claims');
 
   claims
     .command('list')

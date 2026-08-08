@@ -11,7 +11,7 @@ import { renderOutput } from '../output/render.js';
 export async function getConfigCommand(key, options) {
   const settings = await clientFor(options.socket).getConfig();
   if (key !== undefined && !(key in settings)) {
-    throw new CliUsageError(`Unknown Portreeve setting: ${key}.`, { key });
+    throw new CliUsageError(`Unknown PortReeve setting: ${key}.`, { key });
   }
   const value = key === undefined ? settings : settings[key];
   renderOutput(options.json ?? false, key === undefined ? 'settings' : 'value', value, [

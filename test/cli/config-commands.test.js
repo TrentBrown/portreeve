@@ -57,7 +57,7 @@ test('rejects unknown setting keys before rendering output', async () => {
     getConfigCommand('notASetting', { socket: runtime.socketPath }),
   ).rejects.toMatchObject({
     code: 'invalid_input',
-    message: 'Unknown Portreeve setting: notASetting.',
+    message: 'Unknown PortReeve setting: notASetting.',
     details: { key: 'notASetting' },
   });
 });

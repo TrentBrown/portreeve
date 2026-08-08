@@ -112,7 +112,7 @@ test('lists, shows, and reports status for the registered stack', async () => {
   const empty = await captureOutput(() =>
     listStacksCommand({ project: 'absent-project', socket: runtime.socketPath }),
   );
-  expect(empty.lines).toEqual(['No Portreeve stacks.']);
+  expect(empty.lines).toEqual(['No PortReeve stacks.']);
 
   const shown = await captureOutput(() =>
     showStackCommand(stackId, { socket: runtime.socketPath }),
@@ -140,7 +140,7 @@ test('lists, shows, and reports status for the registered stack', async () => {
   );
   expect(unregistered.exitCode).toBe(EXIT_CODES.stateDifference);
   expect(unregistered.lines).toEqual([
-    `No Portreeve stack is registered for ${await realpath(runtime.directory)}.`,
+    `No PortReeve stack is registered for ${await realpath(runtime.directory)}.`,
   ]);
 });
 

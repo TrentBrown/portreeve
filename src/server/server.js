@@ -158,7 +158,7 @@ export async function startPortreeveServer(options) {
       return;
     }
     stopped = true;
-    writeDiagnostic(diagnosticLog, 'info', 'server', 'Portreeve server stopped.', {
+    writeDiagnostic(diagnosticLog, 'info', 'server', 'PortReeve server stopped.', {
       pid: process.pid,
     });
     server.stop(true);
@@ -196,7 +196,7 @@ export async function startPortreeveServer(options) {
   });
 
   await chmod(options.socketPath, 0o600);
-  writeDiagnostic(diagnosticLog, 'info', 'server', 'Portreeve server started.', {
+  writeDiagnostic(diagnosticLog, 'info', 'server', 'PortReeve server started.', {
     pid: process.pid,
   });
   writeDiagnostic(
@@ -366,7 +366,7 @@ async function handleRequest(
     if (request.method !== 'POST') {
       return failure(requestId, 404, {
         code: 'not_found',
-        message: `No Portreeve endpoint matches ${request.method} ${pathname}.`,
+        message: `No PortReeve endpoint matches ${request.method} ${pathname}.`,
         retryable: false,
         details: {},
       });
@@ -582,7 +582,7 @@ async function handleRequest(
         if (!(key in current)) {
           throw new RegistryError(
             'invalid_input',
-            `Unknown Portreeve setting: ${key}.`,
+            `Unknown PortReeve setting: ${key}.`,
             { key },
           );
         }
@@ -670,7 +670,7 @@ async function handleRequest(
 
     return failure(requestId, 404, {
       code: 'not_found',
-      message: `No Portreeve endpoint matches POST ${pathname}.`,
+      message: `No PortReeve endpoint matches POST ${pathname}.`,
       retryable: false,
       details: {},
     });
@@ -707,7 +707,7 @@ function errorResponse(requestId, error) {
   if (error instanceof z.ZodError) {
     return failure(requestId, 400, {
       code: 'invalid_input',
-      message: 'The Portreeve request is invalid.',
+      message: 'The PortReeve request is invalid.',
       retryable: false,
       details: { issues: error.issues },
     });
@@ -734,7 +734,7 @@ function errorResponse(requestId, error) {
   console.error(error);
   return failure(requestId, 500, {
     code: 'internal',
-    message: 'Portreeve encountered an internal error.',
+    message: 'PortReeve encountered an internal error.',
     retryable: false,
     details: {},
   });
@@ -901,7 +901,7 @@ function writeDiagnostic(diagnosticLog, level, component, message, details) {
     diagnosticLog?.write(level, component, message, details);
   } catch (error) {
     console.error(
-      `Portreeve diagnostic logging failed: ${
+      `PortReeve diagnostic logging failed: ${
         error instanceof Error ? error.message : String(error)
       }`,
     );

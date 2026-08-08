@@ -45,7 +45,7 @@ export class ReclamationService {
 
   /**
    * Reclaim a listener only when every current process belongs to the
-   * Portreeve-confirmed run for this port.
+   * PortReeve-confirmed run for this port.
    *
    * @param {number} requestedPort
    * @param {unknown} input

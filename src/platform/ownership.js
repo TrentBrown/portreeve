@@ -36,7 +36,7 @@ export async function ensureOwnershipMarker(paths) {
   const unrelated = entries.filter((entry) => !allowedEntries.has(entry));
   if (unrelated.length > 0) {
     throw new Error(
-      `Refusing to claim a Portreeve application directory containing unrelated entries: ${unrelated.join(
+      `Refusing to claim a PortReeve application directory containing unrelated entries: ${unrelated.join(
         ', ',
       )}`,
     );
@@ -74,13 +74,13 @@ export async function readOwnershipMarker(applicationDirectory) {
   const markerPath = join(root.canonicalPath, OWNERSHIP_MARKER_FILENAME);
   const information = await lstat(markerPath);
   if (!information.isFile() || information.isSymbolicLink()) {
-    throw new Error(`Unsafe Portreeve ownership marker: ${markerPath}`);
+    throw new Error(`Unsafe PortReeve ownership marker: ${markerPath}`);
   }
   if (information.uid !== root.uid) {
-    throw new Error(`Portreeve ownership marker has another owner: ${markerPath}`);
+    throw new Error(`PortReeve ownership marker has another owner: ${markerPath}`);
   }
   if ((information.mode & 0o077) !== 0) {
-    throw new Error(`Portreeve ownership marker is not private: ${markerPath}`);
+    throw new Error(`PortReeve ownership marker is not private: ${markerPath}`);
   }
   const marker = OwnershipMarkerSchema.parse(
     JSON.parse(await readFile(markerPath, 'utf8')),
@@ -89,7 +89,7 @@ export async function readOwnershipMarker(applicationDirectory) {
     marker.canonicalApplicationDirectory !== root.canonicalPath ||
     marker.ownerUid !== root.uid
   ) {
-    throw new Error('Portreeve ownership marker does not match its application home.');
+    throw new Error('PortReeve ownership marker does not match its application home.');
   }
   return {
     path: markerPath,
@@ -106,30 +106,30 @@ export async function validateApplicationRoot(applicationDirectory) {
   const requestedPath = resolve(applicationDirectory);
   const information = await lstat(requestedPath);
   if (!information.isDirectory() || information.isSymbolicLink()) {
-    throw new Error(`Unsafe Portreeve application directory: ${requestedPath}`);
+    throw new Error(`Unsafe PortReeve application directory: ${requestedPath}`);
   }
   const canonicalPath = await realpath(requestedPath);
   const canonicalHome = await realpath(homedir());
   if (canonicalPath === parse(canonicalPath).root || canonicalPath === canonicalHome) {
     throw new Error(
-      `Refusing unsafe Portreeve application directory root: ${canonicalPath}`,
+      `Refusing unsafe PortReeve application directory root: ${canonicalPath}`,
     );
   }
   const uid = typeof process.getuid === 'function' ? process.getuid() : information.uid;
   if (information.uid !== uid) {
     throw new Error(
-      `Portreeve application directory has another owner: ${requestedPath}`,
+      `PortReeve application directory has another owner: ${requestedPath}`,
     );
   }
   if ((information.mode & 0o077) !== 0 || (information.mode & 0o700) !== 0o700) {
-    throw new Error(`Portreeve application directory is not private: ${requestedPath}`);
+    throw new Error(`PortReeve application directory is not private: ${requestedPath}`);
   }
   return { requestedPath, canonicalPath, uid };
 }
 
 /**
  * A pre-marker application home may be claimed only when its recognized names
- * also have the types, ownership, and nested contents Portreeve itself creates.
+ * also have the types, ownership, and nested contents PortReeve itself creates.
  *
  * @param {string[]} entries
  * @param {Record<string, unknown>} paths
@@ -142,33 +142,33 @@ async function validateRecognizedState(entries, paths, root) {
     const path = join(root.canonicalPath, entry);
     const information = await lstat(path);
     if (information.isSymbolicLink()) {
-      throw new Error(`Refusing to claim symlinked Portreeve state: ${path}`);
+      throw new Error(`Refusing to claim symlinked PortReeve state: ${path}`);
     }
     if (information.uid !== root.uid) {
       throw new Error(
-        `Refusing to claim Portreeve state owned by another user: ${path}`,
+        `Refusing to claim PortReeve state owned by another user: ${path}`,
       );
     }
     if ((information.mode & 0o022) !== 0) {
       throw new Error(
-        `Refusing to claim Portreeve state writable by another user: ${path}`,
+        `Refusing to claim PortReeve state writable by another user: ${path}`,
       );
     }
     if (entry === binaryEntry) {
       if (!information.isDirectory()) {
         throw new Error(
-          `Refusing to claim a non-directory Portreeve bin path: ${path}`,
+          `Refusing to claim a non-directory PortReeve bin path: ${path}`,
         );
       }
       await validateRecognizedBinaryState(path, root.uid);
     } else if (entry === socketEntry) {
       if (!information.isSocket()) {
         throw new Error(
-          `Refusing to claim a non-socket Portreeve socket path: ${path}`,
+          `Refusing to claim a non-socket PortReeve socket path: ${path}`,
         );
       }
     } else if (!information.isFile()) {
-      throw new Error(`Refusing to claim non-file Portreeve state: ${path}`);
+      throw new Error(`Refusing to claim non-file PortReeve state: ${path}`);
     }
   }
 }
@@ -200,7 +200,7 @@ async function validateRecognizedBinaryState(binaryDirectory, uid) {
       !temporaryExecutable.test(entry)
     ) {
       throw new Error(
-        `Refusing to claim a Portreeve bin directory containing unrelated entries: ${entry}`,
+        `Refusing to claim a PortReeve bin directory containing unrelated entries: ${entry}`,
       );
     }
     const path = join(binaryDirectory, entry);
@@ -211,7 +211,7 @@ async function validateRecognizedBinaryState(binaryDirectory, uid) {
       information.uid !== uid ||
       (information.mode & 0o022) !== 0
     ) {
-      throw new Error(`Refusing to claim unsafe Portreeve executable state: ${path}`);
+      throw new Error(`Refusing to claim unsafe PortReeve executable state: ${path}`);
     }
   }
 }

@@ -70,6 +70,30 @@ test('release documentation distinguishes build from native execution', async ()
   expect(installation).toContain('Homebrew');
 });
 
+test('uses PortReeve as the display name without changing stable machine identifiers', async () => {
+  const renderer = await readFile(resolve('apps/desktop/renderer/index.html'), 'utf8');
+  const packager = await readFile(resolve('scripts/package-desktop.js'), 'utf8');
+  const program = await readFile(resolve('src/cli/program.js'), 'utf8');
+  const client = await readFile(resolve('packages/client/src/client.js'), 'utf8');
+  const userData = await readFile(resolve('apps/desktop/main/user-data.js'), 'utf8');
+  const clientPackage = await readFile(resolve('packages/client/package.json'), 'utf8');
+  const releaseLib = await readFile(resolve('scripts/release-lib.js'), 'utf8');
+
+  expect(renderer).toContain('<title>PortReeve</title>');
+  expect(renderer).toContain('<h1>PortReeve</h1>');
+  expect(packager).toContain("productName: 'PortReeve'");
+  expect(packager).toContain("name: 'PortReeve'");
+  expect(program).toContain(".name('portreeve')");
+  expect(program).toContain('Run the PortReeve server in the foreground');
+
+  expect(client).toContain('export class PortreeveClient');
+  expect(client).toContain("'Application Support', 'Portreeve'");
+  expect(userData).toContain("'Portreeve Desktop'");
+  expect(JSON.parse(clientPackage)).toMatchObject({ name: 'portreeve' });
+  expect(packager).toContain("appBundleId: 'com.trentbrown.portreeve.desktop'");
+  expect(releaseLib).toContain('class Portreeve < Formula');
+});
+
 test('release workflow runs full and lifecycle gates on every native target', async () => {
   const workflow = await readFile(resolve('.github/workflows/release.yml'), 'utf8');
 

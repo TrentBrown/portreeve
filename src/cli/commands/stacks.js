@@ -54,7 +54,7 @@ export async function listStacksCommand(options) {
     'stacks',
     stacks,
     stacks.length === 0
-      ? ['No Portreeve stacks.']
+      ? ['No PortReeve stacks.']
       : stacks.map(
           (stack) =>
             `${stack.id}  ${stackLabel(stack)}  ${stack.currentRevision.slice(0, 12)}`,
@@ -359,7 +359,7 @@ export async function stackStatusCommand(options) {
   if (stacks.length === 0) {
     setExitCode(EXIT_CODES.stateDifference);
     renderOutput(options.json ?? false, 'stack', null, [
-      `No Portreeve stack is registered for ${stackRoot}.`,
+      `No PortReeve stack is registered for ${stackRoot}.`,
     ]);
     return;
   }

@@ -74,20 +74,20 @@ export function stackRenderSignature(snapshot) {
 export function updatePresentation(update) {
   if (update.status === 'available') {
     return {
-      message: `Portreeve Desktop ${update.latestVersion} is available. Downloading the desktop remains a separate, manual action.`,
+      message: `PortReeve Desktop ${update.latestVersion} is available. Downloading the desktop remains a separate, manual action.`,
       canOpenDownloadPage: true,
     };
   }
   if (update.status === 'current') {
     return {
-      message: `Portreeve Desktop is current. Latest published version: ${update.latestVersion}.`,
+      message: `PortReeve Desktop is current. Latest published version: ${update.latestVersion}.`,
       canOpenDownloadPage: false,
     };
   }
   if (update.status === 'unavailable') {
     return {
       message:
-        'Update information is unavailable. Local Portreeve management is unaffected.',
+        'Update information is unavailable. Local PortReeve management is unaffected.',
       canOpenDownloadPage: false,
     };
   }

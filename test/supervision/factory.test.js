@@ -116,7 +116,7 @@ test('reports an uninstalled unsupported supervisor and refuses every mutation',
     });
 
     const message =
-      'Native Portreeve supervision is not supported on win32. Use "portreeve serve" in the foreground.';
+      'Native PortReeve supervision is not supported on win32. Use "portreeve serve" in the foreground.';
     expect(() =>
       supervisor.renderDefinition({
         executable: '/tmp/portreeve',

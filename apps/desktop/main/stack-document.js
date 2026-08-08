@@ -45,7 +45,7 @@ export function createStackDocumentService(client, options) {
       const stacks = StackListSchema.parse(await client.listStacks());
       for (const stack of stacks) knownStacks.set(stack.id, stack);
     } catch {
-      // File authoring remains available when the Portreeve daemon is absent.
+      // File authoring remains available when the PortReeve daemon is absent.
     }
   }
 
@@ -343,7 +343,7 @@ function conflictResult(session, evidence, reason) {
     message:
       reason === 'invalid-file-replacement'
         ? 'Replacing the invalid stack definition requires confirmation.'
-        : 'The stack definition changed outside Portreeve; overwrite or cancel.',
+        : 'The stack definition changed outside PortReeve; overwrite or cancel.',
     conflict: {
       reason: reason ?? 'changed-after-open',
       token,
@@ -625,7 +625,7 @@ function reduceError(error, fallbackCode) {
       ? error.code
       : null;
   if (code === 'unavailable') {
-    return { code, message: 'The Portreeve server is unavailable.' };
+    return { code, message: 'The PortReeve server is unavailable.' };
   }
   return code === null
     ? { code: fallbackCode, message: 'The operation failed.' }

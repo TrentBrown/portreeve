@@ -51,7 +51,7 @@ test('reports an uninstalled and unsupervised installation as a state difference
   });
 
   const human = await captureOutput(() => lifecycleStatusCommand({ home, socket }));
-  expect(human.lines[0]).toMatch(/^Portreeve mode: none; observed /u);
+  expect(human.lines[0]).toMatch(/^PortReeve mode: none; observed /u);
   expect(human.lines[1]).toBe('Installation: absent; managed version unavailable.');
   expect(human.lines[2]).toMatch(/^Supervisor: unavailable \(/u);
   expect(human.lines[3]).toBe(
@@ -72,16 +72,16 @@ test('refuses to stop a manual server that is not running', async () => {
       operation: 'stop-manual',
       outcome: 'refused',
       changed: false,
-      error: { code: 'conflict', message: 'No manual Portreeve server is running.' },
+      error: { code: 'conflict', message: 'No manual PortReeve server is running.' },
     },
   });
 
   const human = await captureOutput(() =>
     stopManualCommand({ home, socket: join(home, 'portreeve.sock') }),
   );
-  expect(human.lines[0]).toBe('Portreeve stop-manual: refused.');
+  expect(human.lines[0]).toBe('PortReeve stop-manual: refused.');
   expect(human.lines[1]).toMatch(/^Before: absent installation, /u);
-  expect(human.lines.at(-1)).toBe('conflict: No manual Portreeve server is running.');
+  expect(human.lines.at(-1)).toBe('conflict: No manual PortReeve server is running.');
 });
 
 test('requires exactly one purge selector', async () => {
@@ -136,7 +136,7 @@ test('previews and then executes a purge bound to its own evidence token', async
     purgeCommand({ home, socket, confirm: rendered.preview.confirmationToken }),
   );
   expect(executed.exitCode).toBe(0);
-  expect(executed.lines[0]).toBe('Portreeve purge: succeeded.');
+  expect(executed.lines[0]).toBe('PortReeve purge: succeeded.');
   expect(executed.lines[1]).toMatch(/^Removed: [1-9]/u);
   await expect(stat(join(home, 'registry.sqlite'))).rejects.toMatchObject({
     code: 'ENOENT',

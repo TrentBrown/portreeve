@@ -1,6 +1,6 @@
 # Migrating existing services
 
-Migration is intentionally incremental. Portreeve can coexist with projects
+Migration is intentionally incremental. PortReeve can coexist with projects
 that still use their existing persisted remapping logic while services are
 retrofitted one at a time.
 
@@ -12,10 +12,10 @@ retrofitted one at a time.
    acquire/bind/confirm sequence.
 3. Pass the allocated port into the existing server startup path.
 4. Release the confirmed `runId` during graceful shutdown.
-5. Treat Portreeve unavailability as a startup failure. Do not silently fall
+5. Treat PortReeve unavailability as a startup failure. Do not silently fall
    back to the old allocator.
 6. Remove only that service's obsolete remapping persistence and probing code
-   after its Portreeve path is verified.
+   after its PortReeve path is verified.
 
 Use `preferredPort` when the old default is desirable but substitutable. Use
 `exactPort` only when external constraints make substitution invalid. Sticky
@@ -24,7 +24,7 @@ short-lived workers and tests.
 
 ## Transition operations
 
-Start Portreeve before migrated services. `ports list` exposes both claimed
+Start PortReeve before migrated services. `ports list` exposes both claimed
 and unclaimed live listeners, so developers can see legacy and migrated
 processes together. Existing processes are not adopted merely because their
 port matches a claim.
@@ -54,7 +54,7 @@ components in one activation:
 3. Have the trusted launcher apply every `requiredLabels` value and publish the returned
    host port on `127.0.0.1` to the returned container port.
 4. Confirm with the exact container ID. Do not pass a PID for a Docker-backed endpoint.
-5. Keep container start, stop, health, and Compose ownership in the launcher. Portreeve
+5. Keep container start, stop, health, and Compose ownership in the launcher. PortReeve
    coordinates endpoint identity and verifies evidence; it does not orchestrate Docker.
 
 If Docker or its daemon is unavailable, `docker-evidence-v1` is not advertised and a
@@ -63,7 +63,7 @@ stack activations continue to work.
 
 ## Migrating an existing stack orchestrator
 
-Retain the project launcher and move only address coordination into Portreeve:
+Retain the project launcher and move only address coordination into PortReeve:
 
 1. Choose the exact directory representing the one independently runnable stack. It may
    be a non-Git parent containing multiple child repositories.
@@ -80,6 +80,6 @@ Retain the project launcher and move only address coordination into Portreeve:
    represented in the stack. Exact-root adoption can preserve a compatible standalone
    default endpoint assignment when the stack definition is first applied.
 
-Portreeve Desktop can create or edit the definition, but it does not replace the
+PortReeve Desktop can create or edit the definition, but it does not replace the
 launcher. Applying through either the CLI, client, or desktop never prepares ports or
 starts the stack.

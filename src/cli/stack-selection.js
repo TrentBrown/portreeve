@@ -74,7 +74,7 @@ export async function findEnclosingStackDefinition(startPath) {
 
 /**
  * Select the registered stack whose root contains the current real directory.
- * Valid Portreeve state permits at most one such root because registered roots
+ * Valid PortReeve state permits at most one such root because registered roots
  * may not overlap.
  *
  * @template {{stackRoot: string}} T
@@ -88,7 +88,7 @@ export function selectRegisteredEnclosingStack(stacks, currentDirectory) {
   );
   if (matches.length > 1) {
     throw new CliUsageError(
-      `More than one registered stack root encloses ${currentDirectory}; Portreeve data violates the non-overlapping-root invariant.`,
+      `More than one registered stack root encloses ${currentDirectory}; PortReeve data violates the non-overlapping-root invariant.`,
     );
   }
   return matches[0] ?? null;

@@ -1,10 +1,10 @@
-# Portreeve Desktop engineering slice
+# PortReeve Desktop engineering slice
 
 For the operator-facing behavior and security boundary, see the public
 [`docs/desktop.md`](../../docs/desktop.md) guide.
 
-This private workspace contains the non-shipping Electron MVP for Portreeve Desktop. It
-displays lifecycle evidence from an exact Portreeve CLI executable, global inventory and
+This private workspace contains the non-shipping Electron MVP for PortReeve Desktop. It
+displays lifecycle evidence from an exact PortReeve CLI executable, global inventory and
 stack coordination evidence from the official JavaScript client, and confirmed
 lifecycle/reset workflows through a narrow named preload API. The CLI and server remain
 the authorities for every mutation and all filesystem deletion safety.

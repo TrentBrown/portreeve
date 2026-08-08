@@ -33,7 +33,7 @@ test('serve blocks, handles SIGTERM, and removes its socket', async () => {
         expect.objectContaining({
           level: 'info',
           component: 'server',
-          message: 'Portreeve server started.',
+          message: 'PortReeve server started.',
         }),
       ]),
     );

@@ -115,7 +115,7 @@ class UnsupportedSupervisor {
 
   error() {
     return new Error(
-      `Native Portreeve supervision is not supported on ${this.kind.slice(
+      `Native PortReeve supervision is not supported on ${this.kind.slice(
         'unsupported:'.length,
       )}. Use "portreeve serve" in the foreground.`,
     );

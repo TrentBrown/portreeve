@@ -84,7 +84,7 @@ async function startDesktop() {
   const documents = createStackDocumentService(client, {
     async selectStackRoot() {
       const selection = await dialog.showOpenDialog({
-        title: 'Create or edit a Portreeve stack',
+        title: 'Create or edit a PortReeve stack',
         buttonLabel: 'Choose stack root',
         properties: ['openDirectory'],
       });
@@ -99,7 +99,7 @@ async function startDesktop() {
       documents,
       async selectDefinitionFile() {
         const selection = await dialog.showOpenDialog({
-          title: 'Apply a Portreeve stack definition',
+          title: 'Apply a PortReeve stack definition',
           buttonLabel: 'Apply definition',
           properties: ['openFile'],
           filters: [{ name: 'JSON stack definitions', extensions: ['json'] }],

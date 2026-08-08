@@ -8,7 +8,7 @@ import { PortreeveClient } from '../../packages/client/src/index.js';
 export { idlePort } from './ports.js';
 
 /**
- * Start a foreground Portreeve server on a private socket.
+ * Start a foreground PortReeve server on a private socket.
  *
  * Command modules construct their own client from `--socket`, so in-process
  * command tests need a real server rather than a stubbed transport.
@@ -44,7 +44,7 @@ export async function startCliRuntime(prefix) {
     server.kill('SIGKILL');
     await server.exited;
     await rm(directory, { force: true, recursive: true });
-    throw new Error('Portreeve server did not become healthy.');
+    throw new Error('PortReeve server did not become healthy.');
   }
 
   return {

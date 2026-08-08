@@ -19,7 +19,7 @@ means a command that required the socket could not reach it.
 and no native supervisor is active. Stop it explicitly with `portreeve
 stop-manual`, then retry the native operation. `portreeve stop` controls only
 the observed native supervisor; it never sends shutdown to a manual or
-ambiguous socket responder. Portreeve never adopts a shell-backgrounded
+ambiguous socket responder. PortReeve never adopts a shell-backgrounded
 `serve` process.
 
 ## Requested port is unavailable
@@ -73,7 +73,7 @@ ending.
 
 The project file write succeeded and is not rolled back. The editor shows the apply
 outcome, stable error code, message, and validation details returned by the trusted
-coordinator. Restore or upgrade the Portreeve service as indicated, then use **Retry
+coordinator. Restore or upgrade the PortReeve service as indicated, then use **Retry
 Apply** while the draft still matches the saved definition. If you edit the draft,
 Retry is hidden because it would apply older bytes; use **Save and Apply** for the new
 draft instead.
@@ -83,7 +83,7 @@ details and choose **Prepare allocation** when the project launcher is ready.
 
 ## Desktop reports an external definition change
 
-Portreeve compares the current bytes of `portreeve.stack.json` with those observed when
+PortReeve compares the current bytes of `portreeve.stack.json` with those observed when
 the editor opened. Choose **Cancel** to preserve the external version and reopen it, or
 **Overwrite** only when the visible draft should replace those newly observed bytes. A
 second external change requires another confirmation. Symlinks, oversized files, and
@@ -97,7 +97,7 @@ invalid bytes are never partially interpreted.
 
 `portreeve logs --json` reads bounded diagnostic JSON Lines. `portreeve
 history --json` reads structured audit events. On macOS supervised stdout and
-stderr are in the Portreeve application directory; Linux uses the configured
+stderr are in the PortReeve application directory; Linux uses the configured
 systemd unit output paths there as well.
 
 The default application directory is

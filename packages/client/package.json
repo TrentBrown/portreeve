@@ -1,7 +1,7 @@
 {
   "name": "portreeve",
   "version": "0.1.0",
-  "description": "JavaScript client for the Portreeve local development port authority",
+  "description": "JavaScript client for the PortReeve local development port authority",
   "keywords": [
     "development",
     "ports",

@@ -56,14 +56,14 @@ test('migrates recognized pre-marker state and refuses unrelated entries', async
   ).toMatchObject({ product: 'portreeve' });
 
   const unrelated = await directory();
-  await writeFile(join(unrelated, 'family-photo.jpg'), 'not Portreeve state');
+  await writeFile(join(unrelated, 'family-photo.jpg'), 'not PortReeve state');
   await expect(
     ensureOwnershipMarker({ applicationDirectory: unrelated }),
   ).rejects.toThrow('unrelated entries: family-photo.jpg');
 
   const nestedUnrelated = await directory();
   await mkdir(join(nestedUnrelated, 'bin'), { mode: 0o700 });
-  await writeFile(join(nestedUnrelated, 'bin', 'notes.txt'), 'not Portreeve');
+  await writeFile(join(nestedUnrelated, 'bin', 'notes.txt'), 'not PortReeve');
   await expect(
     ensureOwnershipMarker({
       applicationDirectory: nestedUnrelated,
@@ -79,7 +79,7 @@ test('refuses symlinked, malformed, and mismatched ownership markers', async () 
   await writeFile(externalMarker, '{}');
   await symlink(externalMarker, join(symlinked, OWNERSHIP_MARKER_FILENAME));
   await expect(readOwnershipMarker(symlinked)).rejects.toThrow(
-    'Unsafe Portreeve ownership marker',
+    'Unsafe PortReeve ownership marker',
   );
 
   const malformed = await directory();
@@ -107,10 +107,10 @@ test('refuses symlinked, malformed, and mismatched ownership markers', async () 
 
 test('refuses filesystem root and the user home as application roots', async () => {
   await expect(validateApplicationRoot('/')).rejects.toThrow(
-    'Refusing unsafe Portreeve application directory root',
+    'Refusing unsafe PortReeve application directory root',
   );
   await expect(validateApplicationRoot(homedir())).rejects.toThrow(
-    'Refusing unsafe Portreeve application directory root',
+    'Refusing unsafe PortReeve application directory root',
   );
 });
 

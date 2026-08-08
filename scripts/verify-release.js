@@ -91,7 +91,7 @@ if (process.argv.includes('--homebrew')) {
 }
 
 console.log(
-  `Verified ${manifest.artifacts.length} Portreeve ${PORTREEVE_VERSION} release artifacts.`,
+  `Verified ${manifest.artifacts.length} PortReeve ${PORTREEVE_VERSION} release artifacts.`,
 );
 
 /** @param {Record<string, any>} releaseManifest */
@@ -396,7 +396,7 @@ async function smokeHomebrew(releaseManifest) {
   }
   const existing = await run(['brew', 'list', '--formula', 'portreeve']);
   if (existing.code === 0) {
-    throw new Error('Refusing to replace an existing Homebrew Portreeve installation.');
+    throw new Error('Refusing to replace an existing Homebrew PortReeve installation.');
   }
 
   const versionDirectory = resolve(

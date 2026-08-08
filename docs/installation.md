@@ -1,7 +1,7 @@
 # Installation and release channels
 
 GitHub Release executables and their `SHA256SUMS` file are the authoritative
-Portreeve distribution artifacts. They are self-contained and require neither
+PortReeve distribution artifacts. They are self-contained and require neither
 Node.js nor Bun. V1 publishes:
 
 | Operating system | Architecture | Artifact suffix |
@@ -64,7 +64,7 @@ bun run stacks:verify
 `stacks:verify` is a destructive-only-to-its-own-fixtures native integration smoke. It
 creates one uniquely named disposable Docker container and one temporary process
 listener, drives a mixed stack through the official JavaScript client, and removes its
-container, worktree, Portreeve home, and runtime files in `finally` cleanup. It pulls
+container, worktree, PortReeve home, and runtime files in `finally` cleanup. It pulls
 `node:22.17.0-bookworm` when that default image is absent. Override the trusted Docker
 CLI, image, or launcher-rendered sandbox gateway with
 `PORTREEVE_DOCKER_EXECUTABLE`, `PORTREEVE_DOCKER_SMOKE_IMAGE`, or
@@ -86,7 +86,7 @@ Docker smoke. Docker Desktop on macOS is verified manually because hosted macOS 
 do not provide the product's Docker Desktop environment.
 
 Development may occur while a GitHub repository is private, and branch or
-manual Actions runs still work. The Portreeve repository is public before its
+manual Actions runs still work. The PortReeve repository is public before its
 first release because private GitHub release assets require authentication and
 therefore cannot serve as public Homebrew download URLs. The release workflow
 still refuses tag publication if repository visibility becomes private.
@@ -99,5 +99,5 @@ and remove the long-lived publish token; subsequent GitHub-hosted publishes can
 use short-lived OIDC credentials and automatic provenance.
 
 On macOS, the explicit `--homebrew` smoke refuses to disturb an existing
-Portreeve formula, installs a temporary checksum-pinned local formula, runs its
+PortReeve formula, installs a temporary checksum-pinned local formula, runs its
 executable, and uninstalls it.

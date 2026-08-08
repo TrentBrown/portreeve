@@ -10,7 +10,7 @@ test('serves allowlisted local renderer files with a restrictive CSP', async () 
   const root = await mkdtemp(join(tmpdir(), 'portreeve-renderer-'));
   const rendererRoot = join(root, 'renderer');
   await mkdir(rendererRoot);
-  await writeFile(join(rendererRoot, 'index.html'), '<p>Portreeve</p>');
+  await writeFile(join(rendererRoot, 'index.html'), '<p>PortReeve</p>');
   await writeFile(join(root, 'outside.js'), 'throw new Error("private")');
   await symlink(join(root, 'outside.js'), join(rendererRoot, 'linked.js'));
   /** @type {(request: any) => Promise<Response>} */
@@ -30,7 +30,7 @@ test('serves allowlisted local renderer files with a restrictive CSP', async () 
     method: 'GET',
   });
   expect(response.status).toBe(200);
-  expect(await response.text()).toContain('Portreeve');
+  expect(await response.text()).toContain('PortReeve');
   expect(response.headers.get('content-security-policy')).toContain(
     "default-src 'none'",
   );

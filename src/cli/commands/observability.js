@@ -21,7 +21,7 @@ export async function statusCommand(options) {
       server: health,
     };
     renderOutput(options.json ?? false, 'status', status, [
-      `Portreeve is running at ${client.socketPath}.`,
+      `PortReeve is running at ${client.socketPath}.`,
       `Server version: ${health.softwareVersion}`,
     ]);
   } catch (error) {
@@ -35,7 +35,7 @@ export async function statusCommand(options) {
     };
     setExitCode(EXIT_CODES.stateDifference);
     renderOutput(options.json ?? false, 'status', status, [
-      `Portreeve is not running at ${client.socketPath}.`,
+      `PortReeve is not running at ${client.socketPath}.`,
     ]);
   }
 }
@@ -64,7 +64,7 @@ export async function historyCommand(options) {
     'events',
     events,
     events.length === 0
-      ? ['No matching Portreeve history events.']
+      ? ['No matching PortReeve history events.']
       : events.map(
           (event) =>
             `${event.occurredAt}  ${event.eventType}  ${event.entityType}:${event.entityId}`,
@@ -84,7 +84,7 @@ export async function logsCommand(options) {
     'entries',
     entries,
     entries.length === 0
-      ? ['No Portreeve diagnostic log entries.']
+      ? ['No PortReeve diagnostic log entries.']
       : entries.map(
           (entry) =>
             `${entry.timestamp}  ${entry.level.padEnd(5)}  ${entry.component}  ${entry.message}`,

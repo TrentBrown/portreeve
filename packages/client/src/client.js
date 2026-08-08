@@ -306,7 +306,7 @@ export class PortreeveClient {
     );
     if (missingCapabilities.length > 0) {
       throw new PortreeveClientError(
-        `Portreeve does not support the required capabilities: ${missingCapabilities.join(', ')}.`,
+        `PortReeve does not support the required capabilities: ${missingCapabilities.join(', ')}.`,
         {
           code: 'incompatible_protocol',
           details: {
@@ -564,7 +564,7 @@ export class PortreeveClient {
     }
 
     throw new PortreeveClientError(
-      `Service failed to bind after ${maxAttempts} Portreeve attempts.`,
+      `Service failed to bind after ${maxAttempts} PortReeve attempts.`,
       {
         code: 'bind_retry_exhausted',
         details: { cause: String(lastCollision) },
@@ -688,7 +688,7 @@ function requestJson(socketPath, method, path, body) {
               envelope = JSON.parse(content);
             } catch {
               throw new PortreeveClientError(
-                'Portreeve returned a non-JSON response.',
+                'PortReeve returned a non-JSON response.',
                 {
                   code: 'invalid_response',
                   ...(response.statusCode === undefined
@@ -703,9 +703,9 @@ function requestJson(socketPath, method, path, body) {
               envelope.protocolVersion !== PORTREEVE_PROTOCOL_RANGE.maximum
             ) {
               throw new PortreeveClientError(
-                `Portreeve returned unsupported protocol version ${String(
+                `PortReeve returned unsupported protocol version ${String(
                   isObject(envelope) ? envelope.protocolVersion : undefined,
-                )}. Update the Portreeve client or server.`,
+                )}. Update the PortReeve client or server.`,
                 {
                   code: 'incompatible_protocol',
                   ...(response.statusCode === undefined
@@ -729,7 +729,7 @@ function requestJson(socketPath, method, path, body) {
             throw new PortreeveClientError(
               isObject(error) && typeof error.message === 'string'
                 ? error.message
-                : `Portreeve returned HTTP ${response.statusCode}.`,
+                : `PortReeve returned HTTP ${response.statusCode}.`,
               {
                 code:
                   isObject(error) && typeof error.code === 'string'
@@ -760,7 +760,7 @@ function requestJson(socketPath, method, path, body) {
     request.on('error', (error) => {
       reject(
         new PortreeveClientError(
-          `Portreeve is unavailable at ${socketPath}: ${error.message}. Start it with "portreeve serve" or "portreeve start".`,
+          `PortReeve is unavailable at ${socketPath}: ${error.message}. Start it with "portreeve serve" or "portreeve start".`,
           {
             code: 'unavailable',
             details: { socketPath, cause: error.message },

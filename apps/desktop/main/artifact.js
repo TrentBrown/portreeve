@@ -72,23 +72,23 @@ async function resolveReleaseCandidate(options) {
   );
   if (artifact === undefined) {
     throw new Error(
-      `No provisional Portreeve artifact exists for ${operatingSystem}/${options.architecture}.`,
+      `No provisional PortReeve artifact exists for ${operatingSystem}/${options.architecture}.`,
     );
   }
   if (basename(artifact.filename) !== artifact.filename) {
-    throw new Error('The provisional Portreeve artifact filename is unsafe.');
+    throw new Error('The provisional PortReeve artifact filename is unsafe.');
   }
   const candidate = await realpath(
     options.overridePath ?? resolve(options.releaseDirectory, artifact.filename),
   );
   if (basename(candidate) !== artifact.filename) {
-    throw new Error('The provisional Portreeve artifact filename is unexpected.');
+    throw new Error('The provisional PortReeve artifact filename is unexpected.');
   }
   const actual = createHash('sha256')
     .update(await readFile(candidate))
     .digest('hex');
   if (actual !== artifact.sha256) {
-    throw new Error('The provisional Portreeve artifact checksum does not match.');
+    throw new Error('The provisional PortReeve artifact checksum does not match.');
   }
   return Object.freeze({
     source: options.source,

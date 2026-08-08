@@ -58,7 +58,7 @@ function assertCompatible(client) {
   if (!result.compatible) {
     throw new RegistryError(
       'incompatible_protocol',
-      'Client and Portreeve protocol requirements do not overlap.',
+      'Client and PortReeve protocol requirements do not overlap.',
       result,
     );
   }

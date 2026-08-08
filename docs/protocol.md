@@ -1,4 +1,4 @@
-# Portreeve socket protocol
+# PortReeve socket protocol
 
 ## Transport and authority
 
@@ -117,7 +117,7 @@ means `default`. Existing callers may continue sending `service` as an alias for
 ### Confirm or abandon
 
 After successfully binding, call `POST /v1/leases/{leaseId}/confirm` with `client`,
-`leaseToken`, and the positive `rootPid` of the service process tree. Portreeve takes
+`leaseToken`, and the positive `rootPid` of the service process tree. PortReeve takes
 fresh listener evidence and confirms only when every listener belongs to that process
 tree. The response contains `claimId`, `leaseId`, `runId`, `port`, and `confirmedAt`.
 
@@ -163,16 +163,16 @@ policy.
 
 Inventory classifications are `available`, `verified`, `idle`, `pending`, `unclaimed`,
 `conflicting`, `mixed`, and `docker-managed`. A live PID alone never establishes
-ownership; Portreeve compares fresh listener and binding-appropriate process or Docker
+ownership; PortReeve compares fresh listener and binding-appropriate process or Docker
 evidence.
 
 ## Stack definitions
 
 `POST /v1/stacks/apply` accepts `client`, `stackRoot`, and a strict version-1
 definition. `stackRoot` must name an existing directory; the server resolves its real
-path without substituting a Git root. Portreeve rejects a root that equals, contains,
+path without substituting a Git root. PortReeve rejects a root that equals, contains,
 or is contained by another registered stack root, while sibling roots remain valid.
-Stack identity is the definition's `project` plus that canonical root. Portreeve
+Stack identity is the definition's `project` plus that canonical root. PortReeve
 normalizes schema defaults, hashes the canonical JSON with SHA-256,
 stores that immutable revision, and links each published component endpoint to its
 sticky claim. Reapplying equivalent JSON returns `changed: false`. Changed content is
@@ -198,7 +198,7 @@ another live activation for the same canonical stack root.
 The begin response contains an activation plus a private token for every newly leased
 endpoint. Tokens are not returned by later inspection. Each lease identifies its
 binding kind; Docker leases also return the service, container port, and exact
-Portreeve labels the launcher must apply. Renewal accepts a non-empty array of
+PortReeve labels the launcher must apply. Renewal accepts a non-empty array of
 `{ leaseId, leaseToken }` and validates the complete batch before extending any
 deadline. Confirm, abandon, and skip accept one lease credential. Process confirmation
 requires `rootPid` and fresh lineage evidence. Docker confirmation requires
@@ -246,7 +246,7 @@ drawn from the same precomputed generation.
 Snapshot rendering additionally accepts `gatewayHost`. It returns a strict
 `schemaVersion: 1` document whose addresses use that launcher-supplied host and the
 generation's allocated host ports. It excludes stack-root paths, claims, leases, tokens,
-runs, PIDs, Docker identifiers, socket paths, and mutation authority. Portreeve
+runs, PIDs, Docker identifiers, socket paths, and mutation authority. PortReeve
 validates but does not discover or independently verify the gateway.
 
 ## Settings and observability

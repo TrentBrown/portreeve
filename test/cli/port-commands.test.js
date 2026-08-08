@@ -133,7 +133,7 @@ test('inspects one port with its claim and listener evidence', async () => {
   expect(unclaimed.lines).toEqual([`TCP port ${unclaimedPort}: available`]);
 });
 
-test('refuses reclamation without verified Portreeve ownership evidence', async () => {
+test('refuses reclamation without verified PortReeve ownership evidence', async () => {
   const foreign = Bun.serve({ port: 0, fetch: () => new Response('foreign') });
   try {
     const refused = await captureOutput(() =>

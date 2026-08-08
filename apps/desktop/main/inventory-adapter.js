@@ -9,7 +9,7 @@ export function createInventoryAdapter(client) {
       const result = await client.listPorts();
       const parsed = InventoryListSchema.safeParse(result);
       if (!parsed.success) {
-        const error = new Error('Portreeve returned unsupported inventory data.');
+        const error = new Error('PortReeve returned unsupported inventory data.');
         Object.assign(error, { code: 'invalid_inventory' });
         throw error;
       }

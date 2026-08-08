@@ -1,10 +1,10 @@
-# Portreeve
+# PortReeve
 
-Portreeve is the per-user local authority for development TCP ports. It gives concurrent
+PortReeve is the per-user local authority for development TCP ports. It gives concurrent
 projects and agent worktrees durable port identities without duplicating startup-time
 port probing and remapping logic in every service.
 
-Portreeve coordinates through a private HTTP/JSON Unix socket. It persists claims in
+PortReeve coordinates through a private HTTP/JSON Unix socket. It persists claims in
 SQLite, treats `lsof` listener evidence as live truth, and uses a two-phase
 acquire/bind/confirm workflow to close the race between choosing and actually binding a
 port.
@@ -52,7 +52,7 @@ portreeve stacks apply --json
 portreeve stacks prepare STACK_ID --json
 ```
 
-`portreeve.stack.json` owns component and endpoint topology. Portreeve owns durable port
+`portreeve.stack.json` owns component and endpoint topology. PortReeve owns durable port
 assignments, generations, activations, and live evidence; the project launcher still
 owns process/container startup, environment mapping, health checks, and shutdown. One
 canonical stack root represents one independently runnable stack and may be a non-Git
@@ -75,7 +75,7 @@ project services automatically.
 - [Safety model](docs/safety.md)
 - [Troubleshooting](docs/troubleshooting.md)
 
-Portreeve sends no telemetry and does not load project `.env` or executable
+PortReeve sends no telemetry and does not load project `.env` or executable
 configuration files.
 
 ## License

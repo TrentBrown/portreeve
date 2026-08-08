@@ -146,7 +146,7 @@ export function createStackEditorView(options) {
     const title = element('h2');
     title.textContent = documentState.stackId === null ? 'Create stack' : 'Edit stack';
     const subtitle = paragraph(
-      'Define project topology here. Port allocation remains a separate Portreeve action.',
+      'Define project topology here. Port allocation remains a separate PortReeve action.',
     );
     subtitle.className = 'muted';
     headerCopy.append(eyebrow, title, subtitle);
@@ -811,7 +811,7 @@ export function documentNotice(documentState) {
       message: 'The project definition file is missing.',
       details: [
         'This draft was recovered from the currently applied definition.',
-        'Save and Apply will recreate portreeve.stack.json before contacting Portreeve.',
+        'Save and Apply will recreate portreeve.stack.json before contacting PortReeve.',
       ],
     };
   }
@@ -957,5 +957,5 @@ function paragraph(text) {
 function errorMessage(error) {
   return error instanceof Error && error.message.trim() !== ''
     ? error.message
-    : 'Refresh Portreeve evidence, then try again.';
+    : 'Refresh PortReeve evidence, then try again.';
 }
