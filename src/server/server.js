@@ -145,7 +145,10 @@ export async function startPortreeveServer(options) {
       dockerAdapter,
     });
   const diagnosticLog = options.diagnosticLog;
-  let stopped = false;
+  /** @type {Promise<void> | null} */
+  let stopping = null;
+  /** @type {unknown} */
+  let stopFailure = null;
   let resolveStopped = () => {};
   const stoppedPromise = new Promise((resolvePromise) => {
     resolveStopped = () => resolvePromise(undefined);
@@ -153,19 +156,36 @@ export async function startPortreeveServer(options) {
   /** @type {Bun.Server<undefined>} */
   let server;
 
-  async function stop() {
-    if (stopped) {
-      return;
+  function stop() {
+    stopping ??= shutdown();
+    return stopping;
+  }
+
+  async function shutdown() {
+    try {
+      server.stop(true);
+      await unlink(options.socketPath).catch((error) => {
+        if (!isMissingFile(error)) {
+          throw error;
+        }
+      });
+    } catch (error) {
+      stopFailure = error;
+      writeDiagnostic(
+        diagnosticLog,
+        'error',
+        'server',
+        'Portreeve server shutdown failed.',
+        {
+          pid: process.pid,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
+      resolveStopped();
+      throw error;
     }
-    stopped = true;
     writeDiagnostic(diagnosticLog, 'info', 'server', 'Portreeve server stopped.', {
       pid: process.pid,
-    });
-    server.stop(true);
-    await unlink(options.socketPath).catch((error) => {
-      if (!isMissingFile(error)) {
-        throw error;
-      }
     });
     resolveStopped();
   }
@@ -188,7 +208,7 @@ export async function startPortreeveServer(options) {
         options.mode ?? 'manual',
         () => {
           setTimeout(() => {
-            void stop();
+            stop().catch(() => {});
           }, 0);
         },
       );
@@ -212,8 +232,11 @@ export async function startPortreeveServer(options) {
   return Object.freeze({
     socketPath: options.socketPath,
     stop,
-    waitUntilStopped() {
-      return stoppedPromise;
+    async waitUntilStopped() {
+      await stoppedPromise;
+      if (stopFailure !== null) {
+        throw stopFailure;
+      }
     },
   });
 }

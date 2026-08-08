@@ -19,6 +19,7 @@ import {
 } from './artifact.js';
 import { createLifecycleAdapter } from './cli-adapter.js';
 import { createStateCoordinator } from './coordinator.js';
+import { reportBackgroundFailure } from './diagnostics.js';
 import { createInventoryAdapter } from './inventory-adapter.js';
 import { createStackAdapter } from './stack-adapter.js';
 import { createStackDocumentService } from './stack-document.js';
@@ -130,7 +131,9 @@ async function startDesktop() {
   await window.loadURL(RENDERER_URL);
   diagnose('renderer-loaded');
   await coordinator.refresh();
-  void coordinator.checkForUpdates();
+  coordinator.checkForUpdates().catch((error) => {
+    reportBackgroundFailure('desktop update check', error);
+  });
   if (window.isVisible() && !window.isMinimized()) coordinator.start();
 }
 

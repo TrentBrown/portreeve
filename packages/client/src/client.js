@@ -26,11 +26,12 @@ export class PortreeveClientError extends Error {
    *   status?: number,
    *   requestId?: string,
    *   retryable?: boolean,
-   *   details?: Record<string, unknown>
+   *   details?: Record<string, unknown>,
+   *   cause?: unknown
    * }} options
    */
   constructor(message, options) {
-    super(message);
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = 'PortreeveClientError';
     this.code = options.code;
     this.status = options.status;
@@ -536,6 +537,8 @@ export class PortreeveClient {
   async withPort(request, start) {
     const maxAttempts = request.maxAttempts ?? 3;
     let lastCollision;
+    /** @type {string[]} */
+    const abandonFailures = [];
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       const lease = await this.acquire(request);
@@ -553,10 +556,31 @@ export class PortreeveClient {
         });
       } catch (error) {
         const collision = isAddressInUse(error);
-        await this.abandon(lease, collision ? 'address-in-use' : 'startup-error').catch(
-          () => {},
-        );
+        /** @type {unknown} */
+        let abandonFailure = null;
+        try {
+          await this.abandon(lease, collision ? 'address-in-use' : 'startup-error');
+        } catch (caught) {
+          abandonFailure = caught;
+          abandonFailures.push(`${lease.leaseId}: ${errorMessage(caught)}`);
+        }
         if (!collision) {
+          if (abandonFailure !== null) {
+            throw new PortreeveClientError(
+              `Service startup failed and its Portreeve lease could not be abandoned: ${errorMessage(
+                abandonFailure,
+              )}`,
+              {
+                code: 'lease_abandon_failed',
+                details: {
+                  leaseId: lease.leaseId,
+                  startupError: errorMessage(error),
+                  abandonError: errorMessage(abandonFailure),
+                },
+                cause: error,
+              },
+            );
+          }
           throw error;
         }
         lastCollision = error;
@@ -567,7 +591,11 @@ export class PortreeveClient {
       `Service failed to bind after ${maxAttempts} Portreeve attempts.`,
       {
         code: 'bind_retry_exhausted',
-        details: { cause: String(lastCollision) },
+        details: {
+          cause: String(lastCollision),
+          ...(abandonFailures.length === 0 ? {} : { abandonFailures }),
+        },
+        cause: lastCollision,
       },
     );
   }
@@ -773,6 +801,11 @@ function requestJson(socketPath, method, path, body) {
     }
     request.end();
   });
+}
+
+/** @param {unknown} error */
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**

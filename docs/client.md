@@ -15,7 +15,10 @@ and does not start or install Portreeve.
 `withPort(request, start)` performs acquire, calls `start(port)`, confirms the bound
 listener, and returns `{ port, run, value, release }`. Address-in-use errors are
 abandoned and retried with a fresh allocation, up to `maxAttempts` (default 3). Other
-startup errors are abandoned and rethrown.
+startup errors are abandoned and rethrown. When abandoning the lease itself fails, the
+helper throws `lease_abandon_failed` with the startup error as its `cause` so the leaked
+lease is never hidden. Exhausted bind retries throw `bind_retry_exhausted` with the last
+collision as its `cause` and any abandon failures in `details.abandonFailures`.
 
 ```js
 const running = await client.withPort(

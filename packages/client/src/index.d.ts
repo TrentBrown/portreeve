@@ -362,6 +362,7 @@ export declare class PortreeveClientError extends Error {
       requestId?: string;
       retryable?: boolean;
       details?: Record<string, unknown>;
+      cause?: unknown;
     },
   );
   code: string;
