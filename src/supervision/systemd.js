@@ -3,6 +3,7 @@
 import { unlink } from 'node:fs/promises';
 import { atomicWrite, fileExists } from './files.js';
 import { assertCommandSucceeded, runCommand } from './command.js';
+import { SupervisorDefinitionSchema } from './schemas.js';
 
 export const DEFAULT_SYSTEMD_UNIT = 'portreeve.service';
 
@@ -22,9 +23,10 @@ export class SystemdUserSupervisor {
   }
 
   /**
-   * @param {import('./types.js').SupervisorDefinition} definition
+   * @param {import('./types.js').SupervisorDefinition} requestedDefinition
    */
-  renderDefinition(definition) {
+  renderDefinition(requestedDefinition) {
+    const definition = SupervisorDefinitionSchema.parse(requestedDefinition);
     const command = [
       definition.executable,
       'serve',

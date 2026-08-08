@@ -138,4 +138,24 @@ describe('native supervisor adapters', () => {
       await rm(directory, { recursive: true, force: true });
     }
   });
+
+  test('refuses definition paths that could inject a foreign directive', () => {
+    const injected = {
+      ...definition,
+      applicationDirectory: '/tmp/portreeve"\nExecStartPre=/bin/sh -c "id',
+    };
+    const systemd = new SystemdUserSupervisor({
+      definitionPath: '/tmp/portreeve-unused.service',
+    });
+    const launchd = new LaunchdSupervisor({
+      uid: 501,
+      definitionPath: '/tmp/portreeve-unused.plist',
+    });
+
+    expect(() => systemd.renderDefinition(injected)).toThrow();
+    expect(() => launchd.renderDefinition(injected)).toThrow();
+    expect(() =>
+      systemd.renderDefinition({ ...definition, standardErrorPath: '/tmp/a\nb.log' }),
+    ).toThrow();
+  });
 });
