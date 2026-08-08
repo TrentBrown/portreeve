@@ -76,7 +76,7 @@ function launcher(options = {}) {
   };
 }
 
-/** @param {'stopped' | 'partial' | 'fully-observed' | 'verified' | 'conflicting' | 'uncertain'} classification @param {Partial<{trusted: boolean, daemonUnavailable: boolean, hasGeneration: boolean, commandOutcome: 'succeeded' | 'failed' | 'cancelled' | 'timed-out', renewFailure: boolean, slowRenewal: boolean, changeGenerationAtBegin: boolean}>} [options] */
+/** @param {'stopped' | 'partial' | 'fully-observed' | 'verified' | 'conflicting' | 'uncertain'} classification @param {Partial<{trusted: boolean, daemonUnavailable: boolean, hasGeneration: boolean, commandOutcome: 'succeeded' | 'failed' | 'cancelled' | 'timed-out', commandOutputBytes: number, renewFailure: boolean, slowRenewal: boolean, changeGenerationAtBegin: boolean}>} [options] */
 function harness(classification, options = {}) {
   let currentClassification = classification;
   let currentGeneration = options.hasGeneration === false ? null : generation;
@@ -208,7 +208,10 @@ function harness(classification, options = {}) {
         if (options.slowRenewal) {
           await new Promise((resolvePromise) => setTimeout(resolvePromise, 3));
         }
-        return commandResult(options.commandOutcome ?? 'succeeded');
+        return commandResult(
+          options.commandOutcome ?? 'succeeded',
+          options.commandOutputBytes,
+        );
       },
       resolveShell: () => '/bin/sh',
       operationId: () => '55555555-5555-4555-8555-555555555555',
@@ -385,6 +388,31 @@ test('composed Restart refuses Start when fresh post-Stop evidence is partial', 
   });
 });
 
+test('bounds retained output across both steps of a composed Restart', async () => {
+  const fixture = harness('fully-observed', { commandOutputBytes: 700_000 });
+  let commands = 0;
+  const original = fixture.service.runCommand;
+  fixture.service.runCommand = async (input) => {
+    commands += 1;
+    if (commands === 1) fixture.setClassification('stopped');
+    return original(input);
+  };
+  const result = await fixture.service.execute({
+    operation: 'restart',
+    stack,
+    launcher: launcher(),
+  });
+  const retained = result.steps.reduce(
+    (total, step) => total + step.command.output.retainedBytes,
+    0,
+  );
+  expect(retained).toBe(1_048_576);
+  expect(result.steps[0].command.output).toMatchObject({ truncated: true });
+  expect(result.steps[0].command.output.chunks[0]).toMatchObject({
+    stream: 'system',
+  });
+});
+
 test('allows only confirmed degraded Stop and cached degraded Status', async () => {
   const start = harness('stopped', { daemonUnavailable: true });
   expect(
@@ -527,8 +555,8 @@ test('executes through the official Unix-socket client and persists only safe hi
   }
 });
 
-/** @param {'succeeded' | 'failed' | 'cancelled' | 'timed-out'} outcome */
-function commandResult(outcome) {
+/** @param {'succeeded' | 'failed' | 'cancelled' | 'timed-out'} outcome @param {number} [outputBytes] */
+function commandResult(outcome, outputBytes = 0) {
   return {
     outcome,
     shellPath: '/bin/sh',
@@ -538,7 +566,15 @@ function commandResult(outcome) {
     exitCode: outcome === 'succeeded' ? 0 : outcome === 'failed' ? 1 : null,
     signal: outcome === 'cancelled' || outcome === 'timed-out' ? 'SIGTERM' : null,
     processGroupId: 123,
-    output: { chunks: [], truncated: false, retainedBytes: 0, totalBytes: 0 },
+    output: {
+      chunks:
+        outputBytes === 0
+          ? []
+          : [{ sequence: 0, stream: 'stdout', text: 'x'.repeat(outputBytes) }],
+      truncated: false,
+      retainedBytes: outputBytes,
+      totalBytes: outputBytes,
+    },
     failure:
       outcome === 'succeeded'
         ? null

@@ -287,9 +287,7 @@ function createOutputTail(limit) {
           chunks.shift();
           retainedBytes -= first.bytes;
         } else {
-          const value = Buffer.from(first.text, 'utf8')
-            .subarray(excess)
-            .toString('utf8');
+          const value = utf8Suffix(first.text, first.bytes - excess);
           retainedBytes -= first.bytes - Buffer.byteLength(value, 'utf8');
           chunks[0] = {
             ...first,
@@ -316,6 +314,22 @@ function createOutputTail(limit) {
       return { chunks: retained, truncated, retainedBytes, totalBytes };
     },
   };
+}
+
+/** @param {string} value @param {number} maximumBytes */
+export function utf8Suffix(value, maximumBytes) {
+  const characters = Array.from(value);
+  let retainedBytes = 0;
+  let index = characters.length;
+  while (index > 0) {
+    const character = characters[index - 1];
+    if (character === undefined) break;
+    const bytes = Buffer.byteLength(character, 'utf8');
+    if (retainedBytes + bytes > maximumBytes) break;
+    retainedBytes += bytes;
+    index -= 1;
+  }
+  return characters.slice(index).join('');
 }
 
 /** @param {{outcome: 'succeeded' | 'failed' | 'cancelled' | 'timed-out', shellPath: string, started: Date, completed: Date, exitCode: number | null, signal: string | null, processGroupId: number | null, output: ReturnType<ReturnType<typeof createOutputTail>['result']>, failure: {code: string, message: string} | null}} value */

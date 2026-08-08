@@ -72,6 +72,19 @@ test('keeps a truncation-marked bounded tail', async () => {
   }
 });
 
+test('truncates only at UTF-8 character boundaries', async () => {
+  const result = await runFiniteCommand({
+    command: "printf '🙂🙂'",
+    shellPath: '/bin/sh',
+    workingDirectory: process.cwd(),
+    environment: {},
+    timeoutMilliseconds: 2_000,
+    outputLimitBytes: 5,
+  });
+  expect(result.output).toMatchObject({ truncated: true, retainedBytes: 4 });
+  expect(result.output.chunks.at(-1)?.text).toBe('🙂');
+});
+
 test('times out and escalates signals only to the created process group', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'portreeve-command-'));
   /** @type {Array<{processGroupId: number, signal: NodeJS.Signals}>} */

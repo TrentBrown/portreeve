@@ -4,9 +4,11 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { StackRecordSchema, StackStatusSchema } from '../protocol/schemas.js';
 import {
+  LAUNCHER_OUTPUT_LIMIT_BYTES,
   LauncherCommandResultSchema,
   resolveLauncherShell,
   runFiniteCommand,
+  utf8Suffix,
 } from './command-session.js';
 import { LauncherExecutionDocumentSchema } from './environment-service.js';
 
@@ -671,9 +673,8 @@ function admissionFailure(operation, evidence, options) {
 
 /** @param {{operation: string, degraded: boolean, environmentSource: string | null, beforeEvidence: any, afterEvidence: any, steps: any[], failure?: any, daemonOperation: any}} value */
 function lifecycleResult(value) {
-  const failedCommand = value.steps.find(
-    ({ command }) => command.outcome !== 'succeeded',
-  );
+  const steps = boundStepOutputs(value.steps, LAUNCHER_OUTPUT_LIMIT_BYTES);
+  const failedCommand = steps.find(({ command }) => command.outcome !== 'succeeded');
   const failure =
     value.failure ??
     (failedCommand === undefined
@@ -699,10 +700,64 @@ function lifecycleResult(value) {
     environmentSource: value.environmentSource,
     beforeEvidence: value.beforeEvidence,
     afterEvidence: value.afterEvidence,
-    steps: value.steps,
+    steps,
     failure,
     daemonOperation: value.daemonOperation,
   };
+}
+
+/** @param {any[]} input @param {number} limit */
+function boundStepOutputs(input, limit) {
+  const steps = structuredClone(input);
+  const originalOutputs = steps.map(({ command }) => command.output);
+  for (const { command } of steps) {
+    command.output = {
+      chunks: [],
+      truncated: false,
+      retainedBytes: 0,
+      totalBytes: command.output.totalBytes,
+    };
+  }
+  let remaining = limit;
+  let truncated = originalOutputs.some(({ truncated }) => truncated);
+  for (let stepIndex = steps.length - 1; stepIndex >= 0; stepIndex -= 1) {
+    const output = originalOutputs[stepIndex];
+    const destination = steps[stepIndex]?.command.output;
+    if (output === undefined || destination === undefined) continue;
+    const chunks = output.chunks.filter(
+      (/** @type {{stream: string, text: string}} */ chunk) =>
+        chunk.stream !== 'system' ||
+        chunk.text !== '[PortReeve: earlier output truncated]\n',
+    );
+    for (let chunkIndex = chunks.length - 1; chunkIndex >= 0; chunkIndex -= 1) {
+      const chunk = chunks[chunkIndex];
+      if (chunk === undefined) continue;
+      const bytes = Buffer.from(chunk.text, 'utf8');
+      if (remaining === 0) {
+        truncated = true;
+        continue;
+      }
+      const text =
+        bytes.length <= remaining ? chunk.text : utf8Suffix(chunk.text, remaining);
+      if (Buffer.byteLength(text, 'utf8') < bytes.length) truncated = true;
+      destination.chunks.unshift({ ...chunk, text });
+      const retainedBytes = Buffer.byteLength(text, 'utf8');
+      destination.retainedBytes += retainedBytes;
+      remaining -= retainedBytes;
+    }
+  }
+  if (truncated) {
+    const first = steps.find(({ command }) => command.output.chunks.length > 0);
+    if (first !== undefined) {
+      first.command.output.truncated = true;
+      first.command.output.chunks.unshift({
+        sequence: first.command.output.chunks[0]?.sequence ?? 0,
+        stream: 'system',
+        text: '[PortReeve: earlier output truncated]\n',
+      });
+    }
+  }
+  return steps;
 }
 
 /** @param {ReturnType<typeof lifecycleResult>} result */
