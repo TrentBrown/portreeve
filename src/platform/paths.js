@@ -26,6 +26,7 @@ export function resolveRuntimePaths(environment = process.env) {
     managedExecutablePath: join(applicationDirectory, 'bin', 'portreeve'),
     rollbackExecutablePath: join(applicationDirectory, 'bin', 'portreeve.previous'),
     databasePath: join(applicationDirectory, 'registry.sqlite'),
+    launcherStatePath: join(applicationDirectory, 'launcher-state.json'),
     diagnosticLogPath: join(applicationDirectory, 'portreeve.log'),
     supervisorStandardOutputPath: join(applicationDirectory, 'supervisor.stdout.log'),
     supervisorStandardErrorPath: join(applicationDirectory, 'supervisor.stderr.log'),

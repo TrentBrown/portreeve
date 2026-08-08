@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>PR #25 — PortReeve Launcher foundations</title>
+    <style>
+      :root { color-scheme: light; --ink:#17231f; --green:#17634d; --cream:#f6f1e7; --card:#fffdf8; --line:#d7d0c2; --gold:#b97822; }
+      * { box-sizing:border-box } body { margin:0; color:var(--ink); background:var(--cream); font:16px/1.6 system-ui,sans-serif }
+      header,main { max-width:1050px; margin:auto; padding:28px } header { padding-top:55px } h1,h2,h3 { font-family:Georgia,serif; line-height:1.16 }
+      h1 { font-size:clamp(2.5rem,7vw,5rem); margin:.1em 0 } h2 { margin-top:2.5em; font-size:2.1rem } a { color:var(--green) }
+      nav,.card,.callout,.diagram,.quiz { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin:18px 0 }
+      nav a { margin-right:18px } .eyebrow { color:var(--green); font-weight:800; letter-spacing:.14em; text-transform:uppercase }
+      .flow { display:grid; grid-template-columns:repeat(4,1fr); gap:12px } .node { padding:16px; border-radius:10px; background:#e5efe9; border:1px solid #b6cfc2; text-align:center }
+      .arrow { text-align:center; color:var(--gold); font-weight:800 } pre { white-space:pre-wrap; overflow:auto; padding:18px; border-radius:10px; background:#17231f; color:#eef7f1 }
+      .callout { border-left:6px solid var(--gold) } button { display:block; width:100%; text-align:left; padding:12px; margin:8px 0; border:1px solid var(--line); border-radius:9px; background:white; cursor:pointer }
+      button:hover { border-color:var(--green) } .feedback { font-weight:700; min-height:1.6em } .correct { background:#dff2e8 } .wrong { background:#f6dfd8 }
+      @media(max-width:720px){ .flow{grid-template-columns:1fr} .arrow{transform:rotate(90deg)} }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="eyebrow">Pinned PR #25 · first Launcher slice</p>
+      <h1>A safe file before a powerful command</h1>
+      <p>This change establishes the configuration and trust foundations for PortReeve Launcher. It intentionally runs nothing.</p>
+      <nav><a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#quiz">Quiz</a></nav>
+    </header>
+    <main>
+      <section id="background">
+        <h2>Background</h2>
+        <p>PortReeve already knows a stack's components, endpoints, allocated host ports, activations, and fresh listener evidence. A project launcher knows how that particular project starts and stops. The new Launcher feature will connect those authorities without moving arbitrary shell execution into the daemon.</p>
+        <div class="diagram"><div class="flow"><div class="node">Checked-in<br /><strong>stack topology</strong></div><div class="node">PortReeve<br /><strong>ports and evidence</strong></div><div class="node">Checked-in<br /><strong>launcher commands</strong></div><div class="node">Project<br /><strong>processes</strong></div></div></div>
+        <p>Before a future CLI or Desktop button can execute a command, PortReeve needs an exact answer to four questions: is the file valid, does it still contain the reviewed bytes, does its working directory remain inside the stack, and are its endpoint mappings meaningful?</p>
+      </section>
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <p>Think of trust as a seal placed on bytes, not on a filename. If a developer changes whitespace, the semantics may be unchanged, but the reviewed artifact is no longer exact. The SHA-256 revision changes and execution must wait for another review.</p>
+        <pre>{
+  "version": 1,
+  "operations": {
+    "start": { "command": "npm run start" },
+    "stop": { "command": "npm run stop" }
+  }
+}</pre>
+        <div class="callout"><strong>Important boundary:</strong> this PR parses, validates, suggests, fingerprints, and stores trust. It adds no shell runner, daemon operation route, CLI launcher command, or Desktop IPC.</div>
+        <p>Command discovery is similarly conservative. One exact package script can be suggested. A package script and Make target for the same operation become two visible candidates, so PortReeve leaves the field blank instead of guessing.</p>
+      </section>
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <div class="card"><h3>1. Strict definition</h3><p><code>definition.js</code> describes fixed operations, shell choices, timeouts, attached-Start constraints, structured endpoint references, reserved environment names, and deterministic serialization.</p></div>
+        <div class="card"><h3>2. Safe document</h3><p><code>document.js</code> resolves real paths, rejects symlink escapes, caps input, creates exclusively through a hard link, and replaces atomically only after the exact baseline is rechecked.</p></div>
+        <div class="card"><h3>3. Low-friction suggestions</h3><p><code>discovery.js</code> reads only known files in one directory. It never executes a manifest and always returns provenance. Normalized environment-name collisions are refused.</p></div>
+        <div class="card"><h3>4. Shared private state</h3><p><code>local-state.js</code> gives Desktop and CLI one mode-0600 state file inside PortReeve's marker-owned data root. Token-bound locks prevent an old writer from deleting a replacement lock; stale locks recover without trusting PIDs.</p></div>
+      </section>
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div id="questions"></div>
+      </section>
+    </main>
+    <script>
+      const questions=[
+        ["Why does trust hash source bytes rather than normalized JSON?",["So any external edit requires review, even if semantics appear unchanged","So JSON key order becomes part of stack identity forever","So the daemon can execute the command without reading the file"],0,"Trust applies to the exact reviewed artifact; canonical bytes serve deterministic creation, not external-change forgiveness."],
+        ["What happens when package.json and Makefile both suggest Start?",["The package script wins","The shortest command wins","Both candidates are shown and the field remains blank"],2,"Ambiguity is information, not permission to guess."],
+        ["What proves that a working directory is contained?",["Its text begins with a dot","Its real path is inside the canonical real stack root","It belongs to the same Git repository"],1,"Real-path containment catches .. and symlink escapes and does not depend on Git."],
+        ["Why is local trust outside SQLite?",["Desktop and CLI must share it even when the daemon is unavailable","SQLite cannot store SHA-256 values","Trust must survive Delete all data"],0,"The private application-home file supports degraded local access and is deliberately removed by complete reset."],
+        ["What project lifecycle behavior is introduced here?",["Finite Start and Stop","Attached Start only","None; execution arrives in later slices"],2,"The first slice establishes authority boundaries before adding power."],
+      ];
+      const host=document.querySelector('#questions');
+      questions.forEach(([q,answers,correct,explanation],index)=>{const box=document.createElement('div');box.className='quiz';box.innerHTML=`<h3>${index+1}. ${q}</h3>`;answers.forEach((answer,i)=>{const button=document.createElement('button');button.textContent=answer;button.onclick=()=>{box.querySelectorAll('button').forEach((b,j)=>b.className=j===correct?'correct':j===i?'wrong':'');box.querySelector('.feedback').textContent=(i===correct?'Correct. ':'Not quite. ')+explanation};box.append(button)});const feedback=document.createElement('p');feedback.className='feedback';feedback.setAttribute('aria-live','polite');box.append(feedback);host.append(box)});
+    </script>
+  </body>
+</html>
