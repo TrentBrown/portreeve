@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PortReeve PR #28 — Finite launcher execution</title>
+  <style>
+    :root { --ink:#17221d; --muted:#607069; --paper:#f6f1e7; --card:#fffdf8; --green:#17634d; --gold:#bd7b25; --red:#a63b32; --line:#d9d2c4; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--paper); font:17px/1.62 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    header { padding:64px 24px 46px; background:linear-gradient(135deg,#123d31,#1d7057); color:white; }
+    header div, main { max-width:1040px; margin:auto; }
+    .eyebrow { letter-spacing:.16em; text-transform:uppercase; font-size:.75rem; opacity:.78; }
+    h1 { font:700 clamp(2.4rem,6vw,4.8rem)/1.02 Georgia,serif; margin:.35rem 0 1rem; }
+    h2 { font:700 2.1rem/1.15 Georgia,serif; margin:3.4rem 0 1rem; }
+    h3 { margin-top:2rem; }
+    main { padding:26px 24px 80px; }
+    nav { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px 24px; margin:20px 0 38px; }
+    nav a { color:var(--green); margin-right:22px; white-space:nowrap; }
+    .callout { border-left:5px solid var(--gold); background:#fff7df; padding:16px 20px; margin:24px 0; border-radius:0 12px 12px 0; }
+    .flow { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; align-items:stretch; margin:28px 0; }
+    .node { background:var(--card); border:1px solid var(--line); border-radius:13px; padding:15px; min-height:112px; }
+    .node strong { display:block; color:var(--green); margin-bottom:7px; }
+    .arrow { color:var(--gold); font-size:1.6rem; text-align:center; align-self:center; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:15px; padding:20px; }
+    .state-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .state { background:var(--card); border:1px solid var(--line); border-top:5px solid var(--green); border-radius:12px; padding:15px; }
+    .state.block { border-top-color:var(--red); }
+    .state.caution { border-top-color:var(--gold); }
+    pre { white-space:pre-wrap; overflow-wrap:anywhere; background:#10211a; color:#eaf4ef; padding:18px; border-radius:12px; overflow:auto; font-size:.9rem; }
+    code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    table { width:100%; border-collapse:collapse; background:var(--card); }
+    th,td { padding:12px; border:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { background:#e9efe9; }
+    .quiz { margin:20px 0; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; }
+    .answers { display:grid; gap:8px; }
+    button { text-align:left; border:1px solid #9aab9f; background:white; border-radius:9px; padding:11px 13px; cursor:pointer; font:inherit; }
+    button:hover { border-color:var(--green); }
+    button.correct { background:#dff3e9; border-color:var(--green); }
+    button.wrong { background:#f8dfdc; border-color:var(--red); }
+    .feedback { min-height:1.6em; margin-top:9px; color:var(--muted); }
+    .small { color:var(--muted); font-size:.92rem; }
+    @media (max-width:760px) { .flow,.state-grid,.two { grid-template-columns:1fr; } .arrow { transform:rotate(90deg); } }
+  </style>
+</head>
+<body>
+  <header><div>
+    <div class="eyebrow">PortReeve · Pull request 28 · P4</div>
+    <h1>Finite launcher execution</h1>
+    <p>How a trusted project command becomes a bounded, coordinated, evidence-aware local stack operation—without turning the PortReeve daemon into a shell runner.</p>
+  </div></header>
+  <main>
+    <nav aria-label="Table of contents">
+      <a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#cases">Cases</a><a href="#quiz">Quiz</a>
+    </nav>
+
+    <section id="background">
+      <h2>Background</h2>
+      <p>PortReeve already knows three different kinds of facts. A <em>stack definition</em> says which components and endpoints exist. An <em>allocation generation</em> assigns coherent host ports. Fresh listener and activation evidence says what is actually observable now. What PortReeve deliberately does not know is how a particular project starts its API, stops Docker Compose, or checks its own health.</p>
+      <p>The checked-in <code>portreeve.launcher.json</code> bridges that gap with trusted shell commands and endpoint-to-environment mappings. Earlier pull requests supplied strict configuration, exact-revision trust, daemon coordination sessions, environment resolution, and evidence classification. This PR connects those pieces to real finite commands.</p>
+      <div class="callout"><strong>The authority boundary:</strong> the Desktop or CLI process executes project commands. The daemon allocates ports, reports evidence, and serializes operations. It never receives a command, environment value, or raw terminal output.</div>
+      <div class="flow">
+        <div class="node"><strong>Trusted file</strong>Exact revision, shell, working directory, operations</div><div class="arrow">→</div>
+        <div class="node"><strong>Shared engine</strong>Admission, environment, command session</div><div class="arrow">→</div>
+        <div class="node"><strong>Project</strong>Runs its own start/stop/status logic</div>
+      </div>
+    </section>
+
+    <section id="intuition">
+      <h2>Intuition</h2>
+      <p>Think of one lifecycle request as a short transaction with an external side effect. PortReeve first takes a trustworthy snapshot, then asks the daemon for a renewable “operation ticket.” The shell command runs locally while the ticket prevents a second incompatible caller. Finally, PortReeve observes the world again and closes the ticket with safe metadata.</p>
+      <div class="flow">
+        <div class="node"><strong>1. Observe</strong>Read current generation and listener evidence</div><div class="arrow">→</div>
+        <div class="node"><strong>2. Admit</strong>Apply the Start/Stop/Restart policy</div><div class="arrow">→</div>
+        <div class="node"><strong>3. Resolve</strong>Build exact, nonsecret endpoint environment</div>
+      </div>
+      <div class="flow">
+        <div class="node"><strong>4. Coordinate</strong>Begin and renew the daemon operation</div><div class="arrow">→</div>
+        <div class="node"><strong>5. Execute</strong>Run one isolated POSIX process group</div><div class="arrow">→</div>
+        <div class="node"><strong>6. Complete</strong>Refresh evidence and retain only safe history</div>
+      </div>
+      <h3>A concrete example</h3>
+      <pre><code>Allocated endpoint: api.default → 127.0.0.1:43100
+Launcher mapping:   API_PORT     → host-port
+Executed command:   npm run dev
+Injected values:    API_PORT=43100
+                    PORTREEVE_GENERATION_ID=...
+Fresh result:       command exited 0; listener evidence is fully-observed
+Durable history:    outcome + timing + evidence (no API_PORT, no terminal text)</code></pre>
+      <p>Exit zero does not mean “PortReeve owns this listener.” In command-only mode it means only that the project command succeeded. Fresh evidence remains a separate statement.</p>
+    </section>
+
+    <section id="code">
+      <h2>Code walkthrough</h2>
+      <div class="two">
+        <div class="card"><h3>Command session</h3><p><code>command-session.js</code> resolves the supported login shell and spawns it with <code>-l -c</code>, a contained working directory, closed stdin, piped stdout/stderr, and <code>detached: true</code>. On POSIX that child PID is also the new process-group identity.</p></div>
+        <div class="card"><h3>Lifecycle service</h3><p><code>lifecycle-service.js</code> freezes a normalized trusted snapshot, evaluates evidence, resolves current values, manages the renewable daemon session, invokes command sessions, refreshes evidence, and returns structured details.</p></div>
+      </div>
+      <h3>Termination is narrow</h3>
+      <p>Timeout or cancellation sends <code>SIGTERM</code> to the negative recorded child PID—the exact process group created for this command. After a short grace period, <code>SIGKILL</code> may target that same group. PortReeve does not search by port, signal an inferred owner, or automatically run Stop.</p>
+      <pre><code>process.kill(-processGroupId, 'SIGTERM')
+// grace period
+process.kill(-processGroupId, 'SIGKILL')</code></pre>
+      <h3>Output is useful but deliberately ephemeral</h3>
+      <p>Chunks stream immediately with stdout/stderr identity. Retention keeps only the newest one megabyte, preserves UTF-8 character boundaries, and inserts a visible truncation marker. A composed Restart shares this operation-wide cap across Stop and Start. The daemon sees none of it.</p>
+      <h3>Coordination does not race completion</h3>
+      <p>The operation ticket renews every ten seconds. Losing renewal aborts the local command group. If a renewal is already in flight when a fast command finishes, completion waits for that renewal to settle, preventing renew and complete from racing at the daemon.</p>
+    </section>
+
+    <section id="cases">
+      <h2>Lifecycle cases</h2>
+      <div class="state-grid">
+        <div class="state"><strong>Stopped</strong><p>Start prepares or reuses a generation, then runs normally.</p></div>
+        <div class="state caution"><strong>Partial</strong><p>Start requires explicit Run Start Anyway and retains the current generation.</p></div>
+        <div class="state block"><strong>Fully observed</strong><p>Start refuses and points toward Status or Restart.</p></div>
+        <div class="state block"><strong>Verified</strong><p>Start refuses because a verified activation is already live.</p></div>
+        <div class="state block"><strong>Conflicting</strong><p>Start and Restart refuse; reclamation remains a separate authorized workflow.</p></div>
+        <div class="state block"><strong>Uncertain</strong><p>Mutation refuses until evidence is trustworthy again.</p></div>
+      </div>
+      <table>
+        <thead><tr><th>Operation</th><th>Special rule</th><th>Afterward</th></tr></thead>
+        <tbody>
+          <tr><td>Stop</td><td>Always invokes only the project Stop command. With no generation, it uses minimal applicable context rather than allocating new ports.</td><td>Fresh evidence may still show remaining listeners; no automatic eviction occurs.</td></tr>
+          <tr><td>Status</td><td>Project output and exit status are advisory.</td><td>Fresh listener/activation evidence remains authoritative.</td></tr>
+          <tr><td>Restart</td><td>A configured command runs directly. If absent, PortReeve composes Stop → fresh revalidation/preparation → Start.</td><td>Remaining partial or conflicting evidence prevents the Start step.</td></tr>
+          <tr><td>Daemon outage</td><td>Start/Restart refuse. Cached Status may run. Cached Stop needs explicit confirmation.</td><td>Local <code>lsof</code> evidence is visibly uncoordinated.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="quiz">
+      <h2>Quiz</h2>
+      <p class="small">Choose one answer. Feedback appears immediately.</p>
+      <div class="quiz" data-answer="1"><strong>1. A Start command exits zero and all expected ports have listeners. What may command-only PortReeve conclude?</strong><div class="answers"><button>Those listeners are verified PortReeve-owned providers.</button><button>The command succeeded and the stack is fully observed, but ownership is not verified.</button><button>The generation should be replaced to eliminate the bind race.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="2"><strong>2. Why is the shell spawned as a detached POSIX child?</strong><div class="answers"><button>So it survives Desktop exit and can be reattached later.</button><button>So it can inherit an interactive terminal.</button><button>So PortReeve has an exact process-group boundary for cancellation and timeout.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="0"><strong>3. What happens when Stop is requested before any generation has ever been prepared?</strong><div class="answers"><button>It runs with root, stack ID, and socket only; endpoint facts are omitted.</button><button>PortReeve allocates a fresh generation so every mapping has a value.</button><button>Stop is disabled until Start has run at least once.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="1"><strong>4. A composed Restart finishes Stop but still sees partial listener evidence. What happens next?</strong><div class="answers"><button>Start runs automatically because Restart already implies force.</button><button>The Start step is refused after fresh revalidation.</button><button>PortReeve kills the remaining listener group and continues.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="2"><strong>5. Which data is safe to send when completing the daemon operation?</strong><div class="answers"><button>The resolved environment, so later history can reproduce the run.</button><button>The final megabyte of terminal output, after best-effort secret redaction.</button><button>Outcome, timing, exit/signal, bounded failure summary, and evidence summaries.</button></div><div class="feedback"></div></div>
+    </section>
+  </main>
+  <script>
+    document.querySelectorAll('.quiz').forEach((quiz) => {
+      const answer = Number(quiz.dataset.answer);
+      const buttons = [...quiz.querySelectorAll('button')];
+      const feedback = quiz.querySelector('.feedback');
+      buttons.forEach((button, index) => button.addEventListener('click', () => {
+        buttons.forEach((item) => item.classList.remove('correct','wrong'));
+        button.classList.add(index === answer ? 'correct' : 'wrong');
+        buttons[answer].classList.add('correct');
+        feedback.textContent = index === answer ? 'Correct — that preserves the authority and safety boundary.' : 'Not quite. Review the lifecycle and coordination rules above.';
+      }));
+    });
+  </script>
+</body>
+</html>

@@ -35,7 +35,7 @@ safe metadata, and recent history.
 
 ## I-3 - Implement environment and evidence services
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P3
 - **Rubric criteria:** R2, R3, R5, R6, R8
@@ -47,12 +47,12 @@ and classify fresh daemon or explicitly local listener and activation evidence.
 
 ## I-4 - Implement finite command-only execution
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P4
 - **Rubric criteria:** R3, R6, R7, R8
 - **Depends on:** I-2, I-3
-- **PR:** -
+- **PR:** [#28](https://github.com/TrentBrown/portreeve/pull/28)
 
 Build safe POSIX command sessions, timeouts and cancellation, bounded output, structured
 results, lifecycle admission, evidence-gated Start, project-command-only Stop, advisory

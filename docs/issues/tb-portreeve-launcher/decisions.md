@@ -131,3 +131,22 @@ Inject only PORTREEVE_STACK_ROOT, PORTREEVE_STACK_ID, PORTREEVE_GENERATION_ID, P
 Use current inventory classification directly - would label every command-only listener on a claimed port as conflicting; treat every expected listener as verified - would violate the approved ownership boundary; expose arbitrary context names - would destabilize the project-launcher contract and collision rules.
 
 **Promoted:** 2026-08-08. PR: #27 https://github.com/TrentBrown/portreeve/pull/27.
+
+---
+
+## Run Stop with minimal context when no generation exists
+
+**Confidence:** HIGH
+
+**Blast Radius:** Shared launcher lifecycle environment, command-only Stop and Status, CLI and Desktop diagnostics
+
+When the daemon is healthy but the applied stack has no valid allocation generation, finite Stop and configured Status still run with only the applicable reserved context: PORTREEVE_STACK_ROOT, PORTREEVE_STACK_ID, and PORTREEVE_SOCKET. PortReeve omits PORTREEVE_GENERATION_ID, activation identity, and endpoint-derived mappings because those facts do not exist. It reports the environment source as daemon-minimal. It must not prepare a new generation merely to run cleanup or status.
+
+**Triggered by:** The approved requirement that Stop remain available even without observed listeners, combined with the prohibition on preparing replacement allocations around cleanup
+
+**Alternatives considered:**
+- Prepare a generation before Stop or Status - invents a new port context for cleanup and can allocate around unrelated running state.
+- Block Stop until a generation exists - violates the settled requirement that project cleanup remain available even when listeners are absent.
+- Reuse any cached context silently - may inject stale endpoint facts despite a healthy daemon proving there is no current generation.
+
+**Promoted:** 2026-08-08. PR: #28 https://github.com/TrentBrown/portreeve/pull/28.

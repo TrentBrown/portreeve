@@ -124,7 +124,7 @@ Use current inventory classification directly - would label every command-only l
 
 ## [7] Run Stop with minimal context when no generation exists
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
