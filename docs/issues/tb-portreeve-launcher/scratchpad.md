@@ -91,3 +91,18 @@ or native dependency, so the same module bundles into Electron and compiles with
 - `node-pty` in the first release - introduces native packaging and an interactive surface explicitly deferred by the design.
 - Run through the daemon - violates the daemon's no-command-execution boundary.
 - Retain complete output - permits unbounded memory growth and conflicts with the bounded session-only contract.
+
+## [5] Use resource-oriented launcher-operation routes and bounded summaries
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Public protocol, official client, SQLite version 7, daemon admission, history, and later launcher engine integrations
+
+Expose POST /v1/launcher-operations/begin, POST /v1/launcher-operations/{id}/renew, POST /v1/launcher-operations/{id}/complete, GET /v1/launcher-operations/{id}, and GET /v1/stacks/{stackId}/launcher-operations. Begin returns a one-time plaintext credential while SQLite stores only its SHA-256 hash. Records carry fixed lifecycle operation and execution-mode enums, exact launcher revision, optional generation, caller operation ID, deadline and timing, outcome, bounded failure and evidence summaries, but have no schema fields for commands, environment values, or raw output. Completion retries must match the originally stored strict completion payload. Retain the latest twenty terminal records per stack plus active rows and also emit the existing global history events.
+
+**Triggered by:** P2 must turn the approved launcher-operations-v1 capability into exact public routes, payloads, and durable columns.
+
+**Alternatives considered:**
+Put mutation verbs under each stack - obscures operation identity and makes inspect/renew/complete less uniform; accept arbitrary metadata objects - would permit accidental command, environment, or output persistence; delete terminal rows after history emission - would prevent the required stack-local recent-operation view and idempotent completion.

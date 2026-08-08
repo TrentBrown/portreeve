@@ -36,6 +36,11 @@ atomically publish it with `writeEndpointSnapshot`, and mount only that redacted
 file. Sandboxed code reads an explicit file or `PORTREEVE_ENDPOINTS_FILE` with
 `readEndpointSnapshot`; it never needs the PortReeve control socket.
 
+Independent Desktop and CLI launchers coordinate same-stack lifecycle work with
+`beginLauncherOperation`, renew the returned credential every ten seconds, and finish
+with `completeLauncherOperation`. The daemon retains only bounded safe metadata; project
+commands, environment values, and raw output never enter this protocol.
+
 For a Docker-backed stack component, pass `bindings: { api: 'docker' }` to
 `beginStackActivation`. Its leases contain the Compose service, container port, and
 exact PortReeve labels for the trusted launcher. After publishing the allocated host

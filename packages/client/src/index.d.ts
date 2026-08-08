@@ -309,6 +309,63 @@ export interface StackEndpointSnapshot {
   dependencies: Record<string, StackSnapshotEndpoint>;
 }
 
+export interface LauncherEvidenceSummary {
+  classification:
+    'stopped' | 'partial' | 'fully-observed' | 'verified' | 'conflicting' | 'uncertain';
+  source: 'daemon' | 'local' | 'cached' | 'unavailable';
+  observedAt: string | null;
+  generationId: string | null;
+  activationId: string | null;
+  listenerCount: number;
+  reasonCodes: string[];
+}
+
+export interface LauncherFailureSummary {
+  step: string;
+  code: string;
+  message: string;
+}
+
+export interface LauncherOperationCompletion {
+  outcome: 'succeeded' | 'failed' | 'cancelled' | 'timed-out';
+  exitCode?: number | null;
+  signal?: string | null;
+  degraded?: boolean;
+  beforeEvidence?: LauncherEvidenceSummary | null;
+  afterEvidence?: LauncherEvidenceSummary | null;
+  failure?: LauncherFailureSummary | null;
+}
+
+export interface LauncherOperationRecord {
+  id: string;
+  stackId: string;
+  stackRoot: string;
+  operation: 'start' | 'stop' | 'restart' | 'status';
+  executionMode: 'finite' | 'attached';
+  launcherRevision: string;
+  callerOperationId: string;
+  generationId: string | null;
+  state: 'active' | 'terminal';
+  outcome: 'succeeded' | 'failed' | 'cancelled' | 'timed-out' | 'lost' | null;
+  deadlineAt: string;
+  startedAt: string;
+  renewedAt: string;
+  completedAt: string | null;
+  durationMilliseconds: number | null;
+  exitCode: number | null;
+  signal: string | null;
+  degraded: boolean;
+  beforeEvidence: LauncherEvidenceSummary | null;
+  afterEvidence: LauncherEvidenceSummary | null;
+  failure: LauncherFailureSummary | null;
+}
+
+export interface LauncherOperationSession {
+  operation: LauncherOperationRecord;
+  credential: string;
+  renewAfterMilliseconds: 10000;
+}
+
 export interface HistoryEvent {
   id: string;
   eventType: string;
@@ -464,6 +521,33 @@ export declare class PortreeveClient {
     activationId: string,
     options: { component: string; gatewayHost: string },
   ): Promise<StackEndpointSnapshot>;
+  beginLauncherOperation(
+    stackId: string,
+    options: {
+      operation: LauncherOperationRecord['operation'];
+      launcherRevision: string;
+      executionMode?: LauncherOperationRecord['executionMode'];
+      callerOperationId?: string;
+      generationId?: string | null;
+    },
+  ): Promise<LauncherOperationSession>;
+  renewLauncherOperation(
+    operationId: string,
+    credential: string,
+  ): Promise<{
+    operation: LauncherOperationRecord;
+    renewAfterMilliseconds: 10000;
+  }>;
+  completeLauncherOperation(
+    operationId: string,
+    credential: string,
+    completion: LauncherOperationCompletion,
+  ): Promise<{ changed: boolean; operation: LauncherOperationRecord }>;
+  getLauncherOperation(operationId: string): Promise<LauncherOperationRecord>;
+  listLauncherOperations(
+    stackId: string,
+    options?: { limit?: number },
+  ): Promise<LauncherOperationRecord[]>;
   listClaims(): Promise<ClaimRecord[]>;
   getClaim(claimId: string): Promise<ClaimRecord>;
   reassignClaim(

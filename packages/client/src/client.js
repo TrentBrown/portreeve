@@ -297,6 +297,82 @@ export class PortreeveClient {
     );
   }
 
+  /**
+   * @param {string} stackId
+   * @param {{
+   *   operation: 'start' | 'stop' | 'restart' | 'status',
+   *   launcherRevision: string,
+   *   executionMode?: 'finite' | 'attached',
+   *   callerOperationId?: string,
+   *   generationId?: string | null
+   * }} options
+   */
+  async beginLauncherOperation(stackId, options) {
+    await this.#requireCapabilities(['launcher-operations-v1']);
+    return requestJson(
+      this.socketPath,
+      'POST',
+      '/v1/launcher-operations/begin',
+      withClient(
+        {
+          stackId,
+          operation: options.operation,
+          executionMode: options.executionMode ?? 'finite',
+          launcherRevision: options.launcherRevision,
+          callerOperationId: options.callerOperationId ?? randomUUID(),
+          generationId: options.generationId ?? null,
+        },
+        ['launcher-operations-v1'],
+      ),
+    );
+  }
+
+  /** @param {string} operationId @param {string} credential */
+  async renewLauncherOperation(operationId, credential) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/launcher-operations/${operationId}/renew`,
+      withClient({ credential }, ['launcher-operations-v1']),
+    );
+  }
+
+  /**
+   * @param {string} operationId
+   * @param {string} credential
+   * @param {unknown} completion
+   */
+  async completeLauncherOperation(operationId, credential, completion) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/launcher-operations/${operationId}/complete`,
+      withClient({ credential, completion }, ['launcher-operations-v1']),
+    );
+  }
+
+  /** @param {string} operationId */
+  async getLauncherOperation(operationId) {
+    await this.#requireCapabilities(['launcher-operations-v1']);
+    return requestJson(
+      this.socketPath,
+      'GET',
+      `/v1/launcher-operations/${operationId}`,
+    );
+  }
+
+  /** @param {string} stackId @param {{limit?: number}} [options] */
+  async listLauncherOperations(stackId, options = {}) {
+    await this.#requireCapabilities(['launcher-operations-v1']);
+    return requestJson(
+      this.socketPath,
+      'GET',
+      `/v1/stacks/${stackId}/launcher-operations${queryString({
+        limit: options.limit,
+      })}`,
+    );
+  }
+
   /** @param {string[]} requiredCapabilities */
   async #requireCapabilities(requiredCapabilities) {
     const health = await this.health();

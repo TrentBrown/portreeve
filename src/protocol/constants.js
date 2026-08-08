@@ -18,9 +18,14 @@ export const CAPABILITIES = Object.freeze([
   'stack-definitions-v1',
   'stack-activations-v1',
   'stack-discovery-v1',
+  'launcher-operations-v1',
 ]);
 
 export const DOCKER_CAPABILITY = 'docker-evidence-v1';
+
+export const LAUNCHER_OPERATION_TTL_MILLISECONDS = 30_000;
+export const LAUNCHER_OPERATION_RENEW_AFTER_MILLISECONDS = 10_000;
+export const LAUNCHER_OPERATION_HISTORY_LIMIT = 20;
 
 export const EXIT_CODES = Object.freeze({
   success: 0,
@@ -37,6 +42,7 @@ export const ERROR_CODES = Object.freeze({
   incompatibleProtocol: 'incompatible_protocol',
   invalidInput: 'invalid_input',
   invalidLeaseToken: 'invalid_lease_token',
+  invalidOperationCredential: 'invalid_operation_credential',
   leaseExpired: 'lease_expired',
   leaseNotPending: 'lease_not_pending',
   notFound: 'not_found',

@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PortReeve PR #26 — Launcher-operation coordination</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #16221d;
+        --muted: #596962;
+        --paper: #faf7ef;
+        --card: #fffdf7;
+        --line: #d8d7ca;
+        --green: #176b52;
+        --green-soft: #e4f1eb;
+        --gold: #b87718;
+        --gold-soft: #fff0d6;
+        --red: #a23b2b;
+        --shadow: 0 10px 35px rgb(22 34 29 / 9%);
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--paper);
+        font: 16px/1.6 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      a { color: var(--green); }
+      code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      code { background: #edf0eb; border-radius: 4px; padding: 0.1rem 0.3rem; }
+      pre {
+        margin: 1rem 0;
+        padding: 1rem;
+        overflow-x: auto;
+        white-space: pre;
+        background: #17231f;
+        color: #e9f4ed;
+        border-radius: 10px;
+      }
+      pre code { padding: 0; background: transparent; }
+      h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; line-height: 1.2; }
+      h1 { margin: 0.35rem 0 0.75rem; font-size: clamp(2.4rem, 7vw, 4.8rem); }
+      h2 { margin-top: 0; font-size: clamp(1.8rem, 4vw, 2.5rem); }
+      h3 { font-size: 1.35rem; }
+      .hero {
+        padding: 5rem max(1.5rem, calc((100vw - 1160px) / 2));
+        background: radial-gradient(circle at 85% 20%, #d0e9dd 0, transparent 30%), #f3eee2;
+        border-bottom: 1px solid var(--line);
+      }
+      .eyebrow { color: var(--green); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+      .hero p { max-width: 760px; font-size: 1.15rem; color: var(--muted); }
+      .pin { display: inline-block; margin-top: 1rem; padding: 0.55rem 0.8rem; border: 1px solid var(--line); border-radius: 8px; background: rgb(255 255 255 / 60%); font-size: 0.78rem; overflow-wrap: anywhere; }
+      .layout { display: grid; grid-template-columns: 230px minmax(0, 860px); gap: 3rem; max-width: 1160px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+      nav { position: sticky; top: 1rem; align-self: start; padding: 1.1rem; border: 1px solid var(--line); background: var(--card); border-radius: 12px; box-shadow: var(--shadow); }
+      nav strong { display: block; margin-bottom: 0.5rem; }
+      nav a { display: block; padding: 0.35rem 0; text-decoration: none; }
+      main { min-width: 0; }
+      section { margin-bottom: 3rem; padding: clamp(1.3rem, 4vw, 2.4rem); border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: var(--shadow); }
+      .callout { padding: 1rem 1.2rem; border-left: 4px solid var(--gold); background: var(--gold-soft); border-radius: 0 8px 8px 0; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+      .mini { padding: 1rem; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+      .mini h3 { margin: 0 0 0.4rem; }
+      .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 0.7rem; margin: 1.5rem 0; }
+      .flow .node { min-height: 115px; display: grid; place-items: center; text-align: center; padding: 1rem; border: 2px solid var(--green); border-radius: 13px; background: var(--green-soft); font-weight: 700; }
+      .arrow { color: var(--green); font-size: 1.8rem; }
+      .timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 1.5rem 0; }
+      .moment { position: relative; padding: 2.8rem 0.65rem 0; text-align: center; }
+      .moment::before { content: ""; position: absolute; top: 18px; left: 0; right: 0; height: 4px; background: #bdd6ca; }
+      .moment::after { content: ""; position: absolute; top: 10px; left: calc(50% - 10px); width: 20px; height: 20px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 5px var(--green-soft); }
+      .moment:first-child::before { left: 50%; }
+      .moment:last-child::before { right: 50%; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 0.75rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+      th { color: var(--muted); font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; }
+      .quiz-item { margin: 1rem 0; padding: 1rem; border: 1px solid var(--line); border-radius: 10px; }
+      .quiz-item fieldset { border: 0; padding: 0; }
+      .quiz-item legend { margin-bottom: 0.6rem; font-weight: 700; }
+      .quiz-item label { display: block; padding: 0.35rem 0; }
+      .feedback { min-height: 1.6rem; margin: 0.6rem 0 0; font-weight: 700; }
+      .correct { color: var(--green); }
+      .incorrect { color: var(--red); }
+      button { cursor: pointer; margin-top: 0.8rem; padding: 0.65rem 1rem; border: 0; border-radius: 8px; background: var(--green); color: white; font-weight: 700; }
+      #score { margin-left: 0.8rem; font-weight: 700; }
+      @media (max-width: 760px) {
+        .layout { grid-template-columns: 1fr; }
+        nav { position: static; }
+        .grid { grid-template-columns: 1fr; }
+        .flow { grid-template-columns: 1fr; }
+        .arrow { transform: rotate(90deg); text-align: center; }
+        .timeline { grid-template-columns: 1fr; gap: 0.6rem; }
+        .moment { padding: 0.7rem 0.7rem 0.7rem 3rem; text-align: left; }
+        .moment::before { top: 0; bottom: 0; left: 18px !important; right: auto !important; width: 4px; height: auto; }
+        .moment::after { top: calc(50% - 10px); left: 10px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="eyebrow">PortReeve · PR #26 · P2</div>
+      <h1>Coordinate first.<br />Execute later.</h1>
+      <p>
+        This slice gives the PortReeve daemon a durable, race-safe account of launcher
+        operations. It decides who may act on a stack, tracks a renewable session, and
+        retains bounded diagnostic history—without ever receiving or running a project command.
+      </p>
+      <div class="pin">Pinned diff: 20f6d42bfd6504ac2de00d39dd17ca475dc8c668..3634833b6d6fb68ddedee5fefe388d9bbb78ddb8</div>
+    </header>
+
+    <div class="layout">
+      <nav aria-label="Table of contents">
+        <strong>Contents</strong>
+        <a href="#background">1. Background</a>
+        <a href="#intuition">2. Intuition</a>
+        <a href="#code">3. Code tour</a>
+        <a href="#safety">4. Safety boundary</a>
+        <a href="#verification">5. Verification</a>
+        <a href="#quiz">6. Quiz</a>
+      </nav>
+
+      <main>
+        <section id="background">
+          <div class="eyebrow">Background</div>
+          <h2>The daemon needed shared truth before launchers could be shared</h2>
+          <p>
+            The approved Launcher design allows both the Desktop app and CLI to operate a
+            stack. If they decide independently, two starts can race, a stop can collide with a
+            restart, and a dead controller can leave the system believing work is still active.
+          </p>
+          <div class="callout">
+            <strong>P2 does not execute commands.</strong> It establishes the coordination
+            protocol and persistence on which the later shared execution engine will rely.
+          </div>
+          <div class="grid">
+            <article class="mini"><h3>Before</h3><p>There was no daemon-owned operation session, credential, renewable deadline, or safe launcher history.</p></article>
+            <article class="mini"><h3>After</h3><p>Every launcher action can begin, renew, complete, inspect, and list through the official socket protocol.</p></article>
+          </div>
+        </section>
+
+        <section id="intuition">
+          <div class="eyebrow">Intuition</div>
+          <h2>A short-lived lease for intent, not ownership of a process</h2>
+          <div class="flow" aria-label="Launcher-operation flow">
+            <div class="node">Client begins<br />with stack + operation</div>
+            <div class="arrow" aria-hidden="true">→</div>
+            <div class="node">Daemon admits<br />and returns credential</div>
+            <div class="arrow" aria-hidden="true">→</div>
+            <div class="node">Client renews<br />then completes</div>
+          </div>
+          <p>
+            The returned credential is a bearer secret for that one operation. The client holds
+            it; SQLite stores only its SHA-256 hash. A healthy controller renews about every ten
+            seconds. Each successful renewal moves the deadline thirty seconds forward.
+          </p>
+          <div class="timeline" aria-label="Renewal timeline">
+            <div class="moment"><strong>0s</strong><br />begin</div>
+            <div class="moment"><strong>10s</strong><br />renew</div>
+            <div class="moment"><strong>20s</strong><br />renew</div>
+            <div class="moment"><strong>50s</strong><br />lost if silent</div>
+          </div>
+          <p>
+            Expiry means “the coordinator stopped reporting.” It deliberately does not mean
+            “the daemon should adopt, signal, or kill a process.” The later execution layer owns
+            process behavior.
+          </p>
+        </section>
+
+        <section id="code">
+          <div class="eyebrow">Code</div>
+          <h2>The change in six layers</h2>
+          <table>
+            <thead><tr><th>Layer</th><th>Responsibility</th></tr></thead>
+            <tbody>
+              <tr><td><code>protocol</code></td><td>Adds strict, bounded request/response schemas and <code>launcher-operations-v1</code>.</td></tr>
+              <tr><td><code>migration v7</code></td><td>Persists stack and generation identity, state, deadlines, credential hash, and bounded summaries.</td></tr>
+              <tr><td><code>registry</code></td><td>Uses SQLite transactions for admission, renewal, completion, loss, history, and stack-mutation guards.</td></tr>
+              <tr><td><code>operation service</code></td><td>Negotiates capability and separates public application behavior from persistence details.</td></tr>
+              <tr><td><code>server</code></td><td>Exposes five resource-oriented routes over the existing HTTP/JSON Unix socket.</td></tr>
+              <tr><td><code>official client</code></td><td>Hides protocol calls behind typed JavaScript methods and preflights daemon capability.</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Public client lifecycle</h3>
+          <pre><code>const session = await client.beginLauncherOperation(stackId, {
+  operation: "start",
+  executionMode: "attached"
+});
+
+await client.renewLauncherOperation(
+  session.operation.id,
+  session.credential
+);
+
+await client.completeLauncherOperation(
+  session.operation.id,
+  session.credential,
+  { outcome: "succeeded" }
+);</code></pre>
+
+          <h3>Admission rules</h3>
+          <p>
+            A <code>BEGIN IMMEDIATE</code> transaction serializes decisions even when two clients
+            use different database connections. Independent stack roots remain concurrent. One
+            attached Start may admit one finite Status or Stop companion, but conflicting work on
+            the same root is refused.
+          </p>
+          <p>
+            While an operation is active, PortReeve also blocks changed stack definitions,
+            deletion, and pruning. That prevents coordination rows from silently changing meaning
+            underneath a running launcher.
+          </p>
+        </section>
+
+        <section id="safety">
+          <div class="eyebrow">Safety boundary</div>
+          <h2>What the daemon stores—and what it refuses to become</h2>
+          <div class="grid">
+            <article class="mini">
+              <h3>Stored</h3>
+              <ul><li>operation and execution mode</li><li>timestamps and duration</li><li>generation identity</li><li>outcome and exit code</li><li>bounded evidence and failure summaries</li></ul>
+            </article>
+            <article class="mini">
+              <h3>Not stored</h3>
+              <ul><li>shell commands</li><li>environment values</li><li>plaintext credentials</li><li>raw stdout or stderr</li><li>process adoption or kill intent</li></ul>
+            </article>
+          </div>
+          <p>
+            Strict schemas reject extra fields, so command text or secrets cannot hitchhike in an
+            otherwise valid payload. Inspection requires no credential, but mutation does.
+            Completion is idempotent only when the normalized metadata is identical.
+          </p>
+          <p>
+            Each stack retains active rows plus its latest twenty terminal records. Begin,
+            completion, and loss also enter PortReeve's existing bounded global history.
+          </p>
+        </section>
+
+        <section id="verification">
+          <div class="eyebrow">Verification</div>
+          <h2>Proven against real persistence and the public socket</h2>
+          <ul>
+            <li>114 focused tests, 483 assertions, zero failures.</li>
+            <li>Real SQLite cross-connection races and migration coverage.</li>
+            <li>Real Bun server, private Unix socket, and official client.</li>
+            <li>npm tarball consumed from Node, preserving the portable-client boundary.</li>
+            <li>321 tests pass in the normal full run; three legacy lifecycle assertions encounter the user's real active LaunchAgent, and all five pass with an isolated supervisor identity.</li>
+          </ul>
+          <p>
+            No Desktop surface is claimed in P2. The shared execution engine, CLI operations,
+            attached terminal behavior, and Launcher tab arrive in the subsequent planned slices.
+          </p>
+        </section>
+
+        <section id="quiz">
+          <div class="eyebrow">Quiz</div>
+          <h2>Check your model of the change</h2>
+          <form id="quiz-form">
+            <div class="quiz-item" data-answer="b"><fieldset><legend>1. What does the operation credential authorize?</legend><label><input type="radio" name="q1" value="a" /> Any operation on the stack</label><label><input type="radio" name="q1" value="b" /> Renewal and completion of one admitted operation</label><label><input type="radio" name="q1" value="c" /> Direct access to the launcher's shell</label></fieldset><p class="feedback" aria-live="polite"></p></div>
+            <div class="quiz-item" data-answer="c"><fieldset><legend>2. What does PortReeve do when a renewal deadline expires?</legend><label><input type="radio" name="q2" value="a" /> Kills the process</label><label><input type="radio" name="q2" value="b" /> Adopts the process</label><label><input type="radio" name="q2" value="c" /> Records the operation as lost without process action</label></fieldset><p class="feedback" aria-live="polite"></p></div>
+            <div class="quiz-item" data-answer="a"><fieldset><legend>3. Why use a SQLite immediate transaction for begin?</legend><label><input type="radio" name="q3" value="a" /> To serialize same-root admission across connections</label><label><input type="radio" name="q3" value="b" /> To execute commands faster</label><label><input type="radio" name="q3" value="c" /> To avoid capability negotiation</label></fieldset><p class="feedback" aria-live="polite"></p></div>
+            <div class="quiz-item" data-answer="b"><fieldset><legend>4. Which payload is deliberately rejected?</legend><label><input type="radio" name="q4" value="a" /> A bounded failure summary</label><label><input type="radio" name="q4" value="b" /> Raw command output</label><label><input type="radio" name="q4" value="c" /> An exit code</label></fieldset><p class="feedback" aria-live="polite"></p></div>
+            <div class="quiz-item" data-answer="c"><fieldset><legend>5. What does this PR intentionally leave for later?</legend><label><input type="radio" name="q5" value="a" /> Durable operation records</label><label><input type="radio" name="q5" value="b" /> Official-client protocol methods</label><label><input type="radio" name="q5" value="c" /> Command execution and Desktop controls</label></fieldset><p class="feedback" aria-live="polite"></p></div>
+            <button type="submit">Check answers</button><span id="score" aria-live="polite"></span>
+          </form>
+        </section>
+      </main>
+    </div>
+    <script>
+      document.getElementById("quiz-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const items = [...document.querySelectorAll(".quiz-item")];
+        let correct = 0;
+        items.forEach((item) => {
+          const chosen = item.querySelector("input:checked");
+          const feedback = item.querySelector(".feedback");
+          const matches = chosen && chosen.value === item.dataset.answer;
+          if (matches) correct += 1;
+          feedback.textContent = matches ? "Correct." : chosen ? "Not quite—review the section above." : "Choose an answer.";
+          feedback.className = `feedback ${matches ? "correct" : "incorrect"}`;
+        });
+        document.getElementById("score").textContent = `${correct} of ${items.length} correct`;
+      });
+    </script>
+  </body>
+</html>

@@ -14,9 +14,9 @@
 | R3 | Command-only lifecycle | NOT YET | - | Planned for P3-P5, P8-P9 / I-3-I-5, I-8-I-9 |
 | R4 | Attached execution | NOT YET | - | Planned for P6-P9 / I-6-I-9 |
 | R5 | Verified activation | NOT YET | - | Planned for P3, P6, P8-P9 / I-3, I-6, I-8-I-9 |
-| R6 | Shared engine and coordination | NOT YET | - | Planned for P2-P7, P9 / I-2-I-7, I-9 |
-| R7 | Desktop operation and diagnostics | NOT YET | - | Planned for P2, P4, P7-P9 / I-2, I-4, I-7-I-9 |
-| R8 | Degraded and platform behavior | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25) | P1/I-1 places shared cache state inside reset scope while preserving project files; degraded execution and platform evidence remain |
+| R6 | Shared engine and coordination | NOT YET | [#26](https://github.com/TrentBrown/portreeve/pull/26) | P2/I-2 adds strict daemon sessions, per-root admission, hashed renewable credentials, idempotent completion, and loss recovery; shared CLI/Desktop execution remains |
+| R7 | Desktop operation and diagnostics | NOT YET | [#26](https://github.com/TrentBrown/portreeve/pull/26) | P2/I-2 adds bounded safe operation records and global history events; the Desktop result and history UI remains |
+| R8 | Degraded and platform behavior | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#26](https://github.com/TrentBrown/portreeve/pull/26) | P1/I-1 places shared cache state inside reset scope; P2/I-2 expires abandoned sessions to lost without process action and preserves additive non-launcher behavior; degraded execution remains |
 
 ## PR Log
 
@@ -25,7 +25,7 @@ Append PR boundary entries here.
 ### PR #25 - Launcher configuration and trust foundations
 
 - **PR:** [#25](https://github.com/TrentBrown/portreeve/pull/25)
-- **Status:** in review
+- **Status:** merged 2026-08-08
 - **Scope:** P1 / I-1: strict launcher schema, structured endpoint mappings,
   deterministic exact-byte revisions, canonical contained documents, conservative
   manifest suggestions, private shared trust/cache state, and reset placement.
@@ -38,3 +38,17 @@ Append PR boundary entries here.
   pre-existing handoff formatting failure.
   Code review: PASS with no findings after token-bound stale-lock and manifest-error
   corrections. Pattern review is not applicable because no rule scope is configured.
+
+### PR #26 - Daemon launcher-operation coordination
+
+- **PR:** [#26](https://github.com/TrentBrown/portreeve/pull/26)
+- **Status:** in review
+- **Scope:** P2 / I-2: strict `launcher-operations-v1` schemas and routes,
+  version-7 durable sessions, one-way credential storage, transactional per-root
+  admission, renewal, idempotent completion, lazy and startup expiry, bounded safe
+  records, global history, and official JavaScript client methods and types.
+- **Evidence packet:** [pr-26](pr-26/)
+- **Result:** R6, R7, and R8 advance but remain `NOT YET` pending the shared engine,
+  CLI, Desktop boundary, renderer, and degraded operation slices. Pinned verification
+  passes toolchain, typecheck, lint, compiled build, 114 focused tests, npm packaging,
+  and every unique repository test across the normal run plus isolated lifecycle rerun.
