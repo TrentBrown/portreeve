@@ -1,7 +1,8 @@
 // @ts-check
 
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { compareSemanticVersions } from '../../../src/domain/semantic-version.js';
+import { atomicWrite } from '../../../src/platform/files.js';
 import {
   DesktopOpenDownloadResultSchema,
   DesktopUpdateManifestSchema,
@@ -179,63 +180,7 @@ async function readCachedState(path) {
 
 /** @param {string} path @param {unknown} state */
 async function writeCachedState(path, state) {
-  const directory = dirname(path);
-  const temporary = `${path}.${process.pid}.${Date.now()}.tmp`;
-  await mkdir(directory, { recursive: true, mode: 0o700 });
-  try {
-    await writeFile(temporary, `${JSON.stringify(state, null, 2)}\n`, {
-      encoding: 'utf8',
-      mode: 0o600,
-    });
-    await rename(temporary, path);
-  } catch (error) {
-    await rm(temporary, { force: true }).catch(() => undefined);
-    throw error;
-  }
-}
-
-/** @param {string} left @param {string} right */
-export function compareSemanticVersions(left, right) {
-  const first = parseSemanticVersion(left);
-  const second = parseSemanticVersion(right);
-  for (let index = 0; index < 3; index += 1) {
-    const difference = (first.core[index] ?? 0) - (second.core[index] ?? 0);
-    if (difference !== 0) return difference < 0 ? -1 : 1;
-  }
-  return comparePrerelease(first.prerelease, second.prerelease);
-}
-
-/** @param {string} value */
-function parseSemanticVersion(value) {
-  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([^+]+))?(?:\+.+)?$/.exec(value);
-  if (match === null) throw new TypeError('Invalid semantic version.');
-  return {
-    core: [Number(match[1]), Number(match[2]), Number(match[3])],
-    prerelease: match[4] === undefined ? null : match[4].split('.'),
-  };
-}
-
-/** @param {string[]|null} left @param {string[]|null} right */
-function comparePrerelease(left, right) {
-  if (left === null && right === null) return 0;
-  if (left === null) return 1;
-  if (right === null) return -1;
-  const length = Math.max(left.length, right.length);
-  for (let index = 0; index < length; index += 1) {
-    const leftPart = left[index];
-    const rightPart = right[index];
-    if (leftPart === undefined) return -1;
-    if (rightPart === undefined) return 1;
-    if (leftPart === rightPart) continue;
-    const leftNumeric = /^\d+$/.test(leftPart);
-    const rightNumeric = /^\d+$/.test(rightPart);
-    if (leftNumeric && rightNumeric) {
-      return Number(leftPart) < Number(rightPart) ? -1 : 1;
-    }
-    if (leftNumeric !== rightNumeric) return leftNumeric ? -1 : 1;
-    return leftPart < rightPart ? -1 : 1;
-  }
-  return 0;
+  await atomicWrite(path, `${JSON.stringify(state, null, 2)}\n`);
 }
 
 /** @param {string} code @param {string} message */

@@ -1,24 +1,26 @@
 // @ts-check
 
-import { SemanticVersionSchema } from './schemas.js';
-
 /**
  * @typedef {{
  *   core: [number, number, number],
  *   prerelease: string[] | null
- * }} ParsedVersion
+ * }} ParsedSemanticVersion
  */
 
+export const SEMANTIC_VERSION_PATTERN =
+  /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/u;
+
 /**
- * Compare semantic versions without adding a runtime dependency.
+ * Compare semantic versions without adding a runtime dependency. Build
+ * metadata never affects precedence.
  *
  * @param {string} left
  * @param {string} right
  * @returns {-1 | 0 | 1}
  */
 export function compareSemanticVersions(left, right) {
-  const leftVersion = parseVersion(left);
-  const rightVersion = parseVersion(right);
+  const leftVersion = parseSemanticVersion(left);
+  const rightVersion = parseSemanticVersion(right);
   const differences = [
     leftVersion.core[0] - rightVersion.core[0],
     leftVersion.core[1] - rightVersion.core[1],
@@ -34,13 +36,12 @@ export function compareSemanticVersions(left, right) {
 
 /**
  * @param {string} value
- * @returns {ParsedVersion}
+ * @returns {ParsedSemanticVersion}
  */
-function parseVersion(value) {
-  const version = SemanticVersionSchema.parse(value);
-  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([^+]+))?/.exec(version);
+export function parseSemanticVersion(value) {
+  const match = SEMANTIC_VERSION_PATTERN.exec(value);
   if (match === null) {
-    throw new TypeError(`Invalid semantic version: ${version}`);
+    throw new TypeError(`Invalid semantic version: ${value}`);
   }
   const prerelease = match[4] ?? null;
   return {
@@ -81,8 +82,8 @@ function comparePrerelease(left, right) {
     if (leftPart === rightPart) {
       continue;
     }
-    const leftNumeric = /^\d+$/.test(leftPart);
-    const rightNumeric = /^\d+$/.test(rightPart);
+    const leftNumeric = /^\d+$/u.test(leftPart);
+    const rightNumeric = /^\d+$/u.test(rightPart);
     if (leftNumeric && rightNumeric) {
       return Number(leftPart) < Number(rightPart) ? -1 : 1;
     }

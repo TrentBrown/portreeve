@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { lstat, readdir, rm, rmdir, unlink } from 'node:fs/promises';
 import { relative, sep } from 'node:path';
 import { z } from 'zod';
+import { isMissingFile } from '../platform/errors.js';
 import {
   OwnershipMarkerSchema,
   readOwnershipMarker,
@@ -322,7 +323,7 @@ async function deletePreviewedTree(preview, removed, retained, missing, refused)
           .map((entry) => entry.path),
       );
     } catch (error) {
-      if (isMissingError(error)) {
+      if (isMissingFile(error)) {
         missing.push(path);
       } else {
         retained.push(path);
@@ -395,17 +396,7 @@ function refusalEvidence(status, paths, uid) {
  * @returns {Promise<PurgePath[]>}
  */
 async function inspectTree(root) {
-  const paths = [await inspectPath(root)];
-  const names = (await readdir(root)).sort();
-  for (const name of names) {
-    const path = `${root}${sep}${name}`;
-    const evidence = await inspectPath(path);
-    paths.push(evidence);
-    if (evidence.type === 'directory') {
-      paths.push(...(await inspectTreeChildren(path)));
-    }
-  }
-  return paths;
+  return [await inspectPath(root), ...(await inspectTreeChildren(root))];
 }
 
 /**
@@ -434,7 +425,7 @@ async function inspectOptionalPath(path) {
   try {
     return await inspectPath(path);
   } catch (error) {
-    if (isMissingError(error)) {
+    if (isMissingFile(error)) {
       return null;
     }
     throw error;
@@ -484,7 +475,7 @@ async function remainingPaths(root) {
   try {
     return (await inspectTree(root)).map(({ path }) => path);
   } catch (error) {
-    return isMissingError(error) ? [] : [root];
+    return isMissingFile(error) ? [] : [root];
   }
 }
 
@@ -494,20 +485,11 @@ async function isMissing(path) {
     await lstat(path);
     return false;
   } catch (error) {
-    if (isMissingError(error)) {
+    if (isMissingFile(error)) {
       return true;
     }
     throw error;
   }
-}
-
-/** @param {unknown} error */
-function isMissingError(error) {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    /** @type {{code?: string}} */ (error).code === 'ENOENT'
-  );
 }
 
 /** @param {string[]} values */

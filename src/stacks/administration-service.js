@@ -1,7 +1,7 @@
 // @ts-check
 
-import { lstat } from 'node:fs/promises';
 import { DOCKER_LABELS } from '../docker/evidence.js';
+import { workspacePathExists } from '../platform/files.js';
 import {
   StackPruneRequestSchema,
   StackPruneResultSchema,
@@ -227,23 +227,5 @@ function assertCompatible(client) {
       'Client and Portreeve stack administration requirements do not overlap.',
       result,
     );
-  }
-}
-
-/** @param {string} path */
-async function workspacePathExists(path) {
-  try {
-    await lstat(path);
-    return true;
-  } catch (error) {
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      error.code === 'ENOENT'
-    ) {
-      return false;
-    }
-    throw error;
   }
 }

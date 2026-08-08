@@ -3,6 +3,7 @@
 import { stat } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { canonicalStackRoot } from '../../packages/client/src/index.js';
+import { isMissingPathSegment } from '../platform/errors.js';
 import { CliUsageError } from './exit.js';
 
 export const DEFAULT_STACK_DEFINITION = 'portreeve.stack.json';
@@ -60,7 +61,7 @@ export async function findEnclosingStackDefinition(startPath) {
       }
       return { filename, stackRoot };
     } catch (error) {
-      if (!isMissingPathError(error)) {
+      if (!isMissingPathSegment(error)) {
         if (error instanceof CliUsageError) throw error;
         throw new CliUsageError(`Unable to inspect ${filename}: ${safeMessage(error)}`);
       }
@@ -112,15 +113,6 @@ async function canonicalStackRootForCli(stackPath) {
       `Unable to use stack root ${stackPath}: ${safeMessage(error)}`,
     );
   }
-}
-
-/** @param {unknown} error */
-function isMissingPathError(error) {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    (error.code === 'ENOENT' || error.code === 'ENOTDIR')
-  );
 }
 
 /** @param {unknown} error */

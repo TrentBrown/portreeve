@@ -1,6 +1,7 @@
 // @ts-check
 
 import { randomUUID } from 'node:crypto';
+import { delay } from '../domain/time.js';
 import {
   ProcessFingerprintSchema,
   sameProcessInstance,
@@ -32,8 +33,7 @@ export class ReclamationService {
     registry,
     inventoryService = new InventoryService({ registry }),
     signalProcess = (pid, signal) => process.kill(pid, signal),
-    sleep = (milliseconds) =>
-      new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds)),
+    sleep = delay,
     now = () => new Date(),
   }) {
     this.registry = registry;

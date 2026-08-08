@@ -651,7 +651,7 @@ export const InventoryEntrySchema = z.object({
 
 export const InventoryListSchema = z.array(InventoryEntrySchema);
 
-export const ClaimRecordResponseSchema = z.object({
+export const CLAIM_RECORD_FIELDS = Object.freeze({
   id: IdentifierSchema,
   identity: ClaimIdentitySchema,
   mode: ClaimModeSchema,
@@ -663,6 +663,8 @@ export const ClaimRecordResponseSchema = z.object({
   updatedAt: TimestampSchema,
   lastUsedAt: TimestampSchema,
 });
+
+export const ClaimRecordResponseSchema = z.object(CLAIM_RECORD_FIELDS);
 
 export const ClaimsListSchema = z.array(ClaimRecordResponseSchema);
 

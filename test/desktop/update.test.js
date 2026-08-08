@@ -6,12 +6,12 @@ import { join } from 'node:path';
 import { expect, test } from 'bun:test';
 import { DesktopUpdateManifestSchema } from '../../apps/desktop/shared/schemas.js';
 import {
-  compareSemanticVersions,
   createUpdateAdapter,
   DESKTOP_DOWNLOAD_PAGE_URL,
   DESKTOP_UPDATE_MANIFEST_URL,
   UPDATE_CHECK_INTERVAL_MILLISECONDS,
 } from '../../apps/desktop/main/update.js';
+import { compareSemanticVersions } from '../../src/domain/semantic-version.js';
 import { timestamp } from './fixtures.js';
 
 test('ships a strict update manifest matching the public contract', async () => {

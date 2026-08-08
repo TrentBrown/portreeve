@@ -1,7 +1,9 @@
 // @ts-check
 
 import { unlink } from 'node:fs/promises';
-import { atomicWrite, fileExists } from './files.js';
+import { delay } from '../domain/time.js';
+import { ignoreMissingFile } from '../platform/errors.js';
+import { atomicWrite, fileExists } from '../platform/files.js';
 import { assertCommandSucceeded, runCommand } from './command.js';
 
 export const DEFAULT_LAUNCHD_LABEL = 'com.portreeve.server';
@@ -93,7 +95,7 @@ ${argumentsXml}
       if (result.code !== 5) {
         break;
       }
-      await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
+      await delay(100);
     }
     assertCommandSucceeded(result, 'launchd start');
   }
@@ -109,22 +111,14 @@ ${argumentsXml}
       if (!(await this.state()).active) {
         return;
       }
-      await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
+      await delay(100);
     }
     throw new Error('launchd did not finish unloading the Portreeve service.');
   }
 
   async uninstall() {
     await this.stop();
-    await unlink(this.definitionPath).catch((error) => {
-      if (!(
-        error instanceof Error &&
-        'code' in error &&
-        /** @type {{code?: string}} */ (error).code === 'ENOENT'
-      )) {
-        throw error;
-      }
-    });
+    await unlink(this.definitionPath).catch(ignoreMissingFile);
   }
 }
 

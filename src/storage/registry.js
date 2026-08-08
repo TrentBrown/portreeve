@@ -1050,43 +1050,7 @@ export class Registry {
           { activationId: id, reason: 'provider_not_gone' },
         );
       }
-      const releasedRuns = this.database
-        .query(
-          `SELECT id FROM runs
-           WHERE state = 'confirmed' AND id IN (
-             SELECT run_id FROM stack_activation_endpoints
-             WHERE activation_id = $activationId AND run_id IS NOT NULL
-           )`,
-        )
-        .all({ activationId: id })
-        .map((row) => z.object({ id: IdentifierSchema }).parse(row));
-      this.database
-        .query(
-          `UPDATE runs
-           SET state = 'released', released_at = $timestamp
-           WHERE state = 'confirmed' AND id IN (
-             SELECT run_id FROM stack_activation_endpoints
-             WHERE activation_id = $activationId AND run_id IS NOT NULL
-           )`,
-        )
-        .run({ timestamp, activationId: id });
-      for (const run of releasedRuns) {
-        this.#appendHistory(
-          'run.released',
-          'run',
-          run.id,
-          { activationId: id, reason: 'provider-lost' },
-          timestamp,
-        );
-      }
-      this.database
-        .query(
-          `UPDATE stack_activation_endpoints
-           SET state = 'released', failure_reason = 'provider-lost',
-               updated_at = $timestamp
-           WHERE activation_id = $activationId AND state = 'confirmed'`,
-        )
-        .run({ timestamp, activationId: id });
+      this.#releaseActivationRuns(id, timestamp, 'provider-lost');
       this.database
         .query(
           `UPDATE stack_activations
@@ -1138,42 +1102,7 @@ export class Registry {
           { activationId: id, reason: 'leases_pending' },
         );
       }
-      const releasedRuns = this.database
-        .query(
-          `SELECT id FROM runs
-           WHERE state = 'confirmed' AND id IN (
-             SELECT run_id FROM stack_activation_endpoints
-             WHERE activation_id = $activationId AND run_id IS NOT NULL
-           )`,
-        )
-        .all({ activationId: id })
-        .map((row) => z.object({ id: IdentifierSchema }).parse(row));
-      this.database
-        .query(
-          `UPDATE runs
-           SET state = 'released', released_at = $timestamp
-           WHERE state = 'confirmed' AND id IN (
-             SELECT run_id FROM stack_activation_endpoints
-             WHERE activation_id = $activationId AND run_id IS NOT NULL
-           )`,
-        )
-        .run({ timestamp, activationId: id });
-      for (const run of releasedRuns) {
-        this.#appendHistory(
-          'run.released',
-          'run',
-          run.id,
-          { activationId: id },
-          timestamp,
-        );
-      }
-      this.database
-        .query(
-          `UPDATE stack_activation_endpoints
-           SET state = 'released', updated_at = $timestamp
-           WHERE activation_id = $activationId AND state = 'confirmed'`,
-        )
-        .run({ timestamp, activationId: id });
+      this.#releaseActivationRuns(id, timestamp, null);
       this.database
         .query(
           `UPDATE stack_activations
@@ -1736,23 +1665,11 @@ export class Registry {
         throw new RegistryError('not_found', `Lease ${leaseId} was not found.`);
       }
       this.#assertPendingLease(lease, input.token, now);
-      if (activationId !== null) {
-        const endpoint = this.database
-          .query(
-            `SELECT 1 FROM stack_activation_endpoints endpoint
-             JOIN stack_activations activation ON activation.id = endpoint.activation_id
-             WHERE endpoint.activation_id = $activationId
-               AND endpoint.lease_id = $leaseId
-               AND endpoint.state = 'leased'
-               AND activation.state = 'starting'`,
-          )
-          .get({ activationId, leaseId });
-        if (endpoint === null) {
-          throw new RegistryError(
-            'conflict',
-            `Lease ${leaseId} is not confirmable for activation ${activationId}.`,
-          );
-        }
+      if (activationId !== null && !this.#leaseIsConfirmable(activationId, leaseId)) {
+        throw new RegistryError(
+          'conflict',
+          `Lease ${leaseId} is not confirmable for activation ${activationId}.`,
+        );
       }
       const claim = this.getClaim(lease.claimId);
       if (claim === null) {
@@ -1902,18 +1819,7 @@ export class Registry {
         throw new RegistryError('not_found', `Lease ${leaseId} was not found.`);
       }
       this.#assertPendingLease(lease, input.token, now);
-      const endpoint = this.database
-        .query(
-          `SELECT 1 FROM stack_activation_endpoints endpoint
-           JOIN stack_activations activation ON activation.id = endpoint.activation_id
-           WHERE endpoint.activation_id = $activationId
-             AND endpoint.lease_id = $leaseId
-             AND endpoint.binding_kind = 'docker'
-             AND endpoint.state = 'leased'
-             AND activation.state = 'starting'`,
-        )
-        .get({ activationId, leaseId });
-      if (endpoint === null) {
+      if (!this.#leaseIsConfirmable(activationId, leaseId, 'docker')) {
         throw new RegistryError(
           'conflict',
           `Lease ${leaseId} is not Docker-confirmable for activation ${activationId}.`,
@@ -2647,6 +2553,87 @@ export class Registry {
       parsed.payload,
       toTimestamp(now),
     );
+  }
+
+  /**
+   * Decide whether one leased activation endpoint may still be confirmed,
+   * optionally requiring a specific binding kind.
+   *
+   * @param {string} activationId
+   * @param {string} leaseId
+   * @param {'process' | 'docker'} [bindingKind]
+   */
+  #leaseIsConfirmable(activationId, leaseId, bindingKind) {
+    const endpoint = this.database
+      .query(
+        `SELECT 1 FROM stack_activation_endpoints endpoint
+         JOIN stack_activations activation ON activation.id = endpoint.activation_id
+         WHERE endpoint.activation_id = $activationId
+           AND endpoint.lease_id = $leaseId
+           AND endpoint.state = 'leased'
+           AND activation.state = 'starting'
+           AND ($bindingKind IS NULL OR endpoint.binding_kind = $bindingKind)`,
+      )
+      .get({ activationId, leaseId, bindingKind: bindingKind ?? null });
+    return endpoint !== null;
+  }
+
+  /**
+   * Release every confirmed run and endpoint of one activation, recording an
+   * optional failure reason on the endpoints and in run history.
+   *
+   * @param {string} activationId
+   * @param {string} timestamp
+   * @param {string | null} failureReason
+   */
+  #releaseActivationRuns(activationId, timestamp, failureReason) {
+    const releasedRuns = this.database
+      .query(
+        `SELECT id FROM runs
+         WHERE state = 'confirmed' AND id IN (
+           SELECT run_id FROM stack_activation_endpoints
+           WHERE activation_id = $activationId AND run_id IS NOT NULL
+         )`,
+      )
+      .all({ activationId })
+      .map((row) => z.object({ id: IdentifierSchema }).parse(row));
+    this.database
+      .query(
+        `UPDATE runs
+         SET state = 'released', released_at = $timestamp
+         WHERE state = 'confirmed' AND id IN (
+           SELECT run_id FROM stack_activation_endpoints
+           WHERE activation_id = $activationId AND run_id IS NOT NULL
+         )`,
+      )
+      .run({ timestamp, activationId });
+    for (const run of releasedRuns) {
+      this.#appendHistory(
+        'run.released',
+        'run',
+        run.id,
+        failureReason === null
+          ? { activationId }
+          : { activationId, reason: failureReason },
+        timestamp,
+      );
+    }
+    this.database
+      .query(
+        failureReason === null
+          ? `UPDATE stack_activation_endpoints
+             SET state = 'released', updated_at = $timestamp
+             WHERE activation_id = $activationId AND state = 'confirmed'`
+          : `UPDATE stack_activation_endpoints
+             SET state = 'released', failure_reason = $failureReason,
+                 updated_at = $timestamp
+             WHERE activation_id = $activationId AND state = 'confirmed'`,
+      )
+      .run(
+        failureReason === null
+          ? { timestamp, activationId }
+          : { timestamp, activationId, failureReason },
+      );
   }
 
   /** @param {string} activationId @param {string} timestamp */

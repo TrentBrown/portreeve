@@ -1,7 +1,8 @@
 // @ts-check
 
 import { unlink } from 'node:fs/promises';
-import { atomicWrite, fileExists } from './files.js';
+import { ignoreMissingFile } from '../platform/errors.js';
+import { atomicWrite, fileExists } from '../platform/files.js';
 import { assertCommandSucceeded, runCommand } from './command.js';
 
 export const DEFAULT_SYSTEMD_UNIT = 'portreeve.service';
@@ -116,15 +117,7 @@ WantedBy=default.target
   async uninstall() {
     await this.stop();
     await this.runner('systemctl', ['--user', 'disable', this.unit]);
-    await unlink(this.definitionPath).catch((error) => {
-      if (!(
-        error instanceof Error &&
-        'code' in error &&
-        /** @type {{code?: string}} */ (error).code === 'ENOENT'
-      )) {
-        throw error;
-      }
-    });
+    await unlink(this.definitionPath).catch(ignoreMissingFile);
     assertCommandSucceeded(
       await this.runner('systemctl', ['--user', 'daemon-reload']),
       'systemd user daemon reload',

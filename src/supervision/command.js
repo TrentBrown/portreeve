@@ -2,6 +2,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { errorCode, isMissingFile } from '../platform/errors.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -22,24 +23,17 @@ export async function runCommand(executable, args) {
       stderr: result.stderr,
     };
   } catch (error) {
-    if (
-      error instanceof Error &&
-      'code' in error &&
-      /** @type {{code?: unknown}} */ (error).code === 'ENOENT'
-    ) {
+    if (isMissingFile(error)) {
       return {
         code: 127,
         stdout: '',
         stderr: `Executable not found in $PATH: ${JSON.stringify(executable)}`,
       };
     }
-    if (
-      error instanceof Error &&
-      'code' in error &&
-      typeof (/** @type {{code?: unknown}} */ (error).code) === 'number'
-    ) {
+    const exitCode = errorCode(error);
+    if (error instanceof Error && typeof exitCode === 'number') {
       return {
-        code: /** @type {{code: number}} */ (error).code,
+        code: exitCode,
         stdout:
           'stdout' in error && typeof error.stdout === 'string' ? error.stdout : '',
         stderr:
