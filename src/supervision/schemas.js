@@ -61,6 +61,29 @@ export const LifecycleStatusSchema = z
   })
   .strict();
 
+/**
+ * Native supervisor definitions are rendered into line-oriented systemd units
+ * and property lists, so a control character in a path would escape its
+ * directive and inject a foreign definition.
+ */
+const SupervisorPathSchema = z
+  .string()
+  .min(1)
+  // eslint-disable-next-line no-control-regex
+  .refine((value) => !/[\u0000-\u001f\u007f]/u.test(value), {
+    message: 'supervisor definition paths must not contain control characters',
+  });
+
+export const SupervisorDefinitionSchema = z
+  .object({
+    executable: SupervisorPathSchema,
+    applicationDirectory: SupervisorPathSchema,
+    socketPath: SupervisorPathSchema,
+    standardOutputPath: SupervisorPathSchema,
+    standardErrorPath: SupervisorPathSchema,
+  })
+  .strict();
+
 export const LifecycleOperationSchema = z.enum([
   'install',
   'start',
