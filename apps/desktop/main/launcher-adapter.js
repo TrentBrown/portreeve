@@ -320,6 +320,9 @@ export function createLauncherAdapter(options) {
       id: sessionId,
       stack: status.stack,
       operation: request.operation,
+      attachedLifecycle:
+        (request.operation === 'start' || request.operation === 'restart') &&
+        launcher.definition.operations.start?.mode === 'attached',
       state: 'running',
       startedAt: now().toISOString(),
       completedAt: null,
@@ -376,7 +379,10 @@ export function createLauncherAdapter(options) {
   /** @param {string} stackId */
   async function terminateAttached(stackId) {
     const local = [...sessions.values()].find(
-      (session) => session.stack.id === stackId && session.state === 'running',
+      (session) =>
+        session.stack.id === stackId &&
+        session.state === 'running' &&
+        session.attachedLifecycle,
     );
     const stackRoot =
       local?.stack.stackRoot ??
@@ -415,20 +421,14 @@ export function createLauncherAdapter(options) {
   }
 
   function closeState() {
-    const attachedRoots = new Map(
-      options.runtime.lifecycleService
-        .listAttached()
-        .map((/** @type {{stackRoot: string, startedAt: string}} */ entry) => [
-          entry.stackRoot,
-          entry.startedAt,
-        ]),
-    );
     const attached = [];
     const reportedRoots = new Set();
     for (const session of sessions.values()) {
-      if (session.state !== 'running') continue;
-      const startedAt = attachedRoots.get(session.stack.stackRoot);
-      if (startedAt === undefined || reportedRoots.has(session.stack.stackRoot)) {
+      if (
+        session.state !== 'running' ||
+        !session.attachedLifecycle ||
+        reportedRoots.has(session.stack.stackRoot)
+      ) {
         continue;
       }
       reportedRoots.add(session.stack.stackRoot);
@@ -436,7 +436,7 @@ export function createLauncherAdapter(options) {
         stackId: session.stack.id,
         project: session.stack.project,
         stackRootName: basename(session.stack.stackRoot),
-        startedAt,
+        startedAt: session.startedAt,
       });
     }
     return DesktopApplicationCloseStateSchema.parse({

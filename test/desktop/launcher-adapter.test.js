@@ -121,7 +121,7 @@ test('runs opaque asynchronous sessions with bounded output, cancellation, savin
       `${JSON.stringify(launcherDefinition({ attached: true }), null, 2)}\n`,
       'utf8',
     );
-    let attached = true;
+    let attached = false;
     let savedContent = '';
     /** @type {any[]} */
     const outputEvents = [];
@@ -182,6 +182,7 @@ test('runs opaque asynchronous sessions with bounded output, cancellation, savin
       allowed: false,
       attached: [{ stackId: fixture.stack.id, project: 'caregiver' }],
     });
+    attached = true;
     await adapter.begin({
       stackId: fixture.stack.id,
       operation: 'status',
