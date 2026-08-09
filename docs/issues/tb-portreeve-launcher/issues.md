@@ -98,12 +98,12 @@ and existing lifecycle failure details.
 
 ## I-8 - Deliver the Desktop Launcher tab
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 3d
 - **Plan steps:** P8
 - **Rubric criteria:** R1, R2, R3, R4, R5, R7, R8
 - **Depends on:** I-5, I-6, I-7
-- **PR:** -
+- **PR:** [#32](https://github.com/TrentBrown/portreeve/pull/32)
 
 Build the stack-linked browser, dedicated editor, suggestions and provenance, evidence
 and maturity UI, lifecycle controls, confirmations, output and history, external-change

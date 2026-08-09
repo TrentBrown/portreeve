@@ -235,7 +235,7 @@ Existing Desktop lifecycle results now identify the failed step and expose the a
 
 ## [14] Keep launcher discovery inside opaque Desktop documents
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

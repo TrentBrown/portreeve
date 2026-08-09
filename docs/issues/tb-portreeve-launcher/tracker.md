@@ -9,13 +9,13 @@
 
 | # | Criterion (short) | Status | PR | Notes |
 |---|-------------------|--------|----|-------|
-| R1 | Launcher configuration and trust | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#29](https://github.com/TrentBrown/portreeve/pull/29), [#31](https://github.com/TrentBrown/portreeve/pull/31) | P7 adds opaque Desktop documents, exact-byte create/replace, external-change conflicts, explicit overwrite, downgrade confirmation, and exact-revision trust; the P8 editor UI remains |
-| R2 | Setup and endpoint environment | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#27](https://github.com/TrentBrown/portreeve/pull/27), [#29](https://github.com/TrentBrown/portreeve/pull/29) | P1 adds suggestions; P3 resolves values; P5 presents CLI provenance and endpoint mappings; Desktop setup remains |
-| R3 | Command-only lifecycle | NOT YET | [#27](https://github.com/TrentBrown/portreeve/pull/27), [#28](https://github.com/TrentBrown/portreeve/pull/28), [#29](https://github.com/TrentBrown/portreeve/pull/29) | P3-P4 provide evidence and finite execution; P5 exposes all CLI operations and explicit consent; Desktop integration remains |
+| R1 | Launcher configuration and trust | PASS | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#29](https://github.com/TrentBrown/portreeve/pull/29), [#31](https://github.com/TrentBrown/portreeve/pull/31), [#32](https://github.com/TrentBrown/portreeve/pull/32) | P8 completes Desktop creation, editing, exact preview, Save and Trust, conflict choices, and downgrade confirmation over the P7 opaque document boundary |
+| R2 | Setup and endpoint environment | PASS | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#27](https://github.com/TrentBrown/portreeve/pull/27), [#29](https://github.com/TrentBrown/portreeve/pull/29), [#32](https://github.com/TrentBrown/portreeve/pull/32) | P8 completes safe manifest suggestions with basename provenance and a nonsecret operation-time endpoint preview without persisting assigned ports |
+| R3 | Command-only lifecycle | PASS | [#27](https://github.com/TrentBrown/portreeve/pull/27), [#28](https://github.com/TrentBrown/portreeve/pull/28), [#29](https://github.com/TrentBrown/portreeve/pull/29), [#32](https://github.com/TrentBrown/portreeve/pull/32) | P8 exposes every evidence-gated lifecycle action, partial/degraded confirmation, progress, cancellation, output, and result state through Desktop |
 | R4 | Attached execution | NOT YET | [#30](https://github.com/TrentBrown/portreeve/pull/30), [#31](https://github.com/TrentBrown/portreeve/pull/31) | P7 adds app-owned attached sessions, explicit termination and cancellation capabilities, bounded live output, and a main-process close guard that covers pre-spawn through terminal state; packaged attached-quit workflow evidence remains |
-| R5 | Verified activation | NOT YET | [#27](https://github.com/TrentBrown/portreeve/pull/27), [#30](https://github.com/TrentBrown/portreeve/pull/30) | P3 reserves verified for matching fresh evidence; P6 enforces exact-generation success, records reduced maturity, suggests command-only upgrades, and validates explicit downgrades; Desktop transition UX remains |
+| R5 | Verified activation | PASS | [#27](https://github.com/TrentBrown/portreeve/pull/27), [#30](https://github.com/TrentBrown/portreeve/pull/30), [#32](https://github.com/TrentBrown/portreeve/pull/32) | P8 presents declared and observed maturity, upgrade suggestions, and an explicit downgrade warning before Save and Trust |
 | R6 | Shared engine and coordination | PASS | [#26](https://github.com/TrentBrown/portreeve/pull/26), [#27](https://github.com/TrentBrown/portreeve/pull/27), [#28](https://github.com/TrentBrown/portreeve/pull/28), [#29](https://github.com/TrentBrown/portreeve/pull/29), [#30](https://github.com/TrentBrown/portreeve/pull/30), [#31](https://github.com/TrentBrown/portreeve/pull/31) | P7 completes Desktop parity through the same shared runtime and daemon admission, with strict renderer capabilities and no unnecessary global serialization; the daemon still receives only reduced safe metadata |
-| R7 | Desktop operation and diagnostics | NOT YET | [#26](https://github.com/TrentBrown/portreeve/pull/26), [#28](https://github.com/TrentBrown/portreeve/pull/28), [#31](https://github.com/TrentBrown/portreeve/pull/31) | P7 adds the trusted Launcher boundary, bounded current-session output, safe history, cancellation and saving, and actionable existing lifecycle failures; the P8 Launcher tab remains |
+| R7 | Desktop operation and diagnostics | PASS | [#26](https://github.com/TrentBrown/portreeve/pull/26), [#28](https://github.com/TrentBrown/portreeve/pull/28), [#31](https://github.com/TrentBrown/portreeve/pull/31), [#32](https://github.com/TrentBrown/portreeve/pull/32) | P8 completes the Launcher tab, stack-linked browser and editor, lifecycle controls, evidence, bounded session output, Copy and Save, safe history, stale states, and actionable failures |
 | R8 | Degraded and platform behavior | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#26](https://github.com/TrentBrown/portreeve/pull/26), [#27](https://github.com/TrentBrown/portreeve/pull/27), [#28](https://github.com/TrentBrown/portreeve/pull/28), [#29](https://github.com/TrentBrown/portreeve/pull/29), [#31](https://github.com/TrentBrown/portreeve/pull/31) | P7 keeps daemon-required mutations in the shared engine, supports explicit main-owned termination during daemon loss, and preserves existing clients; final Linux and packaged workflow evidence remains |
 
 ## PR Log
@@ -114,7 +114,7 @@ Append PR boundary entries here.
 ### PR #31 - Desktop launcher trusted boundary
 
 - **PR:** [#31](https://github.com/TrentBrown/portreeve/pull/31)
-- **Status:** in review
+- **Status:** merged 2026-08-08
 - **Scope:** P7 / I-7: main-process launcher documents and runtime sessions, strict
   renderer capabilities, bounded session-only output, user-selected output saving,
   attached-operation close protection, safe history/evidence reduction, and actionable
@@ -124,3 +124,19 @@ Append PR boundary entries here.
   pending the Launcher tab and final packaged/cross-platform workflow verification.
   Pinned build, typecheck, lint, changed-file format, 71 Desktop tests, and all 375
   repository tests pass across the normal host-aware run plus isolated lifecycle rerun.
+
+### PR #32 - Desktop Launcher tab
+
+- **PR:** [#32](https://github.com/TrentBrown/portreeve/pull/32)
+- **Status:** in review
+- **Scope:** P8 / I-8: fourth primary Launcher tab, stack-linked master-detail browser,
+  guided editor and provenance, exact JSON review, Save and Trust, evidence and maturity
+  presentation, lifecycle controls, confirmations, progress, cancellation, bounded
+  session output, safe history, external-change handling, and Stacks cross-links.
+- **Evidence packet:** [pr-32](pr-32/)
+- **Result:** R1, R2, R3, R5, and R7 reach `PASS`. R4 and R8 remain `NOT YET`
+  only for the final packaged attached-close, external-edit, Linux, release, and
+  retention matrix in P9. Pinned build, typecheck, lint, changed-file format, 77
+  Desktop tests, packaged application construction and an isolated packaged Launcher
+  workflow pass. All 381 unique repository tests pass across the host-aware run plus
+  the isolated lifecycle rerun. Judge: PASS. Code review: no findings.
