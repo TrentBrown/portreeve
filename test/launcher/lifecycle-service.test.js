@@ -355,6 +355,40 @@ test('requires matching fresh activation evidence for verified Start success', a
   });
 });
 
+test('requires verified Stop to end active stack evidence', async () => {
+  const stillActive = harness('verified');
+  expect(
+    await stillActive.service.execute({
+      operation: 'stop',
+      stack,
+      launcher: launcher({ integrationMode: 'verified-activation' }),
+    }),
+  ).toMatchObject({
+    outcome: 'failed',
+    failure: {
+      step: 'activation-verification',
+      code: 'launcher_activation_not_ended',
+    },
+  });
+
+  const ended = harness('verified');
+  const stopCommand = ended.service.runCommand;
+  ended.service.runCommand = async (input) => {
+    ended.setClassification('stopped');
+    return stopCommand(input);
+  };
+  expect(
+    await ended.service.execute({
+      operation: 'stop',
+      stack,
+      launcher: launcher({ integrationMode: 'verified-activation' }),
+    }),
+  ).toMatchObject({
+    outcome: 'succeeded',
+    afterEvidence: { classification: 'stopped' },
+  });
+});
+
 test('suggests an explicit upgrade when command-only execution verifies its generation', async () => {
   const fixture = harness('stopped');
   const original = fixture.service.runCommand;
@@ -411,6 +445,47 @@ test('uses attached daemon admission and exposes exact application-local termina
   expect(fixture.service.listAttached()).toHaveLength(1);
   expect(fixture.service.terminateAttached(stack.stackRoot)).toBe(true);
   expect(terminateCalls).toBe(1);
+});
+
+test('retains matching verification observed while attached Start is still running', async () => {
+  /** @type {ReturnType<typeof harness>} */
+  let fixture;
+  const attachedCommands = {
+    async run() {
+      fixture.setClassification('verified');
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 10));
+      fixture.setClassification('stopped');
+      return commandResult('succeeded');
+    },
+    terminate() {
+      return false;
+    },
+    list() {
+      return [];
+    },
+  };
+  fixture = harness('stopped', { attachedCommands });
+  const result = await fixture.service.execute({
+    operation: 'start',
+    stack,
+    launcher: launcher({
+      startMode: 'attached',
+      integrationMode: 'verified-activation',
+    }),
+  });
+  expect(result).toMatchObject({
+    outcome: 'succeeded',
+    afterEvidence: { classification: 'stopped' },
+    integration: {
+      mode: 'verified-activation',
+      verified: true,
+      generationId: generation.id,
+    },
+  });
+  expect(fixture.calls.completions[0]).toMatchObject({
+    afterEvidence: { classification: 'stopped' },
+    integration: { verified: true },
+  });
 });
 
 test('composes attached Restart as finite Stop followed by attached Start', async () => {
