@@ -3,6 +3,10 @@
 import { expect, test } from 'bun:test';
 import { access, readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import {
+  normalizeLauncherDefinition,
+  validateLauncherTopology,
+} from '../../src/launcher/definition.js';
 
 test('protocol documentation covers every public endpoint', async () => {
   const protocol = await readFile(resolve('docs', 'protocol.md'), 'utf8');
@@ -126,7 +130,8 @@ test('public guides cover desktop and one representative mixed-stack launcher', 
     readFile(resolve('examples', 'mixed-stack', 'README.md'), 'utf8'),
     readFile(resolve('examples', 'mixed-stack', 'portreeve.stack.json'), 'utf8'),
   ]);
-  expect(desktop).toContain('never starts or stops a project process or container');
+  expect(desktop).toContain('The Stacks tab never starts or stops a project process');
+  expect(desktop).toContain('Launcher is the fourth primary tab');
   expect(desktop).toContain('actionable');
   expect(example).toContain('bun run stacks:verify');
   expect(example).toContain('PORTREEVE_ENDPOINTS_FILE');
@@ -196,4 +201,63 @@ test('public guides describe the final stack-root and desktop editor contract', 
   expect(migration).toMatch(/Retain the project launcher/u);
   expect(troubleshooting).toContain('Saved, but not applied');
   expect(troubleshooting).toContain('external definition change');
+});
+
+test('public guides document the complete project-launcher contract', async () => {
+  const [
+    readme,
+    launcherGuide,
+    desktop,
+    cli,
+    migration,
+    troubleshooting,
+    stack,
+    launcher,
+  ] = await Promise.all([
+    readFile(resolve('README.md'), 'utf8'),
+    readFile(resolve('docs', 'launchers.md'), 'utf8'),
+    readFile(resolve('docs', 'desktop.md'), 'utf8'),
+    readFile(resolve('docs', 'cli-contract.md'), 'utf8'),
+    readFile(resolve('docs', 'migration.md'), 'utf8'),
+    readFile(resolve('docs', 'troubleshooting.md'), 'utf8'),
+    readFile(resolve('examples', 'mixed-stack', 'portreeve.stack.json'), 'utf8'),
+    readFile(resolve('examples', 'mixed-stack', 'portreeve.launcher.json'), 'utf8'),
+  ]);
+
+  expect(readme).toContain('[Project launchers](docs/launchers.md)');
+  for (const phrase of [
+    'One stack, one companion launcher',
+    'Version 1 file schema',
+    'Exact-revision trust',
+    'Endpoint environment contract',
+    'Command-only lifecycle',
+    'Verified activation checklist',
+    'Attached Start and concurrency',
+    'Degraded recovery',
+    'Output and history retention',
+    'Platform and deferred scope',
+  ]) {
+    expect(launcherGuide).toContain(phrase);
+  }
+  for (const reserved of [
+    'PORTREEVE_STACK_ROOT',
+    'PORTREEVE_STACK_ID',
+    'PORTREEVE_GENERATION_ID',
+    'PORTREEVE_SOCKET',
+    'PORTREEVE_ACTIVATION_ID',
+  ]) {
+    expect(launcherGuide).toContain(reserved);
+  }
+  expect(launcherGuide).toMatch(/never\s+automatically persists raw output/u);
+  expect(launcherGuide).toContain('Delete all data');
+  expect(launcherGuide).toContain('Start and Restart refuse');
+  expect(desktop).toContain('Save and Trust');
+  expect(cli).toContain('stop --allow-degraded');
+  expect(migration).toContain('Moving an existing orchestrator to PortReeve Launcher');
+  expect(troubleshooting).toMatch(/There is\s+no force-execute/u);
+
+  const stackDefinition = JSON.parse(stack);
+  const normalizedLauncher = normalizeLauncherDefinition(JSON.parse(launcher));
+  validateLauncherTopology(normalizedLauncher.definition, stackDefinition);
+  expect(normalizedLauncher.content).toBe(launcher);
 });

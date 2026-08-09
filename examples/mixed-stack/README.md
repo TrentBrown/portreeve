@@ -5,15 +5,23 @@ independently runnable stack. PortReeve allocates both host publications and ver
 their evidence. The project launcher still owns the website child process, Docker or
 Compose invocation, environment injection, startup order, health checks, and shutdown.
 
-Copy [`portreeve.stack.json`](portreeve.stack.json) to the root of a disposable stack or
-adapt its project and component names there. The root may be a non-Git parent containing
-several child repositories. The file declares topology and preferred ports only; it
-contains no command, secret, environment value, or lease credential.
+Copy [`portreeve.stack.json`](portreeve.stack.json) and the illustrative
+[`portreeve.launcher.json`](portreeve.launcher.json) to the root of a disposable stack,
+then replace the example lifecycle commands with the stack's real project-owned CLI. The
+root may be a non-Git parent containing several child repositories. The stack file
+declares topology and preferred ports; the launcher file declares commands and
+endpoint-derived mappings. Neither contains an assigned host port, secret, or lease
+credential.
 
 You may also select that disposable root with **Create or Edit Stack…** in PortReeve
 Desktop and enter the same topology through structured fields. Desktop Save and Apply
 creates or updates the checked-in file, but the launcher sequence below remains
 unchanged because editing never prepares or starts the stack.
+
+The Launcher tab can open the companion launcher file, preview the current endpoint
+values, and Save and Trust its exact revision. The example begins in command-only mode;
+the detailed activation sequence below is the upgrade contract a project CLI adopts for
+verified activation.
 
 ## Launcher sequence
 

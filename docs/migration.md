@@ -83,3 +83,31 @@ Retain the project launcher and move only address coordination into PortReeve:
 PortReeve Desktop can create or edit the definition, but it does not replace the
 launcher. Applying through either the CLI, client, or desktop never prepares ports or
 starts the stack.
+
+## Moving an existing orchestrator to PortReeve Launcher
+
+After the stack topology is applied, add `portreeve.launcher.json` beside it. Keep the
+existing project CLI as the implementation of Start, Stop, Restart, Status, dependency
+ordering, health checks, container control, and cleanup; the PortReeve file merely names
+those commands and maps current endpoints into their environment.
+
+Begin in `command-only` mode. It removes static-port and cross-service address wiring
+without pretending that exit zero proves ownership. Review fresh evidence and keep the
+old startup path available until the new command receives every required mapping. When
+the project launcher can begin, renew, confirm, abandon, reconcile, and end the exact
+supplied activation generation, switch to `verified-activation`, review the changed
+file, and trust its new exact revision.
+
+Desktop offers fill-in-the-blanks editing. CLI users can run:
+
+```sh
+portreeve launcher init
+portreeve launcher validate
+portreeve launcher trust
+portreeve launcher start
+```
+
+Do not copy assigned ports into the file, add a second PortReeve launcher per operating
+profile, or move arbitrary secrets into launcher environment mappings. Focus modes and
+secrets remain options or environment owned by the invoked project CLI. See
+[Project launchers](launchers.md) for the complete transition checklist.

@@ -61,6 +61,10 @@ output.
 | `stacks prune`                                     | `{ "version": 1, "result": { "candidates": [ ... ], "blocked": [ ... ] } }` |
 | `stacks resolve`                                   | `{ "version": 1, "resolution": { ... } }`                                   |
 | `stacks snapshot`                                  | `{ "version": 1, "result": { "filename": "...", "snapshot": { ... } } }`    |
+| `launcher init`                                    | `{ "version": 1, "result": { "created": true, "trusted": true, ... } }`     |
+| `launcher validate`                                | `{ "version": 1, "launcher": { "valid": true, ... } }`                        |
+| `launcher trust`                                   | `{ "version": 1, "result": { "trusted": true, ... } }`                        |
+| `launcher start` / `stop` / `restart` / `status`   | `{ "version": 1, "result": { ... } }`                                            |
 | `config get`                                       | `{ "version": 1, "settings": { ... } }` or `{ "version": 1, "value": ... }` |
 | `config set`                                       | `{ "version": 1, "settings": { ... } }`                                     |
 | `history`                                          | `{ "version": 1, "events": [ ... ] }`                                       |
@@ -128,6 +132,30 @@ with mode `0600`. The gateway is supplied by the trusted launcher—for example,
 `host.docker.internal` on macOS Docker Desktop or a launcher-discovered bridge address
 on Linux. PortReeve does not infer or verify sandbox topology. Mount the resulting
 document read-only and never mount the PortReeve control socket into the sandbox.
+
+## Project launchers
+
+`launcher init`, `validate`, `trust`, `start`, `stop`, `restart`, and `status` share
+the same definition, exact-revision trust, environment resolution, lifecycle policy,
+and structured results used by Desktop. They discover the nearest enclosing applied
+stack by default; `--stack-root <path>` selects an explicit canonical root.
+
+`init` is interactive: it refuses an existing file, previews manifest-derived
+suggestions and the exact JSON, creates `portreeve.launcher.json` exclusively, and
+trusts only after confirmation. `validate` may inspect an unapplied definition and does
+not change trust. `trust` is always interactive and reviews the resolved shell, working
+directory, commands, and exact revision. There is no noninteractive trust bypass.
+
+Lifecycle execution refuses invalid, unapplied, or untrusted launchers. `start
+--run-start-anyway` is the explicit repair path for partial nonconflicting evidence.
+`stop --allow-degraded` is the explicit daemon-outage path and uses only an exact-root,
+exact-launcher-revision cached nonsecret environment. Start and Restart never proceed
+without the daemon. Status output remains advisory beside fresh or clearly local stale
+evidence. Attached Start blocks in the invoking CLI process and forwards cancellation
+only to the exact process group that invocation created.
+
+See [Project launchers](launchers.md) for the checked-in schema and complete behavioral
+contract.
 
 ## Prune consent
 

@@ -92,12 +92,44 @@ Valid output uses two-space indentation, a final newline, editor order, and omit
 defaults such as TCP transport, required or published `true`, automatic allocation, and
 the dependency endpoint when it is `default`.
 
-PortReeve Desktop never starts or stops a project process or container, invokes Docker
+The Stacks tab never starts or stops a project process or container, invokes Docker
 Compose, owns application startup order, maps project environment variables, or asserts
-application health. Those remain responsibilities of the project launcher. Stale stack
+application health. Those remain responsibilities of a project launcher. Stale stack
 evidence remains visible for diagnosis but withholds stack mutation controls until
 current evidence returns; the server revalidates every requested action as final
 authority.
+
+## Launcher
+
+Launcher is the fourth primary tab, after Stacks. It is the low-friction bridge from an
+applied stack's current PortReeve allocation to project-owned lifecycle commands. The
+stack-linked browser shows configuration, exact-revision trust, integration maturity,
+fresh evidence, action availability, bounded current-session output, and the latest
+twenty safe operation records.
+
+An applied stack without `portreeve.launcher.json` offers setup. The dedicated editor
+provides Execution, Commands, Endpoint environment, Advanced, and Review sections. It
+may prefill editable suggestions from supported manifests in the exact selected working
+directory and always displays basename provenance. Discovery never runs project code or
+recursively searches child repositories. The exact canonical JSON is visible before
+**Save and Trust**.
+
+The renderer holds only opaque stack, document, and session identifiers. Electron main
+owns command discovery, exact-byte file replacement, trust, execution, output saving,
+and attached-process termination. External changes offer Review, explicit Overwrite, or
+Cancel; changing verified activation to command-only requires a separate downgrade
+warning. Opening Launcher never executes a command.
+
+Start, Stop, Restart, and Status availability follows the shared engine's current trust
+and evidence policy. Partial Start and degraded Stop require explicit confirmation;
+conflicts block Start. Attached Start has no timeout and blocks normal application exit
+until the stack is stopped, the exact app-owned process group is explicitly terminated,
+or exit is cancelled. Output is retained only in the current application session unless
+the user explicitly selects **Save output**.
+
+See [Project launchers](launchers.md) for the file schema, environment contract,
+command-only and verified semantics, CLI workflow, degraded recovery, concurrency,
+retention, and platform boundaries.
 
 ## Trust and data boundary
 

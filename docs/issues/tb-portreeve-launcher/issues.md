@@ -98,7 +98,7 @@ and existing lifecycle failure details.
 
 ## I-8 - Deliver the Desktop Launcher tab
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 3d
 - **Plan steps:** P8
 - **Rubric criteria:** R1, R2, R3, R4, R5, R7, R8
@@ -111,12 +111,12 @@ flow, degraded states, Stacks cross-links, and packaged accessibility coverage.
 
 ## I-9 - Document and verify the assembled feature
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P9
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
 - **Depends on:** I-5, I-8
-- **PR:** -
+- **PR:** [#33](https://github.com/TrentBrown/portreeve/pull/33)
 
 Complete all public and integration documentation, run source, compiled, native, release,
 security, reset, and packaged application gates, perform focused manual acceptance, and
