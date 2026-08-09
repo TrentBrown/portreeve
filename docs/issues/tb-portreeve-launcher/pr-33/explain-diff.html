@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PortReeve launcher final verification</title>
+  <style>
+    :root { --ink:#17231f; --muted:#5d6c65; --paper:#f7f2e8; --card:#fffdf8; --green:#17634d; --line:#d7d0c2; --gold:#b66a16; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:17px/1.6 system-ui,-apple-system,sans-serif; }
+    header,main { max-width:1050px; margin:auto; padding:2rem; }
+    header { padding-top:4rem; }
+    h1,h2,h3 { font-family:Georgia,serif; line-height:1.18; }
+    h1 { font-size:clamp(2.4rem,6vw,4.5rem); margin:.2rem 0; }
+    h2 { margin-top:3.5rem; border-bottom:2px solid var(--green); padding-bottom:.35rem; }
+    a { color:var(--green); }
+    nav,.card,.callout,.diagram,.quiz { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:1.25rem; margin:1rem 0; }
+    nav ul { columns:2; }
+    .eyebrow { color:var(--green); font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+    .lede { font-size:1.25rem; max-width:780px; }
+    .callout { border-left:6px solid var(--gold); }
+    .flow { display:grid; grid-template-columns:repeat(4,1fr); gap:.8rem; align-items:stretch; }
+    .node { background:#edf5f0; border:1px solid #b9d2c8; border-radius:10px; padding:1rem; }
+    .node strong { display:block; color:var(--green); }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+    pre { white-space:pre-wrap; overflow:auto; background:#18231f; color:#eaf3ed; border-radius:10px; padding:1rem; }
+    code { font-family:ui-monospace,SFMono-Regular,monospace; }
+    table { width:100%; border-collapse:collapse; background:var(--card); }
+    th,td { border:1px solid var(--line); padding:.65rem; text-align:left; vertical-align:top; }
+    .quiz button { display:block; width:100%; text-align:left; margin:.55rem 0; padding:.8rem; border:1px solid var(--line); border-radius:8px; background:white; cursor:pointer; }
+    .quiz button:hover { border-color:var(--green); }
+    .feedback { min-height:1.6rem; font-weight:700; color:var(--green); }
+    @media (max-width:760px) { header,main{padding:1rem}.flow,.grid{grid-template-columns:1fr}nav ul{columns:1} }
+  </style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">PR #33 · feature-final</div>
+  <h1>From port allocation to a usable local stack</h1>
+  <p class="lede">This final slice does not add another execution mechanism. It makes the completed PortReeve launcher understandable, testable as a whole, and reviewable as a public contract.</p>
+  <nav><strong>Contents</strong><ul><li><a href="#background">Background</a></li><li><a href="#intuition">Intuition</a></li><li><a href="#code">Code walkthrough</a></li><li><a href="#verification">Verification</a></li><li><a href="#quiz">Quiz</a></li></ul></nav>
+</header>
+<main>
+  <section id="background">
+    <h2>Background</h2>
+    <h3>The beginner's model</h3>
+    <p>A port number is an address on one machine. PortReeve already assigns those addresses without collisions. A development stack, however, is a conversation among processes: a website must learn the API address, an API may need a Docker-published database address, and a launcher must start and stop them in the correct order.</p>
+    <div class="diagram flow">
+      <div class="node"><strong>Stack file</strong>Declares components and endpoints, never current assigned ports.</div>
+      <div class="node"><strong>PortReeve daemon</strong>Allocates addresses and observes listeners.</div>
+      <div class="node"><strong>Launcher file</strong>Maps endpoints to environment names and trusted commands.</div>
+      <div class="node"><strong>Project CLI</strong>Owns ordering, health, containers, and cleanup.</div>
+    </div>
+    <p>The design deliberately stops PortReeve short of becoming a general orchestrator. The daemon coordinates addresses and safe operation metadata. The user's trusted CLI or Desktop process executes project commands locally.</p>
+    <h3>The narrow background for this PR</h3>
+    <p>PRs #25 through #32 built the strict launcher document, daemon coordination, environment and evidence services, command execution, CLI, attached and verified modes, Electron boundary, and Launcher tab. The remaining risk was not missing code; it was an assembled feature whose public contract and platform claims had not yet been verified together.</p>
+    <div class="callout"><strong>Pinned ranges.</strong> Complete-feature gates use <code>68fc6f9..aa8a7fc</code>. Focused code review and this explanation use only the final slice <code>2a5fdb8..aa8a7fc</code>.</div>
+  </section>
+
+  <section id="intuition">
+    <h2>Intuition</h2>
+    <p>Think of the stack definition as a seating chart and the launcher definition as a set of labeled extension cords. PortReeve may move a service to another seat, but the cord label remains <code>API_HTTP_PORT</code>. Immediately before Start, PortReeve connects that label to the current allocation. The checked-in launcher never needs a new commit merely because the port changed.</p>
+    <div class="diagram flow">
+      <div class="node"><strong>1. Trust bytes</strong><code>portreeve.launcher.json</code> hashes to one exact revision.</div>
+      <div class="node"><strong>2. Resolve generation</strong><code>api.http → 43127</code></div>
+      <div class="node"><strong>3. Inject context</strong><code>API_HTTP_PORT=43127</code></div>
+      <div class="node"><strong>4. Compare evidence</strong>Command result is advisory; listeners or activation establish state.</div>
+    </div>
+    <p>This separation explains several safety choices. External edits invalidate trust. Stop runs the project's Stop command rather than killing whatever happens to listen. Verified activation requires a matching generation instead of exit zero. Attached Start can be terminated only through the exact process-group handle held by the application that created it.</p>
+  </section>
+
+  <section id="code">
+    <h2>Code walkthrough</h2>
+    <div class="grid">
+      <div class="card"><h3>One authoritative guide</h3><p><code>docs/launchers.md</code> now describes the schema, trust scope, environment contract, command-only and verified modes, attached execution, degraded recovery, retention, concurrency, and platform boundaries in one place.</p></div>
+      <div class="card"><h3>Entry points agree</h3><p>README, Desktop, CLI automation, migration, troubleshooting, and the mixed-stack example point to the same guide and preserve the boundary between PortReeve allocation and project orchestration.</p></div>
+      <div class="card"><h3>An executable example</h3><p><code>examples/mixed-stack/portreeve.launcher.json</code> maps host, URL, container, and website values without embedding an assigned port. Tests normalize it through the production schema and validate it against the companion stack.</p></div>
+      <div class="card"><h3>Contract assertions</h3><p>The release documentation test requires every major guide section, every reserved context variable, reset semantics, degraded refusal, no trust bypass, and canonical example bytes.</p></div>
+    </div>
+    <h3>What the final slice intentionally does not change</h3>
+    <pre><code>daemon: no shell commands, no raw output, no credentials
+launcher file: no assigned ports, no arbitrary secrets, no database IDs
+Desktop renderer: no filesystem path authority, no process handles
+first release: no PTY, detach, reattach, Windows runtime, or language generator</code></pre>
+  </section>
+
+  <section id="verification">
+    <h2>Verification</h2>
+    <table><thead><tr><th>Layer</th><th>Evidence</th></tr></thead><tbody>
+      <tr><td>Repository</td><td>All 382 tests pass on clean hosted runners; local LaunchAgent interference was isolated and reconciled.</td></tr>
+      <tr><td>Artifacts</td><td>Six platform executables built and verified.</td></tr>
+      <tr><td>Native</td><td>macOS arm64/x64 and Linux x64/arm64 lifecycle smokes passed; both macOS Homebrew smokes passed.</td></tr>
+      <tr><td>Docker</td><td>Real mixed-stack Docker smoke passed on both Linux architectures.</td></tr>
+      <tr><td>Packaged UI</td><td>External edit produced Review and explicit Overwrite choices; attached Start injected the allocated port, streamed output, blocked close, supported Keep Open, then terminated its exact group.</td></tr>
+      <tr><td>Retention</td><td>All 56 current feature-record files are Git-tracked; no retention decision is outstanding.</td></tr>
+    </tbody></table>
+    <div class="callout"><strong>No publication occurred.</strong> The hosted workflow was dispatched from a branch. Tag-only release-policy, GitHub release, and npm publication jobs were skipped.</div>
+  </section>
+
+  <section id="quiz">
+    <h2>Quiz</h2>
+    <div class="quiz" data-answer="1"><strong>1. Why can a port assignment change without changing launcher trust?</strong><button>The trusted revision includes the current database generation, so the hash remains stable.</button><button>The file stores endpoint references; values are resolved immediately before execution.</button><button>PortReeve rewrites assigned values after hashing but before the command runs.</button><div class="feedback"></div></div>
+    <div class="quiz" data-answer="2"><strong>2. What does command-only Start success establish?</strong><button>Ownership, if every expected port has a listener after exit zero.</button><button>Verified activation, if the listener PIDs are descendants of the shell.</button><button>Only project-command success; fresh PortReeve evidence is reported separately.</button><div class="feedback"></div></div>
+    <div class="quiz" data-answer="0"><strong>3. Why does Desktop block closing during attached Start?</strong><button>The exact process-group authority is application-local and is not reattachable later.</button><button>The daemon pauses lease renewal whenever the BrowserWindow is hidden.</button><button>Electron cannot receive a process exit event after its renderer closes.</button><div class="feedback"></div></div>
+    <div class="quiz" data-answer="2"><strong>4. What proved the promised Linux behavior?</strong><button>Cross-compiling Linux executables on the developer's Mac.</button><button>Schema tests that substitute Linux paths and signals.</button><button>Native x64/arm64 hosted lifecycle jobs, each including a real Docker stack.</button><div class="feedback"></div></div>
+    <div class="quiz" data-answer="1"><strong>5. What is the daemon's role during launcher execution?</strong><button>It spawns the trusted command but strips secrets and truncates output.</button><button>It coordinates per-stack admission and stores bounded safe outcomes, while the caller executes.</button><button>It watches lsof and adopts any process that binds the allocated generation.</button><div class="feedback"></div></div>
+  </section>
+</main>
+<script>
+  document.querySelectorAll('.quiz').forEach((quiz) => {
+    quiz.querySelectorAll('button').forEach((button, index) => {
+      button.addEventListener('click', () => {
+        const correct = index === Number(quiz.dataset.answer);
+        quiz.querySelector('.feedback').textContent = correct
+          ? 'Correct — that preserves the approved authority boundary.'
+          : 'Not quite. Revisit the trust, evidence, or platform section above.';
+      });
+    });
+  });
+</script>
+</body>
+</html>
