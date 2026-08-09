@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #32 explained — PortReeve Desktop Launcher</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1f2925;
+        --muted: #64706b;
+        --paper: #fbf8f0;
+        --card: #fffdf8;
+        --line: #d9d3c5;
+        --green: #17634c;
+        --green-soft: #e3f1e9;
+        --amber: #9a5a1a;
+        --amber-soft: #fff0d9;
+        --blue: #315d7b;
+        --blue-soft: #e5eff6;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--paper);
+        font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      header, main { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+      header { padding: 54px 0 30px; }
+      h1, h2, h3 { font-family: Georgia, serif; line-height: 1.12; }
+      h1 { margin: 8px 0 14px; font-size: clamp(2.2rem, 6vw, 4.6rem); }
+      h2 { margin-top: 0; font-size: 1.8rem; }
+      h3 { margin-bottom: 8px; }
+      p { max-width: 78ch; }
+      code { background: #eee9de; border-radius: 4px; padding: 0.1rem 0.28rem; }
+      pre {
+        overflow: auto;
+        padding: 16px;
+        border-radius: 10px;
+        color: #edf4ef;
+        background: #26332e;
+        white-space: pre;
+      }
+      .eyebrow { color: var(--green); font-weight: 750; letter-spacing: 0.14em; text-transform: uppercase; }
+      .lede { color: var(--muted); font-size: 1.18rem; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+      .chip { border: 1px solid var(--line); border-radius: 999px; background: var(--card); padding: 6px 11px; }
+      section { margin-bottom: 22px; padding: 26px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+      .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-items: stretch; }
+      .step { position: relative; padding: 16px; border-radius: 12px; background: var(--green-soft); }
+      .step:not(:last-child)::after { content: "→"; position: absolute; right: -15px; top: 42%; z-index: 2; font-weight: 800; }
+      .callout { border-left: 5px solid var(--amber); background: var(--amber-soft); }
+      .security { border-left: 5px solid var(--blue); background: var(--blue-soft); }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 11px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+      th { color: var(--muted); font-size: 0.83rem; letter-spacing: 0.08em; text-transform: uppercase; }
+      details { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+      summary { cursor: pointer; color: var(--green); font-weight: 700; }
+      .quiz label { display: block; margin: 8px 0; }
+      .result { min-height: 1.5em; color: var(--green); font-weight: 700; }
+      button { border: 0; border-radius: 8px; color: white; background: var(--green); padding: 9px 14px; cursor: pointer; }
+      footer { padding: 18px 0 48px; color: var(--muted); }
+      @media (max-width: 760px) {
+        .grid, .flow { grid-template-columns: 1fr; }
+        .step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -19px; }
+        section { padding: 20px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="eyebrow">PortReeve · PR #32 · P8</div>
+      <h1>The Desktop Launcher arrives</h1>
+      <p class="lede">
+        This slice turns the trusted main-process capabilities from PR #31 into a
+        complete, stack-linked user experience—without giving the renderer filesystem,
+        process, command, or credential authority.
+      </p>
+      <div class="chips">
+        <span class="chip">2,204 additions</span>
+        <span class="chip">13 source files</span>
+        <span class="chip">77 Desktop tests</span>
+        <span class="chip">Packaged macOS smoke</span>
+      </div>
+    </header>
+
+    <main>
+      <section>
+        <h2>What changed for a user?</h2>
+        <div class="flow" aria-label="Launcher user workflow">
+          <div class="step"><strong>1. Choose a stack</strong><br />Launcher follows the same applied stack shown by Stacks.</div>
+          <div class="step"><strong>2. Fill in commands</strong><br />Safe manifest suggestions and provenance reduce the blank-page problem.</div>
+          <div class="step"><strong>3. Review and trust</strong><br />The exact JSON revision is visible before PortReeve may execute it.</div>
+          <div class="step"><strong>4. Operate</strong><br />Start, Stop, Restart, and Status follow fresh evidence and shared policy.</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>The new information architecture</h2>
+        <div class="grid">
+          <div>
+            <h3>Fourth primary tab</h3>
+            <p>Launcher appears after Overview, Ports, and Stacks. Onboarding explains that PortReeve injects current endpoint values but the project still owns its lifecycle commands.</p>
+          </div>
+          <div>
+            <h3>Stack-linked master/detail</h3>
+            <p>The list establishes which stack each launcher belongs to. Cross-links move between the Stacks and Launcher views without introducing a second stack identity.</p>
+          </div>
+          <div>
+            <h3>Dedicated editor</h3>
+            <p>Execution, Commands, Endpoint environment, Advanced, and Review sections make the file approachable while preserving an exact JSON preview.</p>
+          </div>
+          <div>
+            <h3>Operational detail</h3>
+            <p>Trust, maturity, evidence, availability reasons, output, and safe history stay together so users can distinguish shell success from observed stack state.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="security">
+        <h2>The authority boundary did not move</h2>
+        <table>
+          <thead><tr><th>Renderer may see</th><th>Renderer may not receive</th></tr></thead>
+          <tbody>
+            <tr><td>Opaque stack and document identifiers</td><td>Canonical stack-root or launcher-file paths</td></tr>
+            <tr><td>Suggested command text and basename provenance</td><td>A generic discovery path or filesystem probe</td></tr>
+            <tr><td>Reduced evidence and nonsecret endpoint preview</td><td>Credentials, raw environment authority, or daemon tokens</td></tr>
+            <tr><td>Bounded current-session output</td><td>Process-group identifiers or arbitrary signal authority</td></tr>
+          </tbody>
+        </table>
+        <details>
+          <summary>Why discovery belongs to an opaque document</summary>
+          <p>Main inspects only the exact stack or contained working directory already associated with the opened document. The renderer can accept, edit, or ignore suggestions but cannot ask PortReeve to inspect an arbitrary path.</p>
+        </details>
+      </section>
+
+      <section>
+        <h2>Editing is deliberately explicit</h2>
+        <div class="grid">
+          <div>
+            <h3>Missing file</h3>
+            <p>Suggestions form a dirty, immediately saveable draft. Nothing executes until the resulting exact revision is trusted.</p>
+          </div>
+          <div>
+            <h3>External change</h3>
+            <p>Saving against stale bytes produces Review, Overwrite, or Cancel. PortReeve never silently replaces the changed project file.</p>
+          </div>
+          <div>
+            <h3>Downgrade</h3>
+            <p>Changing verified activation to command-only requires a warning and confirmation before Save and Trust.</p>
+          </div>
+          <div>
+            <h3>Assigned ports</h3>
+            <p>The editor stores endpoint mappings. Current port values are previewed from reduced stack facts and resolved again for each operation.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Action availability is evidence, not optimism</h2>
+        <pre>exact trusted revision
+        + fresh stack evidence
+        + shared lifecycle policy
+        ↓
+enabled action, disabled reason, or explicit confirmation</pre>
+        <p>
+          Fully observed stacks do not offer Start. Conflicts block Start. Partial and
+          degraded paths require explicit consent. Stop invokes only the trusted project
+          command; it does not turn PortReeve's listener inventory into implicit kill
+          authority.
+        </p>
+        <details>
+          <summary>What happens while an attached Start is running?</summary>
+          <p>Status and Stop remain available. Output is bounded and live for the application session. Normal close is blocked; termination is a separate explicit user action owned by Electron main.</p>
+        </details>
+      </section>
+
+      <section class="callout">
+        <h2>Two smoke-test corrections</h2>
+        <ol>
+          <li>A suggested missing-file draft was initially mistaken for an unchanged saved document, disabling Save and Trust. Missing documents now start from an empty baseline.</li>
+          <li>Busy cleanup initially re-enabled controls blindly. Dynamic controls now re-render from semantic state, while retained controls restore their precise prior disabled value.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Verification at this boundary</h2>
+        <table>
+          <thead><tr><th>Gate</th><th>Result</th></tr></thead>
+          <tbody>
+            <tr><td>Build, typecheck, lint, pinned-diff format</td><td>Pass</td></tr>
+            <tr><td>Focused Launcher model/view/adapter</td><td>10 tests, 83 expectations</td></tr>
+            <tr><td>Complete Desktop suite</td><td>77 tests, 411 expectations</td></tr>
+            <tr><td>Unique repository regression set</td><td>381 tests pass across host-aware and isolated-supervisor runs</td></tr>
+            <tr><td>Packaged macOS workflow</td><td>Suggestions → Save and Trust → reload → Status → output/history</td></tr>
+          </tbody>
+        </table>
+        <p>P9 still owns the feature-final attached-close, external-edit, Linux/native release, documentation, reset/retention, and assembled acceptance matrix.</p>
+      </section>
+
+      <section class="quiz">
+        <h2>Check your understanding</h2>
+        <form id="quiz">
+          <fieldset data-answer="b">
+            <legend>1. Where are assigned port numbers persisted?</legend>
+            <label><input type="radio" name="q1" value="a" /> In portreeve.launcher.json</label>
+            <label><input type="radio" name="q1" value="b" /> They are resolved at operation time, not persisted there</label>
+          </fieldset>
+          <fieldset data-answer="a">
+            <legend>2. Who performs manifest discovery?</legend>
+            <label><input type="radio" name="q2" value="a" /> Electron main within the opaque document boundary</label>
+            <label><input type="radio" name="q2" value="b" /> The renderer using an arbitrary path</label>
+          </fieldset>
+          <fieldset data-answer="b">
+            <legend>3. Does command success prove listener ownership?</legend>
+            <label><input type="radio" name="q3" value="a" /> Yes</label>
+            <label><input type="radio" name="q3" value="b" /> No, fresh evidence remains authoritative</label>
+          </fieldset>
+          <fieldset data-answer="a">
+            <legend>4. What happens after an external file change?</legend>
+            <label><input type="radio" name="q4" value="a" /> Review, explicit Overwrite, or Cancel</label>
+            <label><input type="radio" name="q4" value="b" /> Silent replacement</label>
+          </fieldset>
+          <fieldset data-answer="b">
+            <legend>5. What remains for P9?</legend>
+            <label><input type="radio" name="q5" value="a" /> Building the Launcher tab</label>
+            <label><input type="radio" name="q5" value="b" /> Feature-final packaged, platform, docs, and retention verification</label>
+          </fieldset>
+          <p><button type="submit">Score quiz</button></p>
+          <p id="result" class="result" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <footer>Generated for the pinned PR #32 source diff. This page is self-contained and safe to open locally.</footer>
+    </main>
+    <script>
+      document.getElementById('quiz').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const fields = [...event.currentTarget.querySelectorAll('fieldset')];
+        const score = fields.filter((field) => {
+          const selected = field.querySelector('input:checked');
+          return selected && selected.value === field.dataset.answer;
+        }).length;
+        document.getElementById('result').textContent = `${score} of ${fields.length} correct.`;
+      });
+    </script>
+  </body>
+</html>

@@ -19,6 +19,7 @@
       <button class="tab active" type="button" data-view="overview">Overview</button>
       <button class="tab" type="button" data-view="ports">Ports</button>
       <button class="tab" type="button" data-view="stacks">Stacks</button>
+      <button class="tab" type="button" data-view="launcher">Launcher</button>
     </nav>
     <main>
       <p id="notice" class="notice" role="status">Loading PortReeve status…</p>
@@ -142,6 +143,46 @@
         </div>
         <div id="stack-editor" class="stack-editor" hidden></div>
       </section>
+      <section id="launcher" aria-labelledby="launcher-title" hidden>
+        <div id="launcher-browser">
+          <div class="section-heading">
+            <div>
+              <h2 id="launcher-title">Launcher</h2>
+              <p>
+                PortReeve allocates and verifies addresses. Your launcher remains
+                responsible for starting, stopping, and observing the project stack.
+              </p>
+            </div>
+            <button id="refresh-launchers" type="button">Refresh launchers</button>
+          </div>
+          <aside class="launcher-introduction panel">
+            <h3>From experimentation to verified integration</h3>
+            <p>
+              Begin with fill-in-the-blanks shell commands. PortReeve injects the
+              selected stack's endpoint values, streams bounded output, and compares
+              project results with independent evidence. When your project adopts the
+              activation callback protocol, switch to verified activation for stronger
+              ownership guarantees.
+            </p>
+          </aside>
+          <div class="launcher-grid">
+            <div
+              id="launcher-list"
+              class="launcher-list"
+              aria-label="Stack launchers"
+            ></div>
+            <aside
+              id="launcher-detail"
+              class="panel launcher-detail"
+              aria-live="polite"
+            >
+              <h3>Launcher details</h3>
+              <p class="muted">Select a stack to configure or operate its launcher.</p>
+            </aside>
+          </div>
+        </div>
+        <div id="launcher-editor" class="launcher-editor" hidden></div>
+      </section>
     </main>
 
     <dialog id="confirmation-dialog" aria-labelledby="confirmation-title">
@@ -157,10 +198,9 @@
 
     <dialog id="discard-editor-dialog" aria-labelledby="discard-editor-title">
       <form method="dialog">
-        <h2 id="discard-editor-title">Discard unsaved stack changes?</h2>
+        <h2 id="discard-editor-title">Discard unsaved changes?</h2>
         <p>
-          The current draft has changes that have not been saved to
-          portreeve.stack.json.
+          The current editor has changes that have not been saved to its project file.
         </p>
         <div class="dialog-actions">
           <button value="keep">Keep editing</button>
@@ -219,6 +259,23 @@
         <div class="dialog-actions">
           <button id="copy-snapshot" type="button">Copy JSON</button>
           <button value="cancel">Close</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="attached-close-dialog" aria-labelledby="attached-close-title">
+      <form method="dialog">
+        <h2 id="attached-close-title">Attached launcher is still running</h2>
+        <p>
+          PortReeve keeps attached launcher commands tied to this application. Stop or
+          terminate them before closing, or keep the application open.
+        </p>
+        <ul id="attached-close-list"></ul>
+        <div class="dialog-actions">
+          <button value="keep">Keep PortReeve open</button>
+          <button id="terminate-attached" class="danger" value="terminate">
+            Terminate attached command
+          </button>
         </div>
       </form>
     </dialog>

@@ -271,6 +271,161 @@ select {
   gap: 18px;
   align-items: start;
 }
+.launcher-introduction {
+  margin-bottom: 18px;
+}
+.launcher-introduction p:last-child {
+  margin-bottom: 0;
+}
+.launcher-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr);
+  gap: 18px;
+  align-items: start;
+}
+.launcher-list {
+  display: grid;
+  gap: 10px;
+}
+.launcher-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 10px;
+  width: 100%;
+  border-radius: 12px;
+  padding: 14px;
+  text-align: left;
+}
+.launcher-card > span:not(.badge),
+.launcher-card small {
+  grid-column: 1;
+  color: #65706c;
+  overflow-wrap: anywhere;
+}
+.launcher-card .badge {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+}
+.launcher-card.selected {
+  border-color: #24634f;
+  background: #edf5ef;
+}
+.launcher-detail {
+  max-height: 68vh;
+  overflow: auto;
+}
+.launcher-maturity {
+  margin: 16px 0;
+  border-left: 4px solid #24634f;
+  background: #edf5ef;
+  padding: 14px 16px;
+}
+.launcher-maturity h4,
+.launcher-maturity p:last-child {
+  margin-bottom: 0;
+}
+.launcher-actions {
+  margin: 18px 0;
+}
+.launcher-subsection {
+  margin-top: 22px;
+  border-top: 1px solid #e4e1d9;
+  padding-top: 18px;
+}
+.launcher-environment-preview {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid #eee9df;
+  padding: 9px 0;
+}
+.launcher-environment-preview p {
+  margin-bottom: 0;
+  text-align: right;
+}
+.launcher-output,
+.launcher-json {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid #d6d2c8;
+  border-radius: 10px;
+  background: #182321;
+  color: #eef5ef;
+  padding: 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.launcher-history {
+  padding-left: 22px;
+}
+.launcher-history li + li {
+  margin-top: 12px;
+}
+.launcher-history p {
+  margin-bottom: 3px;
+}
+.launcher-editor {
+  display: grid;
+  gap: 18px;
+}
+.launcher-editor[hidden] {
+  display: none;
+}
+.launcher-editor-header {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.launcher-editor-header h2 {
+  margin-bottom: 7px;
+}
+.launcher-editor-section {
+  min-width: 0;
+}
+.launcher-command,
+.launcher-environment-record {
+  margin-top: 14px;
+  border: 1px solid #e0dcd3;
+  border-radius: 12px;
+  background: #fffefb;
+  padding: 16px;
+}
+.launcher-command h4 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.launcher-command textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #b9beb8;
+  border-radius: 9px;
+  background: #fffdf7;
+  color: inherit;
+  padding: 10px 12px;
+  font:
+    13px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+.launcher-suggestions {
+  margin: 10px 0;
+}
+.launcher-suggestions p {
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.launcher-suggestions button {
+  margin: 0 7px 7px 0;
+}
+.launcher-provenance {
+  border-top: 1px solid #e4e1d9;
+  padding-top: 16px;
+}
 .stack-list {
   display: grid;
   gap: 10px;
@@ -716,6 +871,7 @@ dialog form > input {
   .overview-grid,
   .ports-grid,
   .stacks-grid,
+  .launcher-grid,
   .stack-editor-workspace {
     grid-template-columns: 1fr;
   }

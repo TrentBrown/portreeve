@@ -15,6 +15,11 @@ test('edits and trusts launcher files through opaque conflict-protected document
   const root = await mkdtemp(join(tmpdir(), 'portreeve-desktop-launcher-'));
   try {
     const fixture = stackAt(root);
+    await writeFile(
+      join(root, 'package.json'),
+      `${JSON.stringify({ packageManager: 'bun@1.3.14', scripts: { start: 'vite', stop: 'pkill vite' } })}\n`,
+      'utf8',
+    );
     const trusted = new Set();
     const adapter = createLauncherAdapter({
       client: clientFor(fixture),
@@ -32,8 +37,35 @@ test('edits and trusts launcher files through opaque conflict-protected document
       revision: null,
       trusted: false,
       definition: null,
+      suggestions: {
+        inspectedFiles: ['package.json'],
+        operations: {
+          start: {
+            suggestion: {
+              command: 'bun run start',
+              provenance: { kind: 'package-script', filename: 'package.json' },
+            },
+          },
+          stop: {
+            suggestion: {
+              command: 'bun run stop',
+              provenance: { kind: 'package-script', filename: 'package.json' },
+            },
+          },
+        },
+        environment: expect.arrayContaining([
+          {
+            name: 'API_PORT',
+            endpoint: { component: 'api', endpoint: 'default' },
+            value: 'host-port',
+          },
+        ]),
+      },
     });
     expect(JSON.stringify(opened)).not.toContain(root);
+    expect(JSON.stringify(opened.suggestions)).not.toMatch(
+      /\/private|\/Users|stackRoot/,
+    );
 
     const saved = await adapter.saveDocument({
       documentId,

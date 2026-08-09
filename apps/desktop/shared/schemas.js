@@ -8,6 +8,7 @@ import {
   StackDefinitionSchema,
 } from '../../../src/protocol/schemas.js';
 import { LauncherDefinitionSchema } from '../../../src/launcher/definition.js';
+import { LauncherEnvironmentMappingSchema } from '../../../src/launcher/definition.js';
 
 const TimestampSchema = z.iso.datetime({ offset: true });
 const SemanticVersionSchema = z
@@ -213,6 +214,38 @@ const DesktopLauncherOutputChunkSchema = z
   })
   .strict();
 
+const DesktopLauncherCommandSuggestionSchema = z
+  .object({
+    command: z.string().min(1).max(65_536),
+    provenance: z
+      .object({
+        kind: z.enum(['package-script', 'make-target', 'docker-compose']),
+        filename: z.string().min(1).max(255),
+        detail: z.string().min(1).max(128),
+      })
+      .strict(),
+  })
+  .strict();
+
+const DesktopLauncherSuggestionsSchema = z
+  .object({
+    inspectedFiles: z.array(z.string().min(1).max(255)).max(32),
+    operations: z
+      .record(
+        DesktopLauncherOperationSchema,
+        z
+          .object({
+            suggestion: DesktopLauncherCommandSuggestionSchema.nullable(),
+            candidates: z.array(DesktopLauncherCommandSuggestionSchema).max(16),
+          })
+          .strict(),
+      )
+      .refine((operations) => Object.keys(operations).length === 4),
+    environment: z.array(LauncherEnvironmentMappingSchema).max(4_096),
+    error: SafeErrorSchema.nullable(),
+  })
+  .strict();
+
 export const DesktopLauncherOutputSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -311,6 +344,7 @@ export const DesktopLauncherDocumentSchema = z
     trusted: z.boolean(),
     canonical: z.boolean(),
     definition: LauncherDefinitionSchema.nullable(),
+    suggestions: DesktopLauncherSuggestionsSchema,
     error: SafeErrorSchema.nullable(),
   })
   .strict();

@@ -12,6 +12,10 @@ import {
   validateLauncherIntegrationTransition,
 } from '../../../src/launcher/definition.js';
 import {
+  discoverLauncherCommands,
+  suggestLauncherEnvironment,
+} from '../../../src/launcher/discovery.js';
+import {
   createLauncherDocument,
   inspectLauncherFile,
   readLauncherDocument,
@@ -165,6 +169,10 @@ export function createLauncherAdapter(options) {
       await options.client.getStackStatus(stackId),
     );
     const loaded = await loadDocument(status.stack, options.runtime.stateStore);
+    const suggestions = await launcherSuggestions(
+      loaded.workingDirectory,
+      status.stack.definition,
+    );
     const id = nextDocumentId();
     const handle = {
       id,
@@ -174,7 +182,7 @@ export function createLauncherAdapter(options) {
       fileState: loaded.fileState,
     };
     documents.set(id, handle);
-    return documentView(handle, loaded);
+    return documentView(handle, loaded, suggestions);
   }
 
   /** @param {{documentId: string, definition: unknown, overwrite: boolean, confirmDowngrade: boolean}} request */
@@ -225,6 +233,10 @@ export function createLauncherAdapter(options) {
       }
       await options.runtime.stateStore.trust(handle.stack.stackRoot, saved.revision);
       const loaded = await loadDocument(handle.stack, options.runtime.stateStore);
+      const suggestions = await launcherSuggestions(
+        loaded.workingDirectory,
+        handle.stack.definition,
+      );
       handle.baselineRevision = loaded.revision;
       handle.baselineDefinition = loaded.definition;
       handle.fileState = loaded.fileState;
@@ -235,7 +247,7 @@ export function createLauncherAdapter(options) {
         saved: true,
         trusted: true,
         message: 'Saved and trusted the exact launcher revision.',
-        document: documentView(handle, loaded),
+        document: documentView(handle, loaded, suggestions),
         error: null,
       });
     } catch (error) {
@@ -536,6 +548,7 @@ async function loadDocument(stack, stateStore) {
       trusted: false,
       canonical: false,
       definition: null,
+      workingDirectory: stack.stackRoot,
       error: null,
     };
   }
@@ -546,6 +559,7 @@ async function loadDocument(stack, stateStore) {
       trusted: false,
       canonical: false,
       definition: null,
+      workingDirectory: stack.stackRoot,
       error: {
         code: `launcher_definition_${observed.kind}`,
         message: 'The launcher definition is not a readable regular file.',
@@ -563,6 +577,7 @@ async function loadDocument(stack, stateStore) {
       trusted: await stateStore.isTrusted(stack.stackRoot, revision),
       canonical: launcher.sourceContent === launcher.canonicalContent,
       definition: launcher.definition,
+      workingDirectory: launcher.workingDirectory,
       error: null,
     };
   } catch (error) {
@@ -572,13 +587,14 @@ async function loadDocument(stack, stateStore) {
       trusted: false,
       canonical: false,
       definition: null,
+      workingDirectory: stack.stackRoot,
       error: safeError(error),
     };
   }
 }
 
-/** @param {any} handle @param {any} loaded */
-function documentView(handle, loaded) {
+/** @param {any} handle @param {any} loaded @param {any} suggestions */
+function documentView(handle, loaded, suggestions) {
   return DesktopLauncherDocumentSchema.parse({
     schemaVersion: 1,
     documentId: handle.id,
@@ -590,8 +606,35 @@ function documentView(handle, loaded) {
     trusted: loaded.trusted,
     canonical: loaded.canonical,
     definition: loaded.definition,
+    suggestions,
     error: loaded.error,
   });
+}
+
+/** @param {string} workingDirectory @param {unknown} stackDefinition */
+async function launcherSuggestions(workingDirectory, stackDefinition) {
+  const emptyOperations = () => ({ suggestion: null, candidates: [] });
+  try {
+    const discovered = await discoverLauncherCommands(workingDirectory);
+    return {
+      inspectedFiles: discovered.inspectedFiles.map((filename) => basename(filename)),
+      operations: discovered.operations,
+      environment: suggestLauncherEnvironment(stackDefinition),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      inspectedFiles: [],
+      operations: {
+        start: emptyOperations(),
+        stop: emptyOperations(),
+        restart: emptyOperations(),
+        status: emptyOperations(),
+      },
+      environment: [],
+      error: safeError(error),
+    };
+  }
 }
 
 /** @param {string} documentId @param {string} code @param {string} message */
