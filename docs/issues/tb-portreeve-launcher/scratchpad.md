@@ -201,7 +201,7 @@ Replace afterEvidence with the earlier verified snapshot - rejected because afte
 
 ## [12] Use opaque asynchronous Desktop launcher sessions
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -218,7 +218,7 @@ Desktop begins launcher work in Electron main and immediately returns an opaque 
 
 ## [13] Carry actionable lifecycle failures through one bounded safe schema
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

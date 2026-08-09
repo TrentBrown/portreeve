@@ -85,12 +85,12 @@ integration-mode upgrade and downgrade rules.
 
 ## I-7 - Build the Desktop trusted boundary
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P7
 - **Rubric criteria:** R1, R4, R6, R7, R8
 - **Depends on:** I-1, I-2, I-4, I-6
-- **PR:** -
+- **PR:** [#31](https://github.com/TrentBrown/portreeve/pull/31)
 
 Add main-process adapters, coordinator state, narrow IPC and preload contracts, output
 subscriptions and saving, quit guards, renderer-safe reductions, and actionable Launcher
