@@ -141,7 +141,7 @@ When the daemon is healthy but the applied stack has no valid allocation generat
 
 ## [8] Cache the applied stack snapshot for fresh degraded CLI operation
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PortReeve PR #29 — Launcher CLI workflow</title>
+  <style>
+    :root { --ink:#17221d; --muted:#607069; --paper:#f6f1e7; --card:#fffdf8; --green:#17634d; --gold:#bd7b25; --red:#a63b32; --line:#d9d2c4; --blue:#315d7a; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--paper); font:17px/1.62 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    header { padding:64px 24px 46px; background:linear-gradient(135deg,#123d31,#1d7057); color:white; }
+    header div, main { max-width:1040px; margin:auto; }
+    .eyebrow { letter-spacing:.16em; text-transform:uppercase; font-size:.75rem; opacity:.78; }
+    h1 { font:700 clamp(2.4rem,6vw,4.8rem)/1.02 Georgia,serif; margin:.35rem 0 1rem; }
+    h2 { font:700 2.1rem/1.15 Georgia,serif; margin:3.4rem 0 1rem; }
+    h3 { margin-top:2rem; }
+    main { padding:26px 24px 80px; }
+    nav { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px 24px; margin:20px 0 38px; }
+    nav a { color:var(--green); margin-right:22px; white-space:nowrap; }
+    .callout { border-left:5px solid var(--gold); background:#fff7df; padding:16px 20px; margin:24px 0; border-radius:0 12px 12px 0; }
+    .flow { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:10px; align-items:stretch; margin:28px 0; }
+    .node { background:var(--card); border:1px solid var(--line); border-radius:13px; padding:15px; min-height:112px; }
+    .node strong { display:block; color:var(--green); margin-bottom:7px; }
+    .arrow { color:var(--gold); font-size:1.6rem; text-align:center; align-self:center; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:15px; padding:20px; }
+    .command-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+    .command { background:var(--card); border:1px solid var(--line); border-top:5px solid var(--green); border-radius:12px; padding:15px; }
+    .command.caution { border-top-color:var(--gold); }
+    .command.block { border-top-color:var(--red); }
+    pre { white-space:pre-wrap; overflow-wrap:anywhere; background:#10211a; color:#eaf4ef; padding:18px; border-radius:12px; overflow:auto; font-size:.9rem; }
+    code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    table { width:100%; border-collapse:collapse; background:var(--card); }
+    th,td { padding:12px; border:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { background:#e9efe9; }
+    .quiz { margin:20px 0; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; }
+    .answers { display:grid; gap:8px; }
+    button { text-align:left; border:1px solid #9aab9f; background:white; border-radius:9px; padding:11px 13px; cursor:pointer; font:inherit; }
+    button:hover { border-color:var(--green); }
+    button.correct { background:#dff3e9; border-color:var(--green); }
+    button.wrong { background:#f8dfdc; border-color:var(--red); }
+    .feedback { min-height:1.6em; margin-top:9px; color:var(--muted); }
+    .small { color:var(--muted); font-size:.92rem; }
+    @media (max-width:760px) { .flow,.command-grid,.two { grid-template-columns:1fr; } .arrow { transform:rotate(90deg); } }
+  </style>
+</head>
+<body>
+  <header><div>
+    <div class="eyebrow">PortReeve · Pull request 29 · P5</div>
+    <h1>The launcher reaches the command line</h1>
+    <p>How checked-in project commands become an approachable, trusted CLI workflow—while allocation, evidence, and command execution keep their separate authorities.</p>
+  </div></header>
+  <main>
+    <nav aria-label="Table of contents">
+      <a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#cases">Cases</a><a href="#quiz">Quiz</a>
+    </nav>
+
+    <section id="background">
+      <h2>Background</h2>
+      <p>A PortReeve stack describes components and endpoints, and the daemon assigns a coherent generation of host ports. A project still owns the operational knowledge: perhaps <code>bun run start</code> starts the API, <code>docker compose down</code> stops it, and <code>make status</code> reports application-specific detail.</p>
+      <p>Earlier launcher pull requests supplied a strict <code>portreeve.launcher.json</code>, exact-byte trust, endpoint environment resolution, listener evidence, renewable daemon coordination, and safe finite process execution. Until this change, those pieces were library capabilities. PR #29 turns them into seven ordinary Commander commands.</p>
+      <div class="command-grid">
+        <div class="command"><strong>init</strong><p>Suggest, preview, create, and trust.</p></div>
+        <div class="command"><strong>validate</strong><p>Check even an unapplied hand edit.</p></div>
+        <div class="command"><strong>trust</strong><p>Review exact executable meaning.</p></div>
+        <div class="command"><strong>lifecycle</strong><p>Start, Stop, Restart, or Status.</p></div>
+      </div>
+      <div class="callout"><strong>The key boundary:</strong> the CLI executes a trusted project command through the shared launcher engine. The daemon continues to allocate, observe, and coordinate; it never becomes a generic shell server.</div>
+    </section>
+
+    <section id="intuition">
+      <h2>Intuition</h2>
+      <p>The workflow has two distinct moments of consent. First, a human reviews what a launcher means and trusts one exact file revision. Later, if live evidence makes a particular operation risky, the caller grants narrow operation-specific consent. Trust is not a blanket “force” switch, and force is not a substitute for trust.</p>
+      <div class="flow">
+        <div class="node"><strong>Project files</strong>Stack topology, manifests, declarative commands</div><div class="arrow">→</div>
+        <div class="node"><strong>Human review</strong>Resolved shell, directory, commands, exact revision</div><div class="arrow">→</div>
+        <div class="node"><strong>Private state</strong>Trusted revision and last nonsecret applied context</div>
+      </div>
+      <div class="flow">
+        <div class="node"><strong>CLI request</strong>Discover the enclosing root or use an explicit root</div><div class="arrow">→</div>
+        <div class="node"><strong>Shared engine</strong>Recheck trust, evidence, environment, and coordination</div><div class="arrow">→</div>
+        <div class="node"><strong>Project command</strong>Run locally with bounded output and exact current ports</div>
+      </div>
+      <h3>A low-friction first setup</h3>
+      <pre><code>$ portreeve launcher init
+Working directory relative to the stack root [.]: services/api
+Start command [bun run start]:
+Stop command [bun run stop]:
+Shell (system, bash, zsh) [system]:
+
+Resolved shell: /bin/zsh (system)
+Resolved working directory: /worktrees/shop/services/api
+Suggested endpoint environment:
+  API_PORT &lt;- api.default (host-port)
+
+Exact portreeve.launcher.json preview:
+{ ... }
+Create this file and trust its exact revision? [y/N]</code></pre>
+      <p>The preview contains no allocated port. <code>API_PORT</code> is a declarative mapping; its numeric value is resolved immediately before each operation.</p>
+    </section>
+
+    <section id="code">
+      <h2>Code walkthrough</h2>
+      <div class="two">
+        <div class="card"><h3>One shared runtime</h3><p><code>launcher/runtime.js</code> constructs the official socket client, private local-state store, environment resolver, evidence service, and lifecycle service. Commander does not invent a parallel implementation; this factory is also the natural future Electron-main boundary.</p></div>
+        <div class="card"><h3>Root and authority selection</h3><p><code>launcher-selection.js</code> discovers the nearest stack definition independently of Git or canonicalizes <code>--stack-root</code>. Normal execution selects the applied stack from the daemon. Only a proven daemon outage permits a cached applied-stack snapshot.</p></div>
+      </div>
+      <h3>Interactive setup remains intentionally small</h3>
+      <p><code>launcher init</code> inspects only known manifests in the selected directory and never executes them. It shows unambiguous suggestions with provenance, leaves ambiguous operations for the user, supplies endpoint mapping suggestions, normalizes the exact JSON, and uses exclusive file creation. If a file already exists, the CLI points the user to normal editing, validation, and trust rather than becoming a terminal editor.</p>
+      <h3>Trust reviews resolved behavior</h3>
+      <p>A platform-neutral file may say <code>"shell": "system"</code>. The trust review must say which executable that means here—such as <code>/bin/zsh</code>—along with the canonical working directory, operation timeout or mode, complete command strings, and exact SHA-256 revision. A newline-only external edit changes the revision and removes effective trust.</p>
+      <h3>Human and automation output do not collide</h3>
+      <p>Human mode streams command chunks and ends with evidence and failure summaries. JSON mode suppresses live chunks and emits one versioned document containing the already bounded result. Exit codes separate ordinary command/state differences (10), policy conflicts (20), unavailable authority (30), and invalid input (50).</p>
+      <h3>Fresh-process degraded operation needs one more cached fact</h3>
+      <p>The lifecycle engine validates a full applied stack record before it can inspect cached endpoints. A newly launched CLI process has no in-memory copy after the daemon goes away, so PR #29 stores the last nonsecret applied <code>StackRecord</code> beside the existing exact-revision environment cache. It never synthesizes durable authority from the project JSON.</p>
+    </section>
+
+    <section id="cases">
+      <h2>Important cases</h2>
+      <table>
+        <thead><tr><th>Situation</th><th>CLI behavior</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Launcher exists but stack is unapplied</td><td><code>validate</code> works; trust and execution refuse.</td><td>Project-file correctness is useful without pretending daemon authority exists.</td></tr>
+          <tr><td>Launcher changed after trust</td><td>Execution returns a conflict until interactive trust approves the new exact revision.</td><td>Indirect command content is executable authority.</td></tr>
+          <tr><td>Start sees partial nonconflicting listeners</td><td>Prompt for Run Start Anyway, or require <code>--run-start-anyway</code> in automation.</td><td>The caller may be repairing the same generation, but PortReeve will not assume that.</td></tr>
+          <tr><td>Daemon is unavailable after a successful operation</td><td>Start/Restart refuse; Status uses visibly cached/local context; Stop needs <code>--allow-degraded</code> or interactive consent.</td><td>Cleanup remains possible without overstating coordination or ownership.</td></tr>
+          <tr><td>No cached stack snapshot exists</td><td>Return unavailable with restoration guidance.</td><td>Rebuilding a record from local JSON could disagree with the last applied definition.</td></tr>
+          <tr><td>Attached or verified mode selected</td><td>Configuration validates, but execution reports the deliberate P6 deferral.</td><td>P5 does not approximate stronger lifecycle guarantees with finite command-only behavior.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="quiz">
+      <h2>Quiz</h2>
+      <p class="small">Choose one answer. Feedback appears immediately.</p>
+      <div class="quiz" data-answer="1"><strong>1. Why may <code>launcher validate</code> succeed for an unapplied stack?</strong><div class="answers"><button>Validation temporarily applies the stack and rolls it back afterward.</button><button>File structure and local topology can be checked without granting execution authority.</button><button>Unapplied launchers are trusted automatically but may run only Status.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="2"><strong>2. What is the security-relevant difference between configured and resolved shell?</strong><div class="answers"><button>The configured shell includes current environment variables; the resolved shell does not.</button><button>The configured shell controls timeouts; the resolved shell controls process groups.</button><button>The configured value may be <code>system</code>, while trust must show the actual executable it selects.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="0"><strong>3. Why cache the applied StackRecord instead of rebuilding it from <code>portreeve.stack.json</code>?</strong><div class="answers"><button>The local file can differ from the last applied durable definition, so reconstruction would invent authority.</button><button>The local file contains encrypted database identifiers that the CLI cannot decrypt.</button><button>Stack normalization requires Docker to be running, which is unavailable in degraded mode.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="1"><strong>4. How does JSON mode preserve a valid automation contract while commands produce output?</strong><div class="answers"><button>It writes terminal chunks as newline-delimited JSON before the final result.</button><button>It suppresses live chunks and emits one versioned document containing bounded retained output.</button><button>It sends project output to the daemon and returns a history-record identifier.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="2"><strong>5. Which action may a noninteractive caller take without first establishing new trust?</strong><div class="answers"><button>Pass a generic force flag that accepts any current launcher bytes.</button><button>Supply the expected SHA-256 revision directly on the command line.</button><button>Run an already trusted revision, with narrow operation flags when partial or degraded evidence requires them.</button></div><div class="feedback"></div></div>
+    </section>
+  </main>
+  <script>
+    document.querySelectorAll('.quiz').forEach((quiz) => {
+      const answer = Number(quiz.dataset.answer);
+      const buttons = [...quiz.querySelectorAll('button')];
+      const feedback = quiz.querySelector('.feedback');
+      buttons.forEach((button, index) => button.addEventListener('click', () => {
+        buttons.forEach((item) => item.classList.remove('correct','wrong'));
+        button.classList.add(index === answer ? 'correct' : 'wrong');
+        buttons[answer].classList.add('correct');
+        feedback.textContent = index === answer ? 'Correct — that preserves the authority and safety boundary.' : 'Not quite. Review the trust, selection, and degraded-operation rules above.';
+      }));
+    });
+  </script>
+</body>
+</html>

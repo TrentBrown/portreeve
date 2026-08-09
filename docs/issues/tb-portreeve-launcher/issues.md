@@ -60,12 +60,12 @@ Status, and composed Restart.
 
 ## I-5 - Deliver launcher CLI commands
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P5
 - **Rubric criteria:** R1, R2, R3, R6, R8
 - **Depends on:** I-1, I-3, I-4
-- **PR:** -
+- **PR:** [#29](https://github.com/TrentBrown/portreeve/pull/29)
 
 Add init, validate, trust, start, stop, restart, and status with discovery, interactive
 review, confirmations, stable automation output, and compiled macOS/Linux coverage.
