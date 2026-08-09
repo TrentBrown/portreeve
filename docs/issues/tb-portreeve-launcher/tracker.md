@@ -144,7 +144,7 @@ Append PR boundary entries here.
 ### PR #33 - Launcher documentation and feature-final verification
 
 - **PR:** [#33](https://github.com/TrentBrown/portreeve/pull/33)
-- **Status:** in review
+- **Status:** merged 2026-08-08
 - **Scope:** P9 / I-9 and feature-final evaluation: public launcher guide, CLI/Desktop
   cross-links, canonical mixed-stack launcher example, assembled source/release/native
   matrix, packaged external-edit and attached-close acceptance, and final retention and
