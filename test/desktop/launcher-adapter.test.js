@@ -284,8 +284,7 @@ test('redacts unexpected main-process failure details from launcher inventory', 
           stackId: fixture.stack.id,
           error: {
             code: 'EACCES',
-            message:
-              'The launcher operation failed without additional safe details.',
+            message: 'The launcher operation failed without additional safe details.',
           },
         },
       ],
