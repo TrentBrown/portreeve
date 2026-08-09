@@ -186,9 +186,12 @@ terminal outcome `lost`; it never runs a command, adopts a process, or signals a
 Same-stack sessions serialize by default. An attached Start may admit one finite Status
 or Stop companion, while different stack roots remain independent.
 
-Completion accepts only bounded outcome, exit or signal, degraded flag, evidence
-summaries, and failure summary fields. Unknown fields are rejected, so commands,
-environment values, credentials, and raw stdout or stderr cannot enter this contract.
+Completion accepts only bounded outcome, exit or signal, degraded flag, evidence and
+failure summaries, and a reduced integration assessment. That assessment can record the
+declared maturity mode, an exact generation and activation match, and whether a
+command-only launcher merits an upgrade suggestion. Unknown fields are rejected, so
+commands, environment values, credentials, process identities, and raw stdout or stderr
+cannot enter this contract.
 An identical completion retry returns `changed: false`; different metadata conflicts.
 PortReeve retains the latest twenty terminal records per stack plus active sessions and
 also emits begin, complete, and lost events through the existing global history surface.

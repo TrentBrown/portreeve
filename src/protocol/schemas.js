@@ -485,6 +485,38 @@ export const LauncherFailureSummarySchema = z
   })
   .strict();
 
+export const LauncherIntegrationSummarySchema = z
+  .object({
+    mode: z.enum(['command-only', 'verified-activation']),
+    verified: z.boolean(),
+    upgradeSuggested: z.boolean(),
+    generationId: IdentifierSchema.nullable(),
+    activationId: IdentifierSchema.nullable(),
+  })
+  .strict()
+  .superRefine((integration, context) => {
+    if (
+      integration.upgradeSuggested &&
+      (integration.mode !== 'command-only' || !integration.verified)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['upgradeSuggested'],
+        message: 'an upgrade suggestion requires verified command-only evidence',
+      });
+    }
+    if (
+      integration.verified !==
+      (integration.generationId !== null && integration.activationId !== null)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['verified'],
+        message: 'verified integration requires generation and activation identities',
+      });
+    }
+  });
+
 export const LauncherOperationCompletionSchema = z
   .object({
     outcome: z.enum(['succeeded', 'failed', 'cancelled', 'timed-out']),
@@ -500,6 +532,7 @@ export const LauncherOperationCompletionSchema = z
     beforeEvidence: LauncherEvidenceSummarySchema.nullable().default(null),
     afterEvidence: LauncherEvidenceSummarySchema.nullable().default(null),
     failure: LauncherFailureSummarySchema.nullable().default(null),
+    integration: LauncherIntegrationSummarySchema.nullable().default(null),
   })
   .strict();
 
@@ -544,6 +577,7 @@ export const LauncherOperationRecordSchema = z
     beforeEvidence: LauncherEvidenceSummarySchema.nullable(),
     afterEvidence: LauncherEvidenceSummarySchema.nullable(),
     failure: LauncherFailureSummarySchema.nullable(),
+    integration: LauncherIntegrationSummarySchema.nullable(),
   })
   .strict()
   .superRefine((operation, context) => {
@@ -564,7 +598,8 @@ export const LauncherOperationRecordSchema = z
       operation.degraded ||
       operation.beforeEvidence !== null ||
       operation.afterEvidence !== null ||
-      operation.failure !== null;
+      operation.failure !== null ||
+      operation.integration !== null;
     if (
       (operation.state === 'active' && (hasTerminalIdentity || hasTerminalDetails)) ||
       (operation.state === 'terminal' && !hasTerminalIdentity)

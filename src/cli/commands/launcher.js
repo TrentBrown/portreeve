@@ -394,6 +394,14 @@ function renderLauncherResult(json, result) {
       : [
           `Failure: ${result.failure.code} at ${result.failure.step}: ${result.failure.message}`,
         ]),
+    ...(result.integration?.verified
+      ? [`Activation: verified for generation ${result.integration.generationId}.`]
+      : []),
+    ...(result.integration?.upgradeSuggested
+      ? [
+          'Integration upgrade available: matching verified activation evidence was observed; review a verified-activation launcher revision.',
+        ]
+      : []),
     ...result.steps.map(
       (/** @type {{step: string, command: any}} */ { step, command }) =>
         `${step}: ${command.outcome}${command.exitCode === null ? '' : ` (exit ${String(command.exitCode)})`}`,

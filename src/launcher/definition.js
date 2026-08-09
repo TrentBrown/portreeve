@@ -209,6 +209,34 @@ export function validateLauncherTopology(launcher, stackInput) {
   return launcher;
 }
 
+/**
+ * Validate the only maturity transition that loses activation guarantees. The caller
+ * remains responsible for writing and trusting the resulting exact file revision.
+ *
+ * @param {unknown} previousInput
+ * @param {unknown} nextInput
+ * @param {{confirmDowngrade?: boolean}} [options]
+ */
+export function validateLauncherIntegrationTransition(
+  previousInput,
+  nextInput,
+  options = {},
+) {
+  const previous = LauncherDefinitionSchema.parse(previousInput);
+  const next = LauncherDefinitionSchema.parse(nextInput);
+  if (
+    previous.integration.mode === 'verified-activation' &&
+    next.integration.mode === 'command-only' &&
+    options.confirmDowngrade !== true
+  ) {
+    throw definitionError(
+      'launcher_integration_downgrade_confirmation_required',
+      'Downgrading verified activation requires explicit confirmation and a newly trusted revision.',
+    );
+  }
+  return next;
+}
+
 /** @param {unknown} value @returns {any} */
 function sortObject(value) {
   if (Array.isArray(value)) return value.map(sortObject);
@@ -223,4 +251,11 @@ function sortObject(value) {
 /** @param {string} message @param {(string|number)[]} path */
 function topologyError(message, path) {
   return new z.ZodError([{ code: 'custom', message, path }]);
+}
+
+/** @param {string} code @param {string} message */
+function definitionError(code, message) {
+  const error = new Error(message);
+  Object.assign(error, { code });
+  return error;
 }

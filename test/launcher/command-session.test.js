@@ -2,11 +2,14 @@
 
 import { expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
+import { EventEmitter } from 'node:events';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  AttachedCommandRegistry,
   resolveLauncherShell,
   runFiniteCommand,
+  startAttachedCommand,
 } from '../../src/launcher/command-session.js';
 
 test('runs through an explicit login shell with closed input and streamed output', async () => {
@@ -200,3 +203,77 @@ test('scrubs inherited reserved context before injecting the current operation',
       .join(''),
   ).toBe('unset|current|kept');
 });
+
+test('tracks one attached group locally and terminates only that exact group', async () => {
+  const registry = new AttachedCommandRegistry();
+  /** @type {Array<{processGroupId: number, signal: NodeJS.Signals}>} */
+  const signals = [];
+  const running = registry.run('/stacks/example', {
+    command: "trap '' TERM; while :; do sleep 1; done",
+    shellPath: '/bin/sh',
+    workingDirectory: process.cwd(),
+    environment: {},
+    terminationGraceMilliseconds: 20,
+    signalProcessGroup(processGroupId, signal) {
+      signals.push({ processGroupId, signal });
+      process.kill(-processGroupId, signal);
+    },
+  });
+  await waitFor(() => registry.inspect('/stacks/example') !== null);
+  const tracked = registry.inspect('/stacks/example');
+  const processGroupId = tracked?.processGroupId;
+  if (processGroupId === null || processGroupId === undefined) {
+    throw new Error('Attached command did not expose its process group.');
+  }
+  expect(processGroupId).toBeGreaterThan(0);
+  await expect(
+    registry.run('/stacks/example', {
+      command: 'printf duplicate',
+      shellPath: '/bin/sh',
+      workingDirectory: process.cwd(),
+      environment: {},
+    }),
+  ).rejects.toMatchObject({ code: 'launcher_attached_already_running' });
+  expect(registry.terminate('/stacks/example')).toBe(true);
+  const result = await running;
+  expect(result).toMatchObject({ outcome: 'cancelled' });
+  expect(signals[0]).toEqual({ processGroupId, signal: 'SIGTERM' });
+  expect(signals.every((entry) => entry.processGroupId === processGroupId)).toBe(true);
+  expect(registry.inspect('/stacks/example')).toBeNull();
+  expect(registry.terminate('/stacks/example')).toBe(false);
+});
+
+test('does not signal a stale attached group after the child reports exit', async () => {
+  const child = Object.assign(new EventEmitter(), {
+    pid: 43210,
+    stdout: null,
+    stderr: null,
+    exitCode: 0,
+    signalCode: null,
+  });
+  /** @type {Array<{processGroupId: number, signal: NodeJS.Signals}>} */
+  const signals = [];
+  const session = startAttachedCommand({
+    command: 'not executed by fixture',
+    shellPath: '/bin/sh',
+    workingDirectory: process.cwd(),
+    environment: {},
+    spawnProcess: /** @type {any} */ (() => child),
+    signalProcessGroup(processGroupId, signal) {
+      signals.push({ processGroupId, signal });
+    },
+  });
+  expect(session.terminate()).toBe(false);
+  expect(signals).toEqual([]);
+  child.emit('close', 0, null);
+  expect(await session.result).toMatchObject({ outcome: 'succeeded', signal: null });
+});
+
+/** @param {() => boolean} predicate */
+async function waitFor(predicate) {
+  const deadline = Date.now() + 2_000;
+  while (!predicate()) {
+    if (Date.now() >= deadline) throw new Error('Timed out waiting for condition.');
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 5));
+  }
+}

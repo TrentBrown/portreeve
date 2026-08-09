@@ -83,6 +83,84 @@ export function resolveLauncherShell(selection, options = {}) {
  * }} input
  */
 export async function runFiniteCommand(input) {
+  return startCommandSession(input, input.timeoutMilliseconds).result;
+}
+
+/**
+ * Start one non-interactive shell command without a timeout and return the exact
+ * application-local process-group handle. The returned promise settles only when the
+ * foreground command exits or the handle is explicitly terminated.
+ *
+ * @param {{
+ *   command: string,
+ *   shellPath: string,
+ *   workingDirectory: string,
+ *   environment: Record<string, string>,
+ *   inheritedEnvironment?: NodeJS.ProcessEnv,
+ *   signal?: AbortSignal,
+ *   onOutput?: (chunk: z.infer<typeof OutputChunkSchema>) => void,
+ *   outputLimitBytes?: number,
+ *   terminationGraceMilliseconds?: number,
+ *   now?: () => Date,
+ *   spawnProcess?: typeof spawn,
+ *   signalProcessGroup?: (processGroupId: number, signal: NodeJS.Signals) => void,
+ * }} input
+ */
+export function startAttachedCommand(input) {
+  return startCommandSession(input, null);
+}
+
+/**
+ * Application-local registry for attached commands. Process identities never leave the
+ * process that spawned them and are removed as soon as their command settles.
+ */
+export class AttachedCommandRegistry {
+  constructor() {
+    /** @type {Map<string, ReturnType<typeof startAttachedCommand>>} */
+    this.sessions = new Map();
+  }
+
+  /** @param {string} stackRoot @param {Parameters<typeof startAttachedCommand>[0]} input */
+  async run(stackRoot, input) {
+    if (this.sessions.has(stackRoot)) {
+      throw commandError(
+        'launcher_attached_already_running',
+        'This application already owns an attached Start for the stack.',
+      );
+    }
+    const session = startAttachedCommand(input);
+    this.sessions.set(stackRoot, session);
+    try {
+      return await session.result;
+    } finally {
+      if (this.sessions.get(stackRoot) === session) this.sessions.delete(stackRoot);
+    }
+  }
+
+  /** @param {string} stackRoot */
+  terminate(stackRoot) {
+    return this.sessions.get(stackRoot)?.terminate() ?? false;
+  }
+
+  /** @param {string} stackRoot */
+  inspect(stackRoot) {
+    const session = this.sessions.get(stackRoot);
+    return session === undefined
+      ? null
+      : { processGroupId: session.processGroupId, startedAt: session.startedAt };
+  }
+
+  list() {
+    return [...this.sessions.entries()].map(([stackRoot, session]) => ({
+      stackRoot,
+      processGroupId: session.processGroupId,
+      startedAt: session.startedAt,
+    }));
+  }
+}
+
+/** @param {Parameters<typeof startAttachedCommand>[0] & {timeoutMilliseconds?: number}} input @param {number | null} timeoutMilliseconds */
+function startCommandSession(input, timeoutMilliseconds) {
   const started = (input.now ?? (() => new Date()))();
   const output = createOutputTail(
     input.outputLimitBytes ?? LAUNCHER_OUTPUT_LIMIT_BYTES,
@@ -106,20 +184,28 @@ export async function runFiniteCommand(input) {
     }
   };
   if (input.signal?.aborted) {
-    return commandResult({
-      outcome: 'cancelled',
-      shellPath: input.shellPath,
-      started,
-      completed: (input.now ?? (() => new Date()))(),
-      exitCode: null,
-      signal: null,
+    const result = Promise.resolve(
+      commandResult({
+        outcome: 'cancelled',
+        shellPath: input.shellPath,
+        started,
+        completed: (input.now ?? (() => new Date()))(),
+        exitCode: null,
+        signal: null,
+        processGroupId: null,
+        output: output.result(),
+        failure: commandFailure(
+          'launcher_command_cancelled',
+          'The command was cancelled.',
+        ),
+      }),
+    );
+    return {
       processGroupId: null,
-      output: output.result(),
-      failure: commandFailure(
-        'launcher_command_cancelled',
-        'The command was cancelled.',
-      ),
-    });
+      startedAt: started.toISOString(),
+      terminate: () => false,
+      result,
+    };
   }
 
   const spawnProcess = input.spawnProcess ?? spawn;
@@ -128,6 +214,7 @@ export async function runFiniteCommand(input) {
     ((processGroupId, signal) => {
       process.kill(-processGroupId, signal);
     });
+  /** @type {ReturnType<typeof spawn>} */
   let child;
   try {
     child = spawnProcess(input.shellPath, ['-l', '-c', input.command], {
@@ -137,49 +224,65 @@ export async function runFiniteCommand(input) {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
   } catch (error) {
-    return commandResult({
-      outcome: 'failed',
-      shellPath: input.shellPath,
-      started,
-      completed: (input.now ?? (() => new Date()))(),
-      exitCode: null,
-      signal: null,
+    const result = Promise.resolve(
+      commandResult({
+        outcome: 'failed',
+        shellPath: input.shellPath,
+        started,
+        completed: (input.now ?? (() => new Date()))(),
+        exitCode: null,
+        signal: null,
+        processGroupId: null,
+        output: output.result(),
+        failure: errorFailure('launcher_command_spawn_failed', error),
+      }),
+    );
+    return {
       processGroupId: null,
-      output: output.result(),
-      failure: errorFailure('launcher_command_spawn_failed', error),
-    });
+      startedAt: started.toISOString(),
+      terminate: () => false,
+      result,
+    };
   }
   const processGroupId = child.pid ?? null;
   child.stdout?.on('data', (chunk) => emit('stdout', chunk));
   child.stderr?.on('data', (chunk) => emit('stderr', chunk));
 
-  return new Promise((resolvePromise) => {
+  let requestTermination = /** @type {() => boolean} */ (() => false);
+  const result = new Promise((resolvePromise) => {
     let settled = false;
     let termination = /** @type {'cancelled' | 'timed-out' | null} */ (null);
     let terminationSignal = /** @type {NodeJS.Signals | null} */ (null);
     let processFailure = /** @type {{code: string, message: string} | null} */ (null);
     let terminationTimer = /** @type {ReturnType<typeof setTimeout> | null} */ (null);
-    const timeoutTimer = setTimeout(
-      () => terminate('timed-out'),
-      input.timeoutMilliseconds,
-    );
-    timeoutTimer.unref?.();
+    const timeoutTimer =
+      timeoutMilliseconds === null
+        ? null
+        : setTimeout(() => terminate('timed-out'), timeoutMilliseconds);
+    timeoutTimer?.unref?.();
 
     const abort = () => terminate('cancelled');
     input.signal?.addEventListener('abort', abort, { once: true });
 
     /** @param {'cancelled' | 'timed-out'} outcome */
     function terminate(outcome) {
-      if (settled || termination !== null) return;
+      if (settled || termination !== null) return false;
+      if (child.exitCode !== null || child.signalCode !== null) return false;
       termination = outcome;
-      if (processGroupId === null) return;
+      if (processGroupId === null) return false;
       terminationSignal = signalGroup('SIGTERM');
+      if (terminationSignal === null) {
+        termination = null;
+        return false;
+      }
       terminationTimer = setTimeout(() => {
         if (settled) return;
         terminationSignal = signalGroup('SIGKILL') ?? terminationSignal;
       }, input.terminationGraceMilliseconds ?? LAUNCHER_TERMINATION_GRACE_MILLISECONDS);
       terminationTimer.unref?.();
+      return true;
     }
+    requestTermination = () => terminate('cancelled');
 
     /** @param {NodeJS.Signals} signal */
     function signalGroup(signal) {
@@ -202,7 +305,7 @@ export async function runFiniteCommand(input) {
     function finish(exitCode, signal) {
       if (settled) return;
       settled = true;
-      clearTimeout(timeoutTimer);
+      if (timeoutTimer !== null) clearTimeout(timeoutTimer);
       if (terminationTimer !== null) clearTimeout(terminationTimer);
       input.signal?.removeEventListener('abort', abort);
       const completed = (input.now ?? (() => new Date()))();
@@ -248,6 +351,12 @@ export async function runFiniteCommand(input) {
     });
     child.once('close', finish);
   });
+  return {
+    processGroupId,
+    startedAt: started.toISOString(),
+    terminate: () => requestTermination(),
+    result,
+  };
 }
 
 /** @param {Record<string, string>} injected @param {NodeJS.ProcessEnv} [inherited] */

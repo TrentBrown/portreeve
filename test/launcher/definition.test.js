@@ -4,6 +4,7 @@ import { expect, test } from 'bun:test';
 import {
   LauncherDefinitionSchema,
   normalizeLauncherDefinition,
+  validateLauncherIntegrationTransition,
   validateLauncherTopology,
 } from '../../src/launcher/definition.js';
 
@@ -153,4 +154,26 @@ test('validates mappings against stack topology and Docker facts', () => {
       stack(),
     ),
   ).toThrow('published endpoint');
+});
+
+test('requires explicit confirmation before losing verified activation guarantees', () => {
+  const verified = {
+    ...launcher(),
+    integration: { mode: 'verified-activation' },
+  };
+  const commandOnly = {
+    ...launcher(),
+    integration: { mode: 'command-only' },
+  };
+  expect(() => validateLauncherIntegrationTransition(verified, commandOnly)).toThrow(
+    'explicit confirmation',
+  );
+  expect(
+    validateLauncherIntegrationTransition(verified, commandOnly, {
+      confirmDowngrade: true,
+    }).integration.mode,
+  ).toBe('command-only');
+  expect(
+    validateLauncherIntegrationTransition(commandOnly, verified).integration.mode,
+  ).toBe('verified-activation');
 });

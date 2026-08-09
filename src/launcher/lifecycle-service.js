@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { StackRecordSchema, StackStatusSchema } from '../protocol/schemas.js';
 import {
+  AttachedCommandRegistry,
   LAUNCHER_OUTPUT_LIMIT_BYTES,
   LauncherCommandResultSchema,
   resolveLauncherShell,
@@ -32,9 +33,11 @@ export class LauncherLifecycleService {
    *   environmentService: Pick<import('./environment-service.js').LauncherEnvironmentService, 'resolve'>,
    *   evidenceService: Pick<import('./evidence-service.js').LauncherEvidenceService, 'inspectDaemon' | 'inspectLocal'>,
    *   runCommand?: typeof runFiniteCommand,
+   *   attachedCommands?: AttachedCommandRegistry,
    *   resolveShell?: typeof resolveLauncherShell,
    *   now?: () => Date,
    *   operationId?: () => string,
+   *   attachedEvidencePollMilliseconds?: number,
    * }} options
    */
   constructor({
@@ -43,18 +46,33 @@ export class LauncherLifecycleService {
     environmentService,
     evidenceService,
     runCommand = runFiniteCommand,
+    attachedCommands = new AttachedCommandRegistry(),
     resolveShell = resolveLauncherShell,
     now = () => new Date(),
     operationId = randomUUID,
+    attachedEvidencePollMilliseconds = 1_000,
   }) {
     this.client = client;
     this.stateStore = stateStore;
     this.environmentService = environmentService;
     this.evidenceService = evidenceService;
     this.runCommand = runCommand;
+    this.attachedCommands = attachedCommands;
     this.resolveShell = resolveShell;
     this.now = now;
     this.operationId = operationId;
+    this.attachedEvidencePollMilliseconds = attachedEvidencePollMilliseconds;
+  }
+
+  /** Terminate only the exact attached process group created by this runtime. */
+  /** @param {string} stackRoot */
+  terminateAttached(stackRoot) {
+    return this.attachedCommands.terminate(stackRoot);
+  }
+
+  /** Application-close hooks can use this reduced view without gaining process access. */
+  listAttached() {
+    return this.attachedCommands.list();
   }
 
   /**
@@ -67,6 +85,7 @@ export class LauncherLifecycleService {
    *   signal?: AbortSignal,
    *   onOutput?: (event: {step: 'start' | 'stop' | 'restart' | 'status', sequence: number, stream: 'stdout' | 'stderr' | 'system', text: string}) => void,
    * }} input
+   * @returns {Promise<any>}
    */
   async execute(input) {
     const operation = OperationSchema.parse(input.operation);
@@ -88,21 +107,11 @@ export class LauncherLifecycleService {
         'The current launcher revision has not been trusted.',
       );
     }
-    if (launcher.definition.integration.mode !== 'command-only') {
-      return failedResult(
-        operation,
-        'validate',
-        'launcher_verified_deferred',
-        'Verified-activation execution is delivered in a later launcher slice.',
-      );
-    }
-    if (launcher.definition.operations.start.mode !== 'finite') {
-      return failedResult(
-        operation,
-        'validate',
-        'launcher_attached_deferred',
-        'Attached Start execution is delivered in a later launcher slice.',
-      );
+    if (
+      operation === 'restart' &&
+      launcher.definition.operations.start.mode === 'attached'
+    ) {
+      return this.#executeAttachedRestart({ ...input, operation, stack, launcher });
     }
 
     let daemon;
@@ -134,6 +143,7 @@ export class LauncherLifecycleService {
       );
     }
     if (operation === 'status' && launcher.definition.operations.status === undefined) {
+      const generationId = currentGeneration(stack, daemon.status)?.id ?? null;
       return {
         operation,
         outcome: /** @type {const} */ ('succeeded'),
@@ -143,6 +153,14 @@ export class LauncherLifecycleService {
         afterEvidence: daemon.evidence.summary,
         steps: [],
         failure: null,
+        integration: assessIntegration({
+          mode: launcher.definition.integration.mode,
+          operation,
+          generationId,
+          commandSucceeded: true,
+          afterEvidence: daemon.evidence.summary,
+          matchingActivationEvidence: null,
+        }).summary,
         daemonOperation: null,
       };
     }
@@ -175,7 +193,11 @@ export class LauncherLifecycleService {
     try {
       session = await this.client.beginLauncherOperation(stack.id, {
         operation,
-        executionMode: 'finite',
+        executionMode:
+          operation === 'start' &&
+          launcher.definition.operations.start.mode === 'attached'
+            ? 'attached'
+            : 'finite',
         launcherRevision: launcher.revision,
         callerOperationId: this.operationId(),
         generationId: environment.generationId,
@@ -200,6 +222,62 @@ export class LauncherLifecycleService {
       environment,
       session,
     });
+  }
+
+  /**
+   * Attached Restart is deliberately two coordinated operations: finite Stop, then attached Start.
+   * @param {any} input
+   * @returns {Promise<any>}
+   */
+  async #executeAttachedRestart(input) {
+    let before;
+    try {
+      before = (await this.#daemonState(input.stack)).evidence.summary;
+    } catch (error) {
+      if (isUnavailable(error)) {
+        return failedResult(
+          'restart',
+          'daemon',
+          'launcher_daemon_required',
+          'Start and Restart require the PortReeve service.',
+        );
+      }
+      return failedResult(
+        'restart',
+        'evidence-before',
+        errorCode(error),
+        errorMessage(error),
+      );
+    }
+    const guard = admissionFailure('restart', before, {
+      runStartAnyway: false,
+      composedStart: false,
+    });
+    if (guard !== null) {
+      return failedResult('restart', 'admission', guard.code, guard.message, {
+        beforeEvidence: before,
+      });
+    }
+    const stopped = await this.execute({
+      ...input,
+      operation: 'stop',
+      launcher: input.launcher,
+    });
+    if (stopped.outcome !== 'succeeded') {
+      return { ...stopped, operation: /** @type {const} */ ('restart') };
+    }
+    const started = await this.execute({
+      ...input,
+      operation: 'start',
+      launcher: input.launcher,
+      runStartAnyway: false,
+    });
+    return {
+      ...started,
+      operation: /** @type {const} */ ('restart'),
+      beforeEvidence: before,
+      steps: [...stopped.steps, ...started.steps],
+    };
   }
 
   /** @param {{operation: 'start' | 'stop' | 'restart' | 'status', stack: any, launcher: any, runStartAnyway?: boolean, allowDegraded?: boolean, signal?: AbortSignal, onOutput?: Function}} input */
@@ -331,6 +409,7 @@ export class LauncherLifecycleService {
 
     let beforeEvidence = null;
     let afterEvidence = null;
+    let matchingActivationEvidence = /** @type {any} */ (null);
     /** @type {Array<{step: 'start' | 'stop' | 'restart' | 'status', command: z.infer<typeof LauncherCommandResultSchema>}>} */
     let steps = [];
     let failure = /** @type {{step: string, code: string, message: string} | null} */ (
@@ -374,14 +453,31 @@ export class LauncherLifecycleService {
             'The launcher operation is not configured.',
           );
         }
-        const command = await this.#runStep({
-          step: context.operation,
-          configured,
-          launcher: context.launcher,
-          environment: context.environment.environment,
-          signal: controller.signal,
-          onOutput: context.input.onOutput,
-        });
+        const execution =
+          context.operation === 'start' && configured.mode === 'attached'
+            ? await this.#runAttachedStep({
+                step: context.operation,
+                configured,
+                launcher: context.launcher,
+                environment: context.environment.environment,
+                stack: context.stack,
+                generationId: context.environment.generationId,
+                signal: controller.signal,
+                onOutput: context.input.onOutput,
+              })
+            : {
+                command: await this.#runStep({
+                  step: context.operation,
+                  configured,
+                  launcher: context.launcher,
+                  environment: context.environment.environment,
+                  signal: controller.signal,
+                  onOutput: context.input.onOutput,
+                }),
+                matchingActivationEvidence: null,
+              };
+        const command = execution.command;
+        matchingActivationEvidence = execution.matchingActivationEvidence;
         steps = [{ step: context.operation, command }];
         afterEvidence = (await this.#daemonState(context.stack)).evidence.summary;
       }
@@ -409,6 +505,17 @@ export class LauncherLifecycleService {
         message: renewalFailure.message,
       };
     }
+    const integration = assessIntegration({
+      mode: context.launcher.definition.integration.mode,
+      operation: context.operation,
+      generationId: context.environment.generationId,
+      commandSucceeded: steps.every(({ command }) => command.outcome === 'succeeded'),
+      afterEvidence,
+      matchingActivationEvidence,
+    });
+    if (failure === null && integration.failure !== null) {
+      failure = integration.failure;
+    }
     const provisional = lifecycleResult({
       operation: context.operation,
       degraded: false,
@@ -417,6 +524,7 @@ export class LauncherLifecycleService {
       afterEvidence,
       steps,
       failure,
+      integration: integration.summary,
       daemonOperation: context.session.operation,
     });
     const completion = completionFromResult(provisional);
@@ -438,6 +546,40 @@ export class LauncherLifecycleService {
         },
       };
     }
+  }
+
+  /** @param {{step: 'start', configured: any, launcher: any, environment: Record<string, string>, stack: any, generationId: string | null, signal: AbortSignal, onOutput?: Function}} context */
+  async #runAttachedStep(context) {
+    let settled = false;
+    let matchingActivationEvidence = /** @type {any} */ (null);
+    const commandPromise = this.#runStep(context).finally(() => {
+      settled = true;
+    });
+    const commandSettled = commandPromise.then(
+      () => undefined,
+      () => undefined,
+    );
+    const monitorPromise = (async () => {
+      while (!settled && !context.signal.aborted) {
+        await Promise.race([
+          delay(this.attachedEvidencePollMilliseconds),
+          commandSettled,
+        ]);
+        if (settled || context.signal.aborted) break;
+        try {
+          const evidence = (await this.#daemonState(context.stack)).evidence.summary;
+          if (isMatchingVerifiedEvidence(evidence, context.generationId)) {
+            matchingActivationEvidence = evidence;
+            break;
+          }
+        } catch {
+          // Renewal and final evidence collection own service-loss reporting.
+        }
+      }
+    })();
+    const command = await commandPromise;
+    await monitorPromise;
+    return { command, matchingActivationEvidence };
   }
 
   /** @param {{operation: string, stack: any, launcher: any, daemon: any}} context */
@@ -554,8 +696,23 @@ export class LauncherLifecycleService {
     return { steps, afterEvidence: afterStart.evidence.summary, failure: null };
   }
 
-  /** @param {{step: 'start' | 'stop' | 'restart' | 'status', configured: {command: string, timeoutSeconds?: number}, launcher: any, environment: Record<string, string>, signal?: AbortSignal, onOutput?: Function}} context */
+  /** @param {{step: 'start' | 'stop' | 'restart' | 'status', configured: {command: string, mode?: 'finite' | 'attached', timeoutSeconds?: number}, launcher: any, environment: Record<string, string>, signal?: AbortSignal, onOutput?: Function}} context */
   async #runStep(context) {
+    if (context.step === 'start' && context.configured.mode === 'attached') {
+      return this.attachedCommands.run(context.launcher.stackRoot, {
+        command: context.configured.command,
+        shellPath: this.resolveShell(context.launcher.definition.shell),
+        workingDirectory: context.launcher.workingDirectory,
+        environment: context.environment,
+        ...(context.signal === undefined ? {} : { signal: context.signal }),
+        ...(context.onOutput === undefined
+          ? {}
+          : {
+              onOutput: (chunk) => context.onOutput?.({ step: context.step, ...chunk }),
+            }),
+        now: this.now,
+      });
+    }
     if (context.configured.timeoutSeconds === undefined) {
       throw lifecycleError(
         'launcher_timeout_missing',
@@ -671,7 +828,7 @@ function admissionFailure(operation, evidence, options) {
       };
 }
 
-/** @param {{operation: string, degraded: boolean, environmentSource: string | null, beforeEvidence: any, afterEvidence: any, steps: any[], failure?: any, daemonOperation: any}} value */
+/** @param {{operation: string, degraded: boolean, environmentSource: string | null, beforeEvidence: any, afterEvidence: any, steps: any[], failure?: any, integration?: any, daemonOperation: any}} value */
 function lifecycleResult(value) {
   const steps = boundStepOutputs(value.steps, LAUNCHER_OUTPUT_LIMIT_BYTES);
   const failedCommand = steps.find(({ command }) => command.outcome !== 'succeeded');
@@ -702,8 +859,72 @@ function lifecycleResult(value) {
     afterEvidence: value.afterEvidence,
     steps,
     failure,
+    integration: value.integration ?? null,
     daemonOperation: value.daemonOperation,
   };
+}
+
+/** @param {{mode: 'command-only' | 'verified-activation', operation: 'start' | 'stop' | 'restart' | 'status', generationId: string | null, commandSucceeded: boolean, afterEvidence: any, matchingActivationEvidence: any}} input */
+function assessIntegration(input) {
+  const matchingEvidence = isMatchingVerifiedEvidence(
+    input.matchingActivationEvidence ?? input.afterEvidence,
+    input.generationId,
+  );
+  const summary = {
+    mode: input.mode,
+    verified: matchingEvidence,
+    upgradeSuggested: input.mode === 'command-only' && matchingEvidence,
+    generationId: input.generationId,
+    activationId: matchingEvidence
+      ? (input.matchingActivationEvidence ?? input.afterEvidence).activationId
+      : null,
+  };
+  if (input.mode !== 'verified-activation' || !input.commandSucceeded) {
+    return { summary, failure: null };
+  }
+  if (input.operation === 'start' && !matchingEvidence) {
+    return {
+      summary,
+      failure: {
+        step: 'activation-verification',
+        code: 'launcher_activation_not_verified',
+        message:
+          'The Start command exited successfully without a matching verified activation for the supplied generation.',
+      },
+    };
+  }
+  if (input.operation === 'stop' && input.afterEvidence?.classification !== 'stopped') {
+    return {
+      summary,
+      failure: {
+        step: 'activation-verification',
+        code: 'launcher_activation_not_ended',
+        message:
+          'The Stop command exited successfully without ending the active stack evidence.',
+      },
+    };
+  }
+  return { summary, failure: null };
+}
+
+/** @param {any} evidence @param {string | null} generationId */
+function isMatchingVerifiedEvidence(evidence, generationId) {
+  return (
+    generationId !== null &&
+    evidence !== null &&
+    evidence?.classification === 'verified' &&
+    evidence?.source === 'daemon' &&
+    evidence?.generationId === generationId &&
+    evidence?.activationId !== null
+  );
+}
+
+/** @param {number} milliseconds */
+function delay(milliseconds) {
+  return new Promise((resolvePromise) => {
+    const timer = setTimeout(resolvePromise, milliseconds);
+    timer.unref?.();
+  });
 }
 
 /** @param {any[]} input @param {number} limit */
@@ -783,6 +1004,7 @@ function completionFromResult(result) {
             code: safeCode(result.failure.code),
             message: result.failure.message.slice(0, 1_024),
           },
+    integration: result.integration,
   };
 }
 
@@ -797,6 +1019,7 @@ function failedResult(operation, step, code, message, details = {}) {
     afterEvidence: details.afterEvidence ?? null,
     steps: [],
     failure: { step, code, message },
+    integration: null,
     daemonOperation: null,
   };
 }

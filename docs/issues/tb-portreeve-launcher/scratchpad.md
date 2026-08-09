@@ -153,3 +153,48 @@ Persist the current nonsecret applied StackRecord with every newly resolved laun
 
 **Alternatives considered:**
 Reconstruct a StackRecord from portreeve.stack.json and cached IDs - invents durable metadata and can disagree with the last applied definition. Require the daemon for every CLI selection - contradicts approved degraded Stop and Status. Add a second CLI-only cache - duplicates shared Desktop and CLI state.
+
+## [9] Keep attached process authority application-local
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Shared launcher command sessions, lifecycle execution, CLI cancellation, later Electron main integration, and daemon operation metadata
+
+Each launcher runtime owns an in-memory attached-session registry keyed by canonical stack root. The registry stores only the exact process group created by that application and exposes observation plus explicit termination hooks. The daemon continues to own renewable per-stack admission and safe outcome history only. If the caller disappears, its renewable operation expires to lost; another application does not adopt or signal the orphaned group. Normal cancellation and explicit termination signal only the recorded group.
+
+**Triggered by:** P6 requires one application-tied attached process group with cross-surface coordination but forbids daemon command authority or process adoption.
+
+**Alternatives considered:**
+Persist process identifiers for later adoption - rejected because identifiers go stale and adoption contradicts the approved caller-loss boundary. Move spawning into the daemon - rejected because it grants the port authority arbitrary project-command execution. Infer attached ownership from listeners - rejected because lsof proves occupancy, not launcher ownership.
+
+## [10] Assess verified launcher maturity from fresh evidence
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Launcher lifecycle result semantics, verified-activation enforcement, command-only upgrade suggestions, and later Desktop editor transitions
+
+The shared lifecycle engine evaluates integration maturity from fresh daemon evidence for the exact supplied generation. Verified Start succeeds only after matching verified evidence is observed; exit zero alone becomes a structured integration-verification failure. Command-only execution reports an upgrade suggestion when the same matching evidence appears. A pure transition validator requires explicit confirmation for verified-activation to command-only changes; accepting and trusting the resulting new document remains the caller's responsibility.
+
+**Triggered by:** P6 must distinguish shell success from verified activation and expose explicit upgrade and downgrade behavior.
+
+**Alternatives considered:**
+Treat exit zero as verified - rejected by AC5. Parse project Status output - rejected because project output is advisory. Mutate the project file automatically after evidence appears - rejected because checked-in executable configuration requires deliberate review and new trust.
+
+## [11] Persist reduced integration assessment with launcher outcomes
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Public launcher-operation completion and record schemas, official JavaScript client declarations, SQLite completion JSON, history, and Desktop diagnostics
+
+Extend safe launcher-operation terminal metadata with a strict nullable integration summary containing only declared mode, exact-generation match, upgrade suggestion, generation ID, and activation ID. Continue to exclude commands, environment values, process identifiers, and raw output. This preserves the maturity outcome needed by later Desktop history without treating terminal listener evidence as if it were the earlier verified observation.
+
+**Triggered by:** Verified and upgrade assessments would otherwise disappear when an attached Start later exits and its freshest terminal listener evidence is stopped.
+
+**Alternatives considered:**
+Replace afterEvidence with the earlier verified snapshot - rejected because afterEvidence should remain the freshest terminal observation. Keep maturity session-only - rejected because recent safe operation history could not explain verified success or an upgrade suggestion. Persist the full activation or command context - rejected because the daemon boundary requires reduced safe metadata only.

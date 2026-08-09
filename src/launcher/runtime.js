@@ -6,6 +6,7 @@ import { LauncherEnvironmentService } from './environment-service.js';
 import { LauncherEvidenceService } from './evidence-service.js';
 import { LauncherLifecycleService } from './lifecycle-service.js';
 import { createLauncherLocalStateStore } from './local-state.js';
+import { AttachedCommandRegistry } from './command-session.js';
 
 /**
  * Construct the shared launcher engine used by CLI and, later, Electron main.
@@ -23,11 +24,13 @@ export async function createLauncherRuntime(options = {}) {
   const stateStore = createLauncherLocalStateStore({ path: paths.launcherStatePath });
   const environmentService = new LauncherEnvironmentService({ client, stateStore });
   const evidenceService = new LauncherEvidenceService({ client });
+  const attachedCommands = new AttachedCommandRegistry();
   const lifecycleService = new LauncherLifecycleService({
     client,
     stateStore,
     environmentService,
     evidenceService,
+    attachedCommands,
   });
   return Object.freeze({
     paths,
@@ -35,6 +38,7 @@ export async function createLauncherRuntime(options = {}) {
     stateStore,
     environmentService,
     evidenceService,
+    attachedCommands,
     lifecycleService,
   });
 }

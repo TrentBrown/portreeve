@@ -50,7 +50,7 @@ const stack = {
   lastUsedAt: '2026-08-08T20:00:00.000Z',
 };
 
-/** @param {Partial<{restart: boolean, status: boolean}>} [options] */
+/** @param {Partial<{restart: boolean, status: boolean, startMode: 'finite' | 'attached', integrationMode: 'command-only' | 'verified-activation'}>} [options] */
 function launcher(options = {}) {
   return {
     stackRoot: stack.stackRoot,
@@ -58,11 +58,14 @@ function launcher(options = {}) {
     revision,
     definition: {
       version: 1,
-      integration: { mode: 'command-only' },
+      integration: { mode: options.integrationMode ?? 'command-only' },
       shell: 'system',
       workingDirectory: '.',
       operations: {
-        start: { command: 'project start', mode: 'finite', timeoutSeconds: 300 },
+        start:
+          options.startMode === 'attached'
+            ? { command: 'project start', mode: 'attached' }
+            : { command: 'project start', mode: 'finite', timeoutSeconds: 300 },
         stop: { command: 'project stop', timeoutSeconds: 120 },
         ...(options.restart
           ? { restart: { command: 'project restart', timeoutSeconds: 420 } }
@@ -76,7 +79,7 @@ function launcher(options = {}) {
   };
 }
 
-/** @param {'stopped' | 'partial' | 'fully-observed' | 'verified' | 'conflicting' | 'uncertain'} classification @param {Partial<{trusted: boolean, daemonUnavailable: boolean, hasGeneration: boolean, commandOutcome: 'succeeded' | 'failed' | 'cancelled' | 'timed-out', commandOutputBytes: number, renewFailure: boolean, slowRenewal: boolean, changeGenerationAtBegin: boolean}>} [options] */
+/** @param {'stopped' | 'partial' | 'fully-observed' | 'verified' | 'conflicting' | 'uncertain'} classification @param {Partial<{trusted: boolean, daemonUnavailable: boolean, hasGeneration: boolean, commandOutcome: 'succeeded' | 'failed' | 'cancelled' | 'timed-out', commandOutputBytes: number, renewFailure: boolean, slowRenewal: boolean, changeGenerationAtBegin: boolean, attachedCommands: any, evidenceGenerationId: string}>} [options] */
 function harness(classification, options = {}) {
   let currentClassification = classification;
   let currentGeneration = options.hasGeneration === false ? null : generation;
@@ -100,8 +103,11 @@ function harness(classification, options = {}) {
     classification: currentClassification,
     source,
     observedAt: '2026-08-08T20:01:00.000Z',
-    generationId: currentGeneration?.id ?? null,
-    activationId: null,
+    generationId: options.evidenceGenerationId ?? currentGeneration?.id ?? null,
+    activationId:
+      currentClassification === 'verified'
+        ? '66666666-6666-4666-8666-666666666666'
+        : null,
     listenerCount: currentClassification === 'stopped' ? 0 : 1,
     reasonCodes: [],
   });
@@ -213,6 +219,10 @@ function harness(classification, options = {}) {
           options.commandOutputBytes,
         );
       },
+      ...(options.attachedCommands === undefined
+        ? {}
+        : { attachedCommands: options.attachedCommands }),
+      attachedEvidencePollMilliseconds: 1,
       resolveShell: () => '/bin/sh',
       operationId: () => '55555555-5555-4555-8555-555555555555',
     }),
@@ -280,6 +290,271 @@ test('applies the Start evidence state table and retains partial generations', a
   expect(started.outcome).toBe('succeeded');
   expect(stopped.calls.environments[0]).not.toHaveProperty('generation');
   expect(stopped.calls.begins[0]).toMatchObject({ generationId: generation.id });
+});
+
+test('requires matching fresh activation evidence for verified Start success', async () => {
+  const missing = harness('stopped');
+  expect(
+    await missing.service.execute({
+      operation: 'start',
+      stack,
+      launcher: launcher({ integrationMode: 'verified-activation' }),
+    }),
+  ).toMatchObject({
+    outcome: 'failed',
+    integration: { mode: 'verified-activation', verified: false },
+    failure: {
+      step: 'activation-verification',
+      code: 'launcher_activation_not_verified',
+    },
+  });
+
+  const verified = harness('stopped');
+  const original = verified.service.runCommand;
+  verified.service.runCommand = async (input) => {
+    verified.setClassification('verified');
+    return original(input);
+  };
+  const result = await verified.service.execute({
+    operation: 'start',
+    stack,
+    launcher: launcher({ integrationMode: 'verified-activation' }),
+  });
+  expect(result).toMatchObject({
+    outcome: 'succeeded',
+    integration: {
+      mode: 'verified-activation',
+      verified: true,
+      upgradeSuggested: false,
+      generationId: generation.id,
+    },
+  });
+  expect(verified.calls.completions[0]).toMatchObject({
+    outcome: 'succeeded',
+    afterEvidence: { classification: 'verified' },
+  });
+
+  const mismatched = harness('stopped', {
+    evidenceGenerationId: '77777777-7777-4777-8777-777777777777',
+  });
+  const mismatchedCommand = mismatched.service.runCommand;
+  mismatched.service.runCommand = async (input) => {
+    mismatched.setClassification('verified');
+    return mismatchedCommand(input);
+  };
+  expect(
+    await mismatched.service.execute({
+      operation: 'start',
+      stack,
+      launcher: launcher({ integrationMode: 'verified-activation' }),
+    }),
+  ).toMatchObject({
+    outcome: 'failed',
+    integration: { verified: false },
+    failure: { code: 'launcher_activation_not_verified' },
+  });
+});
+
+test('requires verified Stop to end active stack evidence', async () => {
+  const stillActive = harness('verified');
+  expect(
+    await stillActive.service.execute({
+      operation: 'stop',
+      stack,
+      launcher: launcher({ integrationMode: 'verified-activation' }),
+    }),
+  ).toMatchObject({
+    outcome: 'failed',
+    failure: {
+      step: 'activation-verification',
+      code: 'launcher_activation_not_ended',
+    },
+  });
+
+  const ended = harness('verified');
+  const stopCommand = ended.service.runCommand;
+  ended.service.runCommand = async (input) => {
+    ended.setClassification('stopped');
+    return stopCommand(input);
+  };
+  expect(
+    await ended.service.execute({
+      operation: 'stop',
+      stack,
+      launcher: launcher({ integrationMode: 'verified-activation' }),
+    }),
+  ).toMatchObject({
+    outcome: 'succeeded',
+    afterEvidence: { classification: 'stopped' },
+  });
+});
+
+test('suggests an explicit upgrade when command-only execution verifies its generation', async () => {
+  const fixture = harness('stopped');
+  const original = fixture.service.runCommand;
+  fixture.service.runCommand = async (input) => {
+    fixture.setClassification('verified');
+    return original(input);
+  };
+  const result = await fixture.service.execute({
+    operation: 'start',
+    stack,
+    launcher: launcher(),
+  });
+  expect(result).toMatchObject({
+    outcome: 'succeeded',
+    integration: {
+      mode: 'command-only',
+      verified: true,
+      upgradeSuggested: true,
+    },
+  });
+});
+
+test('uses attached daemon admission and exposes exact application-local termination', async () => {
+  let terminateCalls = 0;
+  const attachedCommands = {
+    async run() {
+      return commandResult('succeeded');
+    },
+    terminate() {
+      terminateCalls += 1;
+      return true;
+    },
+    list() {
+      return [
+        {
+          stackRoot: stack.stackRoot,
+          processGroupId: 123,
+          startedAt: '2026-08-08T20:01:00.000Z',
+        },
+      ];
+    },
+  };
+  const fixture = harness('stopped', { attachedCommands });
+  const result = await fixture.service.execute({
+    operation: 'start',
+    stack,
+    launcher: launcher({ startMode: 'attached' }),
+  });
+  expect(result.outcome).toBe('succeeded');
+  expect(fixture.calls.begins[0]).toMatchObject({
+    operation: 'start',
+    executionMode: 'attached',
+  });
+  expect(fixture.service.listAttached()).toHaveLength(1);
+  expect(fixture.service.terminateAttached(stack.stackRoot)).toBe(true);
+  expect(terminateCalls).toBe(1);
+});
+
+test('retains matching verification observed while attached Start is still running', async () => {
+  /** @type {ReturnType<typeof harness>} */
+  let fixture;
+  const attachedCommands = {
+    async run() {
+      fixture.setClassification('verified');
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 10));
+      fixture.setClassification('stopped');
+      return commandResult('succeeded');
+    },
+    terminate() {
+      return false;
+    },
+    list() {
+      return [];
+    },
+  };
+  fixture = harness('stopped', { attachedCommands });
+  const result = await fixture.service.execute({
+    operation: 'start',
+    stack,
+    launcher: launcher({
+      startMode: 'attached',
+      integrationMode: 'verified-activation',
+    }),
+  });
+  expect(result).toMatchObject({
+    outcome: 'succeeded',
+    afterEvidence: { classification: 'stopped' },
+    integration: {
+      mode: 'verified-activation',
+      verified: true,
+      generationId: generation.id,
+    },
+  });
+  expect(fixture.calls.completions[0]).toMatchObject({
+    afterEvidence: { classification: 'stopped' },
+    integration: { verified: true },
+  });
+});
+
+test('composes attached Restart as finite Stop followed by attached Start', async () => {
+  /** @type {ReturnType<typeof harness>} */
+  let fixture;
+  const attachedCommands = {
+    async run() {
+      fixture.setClassification('verified');
+      return commandResult('succeeded');
+    },
+    terminate() {
+      return false;
+    },
+    list() {
+      return [];
+    },
+  };
+  fixture = harness('fully-observed', { attachedCommands });
+  const finite = fixture.service.runCommand;
+  fixture.service.runCommand = async (input) => {
+    fixture.setClassification('stopped');
+    return finite(input);
+  };
+  const result = await fixture.service.execute({
+    operation: 'restart',
+    stack,
+    launcher: launcher({ startMode: 'attached' }),
+  });
+  expect(result).toMatchObject({
+    operation: 'restart',
+    outcome: 'succeeded',
+    steps: [{ step: 'stop' }, { step: 'start' }],
+    integration: { verified: true, upgradeSuggested: true },
+  });
+  expect(
+    fixture.calls.begins.map((/** @type {any} */ operation) => operation.executionMode),
+  ).toEqual(['finite', 'attached']);
+});
+
+test('uses the stable daemon-required policy for attached Restart', async () => {
+  const fixture = harness('stopped', { daemonUnavailable: true });
+  expect(
+    await fixture.service.execute({
+      operation: 'restart',
+      stack,
+      launcher: launcher({ startMode: 'attached' }),
+    }),
+  ).toMatchObject({
+    outcome: 'failed',
+    failure: { step: 'daemon', code: 'launcher_daemon_required' },
+  });
+});
+
+test('assesses integration maturity for evidence-only Status', async () => {
+  const fixture = harness('verified');
+  const result = await fixture.service.execute({
+    operation: 'status',
+    stack,
+    launcher: launcher(),
+  });
+  expect(result).toMatchObject({
+    outcome: 'succeeded',
+    steps: [],
+    integration: {
+      mode: 'command-only',
+      verified: true,
+      upgradeSuggested: true,
+    },
+  });
 });
 
 test('Stop always runs only the project command even with no generation or listener', async () => {
@@ -403,7 +678,8 @@ test('bounds retained output across both steps of a composed Restart', async () 
     launcher: launcher(),
   });
   const retained = result.steps.reduce(
-    (total, step) => total + step.command.output.retainedBytes,
+    (/** @type {number} */ total, /** @type {any} */ step) =>
+      total + step.command.output.retainedBytes,
     0,
   );
   expect(retained).toBe(1_048_576);
@@ -555,6 +831,225 @@ test('executes through the official Unix-socket client and persists only safe hi
   }
 });
 
+test('keeps Status and Stop available without letting Stop kill an attached group', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'portreeve-attached-integration-'));
+  const applicationDirectory = join(directory, 'data');
+  const socketPath = join(directory, 'runtime', 'portreeve.sock');
+  await prepareRuntimeDirectories({ applicationDirectory, socketPath });
+  const registry = openRegistry(join(applicationDirectory, 'registry.sqlite'));
+  const inventoryService = new InventoryService({
+    registry,
+    inspectListeners: async () => [],
+  });
+  const server = await startPortreeveServer({
+    socketPath,
+    allocationService: new AllocationService({ registry }),
+    inventoryService,
+  });
+  try {
+    const client = new PortreeveClient({ socketPath });
+    const stackRoot = await realpath(directory);
+    const applied = await client.applyStack({
+      stackRoot,
+      definition: {
+        version: 1,
+        project: 'attached-integration',
+        components: { api: { endpoints: { default: {} } } },
+      },
+    });
+    const stateStore = createLauncherLocalStateStore({
+      path: join(applicationDirectory, 'launcher-state.json'),
+    });
+    await stateStore.trust(stackRoot, revision);
+    const definition = {
+      version: 1,
+      integration: { mode: /** @type {const} */ ('command-only') },
+      shell: /** @type {const} */ ('system'),
+      workingDirectory: '.',
+      operations: {
+        start: {
+          command: 'while :; do sleep 1; done',
+          mode: /** @type {const} */ ('attached'),
+        },
+        stop: { command: 'printf stopped', timeoutSeconds: 5 },
+        status: { command: 'printf status', timeoutSeconds: 5 },
+      },
+      environment: [],
+    };
+    const lifecycle = new LauncherLifecycleService({
+      client,
+      stateStore,
+      environmentService: new LauncherEnvironmentService({ client, stateStore }),
+      evidenceService: new LauncherEvidenceService({ client }),
+      attachedEvidencePollMilliseconds: 10,
+    });
+    const launcherDocument = {
+      stackRoot,
+      workingDirectory: stackRoot,
+      revision,
+      definition,
+    };
+    const start = lifecycle.execute({
+      operation: 'start',
+      stack: applied.stack,
+      launcher: launcherDocument,
+    });
+    await waitFor(() => lifecycle.listAttached().length === 1);
+    const tracked = lifecycle.listAttached()[0];
+    expect(tracked?.processGroupId).toBeGreaterThan(0);
+
+    expect(
+      await lifecycle.execute({
+        operation: 'status',
+        stack: applied.stack,
+        launcher: launcherDocument,
+      }),
+    ).toMatchObject({ outcome: 'succeeded', steps: [{ step: 'status' }] });
+    expect(
+      await lifecycle.execute({
+        operation: 'stop',
+        stack: applied.stack,
+        launcher: launcherDocument,
+      }),
+    ).toMatchObject({ outcome: 'succeeded', steps: [{ step: 'stop' }] });
+    expect(lifecycle.listAttached()).toHaveLength(1);
+    expect(lifecycle.terminateAttached(stackRoot)).toBe(true);
+    expect(await start).toMatchObject({
+      outcome: 'cancelled',
+      steps: [{ step: 'start', command: { outcome: 'cancelled' } }],
+    });
+    expect(lifecycle.listAttached()).toHaveLength(0);
+    const history = await client.listLauncherOperations(applied.stack.id);
+    expect(history.map((/** @type {any} */ { operation }) => operation).sort()).toEqual(
+      ['start', 'status', 'stop'],
+    );
+    expect(
+      history.find((/** @type {any} */ { operation }) => operation === 'start'),
+    ).toMatchObject({
+      executionMode: 'attached',
+      state: 'terminal',
+      outcome: 'cancelled',
+    });
+  } finally {
+    await server.stop();
+    registry.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('accepts verified Start only after a real matching activation is confirmed', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'portreeve-verified-integration-'));
+  const applicationDirectory = join(directory, 'data');
+  const socketPath = join(directory, 'runtime', 'portreeve.sock');
+  await prepareRuntimeDirectories({ applicationDirectory, socketPath });
+  const registry = openRegistry(join(applicationDirectory, 'registry.sqlite'));
+  const server = await startPortreeveServer({
+    socketPath,
+    allocationService: new AllocationService({ registry }),
+  });
+  let listener;
+  let activationId = null;
+  try {
+    const client = new PortreeveClient({ socketPath });
+    const stackRoot = await realpath(directory);
+    const applied = await client.applyStack({
+      stackRoot,
+      definition: {
+        version: 1,
+        project: 'verified-launcher-integration',
+        components: { api: { endpoints: { default: {} } } },
+      },
+    });
+    const stateStore = createLauncherLocalStateStore({
+      path: join(applicationDirectory, 'launcher-state.json'),
+    });
+    await stateStore.trust(stackRoot, revision);
+    const lifecycle = new LauncherLifecycleService({
+      client,
+      stateStore,
+      environmentService: new LauncherEnvironmentService({ client, stateStore }),
+      evidenceService: new LauncherEvidenceService({ client }),
+    });
+    const execution = lifecycle.execute({
+      operation: 'start',
+      stack: applied.stack,
+      launcher: {
+        stackRoot,
+        workingDirectory: stackRoot,
+        revision,
+        definition: {
+          version: 1,
+          integration: { mode: 'verified-activation' },
+          shell: 'system',
+          workingDirectory: '.',
+          operations: {
+            start: { command: 'sleep 1', mode: 'finite', timeoutSeconds: 5 },
+            stop: { command: 'true', timeoutSeconds: 5 },
+          },
+          environment: [],
+        },
+      },
+    });
+    let active = [];
+    const deadline = Date.now() + 2_000;
+    while (active.length === 0) {
+      active = (await client.listLauncherOperations(applied.stack.id)).filter(
+        (/** @type {any} */ operation) => operation.state === 'active',
+      );
+      if (Date.now() >= deadline) {
+        throw new Error('Timed out waiting for verified launcher execution.');
+      }
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 5));
+    }
+    const status = await client.getStackStatus(applied.stack.id);
+    if (status.generation === null) throw new Error('Expected a prepared generation.');
+    const begun = await client.beginStackActivation(status.generation.id);
+    activationId = begun.activation.id;
+    const lease = begun.leases[0];
+    if (lease === undefined) throw new Error('Expected an activation lease.');
+    listener = Bun.serve({
+      port: lease.port,
+      fetch() {
+        return new Response('verified launcher');
+      },
+    });
+    await client.confirmStackEndpoint(begun.activation.id, {
+      leaseId: lease.leaseId,
+      leaseToken: lease.leaseToken,
+      rootPid: process.pid,
+    });
+    const result = await execution;
+    expect(result).toMatchObject({
+      outcome: 'succeeded',
+      afterEvidence: {
+        classification: 'verified',
+        generationId: status.generation.id,
+        activationId: begun.activation.id,
+      },
+      integration: {
+        mode: 'verified-activation',
+        verified: true,
+        upgradeSuggested: false,
+        generationId: status.generation.id,
+        activationId: begun.activation.id,
+      },
+      daemonOperation: {
+        state: 'terminal',
+        integration: { verified: true },
+      },
+    });
+  } finally {
+    listener?.stop(true);
+    if (activationId !== null) {
+      const client = new PortreeveClient({ socketPath });
+      await client.endStackActivation(activationId).catch(() => {});
+    }
+    await server.stop();
+    registry.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 /** @param {'succeeded' | 'failed' | 'cancelled' | 'timed-out'} outcome @param {number} [outputBytes] */
 function commandResult(outcome, outputBytes = 0) {
   return {
@@ -587,4 +1082,13 @@ function codedError(code, message) {
   const error = new Error(message);
   Object.assign(error, { code });
   return error;
+}
+
+/** @param {() => boolean} predicate */
+async function waitFor(predicate) {
+  const deadline = Date.now() + 2_000;
+  while (!predicate()) {
+    if (Date.now() >= deadline) throw new Error('Timed out waiting for condition.');
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 5));
+  }
 }

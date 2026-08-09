@@ -123,6 +123,13 @@ test('completes idempotently only with identical strict safe metadata', () => {
         listenerCount: 2,
         reasonCodes: [],
       },
+      integration: {
+        mode: /** @type {const} */ ('command-only'),
+        verified: true,
+        upgradeSuggested: true,
+        generationId: crypto.randomUUID(),
+        activationId: crypto.randomUUID(),
+      },
     };
     fixture.setNow(new Date('2026-08-08T12:00:05.000Z'));
     const first = fixture.service.complete(begun.operation.id, {
@@ -137,6 +144,7 @@ test('completes idempotently only with identical strict safe metadata', () => {
         outcome: 'succeeded',
         durationMilliseconds: 5_000,
         exitCode: 0,
+        integration: completion.integration,
       },
     });
     expect(
