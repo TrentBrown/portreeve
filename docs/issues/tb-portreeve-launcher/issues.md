@@ -72,7 +72,7 @@ review, confirmations, stable automation output, and compiled macOS/Linux covera
 
 ## I-6 - Add attached and verified execution
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P6
 - **Rubric criteria:** R4, R5, R6
@@ -85,7 +85,7 @@ integration-mode upgrade and downgrade rules.
 
 ## I-7 - Build the Desktop trusted boundary
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P7
 - **Rubric criteria:** R1, R4, R6, R7, R8
@@ -98,7 +98,7 @@ and existing lifecycle failure details.
 
 ## I-8 - Deliver the Desktop Launcher tab
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 3d
 - **Plan steps:** P8
 - **Rubric criteria:** R1, R2, R3, R4, R5, R7, R8

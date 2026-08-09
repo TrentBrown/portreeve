@@ -9,6 +9,7 @@ import {
   updatePresentation,
 } from './state.js';
 import { createStackEditorView } from './stack-editor-view.js';
+import { createLauncherView } from './launcher-view.js';
 
 /** @type {any} */
 let snapshot = null;
@@ -20,6 +21,7 @@ let selectedStack = null;
 /** @type {string|null} */
 let renderedStacksSignature = null;
 let busy = false;
+let activeView = 'overview';
 
 const notice = requiredElement('notice');
 const errors = requiredElement('errors');
@@ -40,6 +42,10 @@ const stackList = requiredElement('stack-list');
 const stackDetail = requiredElement('stack-detail');
 const stacksBrowser = requiredElement('stacks-browser');
 const stackEditorRoot = requiredElement('stack-editor');
+const launcherBrowser = requiredElement('launcher-browser');
+const launcherEditorRoot = requiredElement('launcher-editor');
+const launcherList = requiredElement('launcher-list');
+const launcherDetail = requiredElement('launcher-detail');
 const filterInput = /** @type {HTMLInputElement} */ (requiredElement('port-filter'));
 const confirmationDialog = /** @type {HTMLDialogElement} */ (
   requiredElement('confirmation-dialog')
@@ -63,6 +69,13 @@ const snapshotDialog = /** @type {HTMLDialogElement} */ (
 );
 const discardEditorDialog = /** @type {HTMLDialogElement} */ (
   requiredElement('discard-editor-dialog')
+);
+const attachedCloseDialog = /** @type {HTMLDialogElement} */ (
+  requiredElement('attached-close-dialog')
+);
+const attachedCloseList = requiredElement('attached-close-list');
+const terminateAttachedButton = /** @type {HTMLButtonElement} */ (
+  requiredElement('terminate-attached')
 );
 let snapshotJson = '';
 
@@ -110,6 +123,25 @@ const stackEditor = createStackEditorView({
   onOperation: showOperation,
 });
 
+const launcherView = createLauncherView({
+  browser: launcherBrowser,
+  editor: launcherEditorRoot,
+  list: launcherList,
+  detail: launcherDetail,
+  api: window.portreeveDesktop,
+  confirm: confirmAction,
+  confirmDiscard: async () => {
+    discardEditorDialog.showModal();
+    return (await dialogResult(discardEditorDialog)) === 'discard';
+  },
+  onOperation: showOperation,
+  onOpenStack: (stackId) => {
+    selectedStack = stackId;
+    activateNamedTab('stacks');
+    void stackEditor.openKnown(stackId);
+  },
+});
+
 /** @type {Readonly<Record<string, {label: string, title?: string, message?: string, confirm: boolean}>>} */
 const actionDefinitions = Object.freeze({
   installAndStart: {
@@ -144,14 +176,18 @@ for (const tab of document.querySelectorAll('.tab')) {
     if (view !== 'stacks' && stackEditor.isOpen()) {
       if (!(await stackEditor.requestClose())) return;
     }
+    if (view !== 'launcher' && launcherView.isOpen()) {
+      if (!(await launcherView.requestClose())) return;
+    }
     activateTab(tab, view);
+    if (view === 'launcher') await launcherView.open();
   });
 }
 
 let closeAfterDiscard = false;
 let closePromptOpen = false;
 window.addEventListener('beforeunload', (event) => {
-  if (closeAfterDiscard || !stackEditor.isDirty()) return;
+  if (closeAfterDiscard || (!stackEditor.isDirty() && !launcherView.isDirty())) return;
   event.preventDefault();
   event.returnValue = false;
   if (closePromptOpen) return;
@@ -169,7 +205,11 @@ requiredElement('refresh').addEventListener('click', async () => {
   await runBusy(async () => {
     notice.textContent = 'Refreshing…';
     render(await window.portreeveDesktop.refresh());
+    if (activeView === 'launcher') await launcherView.refresh();
   });
+});
+requiredElement('refresh-launchers').addEventListener('click', async () => {
+  await launcherView.refresh();
 });
 requiredElement('uninstall').addEventListener('click', async () => {
   if (
@@ -214,6 +254,34 @@ requiredElement('copy-snapshot').addEventListener('click', async () => {
 });
 
 window.portreeveDesktop.subscribe(render);
+window.portreeveDesktop.subscribeApplicationCloseBlocked((state) => {
+  attachedCloseList.replaceChildren(
+    ...state.attached.map((/** @type {any} */ entry) => {
+      const item = document.createElement('li');
+      item.textContent = `${entry.project} (${entry.stackRootName}), started ${new Date(entry.startedAt).toLocaleString()}`;
+      return item;
+    }),
+  );
+  terminateAttachedButton.textContent =
+    state.attached.length === 1
+      ? 'Terminate attached command'
+      : `Terminate ${state.attached.length} attached commands`;
+  terminateAttachedButton.onclick = async () => {
+    terminateAttachedButton.disabled = true;
+    try {
+      for (const entry of state.attached) {
+        await window.portreeveDesktop.terminateLauncherAttached(entry.stackId);
+      }
+      attachedCloseDialog.close('terminate');
+      showOperation('Attached launcher termination requested.', [
+        'PortReeve remains open until the owned process groups finish terminating. Close it again after their status changes.',
+      ]);
+    } finally {
+      terminateAttachedButton.disabled = false;
+    }
+  };
+  if (!attachedCloseDialog.open) attachedCloseDialog.showModal();
+});
 render(await window.portreeveDesktop.getSnapshot());
 
 /** @param {any} next */
@@ -255,6 +323,7 @@ function render(next) {
   renderActions();
   renderPorts();
   renderStacks();
+  launcherView.setStacks(next.stacks);
   if (busy) setControlsDisabled(true);
 }
 
@@ -547,6 +616,7 @@ function renderStackDetail(stack) {
   actions.className = 'actions stack-actions';
   actions.append(
     actionButton('Edit Definition', () => stackEditor.openKnown(stack.id)),
+    actionButton('Open in Launcher', () => openLauncherFromStack(stack.id)),
   );
   const allowedActions = availableStackActions(snapshot, stack);
   if (allowedActions.includes('prepare')) {
@@ -866,12 +936,27 @@ function actionGuidance(lifecycle, actions) {
 
 /** @param {Element} tab @param {string|undefined} view */
 function activateTab(tab, view) {
+  activeView = view ?? 'overview';
   for (const candidate of document.querySelectorAll('.tab')) {
     candidate.classList.toggle('active', candidate === tab);
   }
   requiredElement('overview').hidden = view !== 'overview';
   requiredElement('ports').hidden = view !== 'ports';
   requiredElement('stacks').hidden = view !== 'stacks';
+  requiredElement('launcher').hidden = view !== 'launcher';
+}
+
+/** @param {string} view */
+function activateNamedTab(view) {
+  const tab = document.querySelector(`.tab[data-view="${view}"]`);
+  if (tab === null) throw new Error(`Missing ${view} tab.`);
+  activateTab(tab, view);
+}
+
+/** @param {string} stackId */
+function openLauncherFromStack(stackId) {
+  activateNamedTab('launcher');
+  void launcherView.open(stackId);
 }
 
 /** @param {string} reason */

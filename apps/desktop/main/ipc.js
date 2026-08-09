@@ -6,6 +6,7 @@ import {
   DesktopLifecycleActionResultSchema,
   DesktopLauncherActionRequestSchema,
   DesktopLauncherDocumentMutationResultSchema,
+  DesktopLauncherDocumentSchema,
   DesktopLauncherDocumentOpenRequestSchema,
   DesktopLauncherDocumentSaveRequestSchema,
   DesktopLauncherOutputEventSchema,
@@ -240,7 +241,9 @@ export function registerDesktopIpc(options) {
   options.ipcMain.handle(IPC_CHANNELS.openLauncherDocument, async (event, request) => {
     requireTrusted(event);
     const { stackId } = DesktopLauncherDocumentOpenRequestSchema.parse(request);
-    return options.coordinator.openLauncherDocument(stackId);
+    return DesktopLauncherDocumentSchema.parse(
+      await options.coordinator.openLauncherDocument(stackId),
+    );
   });
   options.ipcMain.handle(IPC_CHANNELS.saveLauncherDocument, async (event, request) => {
     requireTrusted(event);

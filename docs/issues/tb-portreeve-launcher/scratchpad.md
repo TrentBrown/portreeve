@@ -232,3 +232,19 @@ Existing Desktop lifecycle results now identify the failed step and expose the a
 - Add failure details only to the future Launcher tab - leaves the known Overview failure unresolved.
 - Forward complete lifecycle status and process output objects - exposes unnecessary paths and implementation details through preload.
 - Keep only the generic message and error code - does not identify the failed step, timeout or exit state, or evidence transition needed for diagnosis.
+
+## [14] Keep launcher discovery inside opaque Desktop documents
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Desktop launcher document schema, main adapter, renderer editor suggestions, and security tests
+
+Electron main performs exact-directory launcher discovery for the stack root or the currently trusted contained working directory when a launcher document is opened. The opaque document response carries only suggested commands, ambiguity candidates, environment mappings, and basename-only provenance. The renderer may accept, edit, or ignore those values but cannot request discovery for an arbitrary path. Endpoint value preview is derived from the existing reduced stack snapshot rather than a new filesystem or daemon capability.
+
+**Triggered by:** P8 needs manifest provenance and fill-in-the-blanks suggestions without granting the renderer path-based discovery authority.
+
+**Alternatives considered:**
+
+Add a generic discover(path) IPC method - rejected because it exposes filesystem probing authority. Omit provenance and suggestions - rejected by the approved P8 experience. Resolve endpoint values by adding a mutating environment API - rejected because the reduced stack snapshot already contains the nonsecret facts needed for preview.
