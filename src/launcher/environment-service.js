@@ -162,6 +162,7 @@ export class LauncherEnvironmentService {
         generationId: generation.id,
         activationId: activation?.id ?? null,
         socketPath: this.client.socketPath,
+        stack,
         environment: result.environment,
         endpoints: result.endpoints.map(({ component, endpoint, host, required }) => ({
           component,

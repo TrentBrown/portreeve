@@ -30,6 +30,15 @@ import {
 } from './commands/ports.js';
 import { serveCommand } from './commands/serve.js';
 import {
+  initLauncherCommand,
+  restartLauncherCommand,
+  startLauncherCommand,
+  statusLauncherCommand,
+  stopLauncherCommand,
+  trustLauncherCommand,
+  validateLauncherCommand,
+} from './commands/launcher.js';
+import {
   abandonStackEndpointCommand,
   applyStackCommand,
   beginStackActivationCommand,
@@ -395,6 +404,81 @@ export function createProgram() {
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output')
     .action(snapshotStackEndpointsCommand);
+
+  const launcher = program
+    .command('launcher')
+    .description('Configure and run a stack-linked project launcher');
+
+  launcher
+    .command('init')
+    .description('Interactively create and trust an absent launcher definition')
+    .option('--stack-root <path>', 'select an explicit applied stack root')
+    .option('--home <path>', 'override the PortReeve application directory')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(initLauncherCommand);
+
+  launcher
+    .command('validate')
+    .description('Validate a launcher against its local stack definition')
+    .option('--stack-root <path>', 'select an explicit stack root')
+    .option('--home <path>', 'override the PortReeve application directory')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(validateLauncherCommand);
+
+  launcher
+    .command('trust')
+    .description('Review and trust the exact current launcher revision')
+    .option('--stack-root <path>', 'select an explicit applied stack root')
+    .option('--home <path>', 'override the PortReeve application directory')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(trustLauncherCommand);
+
+  launcher
+    .command('start')
+    .description('Start the selected stack through its trusted launcher')
+    .option('--stack-root <path>', 'select an explicit applied stack root')
+    .option('--home <path>', 'override the PortReeve application directory')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option(
+      '--run-start-anyway',
+      'explicitly repair a partially observed non-conflicting stack',
+    )
+    .option('--json', 'emit versioned JSON output')
+    .action(startLauncherCommand);
+
+  launcher
+    .command('stop')
+    .description('Stop the selected stack through its trusted project command')
+    .option('--stack-root <path>', 'select an explicit applied stack root')
+    .option('--home <path>', 'override the PortReeve application directory')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option(
+      '--allow-degraded',
+      'explicitly run Stop from cached context without daemon coordination',
+    )
+    .option('--json', 'emit versioned JSON output')
+    .action(stopLauncherCommand);
+
+  launcher
+    .command('restart')
+    .description('Restart the selected stack through its trusted launcher')
+    .option('--stack-root <path>', 'select an explicit applied stack root')
+    .option('--home <path>', 'override the PortReeve application directory')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(restartLauncherCommand);
+
+  launcher
+    .command('status')
+    .description('Run advisory project Status and report authoritative evidence')
+    .option('--stack-root <path>', 'select an explicit applied stack root')
+    .option('--home <path>', 'override the PortReeve application directory')
+    .option('--socket <path>', 'override the Unix socket path')
+    .option('--json', 'emit versioned JSON output')
+    .action(statusLauncherCommand);
 
   const config = program
     .command('config')

@@ -28,9 +28,24 @@ test('shares exact revision trust and nonsecret cache in a private atomic file',
       generationId: '22222222-2222-4222-8222-222222222222',
       activationId: null,
       socketPath: '/private/portreeve.sock',
+      stack: {
+        id: '11111111-1111-4111-8111-111111111111',
+        project: 'example',
+        stackRoot: '/stack',
+        currentRevision: 'c'.repeat(64),
+        definition: {
+          version: 1,
+          project: 'example',
+          components: { api: { endpoints: { default: {} } } },
+        },
+        createdAt: '2026-08-08T20:00:00.000Z',
+        updatedAt: '2026-08-08T20:00:00.000Z',
+        lastUsedAt: '2026-08-08T20:00:00.000Z',
+      },
       environment: { API_PORT: '3000' },
     });
     expect(await store.cached('/stack', revision)).toMatchObject({
+      stack: { project: 'example', stackRoot: '/stack' },
       environment: { API_PORT: '3000' },
     });
     expect(await store.cached('/stack', otherRevision)).toBeNull();

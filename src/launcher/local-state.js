@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { chmod, lstat, open, readFile, rename, unlink } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
-import { TimestampSchema } from '../protocol/schemas.js';
+import { StackRecordSchema, TimestampSchema } from '../protocol/schemas.js';
 
 const RevisionSchema = z.string().regex(/^[a-f0-9]{64}$/);
 export const LauncherCachedEndpointSchema = z
@@ -23,6 +23,7 @@ export const LauncherEnvironmentCacheSchema = z
     generationId: z.uuid(),
     activationId: z.uuid().nullable(),
     socketPath: z.string().min(1),
+    stack: StackRecordSchema.optional(),
     environment: z.record(z.string(), z.string()),
     endpoints: z.array(LauncherCachedEndpointSchema).default([]),
   })

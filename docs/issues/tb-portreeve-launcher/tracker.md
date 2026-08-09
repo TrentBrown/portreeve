@@ -9,14 +9,14 @@
 
 | # | Criterion (short) | Status | PR | Notes |
 |---|-------------------|--------|----|-------|
-| R1 | Launcher configuration and trust | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25) | P1/I-1 implements the strict document, contained paths, exact revision, and shared trust primitives; CLI and Desktop workflows remain |
-| R2 | Setup and endpoint environment | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#27](https://github.com/TrentBrown/portreeve/pull/27) | P1/I-1 implements suggestions; P3/I-3 resolves every host and Docker mapping at operation time and caches nonsecret exact-revision context; CLI and UI remain |
-| R3 | Command-only lifecycle | NOT YET | [#27](https://github.com/TrentBrown/portreeve/pull/27), [#28](https://github.com/TrentBrown/portreeve/pull/28) | P3/I-3 implements evidence states; P4/I-4 adds finite execution, every Start gate, project-command-only Stop, advisory Status, and freshly revalidated composed Restart; CLI and Desktop integration remain |
+| R1 | Launcher configuration and trust | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#29](https://github.com/TrentBrown/portreeve/pull/29) | P1 adds strict document/trust primitives; P5 adds exclusive CLI creation, validation, resolved exact-revision review, and noninteractive refusal; Desktop editing remains |
+| R2 | Setup and endpoint environment | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#27](https://github.com/TrentBrown/portreeve/pull/27), [#29](https://github.com/TrentBrown/portreeve/pull/29) | P1 adds suggestions; P3 resolves values; P5 presents CLI provenance and endpoint mappings; Desktop setup remains |
+| R3 | Command-only lifecycle | NOT YET | [#27](https://github.com/TrentBrown/portreeve/pull/27), [#28](https://github.com/TrentBrown/portreeve/pull/28), [#29](https://github.com/TrentBrown/portreeve/pull/29) | P3-P4 provide evidence and finite execution; P5 exposes all CLI operations and explicit consent; Desktop integration remains |
 | R4 | Attached execution | NOT YET | - | Planned for P6-P9 / I-6-I-9 |
 | R5 | Verified activation | NOT YET | [#27](https://github.com/TrentBrown/portreeve/pull/27) | P3/I-3 reserves verified for a current matching activation with fresh active required-provider evidence; attached activation and UI transitions remain |
-| R6 | Shared engine and coordination | NOT YET | [#26](https://github.com/TrentBrown/portreeve/pull/26), [#27](https://github.com/TrentBrown/portreeve/pull/27), [#28](https://github.com/TrentBrown/portreeve/pull/28) | P2/I-2 adds daemon sessions; P3/I-3 adds environment and evidence; P4/I-4 adds the shared finite engine with renewable coordination and immutable snapshots; CLI/Desktop interfaces remain |
+| R6 | Shared engine and coordination | NOT YET | [#26](https://github.com/TrentBrown/portreeve/pull/26), [#27](https://github.com/TrentBrown/portreeve/pull/27), [#28](https://github.com/TrentBrown/portreeve/pull/28), [#29](https://github.com/TrentBrown/portreeve/pull/29) | P2-P4 add sessions, environment, evidence, and finite engine; P5 wires the CLI through one shared runtime; Desktop parity remains |
 | R7 | Desktop operation and diagnostics | NOT YET | [#26](https://github.com/TrentBrown/portreeve/pull/26), [#28](https://github.com/TrentBrown/portreeve/pull/28) | P2/I-2 adds bounded safe records; P4/I-4 adds bounded streamed output and structured current-session failures; the Desktop result, history, and existing-lifecycle failure UI remain |
-| R8 | Degraded and platform behavior | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#26](https://github.com/TrentBrown/portreeve/pull/26), [#27](https://github.com/TrentBrown/portreeve/pull/27), [#28](https://github.com/TrentBrown/portreeve/pull/28) | P1-P3 establish cache/reset/loss/local evidence; P4 enforces daemon-required Start/Restart, confirmed cached Stop, cached Status, and POSIX-only execution; Linux CLI and final retention coverage remain |
+| R8 | Degraded and platform behavior | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#26](https://github.com/TrentBrown/portreeve/pull/26), [#27](https://github.com/TrentBrown/portreeve/pull/27), [#28](https://github.com/TrentBrown/portreeve/pull/28), [#29](https://github.com/TrentBrown/portreeve/pull/29) | P1-P4 establish degraded policy; P5 adds fresh-process cached CLI operation and native compiled coverage; final cross-platform release evidence remains |
 
 ## PR Log
 
@@ -69,7 +69,7 @@ Append PR boundary entries here.
 ### PR #28 - Finite command-only launcher execution
 
 - **PR:** [#28](https://github.com/TrentBrown/portreeve/pull/28)
-- **Status:** in review
+- **Status:** merged 2026-08-08
 - **Scope:** P4 / I-4: closed-input login-shell command sessions, isolated POSIX
   process groups, operation-wide bounded output, timeout and cancellation cleanup,
   trusted command-only lifecycle policy, degraded Stop/Status, and renewable daemon
@@ -80,3 +80,18 @@ Append PR boundary entries here.
   release verification. Pinned verification passes build, typecheck, lint, 36 focused
   launcher tests, real Unix-socket integration, and every repository test across the
   normal host-aware run plus isolated lifecycle rerun.
+
+### PR #29 - Complete launcher CLI workflow
+
+- **PR:** [#29](https://github.com/TrentBrown/portreeve/pull/29)
+- **Status:** in review
+- **Scope:** P5 / I-5: interactive init, unapplied validation, resolved exact-revision
+  trust review, all finite lifecycle commands, explicit admission confirmations,
+  stable human/JSON output and exits, fresh-process degraded cache authority, and
+  standalone compiled execution.
+- **Evidence packet:** [pr-29](pr-29/)
+- **Result:** R1, R2, R3, R6, and R8 advance but remain `NOT YET` pending attached and
+  verified execution, Desktop boundaries and UI, and final release verification.
+  Focused verification passes 57 tests and 237 assertions. Every one of 356 unique
+  repository tests passes across the normal host-aware run plus isolated lifecycle
+  rerun. Judge: PASS. Code review: no findings.

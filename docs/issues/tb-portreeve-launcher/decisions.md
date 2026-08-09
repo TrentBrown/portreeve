@@ -150,3 +150,20 @@ When the daemon is healthy but the applied stack has no valid allocation generat
 - Reuse any cached context silently - may inject stale endpoint facts despite a healthy daemon proving there is no current generation.
 
 **Promoted:** 2026-08-08. PR: #28 https://github.com/TrentBrown/portreeve/pull/28.
+
+---
+
+## Cache the applied stack snapshot for fresh degraded CLI operation
+
+**Confidence:** HIGH
+
+**Blast Radius:** Launcher local-state schema, environment cache writes, CLI stack selection, degraded Stop and Status
+
+Persist the current nonsecret applied StackRecord with every newly resolved launcher environment cache. The CLI normally selects the applied stack from the daemon, but when the daemon is unavailable it may use only an exact-root, exact-launcher-revision cached stack snapshot. Keep the new field optional when reading existing version-1 state so earlier local development caches remain readable; if the snapshot is absent, refuse degraded execution with an actionable error rather than synthesizing timestamps or authority from project files.
+
+**Triggered by:** P5 CLI integration showed that a fresh process cannot construct the StackRecord required by the shared lifecycle engine after the daemon becomes unavailable.
+
+**Alternatives considered:**
+Reconstruct a StackRecord from portreeve.stack.json and cached IDs - invents durable metadata and can disagree with the last applied definition. Require the daemon for every CLI selection - contradicts approved degraded Stop and Status. Add a second CLI-only cache - duplicates shared Desktop and CLI state.
+
+**Promoted:** 2026-08-08. PR: #29 https://github.com/TrentBrown/portreeve/pull/29.
