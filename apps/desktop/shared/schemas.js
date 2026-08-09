@@ -1,7 +1,13 @@
 // @ts-check
 
 import { z } from 'zod';
-import { StackDefinitionSchema } from '../../../src/protocol/schemas.js';
+import {
+  LauncherEvidenceSummarySchema,
+  LauncherFailureSummarySchema,
+  LauncherIntegrationSummarySchema,
+  StackDefinitionSchema,
+} from '../../../src/protocol/schemas.js';
+import { LauncherDefinitionSchema } from '../../../src/launcher/definition.js';
 
 const TimestampSchema = z.iso.datetime({ offset: true });
 const SemanticVersionSchema = z
@@ -188,6 +194,254 @@ export const DesktopCopyTextRequestSchema = z
 
 export const DesktopCopyTextResultSchema = z
   .object({ schemaVersion: z.literal(1), copied: z.literal(true) })
+  .strict();
+
+const DesktopLauncherFileStateSchema = z.enum(['missing', 'valid', 'invalid']);
+const DesktopLauncherOperationSchema = z.enum(['start', 'stop', 'restart', 'status']);
+const DesktopLauncherOutcomeSchema = z.enum([
+  'succeeded',
+  'failed',
+  'cancelled',
+  'timed-out',
+  'lost',
+]);
+const DesktopLauncherOutputChunkSchema = z
+  .object({
+    sequence: z.number().int().nonnegative(),
+    stream: z.enum(['stdout', 'stderr', 'system']),
+    text: z.string().max(262_144),
+  })
+  .strict();
+
+export const DesktopLauncherOutputSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    sessionId: IdentifierSchema,
+    stackId: IdentifierSchema,
+    operation: DesktopLauncherOperationSchema,
+    chunks: z.array(DesktopLauncherOutputChunkSchema),
+    truncated: z.boolean(),
+    retainedBytes: z.number().int().nonnegative().max(1_048_576),
+    totalBytes: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export const DesktopLauncherOutputEventSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    sessionId: IdentifierSchema,
+    stackId: IdentifierSchema,
+    operation: DesktopLauncherOperationSchema,
+    chunk: DesktopLauncherOutputChunkSchema,
+  })
+  .strict();
+
+const DesktopLauncherHistoryRecordSchema = z
+  .object({
+    id: IdentifierSchema,
+    operation: DesktopLauncherOperationSchema,
+    executionMode: z.enum(['finite', 'attached']),
+    launcherRevision: z.string().regex(/^[a-f0-9]{64}$/),
+    generationId: IdentifierSchema.nullable(),
+    state: z.enum(['active', 'terminal']),
+    outcome: DesktopLauncherOutcomeSchema.nullable(),
+    startedAt: TimestampSchema,
+    completedAt: TimestampSchema.nullable(),
+    durationMilliseconds: z.number().int().nonnegative().nullable(),
+    exitCode: z.number().int().min(0).max(255).nullable(),
+    signal: z.string().min(1).max(32).nullable(),
+    degraded: z.boolean(),
+    beforeEvidence: LauncherEvidenceSummarySchema.nullable(),
+    afterEvidence: LauncherEvidenceSummarySchema.nullable(),
+    failure: LauncherFailureSummarySchema.nullable(),
+    integration: LauncherIntegrationSummarySchema.nullable(),
+  })
+  .strict();
+
+const DesktopLauncherSummarySchema = z
+  .object({
+    stackId: IdentifierSchema,
+    project: z.string().min(1),
+    stackRootName: z.string().min(1),
+    fileState: DesktopLauncherFileStateSchema,
+    revision: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .nullable(),
+    trusted: z.boolean(),
+    integrationMode: z.enum(['command-only', 'verified-activation']).nullable(),
+    startMode: z.enum(['finite', 'attached']).nullable(),
+    attached: z.boolean(),
+    evidence: LauncherEvidenceSummarySchema.nullable(),
+    history: z.array(DesktopLauncherHistoryRecordSchema).max(20),
+    error: SafeErrorSchema.nullable(),
+  })
+  .strict();
+
+export const DesktopLauncherSnapshotSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    observedAt: TimestampSchema,
+    stale: z.boolean(),
+    launchers: z.array(DesktopLauncherSummarySchema),
+    errors: z.array(
+      z
+        .object({
+          stackId: IdentifierSchema.nullable(),
+          code: z.string().min(1),
+          message: z.string().min(1),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export const DesktopLauncherDocumentSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    documentId: IdentifierSchema,
+    stackId: IdentifierSchema,
+    project: z.string().min(1),
+    stackRootName: z.string().min(1),
+    fileState: DesktopLauncherFileStateSchema,
+    revision: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .nullable(),
+    trusted: z.boolean(),
+    canonical: z.boolean(),
+    definition: LauncherDefinitionSchema.nullable(),
+    error: SafeErrorSchema.nullable(),
+  })
+  .strict();
+
+export const DesktopLauncherDocumentOpenRequestSchema = z
+  .object({ stackId: IdentifierSchema })
+  .strict();
+
+export const DesktopLauncherDocumentSaveRequestSchema = z
+  .object({
+    documentId: IdentifierSchema,
+    definition: LauncherDefinitionSchema,
+    overwrite: z.boolean().default(false),
+    confirmDowngrade: z.boolean().default(false),
+  })
+  .strict();
+
+export const DesktopLauncherDocumentMutationResultSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    documentId: IdentifierSchema,
+    outcome: z.enum(['saved-and-trusted', 'conflict', 'invalid', 'failed']),
+    saved: z.boolean(),
+    trusted: z.boolean(),
+    message: z.string().min(1),
+    document: DesktopLauncherDocumentSchema.nullable(),
+    error: SafeErrorSchema.nullable(),
+  })
+  .strict();
+
+export const DesktopLauncherActionRequestSchema = z
+  .object({
+    stackId: IdentifierSchema,
+    operation: DesktopLauncherOperationSchema,
+    runStartAnyway: z.boolean().default(false),
+    allowDegraded: z.boolean().default(false),
+  })
+  .strict();
+
+export const DesktopLauncherSessionRequestSchema = z
+  .object({ sessionId: IdentifierSchema })
+  .strict();
+
+export const DesktopLauncherStackRequestSchema = z
+  .object({ stackId: IdentifierSchema })
+  .strict();
+
+const DesktopLauncherResultSchema = z
+  .object({
+    outcome: z.enum(['succeeded', 'failed', 'cancelled', 'timed-out']),
+    degraded: z.boolean(),
+    environmentSource: z.string().min(1).nullable(),
+    beforeEvidence: LauncherEvidenceSummarySchema.nullable(),
+    afterEvidence: LauncherEvidenceSummarySchema.nullable(),
+    failure: LauncherFailureSummarySchema.nullable(),
+    integration: LauncherIntegrationSummarySchema.nullable(),
+    steps: z.array(
+      z
+        .object({
+          step: DesktopLauncherOperationSchema,
+          outcome: z.enum(['succeeded', 'failed', 'cancelled', 'timed-out']),
+          startedAt: TimestampSchema,
+          completedAt: TimestampSchema,
+          durationMilliseconds: z.number().int().nonnegative(),
+          exitCode: z.number().int().min(0).max(255).nullable(),
+          signal: z.string().min(1).max(32).nullable(),
+          failure: SafeErrorSchema.nullable(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export const DesktopLauncherSessionSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    sessionId: IdentifierSchema,
+    stackId: IdentifierSchema,
+    operation: DesktopLauncherOperationSchema,
+    state: z.enum(['running', 'terminal']),
+    startedAt: TimestampSchema,
+    completedAt: TimestampSchema.nullable(),
+    result: DesktopLauncherResultSchema.nullable(),
+    output: DesktopLauncherOutputSchema,
+  })
+  .strict();
+
+export const DesktopLauncherSessionEventSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    sessionId: IdentifierSchema,
+    stackId: IdentifierSchema,
+    operation: DesktopLauncherOperationSchema,
+    state: z.enum(['running', 'terminal']),
+    startedAt: TimestampSchema,
+    completedAt: TimestampSchema.nullable(),
+    result: DesktopLauncherResultSchema.nullable(),
+  })
+  .strict();
+
+export const DesktopLauncherTerminationResultSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    stackId: IdentifierSchema,
+    requested: z.boolean(),
+  })
+  .strict();
+
+export const DesktopLauncherSaveOutputResultSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    outcome: z.enum(['saved', 'cancelled']),
+    filename: z.string().min(1).nullable(),
+  })
+  .strict();
+
+export const DesktopApplicationCloseStateSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    allowed: z.boolean(),
+    attached: z.array(
+      z
+        .object({
+          stackId: IdentifierSchema,
+          project: z.string().min(1),
+          stackRootName: z.string().min(1),
+          startedAt: TimestampSchema,
+        })
+        .strict(),
+    ),
+  })
   .strict();
 
 const DesktopStackDocumentIssueSchema = z
@@ -390,6 +644,32 @@ const DesktopMutationOutcomeSchema = z.enum([
   'failed',
 ]);
 
+const DesktopLifecycleEvidenceSchema = z
+  .object({
+    mode: z.enum(['none', 'manual', 'supervised', 'ambiguous']),
+    installation: z.enum(['absent', 'installed', 'invalid']),
+    supervisor: z.enum(['unavailable', 'inactive', 'starting', 'active', 'failed']),
+    socket: z.enum(['unavailable', 'healthy', 'unhealthy', 'incompatible']),
+    limitations: z.array(z.string().min(1)),
+  })
+  .strict();
+
+const DesktopLifecycleFailureSchema = z
+  .object({
+    step: z.string().min(1),
+    code: z.string().min(1),
+    message: z.string().min(1),
+    exitCode: z.number().int().min(0).max(255).nullable(),
+    timedOut: z.boolean(),
+    output: z
+      .object({ text: z.string().max(65_536), truncated: z.boolean() })
+      .strict()
+      .nullable(),
+    before: DesktopLifecycleEvidenceSchema.nullable(),
+    after: DesktopLifecycleEvidenceSchema.nullable(),
+  })
+  .strict();
+
 export const DesktopLifecycleActionResultSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -399,6 +679,7 @@ export const DesktopLifecycleActionResultSchema = z
     message: z.string().min(1),
     errorCode: z.string().min(1).nullable(),
     error: SafeErrorSchema.nullable(),
+    failure: DesktopLifecycleFailureSchema.nullable(),
     steps: z.array(
       z
         .object({
@@ -414,6 +695,10 @@ export const DesktopLifecycleActionResultSchema = z
           changed: z.boolean(),
           errorCode: z.string().min(1).nullable(),
           error: SafeErrorSchema.nullable(),
+          startedAt: TimestampSchema,
+          completedAt: TimestampSchema,
+          before: DesktopLifecycleEvidenceSchema,
+          after: DesktopLifecycleEvidenceSchema,
         })
         .strict(),
     ),
@@ -605,5 +890,17 @@ export const IPC_CHANNELS = Object.freeze({
   previewStackPrune: 'portreeve:desktop:preview-stack-prune',
   executeStackPrune: 'portreeve:desktop:execute-stack-prune',
   previewStackSnapshot: 'portreeve:desktop:preview-stack-snapshot',
+  getLauncherSnapshot: 'portreeve:desktop:get-launcher-snapshot',
+  openLauncherDocument: 'portreeve:desktop:open-launcher-document',
+  saveLauncherDocument: 'portreeve:desktop:save-launcher-document',
+  beginLauncherAction: 'portreeve:desktop:begin-launcher-action',
+  getLauncherSession: 'portreeve:desktop:get-launcher-session',
+  cancelLauncherSession: 'portreeve:desktop:cancel-launcher-session',
+  terminateLauncherAttached: 'portreeve:desktop:terminate-launcher-attached',
+  getLauncherOutput: 'portreeve:desktop:get-launcher-output',
+  saveLauncherOutput: 'portreeve:desktop:save-launcher-output',
+  launcherOutput: 'portreeve:desktop:launcher-output',
+  launcherSessionChanged: 'portreeve:desktop:launcher-session-changed',
+  applicationCloseBlocked: 'portreeve:desktop:application-close-blocked',
   copyText: 'portreeve:desktop:copy-text',
 });

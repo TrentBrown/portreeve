@@ -31,7 +31,29 @@ interface Window {
       component: string,
       gatewayHost: string,
     ): Promise<any>;
+    getLauncherSnapshot(): Promise<any>;
+    openLauncherDocument(stackId: string): Promise<any>;
+    saveLauncherDocument(
+      documentId: string,
+      definition: unknown,
+      overwrite?: boolean,
+      confirmDowngrade?: boolean,
+    ): Promise<any>;
+    beginLauncherAction(
+      stackId: string,
+      operation: 'start' | 'stop' | 'restart' | 'status',
+      runStartAnyway?: boolean,
+      allowDegraded?: boolean,
+    ): Promise<any>;
+    getLauncherSession(sessionId: string): Promise<any>;
+    cancelLauncherSession(sessionId: string): Promise<any>;
+    terminateLauncherAttached(stackId: string): Promise<any>;
+    getLauncherOutput(sessionId: string): Promise<any>;
+    saveLauncherOutput(sessionId: string): Promise<any>;
     copyText(text: string): Promise<any>;
     subscribe(callback: (snapshot: any) => void): () => void;
+    subscribeLauncherOutput(callback: (event: any) => void): () => void;
+    subscribeLauncherSessions(callback: (session: any) => void): () => void;
+    subscribeApplicationCloseBlocked(callback: (state: any) => void): () => void;
   };
 }

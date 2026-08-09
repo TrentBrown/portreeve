@@ -161,6 +161,10 @@ async function invokeJson(run, executablePath, arguments_, kind, timeoutMillisec
     throw desktopAdapterError(
       `invalid_${kind}_json`,
       `PortReeve returned invalid ${kind} data.`,
+      {
+        exitCode: result.exitCode,
+        output: result.stderr || result.stdout,
+      },
     );
   }
   if (typeof envelope !== 'object' || envelope === null || envelope.version !== 1) {
@@ -229,6 +233,7 @@ export function runExecutable(
           desktopAdapterError(
             'lifecycle_timeout',
             'The bundled PortReeve CLI did not respond in time.',
+            { timedOut: true, exitCode: null, output: stderr },
           ),
         );
         return;
@@ -238,18 +243,19 @@ export function runExecutable(
           desktopAdapterError(
             'lifecycle_output_limit',
             'The bundled PortReeve CLI exceeded its output limit.',
+            { timedOut: false, exitCode: null, output: stderr || stdout },
           ),
         );
         return;
       }
-      resolvePromise({ stdout, exitCode: code ?? 70 });
+      resolvePromise({ stdout, stderr, exitCode: code ?? 70 });
     });
   });
 }
 
-/** @param {string} code @param {string} message */
-function desktopAdapterError(code, message) {
+/** @param {string} code @param {string} message @param {Record<string, unknown>} [details] */
+function desktopAdapterError(code, message, details = {}) {
   const error = new Error(message);
-  Object.assign(error, { code });
+  Object.assign(error, { code, ...details });
   return error;
 }

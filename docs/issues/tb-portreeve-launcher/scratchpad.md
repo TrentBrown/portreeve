@@ -198,3 +198,37 @@ Extend safe launcher-operation terminal metadata with a strict nullable integrat
 
 **Alternatives considered:**
 Replace afterEvidence with the earlier verified snapshot - rejected because afterEvidence should remain the freshest terminal observation. Keep maturity session-only - rejected because recent safe operation history could not explain verified success or an upgrade suggestion. Persist the full activation or command context - rejected because the daemon boundary requires reduced safe metadata only.
+
+## [12] Use opaque asynchronous Desktop launcher sessions
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Electron main, preload and IPC schemas, launcher runtime ownership, output retention, cancellation, saving, and application close
+
+Desktop begins launcher work in Electron main and immediately returns an opaque session ID instead of keeping one renderer IPC invocation open for the command lifetime. Main retains at most twenty bounded output sessions for the application session, publishes strict output and terminal-state events, and accepts only session or stack IDs for inspection, cancellation, explicit attached termination, and user-selected output saving. Fresh main-process attached-session evidence blocks BrowserWindow close; filesystem paths, process-group IDs, credentials, raw environments, and command authority never cross preload.
+
+**Triggered by:** P7 must support no-timeout attached Start, live output, navigation, cancellation, saving, and quit protection without moving process authority into the renderer.
+
+**Alternatives considered:**
+- Keep one IPC request pending until execution ends - prevents the renderer from receiving an operation capability before an attached Start completes and makes cancellation and navigation awkward.
+- Give the renderer filesystem or process identifiers - violates the approved sandbox and application-local authority boundary.
+- Persist raw output automatically - violates the settled session-only output contract.
+
+## [13] Carry actionable lifecycle failures through one bounded safe schema
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Desktop lifecycle coordinator, CLI adapter, shared schemas, preload validation, and the existing Overview operation-result UI
+
+Existing Desktop lifecycle results now identify the failed step and expose the available stable code and message, exit code, timeout state, a bounded current-session output tail, and reduced before and after lifecycle evidence. The renderer displays these details with the existing operation result. Full CLI envelopes, executable arguments, nested causes, filesystem authority, and unbounded output remain in Electron main.
+
+**Triggered by:** P7 explicitly retains the earlier user-reported generic install-and-start failure as a cross-cutting actionable-diagnostics requirement.
+
+**Alternatives considered:**
+- Add failure details only to the future Launcher tab - leaves the known Overview failure unresolved.
+- Forward complete lifecycle status and process output objects - exposes unnecessary paths and implementation details through preload.
+- Keep only the generic message and error code - does not identify the failed step, timeout or exit state, or evidence transition needed for diagnosis.

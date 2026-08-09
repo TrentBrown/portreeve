@@ -220,6 +220,103 @@ test('validates opaque stack-document capabilities without accepting filesystem 
   expect(retries).toEqual([documentId]);
 });
 
+test('validates launcher capabilities and forwards only reduced session events', async () => {
+  /** @type {Map<string, (event: any, ...arguments_: any[]) => Promise<any>>} */
+  const handlers = new Map();
+  const outputSubscription = {
+    callback: /** @type {((event: unknown) => void)|null} */ (null),
+  };
+  /** @type {unknown[]} */
+  const sent = [];
+  const stackId = '44444444-4444-4444-8444-444444444444';
+  const sessionId = '99999999-9999-4999-8999-999999999999';
+  const session = launcherSession(stackId, sessionId);
+  registerDesktopIpc({
+    ipcMain: /** @type {any} */ ({
+      /** @param {string} channel @param {(event: any, ...arguments_: any[]) => Promise<any>} handler */
+      handle(channel, handler) {
+        handlers.set(channel, handler);
+      },
+    }),
+    coordinator: /** @type {any} */ ({
+      subscribe() {
+        return () => true;
+      },
+      /** @param {(event: unknown) => void} callback */
+      subscribeLauncherOutput(callback) {
+        outputSubscription.callback = callback;
+        return () => true;
+      },
+      subscribeLauncherSessions() {
+        return () => true;
+      },
+      /** @param {unknown} request */
+      async beginLauncherAction(request) {
+        expect(request).toEqual({
+          stackId,
+          operation: 'start',
+          runStartAnyway: false,
+          allowDegraded: false,
+        });
+        return session;
+      },
+      /** @param {string} id */
+      launcherOutput(id) {
+        expect(id).toBe(sessionId);
+        return session.output;
+      },
+    }),
+    windows: () => [
+      /** @type {any} */ ({
+        isDestroyed: () => false,
+        webContents: {
+          /** @param {string} channel @param {unknown} value */
+          send: (channel, value) => sent.push({ channel, value }),
+        },
+      }),
+    ],
+  });
+  const mainFrame = { url: RENDERER_URL };
+  const event = { sender: { mainFrame }, senderFrame: mainFrame };
+
+  await expect(
+    handlers.get(IPC_CHANNELS.beginLauncherAction)?.(event, {
+      stackId: '/private/stack',
+      operation: 'start',
+    }),
+  ).rejects.toThrow();
+  expect(
+    await handlers.get(IPC_CHANNELS.beginLauncherAction)?.(event, {
+      stackId,
+      operation: 'start',
+    }),
+  ).toMatchObject({ sessionId, state: 'running' });
+  await expect(
+    handlers.get(IPC_CHANNELS.getLauncherOutput)?.(event, {
+      sessionId,
+      path: '/tmp/output.log',
+    }),
+  ).rejects.toThrow();
+  expect(
+    await handlers.get(IPC_CHANNELS.getLauncherOutput)?.(event, { sessionId }),
+  ).toEqual(session.output);
+
+  outputSubscription.callback?.({
+    schemaVersion: 1,
+    sessionId,
+    stackId,
+    operation: 'start',
+    chunk: { sequence: 0, stream: 'stdout', text: 'ready\n' },
+  });
+  expect(sent).toEqual([
+    {
+      channel: IPC_CHANNELS.launcherOutput,
+      value: expect.objectContaining({ sessionId, stackId }),
+    },
+  ]);
+  expect(JSON.stringify(sent)).not.toMatch(/path|processGroupId|credential/);
+});
+
 /** @param {string} documentId @param {unknown} snapshot */
 function documentMutation(documentId, snapshot) {
   return {
@@ -235,5 +332,29 @@ function documentMutation(documentId, snapshot) {
     issues: [],
     error: null,
     snapshot,
+  };
+}
+
+/** @param {string} stackId @param {string} sessionId */
+function launcherSession(stackId, sessionId) {
+  return {
+    schemaVersion: 1,
+    sessionId,
+    stackId,
+    operation: 'start',
+    state: 'running',
+    startedAt: timestamp,
+    completedAt: null,
+    result: null,
+    output: {
+      schemaVersion: 1,
+      sessionId,
+      stackId,
+      operation: 'start',
+      chunks: [],
+      truncated: false,
+      retainedBytes: 0,
+      totalBytes: 0,
+    },
   };
 }

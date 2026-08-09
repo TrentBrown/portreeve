@@ -52,6 +52,7 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
     'apps/desktop/main/index.js',
     'apps/desktop/main/cli-adapter.js',
     'apps/desktop/main/inventory-adapter.js',
+    'apps/desktop/main/launcher-adapter.js',
     'apps/desktop/main/stack-adapter.js',
     'apps/desktop/main/stack-document.js',
     'apps/desktop/main/update.js',
@@ -83,6 +84,11 @@ test('keeps stack file paths and evidence out of the preload document API', asyn
   expect(preload).not.toContain('fingerprint');
   expect(preload).not.toContain('readFile');
   expect(preload).not.toContain('writeFile');
+  expect(preload).toContain('openLauncherDocument: async (stackId) =>');
+  expect(preload).toContain('saveLauncherDocument: async (');
+  expect(preload).not.toMatch(/openLauncherDocument:\s*async\s*\([^)]*path/i);
+  expect(preload).not.toMatch(/saveLauncherOutput:\s*async\s*\([^)]*path/i);
+  expect(preload).not.toContain('processGroupId');
 });
 
 test('sets a distinct Electron user-data root before startup', async () => {

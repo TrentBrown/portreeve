@@ -85,7 +85,7 @@ integration-mode upgrade and downgrade rules.
 
 ## I-7 - Build the Desktop trusted boundary
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P7
 - **Rubric criteria:** R1, R4, R6, R7, R8

@@ -372,7 +372,7 @@ function mergeEnvironment(injected, inherited = process.env) {
 }
 
 /** @param {number} limit */
-function createOutputTail(limit) {
+export function createOutputTail(limit) {
   if (!Number.isSafeInteger(limit) || limit < 1) {
     throw commandError('launcher_output_limit_invalid', 'The output limit is invalid.');
   }
