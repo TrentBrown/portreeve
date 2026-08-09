@@ -82,7 +82,12 @@ export class LauncherEnvironmentService {
    */
   async resolve(input) {
     const stack = StackRecordSchema.parse(input.stack);
-    const launcher = LauncherExecutionDocumentSchema.parse(input.launcher);
+    const launcherInput = /** @type {Record<string, unknown>} */ (input.launcher);
+    const launcher = LauncherExecutionDocumentSchema.parse({
+      stackRoot: launcherInput.stackRoot,
+      revision: launcherInput.revision,
+      definition: launcherInput.definition,
+    });
     if (launcher.stackRoot !== stack.stackRoot) {
       throw environmentError(
         'launcher_stack_mismatch',

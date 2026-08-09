@@ -11,12 +11,12 @@
 |---|-------------------|--------|----|-------|
 | R1 | Launcher configuration and trust | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25) | P1/I-1 implements the strict document, contained paths, exact revision, and shared trust primitives; CLI and Desktop workflows remain |
 | R2 | Setup and endpoint environment | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#27](https://github.com/TrentBrown/portreeve/pull/27) | P1/I-1 implements suggestions; P3/I-3 resolves every host and Docker mapping at operation time and caches nonsecret exact-revision context; CLI and UI remain |
-| R3 | Command-only lifecycle | NOT YET | [#27](https://github.com/TrentBrown/portreeve/pull/27) | P3/I-3 implements stopped, partial, fully observed, conflicting, and uncertain evidence states; lifecycle action policy and execution remain |
+| R3 | Command-only lifecycle | NOT YET | [#27](https://github.com/TrentBrown/portreeve/pull/27), [#28](https://github.com/TrentBrown/portreeve/pull/28) | P3/I-3 implements evidence states; P4/I-4 adds finite execution, every Start gate, project-command-only Stop, advisory Status, and freshly revalidated composed Restart; CLI and Desktop integration remain |
 | R4 | Attached execution | NOT YET | - | Planned for P6-P9 / I-6-I-9 |
 | R5 | Verified activation | NOT YET | [#27](https://github.com/TrentBrown/portreeve/pull/27) | P3/I-3 reserves verified for a current matching activation with fresh active required-provider evidence; attached activation and UI transitions remain |
-| R6 | Shared engine and coordination | NOT YET | [#26](https://github.com/TrentBrown/portreeve/pull/26), [#27](https://github.com/TrentBrown/portreeve/pull/27) | P2/I-2 adds daemon sessions; P3/I-3 adds shared environment and evidence services; shared command engine and CLI/Desktop integrations remain |
-| R7 | Desktop operation and diagnostics | NOT YET | [#26](https://github.com/TrentBrown/portreeve/pull/26) | P2/I-2 adds bounded safe operation records and global history events; the Desktop result and history UI remains |
-| R8 | Degraded and platform behavior | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#26](https://github.com/TrentBrown/portreeve/pull/26), [#27](https://github.com/TrentBrown/portreeve/pull/27) | P1-P2 establish cache/reset and loss behavior; P3 adds explicitly local uncoordinated lsof evidence that cannot claim ownership; degraded command policy remains |
+| R6 | Shared engine and coordination | NOT YET | [#26](https://github.com/TrentBrown/portreeve/pull/26), [#27](https://github.com/TrentBrown/portreeve/pull/27), [#28](https://github.com/TrentBrown/portreeve/pull/28) | P2/I-2 adds daemon sessions; P3/I-3 adds environment and evidence; P4/I-4 adds the shared finite engine with renewable coordination and immutable snapshots; CLI/Desktop interfaces remain |
+| R7 | Desktop operation and diagnostics | NOT YET | [#26](https://github.com/TrentBrown/portreeve/pull/26), [#28](https://github.com/TrentBrown/portreeve/pull/28) | P2/I-2 adds bounded safe records; P4/I-4 adds bounded streamed output and structured current-session failures; the Desktop result, history, and existing-lifecycle failure UI remain |
+| R8 | Degraded and platform behavior | NOT YET | [#25](https://github.com/TrentBrown/portreeve/pull/25), [#26](https://github.com/TrentBrown/portreeve/pull/26), [#27](https://github.com/TrentBrown/portreeve/pull/27), [#28](https://github.com/TrentBrown/portreeve/pull/28) | P1-P3 establish cache/reset/loss/local evidence; P4 enforces daemon-required Start/Restart, confirmed cached Stop, cached Status, and POSIX-only execution; Linux CLI and final retention coverage remain |
 
 ## PR Log
 
@@ -56,7 +56,7 @@ Append PR boundary entries here.
 ### PR #27 - Launcher environment and evidence services
 
 - **PR:** [#27](https://github.com/TrentBrown/portreeve/pull/27)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P3 / I-3: operation-time host and Docker endpoint resolution, fixed
   reserved context, exact-revision private cache, fresh daemon evidence state table,
   verified-activation matching, and explicitly local degraded lsof evidence.
@@ -65,3 +65,18 @@ Append PR boundary entries here.
   execution, CLI, attached activation, and Desktop slices. Pinned verification passes
   toolchain, typecheck, lint, build, 100 affected tests, real Unix-socket integration,
   and all 332 repository tests across host-isolated runs.
+
+### PR #28 - Finite command-only launcher execution
+
+- **PR:** [#28](https://github.com/TrentBrown/portreeve/pull/28)
+- **Status:** in review
+- **Scope:** P4 / I-4: closed-input login-shell command sessions, isolated POSIX
+  process groups, operation-wide bounded output, timeout and cancellation cleanup,
+  trusted command-only lifecycle policy, degraded Stop/Status, and renewable daemon
+  coordination around immutable execution snapshots.
+- **Evidence packet:** [pr-28](pr-28/)
+- **Result:** R3, R6, R7, and R8 advance but remain `NOT YET` pending CLI,
+  attached/verified execution, Desktop boundaries and UI, and final cross-platform
+  release verification. Pinned verification passes build, typecheck, lint, 36 focused
+  launcher tests, real Unix-socket integration, and every repository test across the
+  normal host-aware run plus isolated lifecycle rerun.
