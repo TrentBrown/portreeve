@@ -37,7 +37,7 @@ and final release verification are assigned to later approved plan steps.
 - Build/typecheck: PASS.
 - Lint/format: PASS for every changed file; the aggregate check has one unrelated
   ignored-handoff formatting failure.
-- Unit: PASS, 57 focused launcher/CLI/compiled tests and 235 assertions.
+- Unit: PASS, 57 focused launcher/CLI/compiled tests and 237 assertions.
 - Integration/runtime: PASS through real SQLite, Unix socket, official client,
   standalone executable, allocated environment, and login shell.
 - E2E/browser: N/A for this CLI-only slice.

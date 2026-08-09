@@ -92,6 +92,6 @@ Append PR boundary entries here.
 - **Evidence packet:** [pr-29](pr-29/)
 - **Result:** R1, R2, R3, R6, and R8 advance but remain `NOT YET` pending attached and
   verified execution, Desktop boundaries and UI, and final release verification.
-  Focused verification passes 57 tests and 235 assertions. Every one of 356 unique
+  Focused verification passes 57 tests and 237 assertions. Every one of 356 unique
   repository tests passes across the normal host-aware run plus isolated lifecycle
   rerun. Judge: PASS. Code review: no findings.

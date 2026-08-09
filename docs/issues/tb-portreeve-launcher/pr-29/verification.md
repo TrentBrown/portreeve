@@ -35,7 +35,7 @@ git status --short | sed -E 's/^...//' | rg '\.(js|md)$' | xargs "$PINNED_BUN" x
 PORTREEVE_SUPERVISOR_DEFINITION=/tmp/portreeve-pr29-supervisor.plist PORTREEVE_SUPERVISOR_LABEL=com.portreeve.pr29.test "$PINNED_BUN" test test/cli/lifecycle-commands.test.js
 ```
 
-- Focused launcher, CLI, and compiled surface: 57 tests, 235 assertions, 0 failures.
+- Focused launcher, CLI, and compiled surface: 57 tests, 237 assertions, 0 failures.
 - Normal repository run: 356 tests, 353 passes, 3 host-state failures, 1,502
   assertions.
 - Isolated lifecycle rerun: 5 tests, 22 assertions, 0 failures.
