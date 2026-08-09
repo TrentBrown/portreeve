@@ -13,6 +13,8 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { PortreeveClient } from '../../packages/client/src/index.js';
+import { createLauncherDocument } from '../../src/launcher/document.js';
+import { createLauncherLocalStateStore } from '../../src/launcher/local-state.js';
 
 /**
  * @returns {string}
@@ -136,6 +138,56 @@ test('Commander.js CLI runs from the standalone executable', async () => {
       expect(discoveredApplyOutput.result.stack).toMatchObject({
         project: 'compiled-discovery-stack',
         stackRoot: await realpath(stackRoot),
+      });
+
+      const launcher = await createLauncherDocument(
+        stackRoot,
+        {
+          version: 1,
+          operations: {
+            start: { command: 'printf "compiled launcher start\\n"' },
+            stop: { command: 'printf "compiled launcher stop\\n"' },
+            status: { command: 'printf "compiled launcher status\\n"' },
+          },
+          environment: [
+            {
+              name: 'API_PORT',
+              endpoint: { component: 'api', endpoint: 'http' },
+              value: 'host-port',
+            },
+          ],
+        },
+        { stackDefinition: discoveredApplyOutput.result.stack.definition },
+      );
+      await createLauncherLocalStateStore({
+        path: join(home, 'launcher-state.json'),
+      }).trust(launcher.stackRoot, launcher.revision);
+      const launcherStart = Bun.spawn(
+        [
+          binaryPath,
+          'launcher',
+          'start',
+          '--home',
+          home,
+          '--socket',
+          socketPath,
+          '--json',
+        ],
+        { cwd: frontendSource, stderr: 'pipe', stdout: 'pipe' },
+      );
+      const launcherStartCode = await launcherStart.exited;
+      const launcherStartError = await new Response(launcherStart.stderr).text();
+      const launcherStartOutput = JSON.parse(
+        await new Response(launcherStart.stdout).text(),
+      );
+      expect(launcherStartCode, launcherStartError).toBe(0);
+      expect(launcherStartOutput).toMatchObject({
+        version: 1,
+        result: {
+          operation: 'start',
+          outcome: 'succeeded',
+          steps: [{ step: 'start', command: { outcome: 'succeeded' } }],
+        },
       });
 
       await rm(definitionFile);

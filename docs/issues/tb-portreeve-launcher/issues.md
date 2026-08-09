@@ -47,7 +47,7 @@ and classify fresh daemon or explicitly local listener and activation evidence.
 
 ## I-4 - Implement finite command-only execution
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P4
 - **Rubric criteria:** R3, R6, R7, R8
@@ -60,7 +60,7 @@ Status, and composed Restart.
 
 ## I-5 - Deliver launcher CLI commands
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P5
 - **Rubric criteria:** R1, R2, R3, R6, R8

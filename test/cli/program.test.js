@@ -46,6 +46,7 @@ describe('PortReeve CLI', () => {
       'ports',
       'claims',
       'stacks',
+      'launcher',
       'config',
       'history',
       'logs',
@@ -78,6 +79,16 @@ describe('PortReeve CLI', () => {
       'prune',
       'resolve',
       'snapshot',
+    ]);
+    const launcher = program.commands.find((command) => command.name() === 'launcher');
+    expect(launcher?.commands.map((command) => command.name())).toEqual([
+      'init',
+      'validate',
+      'trust',
+      'start',
+      'stop',
+      'restart',
+      'status',
     ]);
   });
 });

@@ -69,7 +69,7 @@ Append PR boundary entries here.
 ### PR #28 - Finite command-only launcher execution
 
 - **PR:** [#28](https://github.com/TrentBrown/portreeve/pull/28)
-- **Status:** in review
+- **Status:** merged 2026-08-08
 - **Scope:** P4 / I-4: closed-input login-shell command sessions, isolated POSIX
   process groups, operation-wide bounded output, timeout and cancellation cleanup,
   trusted command-only lifecycle policy, degraded Stop/Status, and renewable daemon
