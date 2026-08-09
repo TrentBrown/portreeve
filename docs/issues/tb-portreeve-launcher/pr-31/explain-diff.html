@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PortReeve PR #31 — Desktop launcher trusted boundary</title>
+  <style>
+    :root { --ink:#17221d; --muted:#607069; --paper:#f6f1e7; --card:#fffdf8; --green:#17634d; --gold:#bd7b25; --red:#a63b32; --line:#d9d2c4; --blue:#315d7a; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--paper); font:17px/1.62 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    header { padding:64px 24px 46px; background:linear-gradient(135deg,#102f28,#1d7057); color:white; }
+    header div, main { max-width:1080px; margin:auto; }
+    .eyebrow { letter-spacing:.16em; text-transform:uppercase; font-size:.75rem; opacity:.78; }
+    h1 { font:700 clamp(2.4rem,6vw,4.8rem)/1.02 Georgia,serif; margin:.35rem 0 1rem; }
+    h2 { font:700 2.1rem/1.15 Georgia,serif; margin:3.4rem 0 1rem; }
+    h3 { margin-top:2rem; }
+    main { padding:26px 24px 80px; }
+    nav { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px 24px; margin:20px 0 38px; }
+    nav a { color:var(--green); margin-right:22px; white-space:nowrap; }
+    .callout { border-left:5px solid var(--gold); background:#fff7df; padding:16px 20px; margin:24px 0; border-radius:0 12px 12px 0; }
+    .warning { border-left-color:var(--red); background:#fff0ed; }
+    .flow { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:10px; align-items:stretch; margin:28px 0; }
+    .node { background:var(--card); border:1px solid var(--line); border-radius:13px; padding:15px; min-height:118px; }
+    .node strong { display:block; color:var(--green); margin-bottom:7px; }
+    .arrow { color:var(--gold); font-size:1.6rem; text-align:center; align-self:center; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:15px; padding:20px; }
+    .boundary { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:24px 0; }
+    .kept { border-top:5px solid var(--green); }
+    .withheld { border-top:5px solid var(--red); }
+    pre { white-space:pre-wrap; overflow-wrap:anywhere; background:#10211a; color:#eaf4ef; padding:18px; border-radius:12px; overflow:auto; font-size:.9rem; }
+    code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    table { width:100%; border-collapse:collapse; background:var(--card); }
+    th,td { padding:12px; border:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { background:#e9efe9; }
+    .quiz { margin:20px 0; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; }
+    .answers { display:grid; gap:8px; }
+    button { text-align:left; border:1px solid #9aab9f; background:white; border-radius:9px; padding:11px 13px; cursor:pointer; font:inherit; }
+    button:hover { border-color:var(--green); }
+    button.correct { background:#dff3e9; border-color:var(--green); }
+    button.wrong { background:#f8dfdc; border-color:var(--red); }
+    .feedback { min-height:1.6em; margin-top:9px; color:var(--muted); }
+    .small { color:var(--muted); font-size:.92rem; }
+    @media (max-width:760px) { .flow,.two,.boundary { grid-template-columns:1fr; } .arrow { transform:rotate(90deg); } }
+  </style>
+</head>
+<body>
+  <header><div>
+    <div class="eyebrow">PortReeve · Pull request 31 · P7</div>
+    <h1>Giving the Desktop a key, not a master key</h1>
+    <p>How PortReeve makes launcher files, commands, output, and attached processes usable from Electron while keeping filesystem and process authority in the trusted main process.</p>
+  </div></header>
+  <main>
+    <nav aria-label="Table of contents">
+      <a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#cases">Cases</a><a href="#quiz">Quiz</a>
+    </nav>
+
+    <section id="background">
+      <h2>Background</h2>
+      <p>By the end of PR #30, PortReeve already had a shared launcher engine. It could read a checked-in launcher, resolve allocated endpoints into environment variables, run finite or attached commands, coordinate same-root operations through the daemon, and evaluate fresh listener or activation evidence. The CLI could use all of this directly because it is itself a trusted local process.</p>
+      <p>An Electron renderer is different. It presents HTML and JavaScript, and therefore must be treated as an untrusted display surface even when all its current code is ours. Giving it a generic file path, shell command, process group ID, or filesystem method would turn a future renderer bug into local machine authority.</p>
+      <div class="boundary">
+        <div class="card kept"><h3>Main process keeps</h3><p>Canonical roots, file handles, exact revisions, runtime objects, abort controllers, process-group ownership, raw session output, and save dialogs.</p></div>
+        <div class="card withheld"><h3>Renderer receives</h3><p>Opaque document and session IDs, reduced evidence, bounded output views, safe history, named actions, and strict success or failure results.</p></div>
+      </div>
+      <div class="callout"><strong>The central rule:</strong> the renderer may ask PortReeve to perform one named operation, but it may not assemble its own filesystem or process operation from primitive capabilities.</div>
+    </section>
+
+    <section id="intuition">
+      <h2>Intuition</h2>
+      <p>Think of a hotel cloakroom ticket. The ticket lets its holder retrieve or discuss one deposited coat; it does not reveal the storeroom layout or open every door. PR #31 gives the renderer document and session tickets. Electron main resolves them to the real root, revision, runtime session, or save destination.</p>
+      <div class="flow">
+        <div class="node"><strong>Sandboxed renderer</strong><code>{ sessionId, operation }</code><br>Shows state and requests a named capability</div><div class="arrow">→</div>
+        <div class="node"><strong>Strict IPC + preload</strong>Validates one exact schema and trusted main frame</div><div class="arrow">→</div>
+        <div class="node"><strong>Electron main</strong>Owns files, shared runtime, cancellation, output tail, and process termination</div>
+      </div>
+      <p>Long-running attached Start makes this separation especially important. The first IPC call returns immediately with a random session ID. Main keeps an <code>AbortController</code>, the one-megabyte output tail, and the shared lifecycle promise. Later IPC calls can inspect output, cancel the session, or request exact attached termination without ever seeing a PID.</p>
+      <pre><code>// Renderer request
+beginLauncherAction(stackId, "start", false, false)
+
+// Reduced response
+{
+  sessionId: "opaque-uuid",
+  stackId: "opaque-stack-uuid",
+  operation: "start",
+  state: "running",
+  output: { chunks: [], retainedBytes: 0, truncated: false }
+}
+
+// Not present: root path, shell path, command, environment, PID, process group</code></pre>
+    </section>
+
+    <section id="code">
+      <h2>Code walkthrough</h2>
+      <div class="two">
+        <div class="card"><h3>Launcher documents</h3><p>The main adapter opens a known stack into an opaque document handle. Save uses exclusive creation for a missing file or exact-revision replacement for a known file. External changes return a conflict. Explicit overwrite may replace invalid bytes, but it re-reads a valid current document so downgrade confirmation cannot be bypassed.</p></div>
+        <div class="card"><h3>Exact saved trust</h3><p>Only after the atomic write succeeds does main trust the returned revision. The response contains the new reduced document state—not the canonical root or an arbitrary filename supplied by the renderer.</p></div>
+      </div>
+
+      <h3>Opaque asynchronous runtime sessions</h3>
+      <p><code>launcher-adapter.js</code> starts shared lifecycle execution without holding an IPC request open. Output chunks are split to strict event bounds and appended to the same UTF-8-safe one-megabyte tail used by command sessions. The adapter retains no more than twenty terminal output sessions, while running sessions remain available until completion.</p>
+
+      <h3>Close protection covers the dangerous interval</h3>
+      <p>An attached launcher session is marked from the trusted checked-in definition. The BrowserWindow close guard blocks while that Start or Restart is running—from trust and daemon admission, through process creation, until the command becomes terminal. This matters because checking only the local process registry leaves a narrow pre-spawn interval in which the operation is active but its group has not appeared yet.</p>
+      <div class="flow">
+        <div class="node"><strong>Pre-spawn</strong>Trust, allocation evidence, daemon admission<br><em>close blocked</em></div><div class="arrow">→</div>
+        <div class="node"><strong>Attached group live</strong>Output streams; Status and Stop may accompany<br><em>close blocked</em></div><div class="arrow">→</div>
+        <div class="node"><strong>Terminal</strong>Session settles and group authority is gone<br><em>close allowed</em></div>
+      </div>
+
+      <h3>Strict IPC is a capability list</h3>
+      <p>Shared Zod schemas define launcher snapshots, document mutations, actions, sessions, output, saving, termination, and blocked-close state. IPC accepts only the trusted main renderer frame. Preload exposes individual methods such as <code>openLauncherDocument(stackId)</code> and <code>cancelLauncherSession(sessionId)</code>; there is no generic invoke, read-file, write-file, shell, or signal method.</p>
+
+      <h3>History is durable; raw output is not</h3>
+      <p>The renderer can see the latest twenty daemon operation records after main removes stack roots and caller identities. Raw stdout and stderr stay only in this application session. Save output opens a native main-process dialog and writes only to the user-selected path; the renderer supplies no destination.</p>
+
+      <h3>The earlier lifecycle failure is now actionable</h3>
+      <p>The existing Overview operation result gains the failed step, stable code and message, exit or timeout state, reduced before/after evidence, and a bounded output tail when one is available. Install followed by unhealthy supervision is specifically reported as a health-verification failure rather than the earlier generic “failed without completing” box.</p>
+    </section>
+
+    <section id="cases">
+      <h2>Important cases</h2>
+      <table>
+        <thead><tr><th>Situation</th><th>Result</th><th>Boundary preserved</th></tr></thead>
+        <tbody>
+          <tr><td>Launcher file changed after editor open</td><td>Ordinary save returns conflict; overwrite or cancel is explicit.</td><td>No silent replacement and no renderer path.</td></tr>
+          <tr><td>Current valid file changes from verified to command-only</td><td>Even overwrite requires downgrade confirmation.</td><td>Overwrite cannot bypass maturity safety.</td></tr>
+          <tr><td>Attached Start is still preparing</td><td>Window close is blocked before the process group exists.</td><td>No pre-spawn close race.</td></tr>
+          <tr><td>Daemon becomes unavailable while Desktop owns an attached group</td><td>Explicit termination uses the locally held stack association.</td><td>No new daemon lookup or renderer PID authority.</td></tr>
+          <tr><td>Project emits more than one megabyte</td><td>Main retains a UTF-8-safe trailing tail with a truncation marker.</td><td>Memory retention remains bounded.</td></tr>
+          <tr><td>User saves output</td><td>Main opens the native dialog and writes the current bounded tail.</td><td>Persistence is explicit; destination stays out of IPC.</td></tr>
+          <tr><td>Unexpected OS error mentions a private path</td><td>Renderer receives the code and a generic safe message.</td><td>Main-process path detail is redacted.</td></tr>
+          <tr><td>Install succeeds but supervised health does not match</td><td>Overview names health verification and shows reduced final evidence.</td><td>Diagnosis improves without forwarding the full CLI envelope.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="quiz">
+      <h2>Quiz</h2>
+      <p class="small">Choose one answer. Feedback appears immediately.</p>
+      <div class="quiz" data-answer="1"><strong>1. Why does beginLauncherAction return before the command finishes?</strong><div class="answers"><button>The daemon requires every Desktop command to be detached immediately.</button><button>An opaque session lets attached work stream, survive navigation, and accept cancellation without exposing runtime authority.</button><button>Electron IPC cannot carry a Promise that settles after more than ten seconds.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="2"><strong>2. What may the renderer supply when saving launcher output?</strong><div class="answers"><button>An absolute path chosen by a renderer file-picker component.</button><button>A directory handle and filename validated by preload.</button><button>Only the session ID; Electron main owns the native destination dialog.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="0"><strong>3. Why does the close guard track the whole attached session instead of only the live process registry?</strong><div class="answers"><button>It closes the pre-spawn gap while trust, evidence, or daemon admission is still running.</button><button>It allows finite Status commands to keep the app open after Start has ended.</button><button>It lets the renderer decide whether a command should count as attached.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="1"><strong>4. What happens if an externally changed valid launcher is overwritten with a weaker integration mode?</strong><div class="answers"><button>Explicit overwrite always wins because conflict consent subsumes maturity consent.</button><button>Main re-reads the current document and separately requires downgrade confirmation.</button><button>The daemon rewrites the file back to verified mode after the next operation.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="2"><strong>5. Which information is intentionally durable?</strong><div class="answers"><button>The final megabyte of stdout and stderr for the latest twenty operations.</button><button>Process-group IDs and root paths needed to reattach after Desktop restarts.</button><button>Reduced operation metadata and evidence; raw output persists only through explicit user save.</button></div><div class="feedback"></div></div>
+    </section>
+  </main>
+  <script>
+    document.querySelectorAll('.quiz').forEach((quiz) => {
+      const answer = Number(quiz.dataset.answer);
+      const buttons = [...quiz.querySelectorAll('button')];
+      const feedback = quiz.querySelector('.feedback');
+      buttons.forEach((button, index) => button.addEventListener('click', () => {
+        buttons.forEach((item) => item.classList.remove('correct','wrong'));
+        button.classList.add(index === answer ? 'correct' : 'wrong');
+        buttons[answer].classList.add('correct');
+        feedback.textContent = index === answer ? 'Correct — that keeps authority in main while preserving a usable Desktop capability.' : 'Not quite. Review the trusted-boundary and attached-session sections above.';
+      }));
+    });
+  </script>
+</body>
+</html>

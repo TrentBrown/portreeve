@@ -203,6 +203,12 @@ test('reports install success followed by failed health verification as partial'
     outcome: 'partial',
     changed: true,
     errorCode: 'supervised_health_verification_failed',
+    failure: {
+      step: 'health-verification',
+      code: 'supervised_health_verification_failed',
+      before: { mode: 'supervised' },
+      after: { socket: 'healthy' },
+    },
   });
   expect(result.steps.map((/** @type {any} */ { operation }) => operation)).toEqual([
     'install',
@@ -265,6 +271,10 @@ test('returns actionable safe details and refreshes after an adapter-level mutat
       async start() {
         throw Object.assign(new Error('private executable failure'), {
           code: 'lifecycle_unavailable',
+          step: 'spawn-cli',
+          exitCode: 70,
+          timedOut: false,
+          output: 'PortReeve could not open its private runtime file.',
         });
       },
       async status() {
@@ -287,6 +297,15 @@ test('returns actionable safe details and refreshes after an adapter-level mutat
     error: {
       code: 'lifecycle_unavailable',
       message: 'private executable failure',
+    },
+    failure: {
+      step: 'spawn-cli',
+      exitCode: 70,
+      timedOut: false,
+      output: {
+        text: 'PortReeve could not open its private runtime file.',
+        truncated: false,
+      },
     },
   });
   expect(statusCalls).toBe(1);

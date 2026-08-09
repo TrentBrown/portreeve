@@ -63,3 +63,24 @@ export function bindWindowRefresh(window, coordinator) {
   window.on('minimize', () => coordinator.stop());
   window.once('closed', () => coordinator.stop());
 }
+
+/**
+ * Attached launcher commands are application-owned. Prevent the BrowserWindow from
+ * disappearing while those groups are live so the renderer can offer Stop or cancel
+ * the exit attempt. No renderer response can bypass this fresh main-process check.
+ *
+ * @param {Pick<import('electron').BrowserWindow, 'on'|'once'|'removeListener'>} window
+ * @param {{launcherCloseState(): {allowed: boolean, attached: unknown[]}}} coordinator
+ * @param {(state: unknown) => void} onBlocked
+ */
+export function bindWindowCloseGuard(window, coordinator, onBlocked) {
+  /** @param {{preventDefault(): void}} event */
+  const guard = (event) => {
+    const state = coordinator.launcherCloseState();
+    if (state.allowed) return;
+    event.preventDefault();
+    onBlocked(state);
+  };
+  window.on('close', guard);
+  window.once('closed', () => window.removeListener('close', guard));
+}

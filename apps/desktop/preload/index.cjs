@@ -27,6 +27,18 @@ const channels = Object.freeze({
   previewStackPrune: 'portreeve:desktop:preview-stack-prune',
   executeStackPrune: 'portreeve:desktop:execute-stack-prune',
   previewStackSnapshot: 'portreeve:desktop:preview-stack-snapshot',
+  getLauncherSnapshot: 'portreeve:desktop:get-launcher-snapshot',
+  openLauncherDocument: 'portreeve:desktop:open-launcher-document',
+  saveLauncherDocument: 'portreeve:desktop:save-launcher-document',
+  beginLauncherAction: 'portreeve:desktop:begin-launcher-action',
+  getLauncherSession: 'portreeve:desktop:get-launcher-session',
+  cancelLauncherSession: 'portreeve:desktop:cancel-launcher-session',
+  terminateLauncherAttached: 'portreeve:desktop:terminate-launcher-attached',
+  getLauncherOutput: 'portreeve:desktop:get-launcher-output',
+  saveLauncherOutput: 'portreeve:desktop:save-launcher-output',
+  launcherOutput: 'portreeve:desktop:launcher-output',
+  launcherSessionChanged: 'portreeve:desktop:launcher-session-changed',
+  applicationCloseBlocked: 'portreeve:desktop:application-close-blocked',
   copyText: 'portreeve:desktop:copy-text',
 });
 
@@ -133,6 +145,125 @@ function requireStackPrunePreview(value) {
   return value;
 }
 
+function requireLauncherSnapshot(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    !Array.isArray(value.launchers) ||
+    !Array.isArray(value.errors)
+  ) {
+    throw new Error('The main process returned an invalid launcher snapshot.');
+  }
+  return value;
+}
+
+function requireLauncherDocument(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    typeof value.documentId !== 'string' ||
+    typeof value.stackId !== 'string'
+  ) {
+    throw new Error('The main process returned an invalid launcher document.');
+  }
+  return value;
+}
+
+function requireLauncherDocumentResult(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    typeof value.documentId !== 'string' ||
+    typeof value.outcome !== 'string'
+  ) {
+    throw new Error('The main process returned an invalid launcher document result.');
+  }
+  return value;
+}
+
+function requireLauncherSession(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    typeof value.sessionId !== 'string' ||
+    !['running', 'terminal'].includes(value.state)
+  ) {
+    throw new Error('The main process returned an invalid launcher session.');
+  }
+  return value;
+}
+
+function requireLauncherOutput(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    typeof value.sessionId !== 'string' ||
+    !Array.isArray(value.chunks)
+  ) {
+    throw new Error('The main process returned invalid launcher output.');
+  }
+  return value;
+}
+
+function requireLauncherOutputEvent(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    typeof value.sessionId !== 'string' ||
+    typeof value.chunk !== 'object' ||
+    value.chunk === null
+  ) {
+    throw new Error('The main process returned an invalid launcher output event.');
+  }
+  return value;
+}
+
+function requireLauncherTermination(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    typeof value.stackId !== 'string' ||
+    typeof value.requested !== 'boolean'
+  ) {
+    throw new Error(
+      'The main process returned an invalid launcher termination result.',
+    );
+  }
+  return value;
+}
+
+function requireLauncherSaveOutput(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    !['saved', 'cancelled'].includes(value.outcome)
+  ) {
+    throw new Error('The main process returned an invalid output-save result.');
+  }
+  return value;
+}
+
+function requireApplicationCloseState(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    typeof value.allowed !== 'boolean' ||
+    !Array.isArray(value.attached)
+  ) {
+    throw new Error('The main process returned an invalid application-close state.');
+  }
+  return value;
+}
+
 contextBridge.exposeInMainWorld(
   'portreeveDesktop',
   Object.freeze({
@@ -201,6 +332,60 @@ contextBridge.exposeInMainWorld(
           gatewayHost,
         }),
       ),
+    getLauncherSnapshot: async () =>
+      requireLauncherSnapshot(await ipcRenderer.invoke(channels.getLauncherSnapshot)),
+    openLauncherDocument: async (stackId) =>
+      requireLauncherDocument(
+        await ipcRenderer.invoke(channels.openLauncherDocument, { stackId }),
+      ),
+    saveLauncherDocument: async (
+      documentId,
+      definition,
+      overwrite = false,
+      confirmDowngrade = false,
+    ) =>
+      requireLauncherDocumentResult(
+        await ipcRenderer.invoke(channels.saveLauncherDocument, {
+          documentId,
+          definition,
+          overwrite,
+          confirmDowngrade,
+        }),
+      ),
+    beginLauncherAction: async (
+      stackId,
+      operation,
+      runStartAnyway = false,
+      allowDegraded = false,
+    ) =>
+      requireLauncherSession(
+        await ipcRenderer.invoke(channels.beginLauncherAction, {
+          stackId,
+          operation,
+          runStartAnyway,
+          allowDegraded,
+        }),
+      ),
+    getLauncherSession: async (sessionId) =>
+      requireLauncherSession(
+        await ipcRenderer.invoke(channels.getLauncherSession, { sessionId }),
+      ),
+    cancelLauncherSession: async (sessionId) =>
+      requireLauncherSession(
+        await ipcRenderer.invoke(channels.cancelLauncherSession, { sessionId }),
+      ),
+    terminateLauncherAttached: async (stackId) =>
+      requireLauncherTermination(
+        await ipcRenderer.invoke(channels.terminateLauncherAttached, { stackId }),
+      ),
+    getLauncherOutput: async (sessionId) =>
+      requireLauncherOutput(
+        await ipcRenderer.invoke(channels.getLauncherOutput, { sessionId }),
+      ),
+    saveLauncherOutput: async (sessionId) =>
+      requireLauncherSaveOutput(
+        await ipcRenderer.invoke(channels.saveLauncherOutput, { sessionId }),
+      ),
     copyText: async (text) =>
       requireCopyTextResult(await ipcRenderer.invoke(channels.copyText, { text })),
     subscribe(callback) {
@@ -210,6 +395,32 @@ contextBridge.exposeInMainWorld(
       const listener = (_event, value) => callback(requireSnapshot(value));
       ipcRenderer.on(channels.snapshotChanged, listener);
       return () => ipcRenderer.removeListener(channels.snapshotChanged, listener);
+    },
+    subscribeLauncherOutput(callback) {
+      if (typeof callback !== 'function') {
+        throw new TypeError('Launcher output subscriber must be a function.');
+      }
+      const listener = (_event, value) => callback(requireLauncherOutputEvent(value));
+      ipcRenderer.on(channels.launcherOutput, listener);
+      return () => ipcRenderer.removeListener(channels.launcherOutput, listener);
+    },
+    subscribeLauncherSessions(callback) {
+      if (typeof callback !== 'function') {
+        throw new TypeError('Launcher session subscriber must be a function.');
+      }
+      const listener = (_event, value) => callback(requireLauncherSession(value));
+      ipcRenderer.on(channels.launcherSessionChanged, listener);
+      return () =>
+        ipcRenderer.removeListener(channels.launcherSessionChanged, listener);
+    },
+    subscribeApplicationCloseBlocked(callback) {
+      if (typeof callback !== 'function') {
+        throw new TypeError('Application-close subscriber must be a function.');
+      }
+      const listener = (_event, value) => callback(requireApplicationCloseState(value));
+      ipcRenderer.on(channels.applicationCloseBlocked, listener);
+      return () =>
+        ipcRenderer.removeListener(channels.applicationCloseBlocked, listener);
     },
   }),
 );

@@ -298,12 +298,39 @@ async function invokeLifecycle(name) {
     showOperation(result.message, [
       `Outcome: ${result.outcome}`,
       ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
+      ...lifecycleFailureDetails(result.failure),
       ...result.steps.map(
         (/** @type {any} */ step) =>
-          `${step.operation}: ${step.outcome}${step.error ? ` — ${step.error.code}: ${step.error.message}` : ''}`,
+          `${step.operation}: ${step.outcome}${step.error ? ` — ${step.error.code}: ${step.error.message}` : ''} (${lifecycleEvidenceText(step.after)})`,
       ),
     ]);
   });
+}
+
+/** @param {any} failure */
+function lifecycleFailureDetails(failure) {
+  if (failure === null || failure === undefined) return [];
+  return [
+    `Failed step: ${failure.step}`,
+    ...(failure.exitCode === null ? [] : [`Exit code: ${failure.exitCode}`]),
+    ...(failure.timedOut ? ['The operation timed out.'] : []),
+    ...(failure.before === null
+      ? []
+      : [`Before: ${lifecycleEvidenceText(failure.before)}`]),
+    ...(failure.after === null
+      ? []
+      : [`After: ${lifecycleEvidenceText(failure.after)}`]),
+    ...(failure.output === null
+      ? []
+      : [
+          `${failure.output.truncated ? 'Trailing output' : 'Output'}: ${failure.output.text}`,
+        ]),
+  ];
+}
+
+/** @param {any} evidence */
+function lifecycleEvidenceText(evidence) {
+  return `mode ${evidence.mode}; installation ${evidence.installation}; supervisor ${evidence.supervisor}; socket ${evidence.socket}`;
 }
 
 /** @param {() => Promise<any>} invoke */

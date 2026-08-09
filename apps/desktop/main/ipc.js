@@ -4,6 +4,19 @@ import {
   DesktopCopyTextRequestSchema,
   DesktopCopyTextResultSchema,
   DesktopLifecycleActionResultSchema,
+  DesktopLauncherActionRequestSchema,
+  DesktopLauncherDocumentMutationResultSchema,
+  DesktopLauncherDocumentOpenRequestSchema,
+  DesktopLauncherDocumentSaveRequestSchema,
+  DesktopLauncherOutputEventSchema,
+  DesktopLauncherOutputSchema,
+  DesktopLauncherSaveOutputResultSchema,
+  DesktopLauncherSessionEventSchema,
+  DesktopLauncherSessionRequestSchema,
+  DesktopLauncherSessionSchema,
+  DesktopLauncherSnapshotSchema,
+  DesktopLauncherStackRequestSchema,
+  DesktopLauncherTerminationResultSchema,
   DesktopOpenDownloadResultSchema,
   DesktopPurgeExecutionRequestSchema,
   DesktopPurgePreviewSchema,
@@ -49,7 +62,14 @@ export function isTrustedRenderer(event) {
  *     saveStackDocument(request: unknown): Promise<unknown>, retryStackDocumentApply(id: string): Promise<unknown>,
  *     reconcileStack(id: string): Promise<unknown>, endStack(id: string): Promise<unknown>,
  *     previewStackPrune(): Promise<unknown>, executeStackPrune(): Promise<unknown>,
- *     previewStackSnapshot(activationId: string, component: string, gatewayHost: string): Promise<unknown>
+ *     previewStackSnapshot(activationId: string, component: string, gatewayHost: string): Promise<unknown>,
+ *     launcherSnapshot(): Promise<unknown>, openLauncherDocument(stackId: string): Promise<unknown>,
+ *     saveLauncherDocument(request: unknown): Promise<unknown>, beginLauncherAction(request: unknown): Promise<unknown>,
+ *     launcherSession(sessionId: string): Promise<unknown>|unknown, cancelLauncherSession(sessionId: string): Promise<unknown>|unknown,
+ *     terminateLauncherAttached(stackId: string): Promise<unknown>, launcherOutput(sessionId: string): Promise<unknown>|unknown,
+ *     saveLauncherOutput(sessionId: string): Promise<unknown>,
+ *     subscribeLauncherOutput?(callback: (event: unknown) => void): () => boolean,
+ *     subscribeLauncherSessions?(callback: (event: unknown) => void): () => boolean
  *   },
  *   windows: () => Electron.BrowserWindow[]
  *   writeClipboard?: (text: string) => void
@@ -207,14 +227,115 @@ export function registerDesktopIpc(options) {
       ),
     );
   });
-  return options.coordinator.subscribe((snapshot) => {
-    const parsed = DesktopSnapshotSchema.parse(snapshot);
-    for (const window of options.windows()) {
-      if (!window.isDestroyed()) {
-        window.webContents.send(IPC_CHANNELS.snapshotChanged, parsed);
-      }
-    }
+  options.ipcMain.handle(
+    IPC_CHANNELS.getLauncherSnapshot,
+    async (event, ...arguments_) => {
+      requireTrusted(event);
+      requireNoArguments('Launcher snapshot', arguments_);
+      return DesktopLauncherSnapshotSchema.parse(
+        await options.coordinator.launcherSnapshot(),
+      );
+    },
+  );
+  options.ipcMain.handle(IPC_CHANNELS.openLauncherDocument, async (event, request) => {
+    requireTrusted(event);
+    const { stackId } = DesktopLauncherDocumentOpenRequestSchema.parse(request);
+    return options.coordinator.openLauncherDocument(stackId);
   });
+  options.ipcMain.handle(IPC_CHANNELS.saveLauncherDocument, async (event, request) => {
+    requireTrusted(event);
+    const input = DesktopLauncherDocumentSaveRequestSchema.parse(request);
+    return DesktopLauncherDocumentMutationResultSchema.parse(
+      await options.coordinator.saveLauncherDocument(input),
+    );
+  });
+  options.ipcMain.handle(IPC_CHANNELS.beginLauncherAction, async (event, request) => {
+    requireTrusted(event);
+    const input = DesktopLauncherActionRequestSchema.parse(request);
+    return DesktopLauncherSessionSchema.parse(
+      await options.coordinator.beginLauncherAction(input),
+    );
+  });
+  /** @type {Array<[string, (id: string) => Promise<unknown>|unknown]>} */
+  const launcherSessionHandlers = [
+    [IPC_CHANNELS.getLauncherSession, (id) => options.coordinator.launcherSession(id)],
+    [
+      IPC_CHANNELS.cancelLauncherSession,
+      (id) => options.coordinator.cancelLauncherSession(id),
+    ],
+  ];
+  for (const [channel, invoke] of launcherSessionHandlers) {
+    options.ipcMain.handle(channel, async (event, request) => {
+      requireTrusted(event);
+      const { sessionId } = DesktopLauncherSessionRequestSchema.parse(request);
+      return DesktopLauncherSessionSchema.parse(await invoke(sessionId));
+    });
+  }
+  options.ipcMain.handle(
+    IPC_CHANNELS.terminateLauncherAttached,
+    async (event, request) => {
+      requireTrusted(event);
+      const { stackId } = DesktopLauncherStackRequestSchema.parse(request);
+      return DesktopLauncherTerminationResultSchema.parse(
+        await options.coordinator.terminateLauncherAttached(stackId),
+      );
+    },
+  );
+  options.ipcMain.handle(IPC_CHANNELS.getLauncherOutput, async (event, request) => {
+    requireTrusted(event);
+    const { sessionId } = DesktopLauncherSessionRequestSchema.parse(request);
+    return DesktopLauncherOutputSchema.parse(
+      await options.coordinator.launcherOutput(sessionId),
+    );
+  });
+  options.ipcMain.handle(IPC_CHANNELS.saveLauncherOutput, async (event, request) => {
+    requireTrusted(event);
+    const { sessionId } = DesktopLauncherSessionRequestSchema.parse(request);
+    return DesktopLauncherSaveOutputResultSchema.parse(
+      await options.coordinator.saveLauncherOutput(sessionId),
+    );
+  });
+
+  /** @type {Array<() => boolean>} */
+  const unsubscribers = [];
+  unsubscribers.push(
+    options.coordinator.subscribe((snapshot) => {
+      const parsed = DesktopSnapshotSchema.parse(snapshot);
+      for (const window of options.windows()) {
+        if (!window.isDestroyed()) {
+          window.webContents.send(IPC_CHANNELS.snapshotChanged, parsed);
+        }
+      }
+    }),
+  );
+  if (options.coordinator.subscribeLauncherOutput !== undefined) {
+    unsubscribers.push(
+      options.coordinator.subscribeLauncherOutput((event) => {
+        const parsed = DesktopLauncherOutputEventSchema.parse(event);
+        sendToWindows(options.windows(), IPC_CHANNELS.launcherOutput, parsed);
+      }),
+    );
+  }
+  if (options.coordinator.subscribeLauncherSessions !== undefined) {
+    unsubscribers.push(
+      options.coordinator.subscribeLauncherSessions((event) => {
+        const parsed = DesktopLauncherSessionEventSchema.parse(event);
+        sendToWindows(options.windows(), IPC_CHANNELS.launcherSessionChanged, parsed);
+      }),
+    );
+  }
+  return () => {
+    let removed = true;
+    for (const unsubscribe of unsubscribers) removed = unsubscribe() && removed;
+    return removed;
+  };
+}
+
+/** @param {Electron.BrowserWindow[]} windows @param {string} channel @param {unknown} value */
+function sendToWindows(windows, channel, value) {
+  for (const window of windows) {
+    if (!window.isDestroyed()) window.webContents.send(channel, value);
+  }
 }
 
 /** @param {string} capability @param {unknown[]} arguments_ */

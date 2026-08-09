@@ -18,7 +18,7 @@ import { createDesktopSnapshot, reduceStackEndpointSnapshot } from './view-model
 import { basename } from 'node:path';
 
 /**
- * @param {{artifact: {source: 'local-release-candidate'|'published', desktopVersion: string, version: string, filename: string, sha256: string}, lifecycle: any, inventory: {listPorts(): Promise<unknown[]>}, stacks?: any, updates?: {check(): Promise<unknown>, openDownloadPage(): Promise<unknown>}, now?: () => Date, intervalMilliseconds?: number, schedule?: (callback: () => void, milliseconds: number) => any, cancel?: (timer: any) => void}} options
+ * @param {{artifact: {source: 'local-release-candidate'|'published', desktopVersion: string, version: string, filename: string, sha256: string}, lifecycle: any, inventory: {listPorts(): Promise<unknown[]>}, stacks?: any, launchers?: any, updates?: {check(): Promise<unknown>, openDownloadPage(): Promise<unknown>}, now?: () => Date, intervalMilliseconds?: number, schedule?: (callback: () => void, milliseconds: number) => any, cancel?: (timer: any) => void}} options
  */
 export function createStateCoordinator(options) {
   const now = options.now ?? (() => new Date());
@@ -198,6 +198,7 @@ export function createStateCoordinator(options) {
               ? null
               : safeError(result.error),
           steps: [reduceStep(result)],
+          failure: lifecycleResultFailure(result),
           snapshot: finalSnapshot,
         });
       } catch (error) {
@@ -317,6 +318,7 @@ export function createStateCoordinator(options) {
                           'PortReeve was installed, but the supervised server did not report matching healthy evidence.',
                       },
             steps,
+            failure: installAndStartFailure(install, start, healthy),
             snapshot: finalSnapshot,
           });
         } catch (error) {
@@ -505,6 +507,52 @@ export function createStateCoordinator(options) {
       }
       return options.updates.openDownloadPage();
     },
+    launcherSnapshot() {
+      return requireLaunchers(options).list();
+    },
+    /** @param {string} stackId */
+    openLauncherDocument(stackId) {
+      return requireLaunchers(options).openDocument(stackId);
+    },
+    /** @param {unknown} request */
+    saveLauncherDocument(request) {
+      return requireLaunchers(options).saveDocument(request);
+    },
+    /** @param {unknown} request */
+    beginLauncherAction(request) {
+      return requireLaunchers(options).begin(request);
+    },
+    /** @param {string} sessionId */
+    launcherSession(sessionId) {
+      return requireLaunchers(options).inspectSession(sessionId);
+    },
+    /** @param {string} sessionId */
+    cancelLauncherSession(sessionId) {
+      return requireLaunchers(options).cancelSession(sessionId);
+    },
+    /** @param {string} stackId */
+    terminateLauncherAttached(stackId) {
+      return requireLaunchers(options).terminateAttached(stackId);
+    },
+    /** @param {string} sessionId */
+    launcherOutput(sessionId) {
+      return requireLaunchers(options).output(sessionId);
+    },
+    /** @param {string} sessionId */
+    saveLauncherOutput(sessionId) {
+      return requireLaunchers(options).saveOutput(sessionId);
+    },
+    launcherCloseState() {
+      return requireLaunchers(options).closeState();
+    },
+    /** @param {(event: unknown) => void} callback */
+    subscribeLauncherOutput(callback) {
+      return requireLaunchers(options).subscribeOutput(callback);
+    },
+    /** @param {(event: unknown) => void} callback */
+    subscribeLauncherSessions(callback) {
+      return requireLaunchers(options).subscribeSessions(callback);
+    },
     start() {
       this.startPolling();
     },
@@ -525,6 +573,10 @@ function reduceStep(result) {
       result.error === null || result.error === undefined
         ? null
         : safeError(result.error),
+    startedAt: result.startedAt,
+    completedAt: result.completedAt,
+    before: reduceLifecycleEvidence(result.before),
+    after: reduceLifecycleEvidence(result.after),
   };
 }
 
@@ -540,8 +592,98 @@ function lifecycleFailure(action, error, snapshot) {
     errorCode: reduced.code,
     error: reduced,
     steps: [],
+    failure: lifecycleExceptionFailure(action, error),
     snapshot,
   });
+}
+
+/** @param {any} result */
+function lifecycleResultFailure(result) {
+  if (result.error === null || result.error === undefined) return null;
+  const error = safeError(result.error);
+  return {
+    step: result.operation,
+    ...error,
+    exitCode: null,
+    timedOut: false,
+    output: null,
+    before: reduceLifecycleEvidence(result.before),
+    after: reduceLifecycleEvidence(result.after),
+  };
+}
+
+/** @param {any} install @param {any} start @param {boolean} healthy */
+function installAndStartFailure(install, start, healthy) {
+  const failed =
+    start?.error !== null && start?.error !== undefined
+      ? start
+      : install.error !== null && install.error !== undefined
+        ? install
+        : null;
+  if (failed !== null) return lifecycleResultFailure(failed);
+  if (healthy) return null;
+  return {
+    step: 'health-verification',
+    code: 'supervised_health_verification_failed',
+    message:
+      'PortReeve was installed, but the supervised server did not report matching healthy evidence.',
+    exitCode: null,
+    timedOut: false,
+    output: null,
+    before: reduceLifecycleEvidence(install.before),
+    after:
+      start === null
+        ? reduceLifecycleEvidence(install.after)
+        : reduceLifecycleEvidence(start.after),
+  };
+}
+
+/** @param {string} action @param {unknown} error */
+function lifecycleExceptionFailure(action, error) {
+  const reduced = safeError(error);
+  const candidate = typeof error === 'object' && error !== null ? error : {};
+  const output =
+    'output' in candidate && typeof candidate.output === 'string'
+      ? boundedFailureOutput(candidate.output)
+      : null;
+  return {
+    step:
+      'step' in candidate && typeof candidate.step === 'string'
+        ? candidate.step
+        : action,
+    ...reduced,
+    exitCode:
+      'exitCode' in candidate && Number.isInteger(candidate.exitCode)
+        ? candidate.exitCode
+        : null,
+    timedOut:
+      'timedOut' in candidate && typeof candidate.timedOut === 'boolean'
+        ? candidate.timedOut
+        : reduced.code === 'lifecycle_timeout',
+    output,
+    before: null,
+    after: null,
+  };
+}
+
+/** @param {string} value */
+function boundedFailureOutput(value) {
+  const limit = 65_536;
+  return {
+    text: value.length > limit ? value.slice(-limit) : value,
+    truncated: value.length > limit,
+  };
+}
+
+/** @param {any} status */
+function reduceLifecycleEvidence(status) {
+  return {
+    mode: status.mode,
+    installation: status.installation.state,
+    supervisor: status.supervisor.state,
+    socket: status.socket.state,
+    limitations: status.limitations,
+  };
 }
 
 /** @param {any} lifecycle */
@@ -630,6 +772,15 @@ function requireStacks(options) {
   throw desktopCoordinatorError(
     'desktop_stacks_unavailable',
     'Stack management is unavailable in this desktop build.',
+  );
+}
+
+/** @param {{launchers?: any}} options */
+function requireLaunchers(options) {
+  if (options.launchers !== undefined) return options.launchers;
+  throw desktopCoordinatorError(
+    'desktop_launchers_unavailable',
+    'Launcher management is unavailable in this desktop build.',
   );
 }
 

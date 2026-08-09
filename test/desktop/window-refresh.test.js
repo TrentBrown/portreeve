@@ -2,7 +2,10 @@
 
 import { EventEmitter } from 'node:events';
 import { expect, test } from 'bun:test';
-import { bindWindowRefresh } from '../../apps/desktop/main/window.js';
+import {
+  bindWindowCloseGuard,
+  bindWindowRefresh,
+} from '../../apps/desktop/main/window.js';
 
 test('refreshes on focus and pauses polling while hidden or minimized', async () => {
   const events = new EventEmitter();
@@ -52,4 +55,36 @@ test('refreshes on focus and pauses polling while hidden or minimized', async ()
     'start',
     'stop',
   ]);
+});
+
+test('blocks window close while an application-owned attached launcher is live', () => {
+  const events = new EventEmitter();
+  let attached = true;
+  /** @type {unknown[]} */
+  const blocked = [];
+  bindWindowCloseGuard(
+    /** @type {any} */ (events),
+    {
+      launcherCloseState() {
+        return {
+          allowed: !attached,
+          attached: attached ? [{ project: 'caregiver' }] : [],
+        };
+      },
+    },
+    (state) => blocked.push(state),
+  );
+  let prevented = 0;
+  const close = () =>
+    events.emit('close', {
+      preventDefault() {
+        prevented += 1;
+      },
+    });
+  close();
+  expect(prevented).toBe(1);
+  expect(blocked).toHaveLength(1);
+  attached = false;
+  close();
+  expect(prevented).toBe(1);
 });
