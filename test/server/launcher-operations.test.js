@@ -96,11 +96,23 @@ test('coordinates launcher operations through the official socket client', async
         listenerCount: 0,
         reasonCodes: [],
       },
+      integration: {
+        mode: 'command-only',
+        verified: true,
+        upgradeSuggested: true,
+        generationId: crypto.randomUUID(),
+        activationId: crypto.randomUUID(),
+      },
     },
   );
   expect(completed).toMatchObject({
     changed: true,
-    operation: { state: 'terminal', outcome: 'succeeded', exitCode: 0 },
+    operation: {
+      state: 'terminal',
+      outcome: 'succeeded',
+      exitCode: 0,
+      integration: { verified: true, upgradeSuggested: true },
+    },
   });
   expect(await client.getLauncherOperation(session.operation.id)).toEqual(
     completed.operation,
@@ -114,6 +126,7 @@ test('coordinates launcher operations through the official socket client', async
         outcome: 'succeeded',
         exitCode: 0,
         afterEvidence: completed.operation.afterEvidence,
+        integration: completed.operation.integration,
       })
     ).changed,
   ).toBe(false);

@@ -326,6 +326,14 @@ export interface LauncherFailureSummary {
   message: string;
 }
 
+export interface LauncherIntegrationSummary {
+  mode: 'command-only' | 'verified-activation';
+  verified: boolean;
+  upgradeSuggested: boolean;
+  generationId: string | null;
+  activationId: string | null;
+}
+
 export interface LauncherOperationCompletion {
   outcome: 'succeeded' | 'failed' | 'cancelled' | 'timed-out';
   exitCode?: number | null;
@@ -334,6 +342,7 @@ export interface LauncherOperationCompletion {
   beforeEvidence?: LauncherEvidenceSummary | null;
   afterEvidence?: LauncherEvidenceSummary | null;
   failure?: LauncherFailureSummary | null;
+  integration?: LauncherIntegrationSummary | null;
 }
 
 export interface LauncherOperationRecord {
@@ -358,6 +367,7 @@ export interface LauncherOperationRecord {
   beforeEvidence: LauncherEvidenceSummary | null;
   afterEvidence: LauncherEvidenceSummary | null;
   failure: LauncherFailureSummary | null;
+  integration: LauncherIntegrationSummary | null;
 }
 
 export interface LauncherOperationSession {

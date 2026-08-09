@@ -60,7 +60,7 @@ Status, and composed Restart.
 
 ## I-5 - Deliver launcher CLI commands
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P5
 - **Rubric criteria:** R1, R2, R3, R6, R8
@@ -72,7 +72,7 @@ review, confirmations, stable automation output, and compiled macOS/Linux covera
 
 ## I-6 - Add attached and verified execution
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P6
 - **Rubric criteria:** R4, R5, R6

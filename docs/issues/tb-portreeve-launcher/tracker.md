@@ -84,7 +84,7 @@ Append PR boundary entries here.
 ### PR #29 - Complete launcher CLI workflow
 
 - **PR:** [#29](https://github.com/TrentBrown/portreeve/pull/29)
-- **Status:** in review
+- **Status:** merged 2026-08-08
 - **Scope:** P5 / I-5: interactive init, unapplied validation, resolved exact-revision
   trust review, all finite lifecycle commands, explicit admission confirmations,
   stable human/JSON output and exits, fresh-process degraded cache authority, and

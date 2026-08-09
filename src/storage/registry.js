@@ -3488,6 +3488,7 @@ function launcherOperationFromRow(row) {
     beforeEvidence: completion?.beforeEvidence ?? null,
     afterEvidence: completion?.afterEvidence ?? null,
     failure: completion?.failure ?? null,
+    integration: completion?.integration ?? null,
   });
 }
 

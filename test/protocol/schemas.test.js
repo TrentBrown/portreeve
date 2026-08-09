@@ -325,6 +325,46 @@ describe('protocol schemas', () => {
         },
       }),
     ).toThrow();
+    const generationId = crypto.randomUUID();
+    const activationId = crypto.randomUUID();
+    expect(
+      LauncherOperationCompleteRequestSchema.parse({
+        client,
+        credential: 't'.repeat(43),
+        completion: {
+          outcome: 'succeeded',
+          integration: {
+            mode: 'command-only',
+            verified: true,
+            upgradeSuggested: true,
+            generationId,
+            activationId,
+          },
+        },
+      }).completion.integration,
+    ).toEqual({
+      mode: 'command-only',
+      verified: true,
+      upgradeSuggested: true,
+      generationId,
+      activationId,
+    });
+    expect(() =>
+      LauncherOperationCompleteRequestSchema.parse({
+        client,
+        credential: 't'.repeat(43),
+        completion: {
+          outcome: 'succeeded',
+          integration: {
+            mode: 'verified-activation',
+            verified: false,
+            upgradeSuggested: true,
+            generationId: null,
+            activationId: null,
+          },
+        },
+      }),
+    ).toThrow();
   });
 
   test('negotiates overlap and reports missing capabilities', () => {
