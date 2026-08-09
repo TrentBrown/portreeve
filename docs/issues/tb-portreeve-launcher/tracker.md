@@ -128,7 +128,7 @@ Append PR boundary entries here.
 ### PR #32 - Desktop Launcher tab
 
 - **PR:** [#32](https://github.com/TrentBrown/portreeve/pull/32)
-- **Status:** in review
+- **Status:** merged 2026-08-08
 - **Scope:** P8 / I-8: fourth primary Launcher tab, stack-linked master-detail browser,
   guided editor and provenance, exact JSON review, Save and Trust, evidence and maturity
   presentation, lifecycle controls, confirmations, progress, cancellation, bounded

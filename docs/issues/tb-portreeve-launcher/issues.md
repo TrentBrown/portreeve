@@ -98,7 +98,7 @@ and existing lifecycle failure details.
 
 ## I-8 - Deliver the Desktop Launcher tab
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 3d
 - **Plan steps:** P8
 - **Rubric criteria:** R1, R2, R3, R4, R5, R7, R8
@@ -111,7 +111,7 @@ flow, degraded states, Stacks cross-links, and packaged accessibility coverage.
 
 ## I-9 - Document and verify the assembled feature
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P9
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8

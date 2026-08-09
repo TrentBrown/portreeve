@@ -1,0 +1,62 @@
+{
+  "environment": [
+    {
+      "endpoint": {
+        "component": "api",
+        "endpoint": "http"
+      },
+      "name": "API_HTTP_PORT",
+      "value": "host-port"
+    },
+    {
+      "endpoint": {
+        "component": "api",
+        "endpoint": "http"
+      },
+      "name": "API_URL",
+      "scheme": "http",
+      "value": "host-url"
+    },
+    {
+      "endpoint": {
+        "component": "api",
+        "endpoint": "http"
+      },
+      "name": "API_CONTAINER_PORT",
+      "value": "container-port"
+    },
+    {
+      "endpoint": {
+        "component": "website",
+        "endpoint": "http"
+      },
+      "name": "WEBSITE_HTTP_PORT",
+      "value": "host-port"
+    }
+  ],
+  "integration": {
+    "mode": "command-only"
+  },
+  "operations": {
+    "restart": {
+      "command": "bun run stack:restart",
+      "timeoutSeconds": 420
+    },
+    "start": {
+      "command": "bun run stack:start",
+      "mode": "finite",
+      "timeoutSeconds": 300
+    },
+    "status": {
+      "command": "bun run stack:status",
+      "timeoutSeconds": 30
+    },
+    "stop": {
+      "command": "bun run stack:stop",
+      "timeoutSeconds": 120
+    }
+  },
+  "shell": "system",
+  "version": 1,
+  "workingDirectory": "."
+}

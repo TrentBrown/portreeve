@@ -62,6 +62,12 @@ The desktop **Stacks** tab can create or edit the same checked-in definition thr
 structured fields. Saving applies the definition but never prepares ports or launches
 project services automatically.
 
+Add a checked-in `portreeve.launcher.json` beside the stack definition when PortReeve
+should inject the stack's current endpoint values into project-owned Start, Stop,
+Restart, and Status commands. Desktop and CLI share the same exact-revision trust and
+lifecycle engine. Begin with command-only integration, then adopt verified activation
+when the project launcher is ready to prove ownership and cleanup.
+
 ## Documentation
 
 - [Installation and releases](docs/installation.md)
@@ -69,6 +75,7 @@ project services automatically.
 - [Socket protocol](docs/protocol.md)
 - [CLI automation contract](docs/cli-contract.md)
 - [Stack definitions](docs/stacks.md)
+- [Project launchers](docs/launchers.md)
 - [Desktop application](docs/desktop.md)
 - [Mixed process and Docker example](examples/mixed-stack/README.md)
 - [Migration from project-local remapping](docs/migration.md)

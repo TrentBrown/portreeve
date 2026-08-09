@@ -69,6 +69,35 @@ may begin another activation against the generation if it remains valid. Stop su
 processes or containers through the project launcher before retrying reconciliation or
 ending.
 
+## Launcher is untrusted or changed externally
+
+Trust is bound to the canonical stack root and SHA-256 revision of the exact launcher
+file bytes. Inspect the current definition without changing trust:
+
+```sh
+portreeve launcher validate --json
+```
+
+Then use interactive `portreeve launcher trust` or Desktop **Save and Trust** after
+reviewing the resolved shell, working directory, and every command. Desktop offers
+Review, explicit Overwrite, or Cancel when bytes change after the editor opens. There is
+no force-execute or noninteractive trust bypass.
+
+## Launcher cannot start while PortReeve is unavailable
+
+Start and Restart require a current allocation and daemon coordination, so they refuse
+an outage. Restore the service with `portreeve start` or run `portreeve serve` in the
+foreground. Status may use a clearly stale exact-revision cache. Stop may use that cache
+only after `--allow-degraded` or the corresponding Desktop confirmation; the result is
+local, uncoordinated, and has no server-side history.
+
+## Launcher output is missing from history
+
+Raw stdout and stderr are intentionally retained only for the current Desktop or CLI
+session and are bounded. Desktop **Save output** is the explicit persistence action.
+Durable launcher history keeps safe metadata—operation, outcome, timing, exit or signal,
+degraded or lost state, and reduced evidence—but never raw output or environment values.
+
 ## Desktop says Saved, but not applied
 
 The project file write succeeded and is not rolled back. The editor shows the apply
