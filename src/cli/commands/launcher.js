@@ -3,6 +3,7 @@
 import { createInterface } from 'node:readline/promises';
 import { join, relative } from 'node:path';
 import { PortreeveClientError } from '../../../packages/client/src/index.js';
+import { resolveLauncherShell } from '../../launcher/command-session.js';
 import {
   LAUNCHER_DEFINITION_FILENAME,
   normalizeLauncherDefinition,
@@ -198,6 +199,9 @@ export async function initLauncherCommand(options, interaction = {}) {
       'Integration (command-only, verified-activation)',
       ['command-only', 'verified-activation'],
       'command-only',
+    );
+    terminal.write(
+      `Resolved shell: ${resolveLauncherShell(shell)} (${shell})\nResolved working directory: ${workingDirectory}\n`,
     );
     const suggestedEnvironment = suggestLauncherEnvironment(selected.stack.definition);
     terminal.write(`${environmentReview(suggestedEnvironment)}\n`);
@@ -487,13 +491,19 @@ async function askChoice(terminal, label, choices, defaultValue) {
 /** @param {any} launcher */
 function trustReview(launcher) {
   const operations = Object.entries(launcher.definition.operations)
-    .map(([name, operation]) => `  ${name}: ${operation.command}`)
+    .map(([name, operation]) => {
+      const timeout =
+        operation.timeoutSeconds === undefined
+          ? (operation.mode ?? 'finite')
+          : `${String(operation.timeoutSeconds)}s`;
+      return `  ${name} [${timeout}]: ${operation.command}`;
+    })
     .join('\n');
   return [
     'Launcher trust review',
     `Root: ${launcher.stackRoot}`,
     `Revision: ${launcher.revision}`,
-    `Shell: ${launcher.definition.shell}`,
+    `Shell: ${resolveLauncherShell(launcher.definition.shell)} (${launcher.definition.shell})`,
     `Working directory: ${launcher.workingDirectory}`,
     'Commands:',
     operations,

@@ -69,6 +69,7 @@ test('interactive init previews, exclusively creates, and trusts exact launcher 
     });
     expect(review.join('')).toContain('Exact portreeve.launcher.json preview');
     expect(review.join('')).toContain('API_PORT <- api.default');
+    expect(review.join('')).toContain('Resolved shell: /');
     const launcher = await readLauncherDocument(fixture.stackRoot, {
       stackDefinition: fixture.stack.definition,
     });
@@ -96,12 +97,18 @@ test('validate permits an unapplied launcher while noninteractive trust refuses'
     await expect(trustLauncherCommand(fixture.options)).rejects.toThrow(
       'requires an interactive terminal',
     );
+    /** @type {string[]} */
+    const trustReview = [];
     const trusted = await captureConsole(() =>
-      trustLauncherCommand(fixture.options, interaction(['yes'])),
+      trustLauncherCommand(
+        fixture.options,
+        interaction(['yes'], (text) => trustReview.push(text)),
+      ),
     );
     expect(JSON.parse(trusted[0] ?? '{}')).toMatchObject({
       result: { trusted: true, stackRoot: fixture.stackRoot },
     });
+    expect(trustReview.join('')).toMatch(/Shell: \/.+ \(system\)/u);
     const filename = join(fixture.stackRoot, 'portreeve.launcher.json');
     await writeFile(filename, `${await readFile(filename, 'utf8')}\n`);
     const changed = await captureConsole(() =>
