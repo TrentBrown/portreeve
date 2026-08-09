@@ -525,6 +525,20 @@ test('composes attached Restart as finite Stop followed by attached Start', asyn
   ).toEqual(['finite', 'attached']);
 });
 
+test('uses the stable daemon-required policy for attached Restart', async () => {
+  const fixture = harness('stopped', { daemonUnavailable: true });
+  expect(
+    await fixture.service.execute({
+      operation: 'restart',
+      stack,
+      launcher: launcher({ startMode: 'attached' }),
+    }),
+  ).toMatchObject({
+    outcome: 'failed',
+    failure: { step: 'daemon', code: 'launcher_daemon_required' },
+  });
+});
+
 test('assesses integration maturity for evidence-only Status', async () => {
   const fixture = harness('verified');
   const result = await fixture.service.execute({

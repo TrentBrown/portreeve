@@ -234,6 +234,14 @@ export class LauncherLifecycleService {
     try {
       before = (await this.#daemonState(input.stack)).evidence.summary;
     } catch (error) {
+      if (isUnavailable(error)) {
+        return failedResult(
+          'restart',
+          'daemon',
+          'launcher_daemon_required',
+          'Start and Restart require the PortReeve service.',
+        );
+      }
       return failedResult(
         'restart',
         'evidence-before',
