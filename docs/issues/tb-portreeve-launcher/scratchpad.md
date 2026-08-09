@@ -156,7 +156,7 @@ Reconstruct a StackRecord from portreeve.stack.json and cached IDs - invents dur
 
 ## [9] Keep attached process authority application-local
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -171,7 +171,7 @@ Persist process identifiers for later adoption - rejected because identifiers go
 
 ## [10] Assess verified launcher maturity from fresh evidence
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -186,7 +186,7 @@ Treat exit zero as verified - rejected by AC5. Parse project Status output - rej
 
 ## [11] Persist reduced integration assessment with launcher outcomes
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

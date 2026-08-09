@@ -72,12 +72,12 @@ review, confirmations, stable automation output, and compiled macOS/Linux covera
 
 ## I-6 - Add attached and verified execution
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P6
 - **Rubric criteria:** R4, R5, R6
 - **Depends on:** I-3, I-4
-- **PR:** -
+- **PR:** [#30](https://github.com/TrentBrown/portreeve/pull/30)
 
 Implement attached process-group lifecycle, concurrent Status/Stop, explicit termination,
 client-loss behavior, immutable execution snapshots, verified activation assessment, and

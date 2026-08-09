@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PortReeve PR #30 — Attached and verified launchers</title>
+  <style>
+    :root { --ink:#17221d; --muted:#607069; --paper:#f6f1e7; --card:#fffdf8; --green:#17634d; --gold:#bd7b25; --red:#a63b32; --line:#d9d2c4; --blue:#315d7a; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--paper); font:17px/1.62 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    header { padding:64px 24px 46px; background:linear-gradient(135deg,#102f28,#1d7057); color:white; }
+    header div, main { max-width:1080px; margin:auto; }
+    .eyebrow { letter-spacing:.16em; text-transform:uppercase; font-size:.75rem; opacity:.78; }
+    h1 { font:700 clamp(2.4rem,6vw,4.8rem)/1.02 Georgia,serif; margin:.35rem 0 1rem; }
+    h2 { font:700 2.1rem/1.15 Georgia,serif; margin:3.4rem 0 1rem; }
+    h3 { margin-top:2rem; }
+    main { padding:26px 24px 80px; }
+    nav { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px 24px; margin:20px 0 38px; }
+    nav a { color:var(--green); margin-right:22px; white-space:nowrap; }
+    .callout { border-left:5px solid var(--gold); background:#fff7df; padding:16px 20px; margin:24px 0; border-radius:0 12px 12px 0; }
+    .warning { border-left-color:var(--red); background:#fff0ed; }
+    .flow { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:10px; align-items:stretch; margin:28px 0; }
+    .node { background:var(--card); border:1px solid var(--line); border-radius:13px; padding:15px; min-height:118px; }
+    .node strong { display:block; color:var(--green); margin-bottom:7px; }
+    .arrow { color:var(--gold); font-size:1.6rem; text-align:center; align-self:center; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:15px; padding:20px; }
+    .state-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:24px 0; }
+    .state { background:var(--card); border:1px solid var(--line); border-top:5px solid var(--green); border-radius:12px; padding:15px; }
+    .state.caution { border-top-color:var(--gold); }
+    .state.block { border-top-color:var(--red); }
+    pre { white-space:pre-wrap; overflow-wrap:anywhere; background:#10211a; color:#eaf4ef; padding:18px; border-radius:12px; overflow:auto; font-size:.9rem; }
+    code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    table { width:100%; border-collapse:collapse; background:var(--card); }
+    th,td { padding:12px; border:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { background:#e9efe9; }
+    .quiz { margin:20px 0; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; }
+    .answers { display:grid; gap:8px; }
+    button { text-align:left; border:1px solid #9aab9f; background:white; border-radius:9px; padding:11px 13px; cursor:pointer; font:inherit; }
+    button:hover { border-color:var(--green); }
+    button.correct { background:#dff3e9; border-color:var(--green); }
+    button.wrong { background:#f8dfdc; border-color:var(--red); }
+    .feedback { min-height:1.6em; margin-top:9px; color:var(--muted); }
+    .small { color:var(--muted); font-size:.92rem; }
+    @media (max-width:760px) { .flow,.state-grid,.two { grid-template-columns:1fr; } .arrow { transform:rotate(90deg); } }
+  </style>
+</head>
+<body>
+  <header><div>
+    <div class="eyebrow">PortReeve · Pull request 30 · P6</div>
+    <h1>A launcher that can stay—and prove it belongs</h1>
+    <p>How PortReeve adds foreground stack sessions and verified activation without turning its daemon into a shell server or treating a PID as durable truth.</p>
+  </div></header>
+  <main>
+    <nav aria-label="Table of contents">
+      <a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#cases">Cases</a><a href="#quiz">Quiz</a>
+    </nav>
+
+    <section id="background">
+      <h2>Background</h2>
+      <p>Before this pull request, the launcher engine could run finite commands: Start invoked a project command, waited for it to finish, inspected fresh listeners, and completed a renewable daemon operation. That fits a command such as <code>docker compose up -d</code>. It does not fit a launcher that deliberately stays in the foreground for as long as the stack is running.</p>
+      <p>There was a second boundary too. Command-only launchers could show that the assigned ports had listeners, but a listener proves occupancy—not who started it. PortReeve already had a stronger activation protocol in which a project launcher begins an exact allocation generation, renews pending endpoint leases, and confirms providers with fresh process or Docker evidence. The launcher engine did not yet require that proof.</p>
+      <div class="state-grid">
+        <div class="state"><strong>Prepared</strong><p>Ports form one immutable generation.</p></div>
+        <div class="state caution"><strong>Observed</strong><p>Listeners exist, but ownership is not proven.</p></div>
+        <div class="state"><strong>Verified</strong><p>Activation, generation, provider, and listener agree.</p></div>
+        <div class="state block"><strong>Conflicting</strong><p>Fresh ownership facts disagree.</p></div>
+      </div>
+      <div class="callout"><strong>The design constraint:</strong> the application that invokes a project command owns its child process group. The daemon owns allocation and renewable coordination. Neither authority is allowed to quietly absorb the other.</div>
+    </section>
+
+    <section id="intuition">
+      <h2>Intuition</h2>
+      <p>An attached Start is like keeping a hand on a physical switch. The CLI or Desktop main process starts one isolated process group and remains tied to it. Output can continue to flow, Status and Stop can still run as short companion operations, and an explicit termination action can signal exactly the group that application created.</p>
+      <div class="flow">
+        <div class="node"><strong>CLI or Desktop main</strong>Spawns one group, retains the live handle, streams bounded session output</div><div class="arrow">→</div>
+        <div class="node"><strong>Project launcher</strong>Owns processes, containers, ordering, health, and activation transaction</div><div class="arrow">→</div>
+        <div class="node"><strong>PortReeve daemon</strong>Renews per-root admission and stores only safe outcome metadata</div>
+      </div>
+      <p>Verified activation adds a second test after shell execution. Exit code zero answers “did the shell report success?” Fresh PortReeve evidence answers “did the intended generation become a confirmed stack?” Verified mode requires both.</p>
+      <pre><code>PORTREEVE_STACK_ID=stack-123
+PORTREEVE_GENERATION_ID=generation-456
+PORTREEVE_SOCKET=/Users/me/Library/Application Support/PortReeve/portreeve.sock
+
+# The project launcher uses those facts to:
+# 1. begin generation-456
+# 2. renew its endpoint leases
+# 3. start and confirm providers
+# 4. clean up failures
+# 5. end activation after Stop</code></pre>
+      <div class="callout warning"><strong>What is deliberately not provided:</strong> persistent detach/reattach, adoption after caller loss, a generic daemon shell, interactive PTY input, or “whatever is listening must be ours.”</div>
+    </section>
+
+    <section id="code">
+      <h2>Code walkthrough</h2>
+      <div class="two">
+        <div class="card"><h3>One command primitive, two lifetimes</h3><p><code>command-session.js</code> now builds a common POSIX session. Finite commands add a timeout. Attached commands do not. Both use a login shell, closed stdin, separate process group, bounded retained tail, and the same graceful-then-force termination policy.</p></div>
+        <div class="card"><h3>An application-local registry</h3><p><code>AttachedCommandRegistry</code> keys one session by canonical stack root. It exposes inspection for close guards and termination by root, removes the handle when the child settles, and refuses a second local attached Start. No identity is persisted or sent to the daemon.</p></div>
+      </div>
+      <h3>Termination remains instance-bound</h3>
+      <p>The handle signals <code>-processGroupId</code>, not a port listener and not an arbitrary caller-supplied PID. Before the first signal it checks whether the child has already reported exit; that closes the small window in which an exited group number could be mistaken for a live session. SIGTERM is followed by SIGKILL only after the configured grace period and only for the group created by this command session.</p>
+      <h3>Attached coordination composes with finite work</h3>
+      <p>The lifecycle service begins attached Start with <code>executionMode: attached</code>. The daemon's existing per-root rules allow one finite Status or Stop beside it. Stop invokes only the trusted project Stop command; it never terminates the group. Attached Restart is not a custom long-running restart command: it completes finite Stop, revalidates, then begins attached Start.</p>
+      <div class="flow">
+        <div class="node"><strong>Attached Start active</strong>Renewable daemon record plus application-local group</div><div class="arrow">+</div>
+        <div class="node"><strong>Finite Stop</strong>Project cleanup command; no implicit signal</div><div class="arrow">→</div>
+        <div class="node"><strong>Explicit terminate</strong>Offered only if the exact attached group remains</div>
+      </div>
+      <h3>Verification may happen before an attached command exits</h3>
+      <p>A foreground launcher often becomes healthy and then remains alive. The engine therefore polls fresh daemon evidence while the command runs. If the supplied generation becomes verified, that matching snapshot is retained for the operation's maturity result. When the command eventually exits after a later Stop, terminal evidence may correctly say <em>stopped</em> while the safe operation record still says that this run achieved verification.</p>
+      <h3>Strict, reduced history</h3>
+      <p>The public operation completion schema gains one nullable integration summary: declared mode, whether exact matching proof appeared, whether a command-only launcher merits an upgrade suggestion, generation ID, and activation ID. It still rejects commands, environment values, process identities, credentials, and raw output. Existing stored completions remain readable because the new field defaults to null.</p>
+      <h3>Maturity changes are deliberate</h3>
+      <p>A command-only run that happens to perform the complete activation transaction does not rewrite the project file. It reports an upgrade suggestion. Moving the checked-in launcher from verified activation back to command-only requires an explicit transition confirmation; the resulting bytes must then earn normal exact-revision trust.</p>
+    </section>
+
+    <section id="cases">
+      <h2>Important cases</h2>
+      <table>
+        <thead><tr><th>Situation</th><th>Result</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td>Attached Start runs indefinitely</td><td>No Start timeout; output streams and the operation lease renews.</td><td>Foreground lifetime is an explicit launcher choice.</td></tr>
+          <tr><td>Status or Stop runs during attached Start</td><td>A finite companion is admitted.</td><td>Observation and project cleanup must remain available.</td></tr>
+          <tr><td>Stop exits but attached group remains</td><td>The group remains; an explicit terminate action may target it.</td><td>Stop is project-owned and never escalates into process eviction.</td></tr>
+          <tr><td>Caller disappears without cleanup</td><td>Daemon operation expires to <code>lost</code>; no process is adopted or signaled.</td><td>Persisted PIDs would become stale authority.</td></tr>
+          <tr><td>Verified Start exits zero without matching activation</td><td>Structured <code>launcher_activation_not_verified</code> failure.</td><td>Shell success is not ownership proof.</td></tr>
+          <tr><td>Matching activation belongs to another generation</td><td>Verification fails.</td><td>The allocated address plan must be the one supplied to this operation.</td></tr>
+          <tr><td>Command-only run produces matching verified evidence</td><td>Run can succeed and reports an upgrade suggestion.</td><td>The user decides whether to strengthen checked-in semantics.</td></tr>
+          <tr><td>Daemon is unavailable for attached Restart</td><td>Stable <code>launcher_daemon_required</code> refusal.</td><td>Restart cannot prepare or coordinate attached work from stale local state.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="quiz">
+      <h2>Quiz</h2>
+      <p class="small">Choose one answer. Feedback appears immediately.</p>
+      <div class="quiz" data-answer="1"><strong>1. Why is the attached process-group handle kept only in the invoking application?</strong><div class="answers"><button>The daemon cannot represent POSIX signals in its JSON protocol.</button><button>Application-local ownership permits exact termination without granting the daemon shell authority or relying on stale persisted PIDs.</button><button>The CLI needs the group ID to derive endpoint port numbers after allocation.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="2"><strong>2. What does Stop do while an attached Start remains active?</strong><div class="answers"><button>It sends SIGTERM to the attached group, then runs the project Stop command if listeners remain.</button><button>It refuses because any second operation on the root would violate serialization.</button><button>It runs only the trusted finite Stop command; explicit group termination remains separate.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="0"><strong>3. Why can an attached operation finish with terminal evidence “stopped” and still record verified integration?</strong><div class="answers"><button>The engine may capture matching verification while the foreground command is alive, before a later Stop causes it to exit.</button><button>Any attached command is considered verified once it survives one renewal interval.</button><button>The operation history parses Status output to reconstruct an earlier healthy state.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="1"><strong>4. Which facts are sufficient for verified Start?</strong><div class="answers"><button>Exit zero plus listeners on every allocated port, even if no activation exists.</button><button>Command success plus fresh verified activation and provider evidence for the exact supplied generation.</button><button>A confirmed activation ID from any current revision of the same stack root.</button></div><div class="feedback"></div></div>
+      <div class="quiz" data-answer="2"><strong>5. What happens when a command-only launcher performs the full activation protocol?</strong><div class="answers"><button>PortReeve automatically rewrites and trusts the launcher as verified activation.</button><button>The daemon adopts the activation and treats future command-only listeners as verified.</button><button>The result reports an upgrade suggestion, but changing and trusting the checked-in mode remains explicit.</button></div><div class="feedback"></div></div>
+    </section>
+  </main>
+  <script>
+    document.querySelectorAll('.quiz').forEach((quiz) => {
+      const answer = Number(quiz.dataset.answer);
+      const buttons = [...quiz.querySelectorAll('button')];
+      const feedback = quiz.querySelector('.feedback');
+      buttons.forEach((button, index) => button.addEventListener('click', () => {
+        buttons.forEach((item) => item.classList.remove('correct','wrong'));
+        button.classList.add(index === answer ? 'correct' : 'wrong');
+        buttons[answer].classList.add('correct');
+        feedback.textContent = index === answer ? 'Correct — that preserves the ownership and evidence boundary.' : 'Not quite. Review the attached ownership and verified-activation sections above.';
+      }));
+    });
+  </script>
+</body>
+</html>
