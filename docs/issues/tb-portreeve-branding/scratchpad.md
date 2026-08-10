@@ -20,3 +20,18 @@ Serve branding only beneath app://portreeve/branding/ from a separately canonica
 
 **Alternatives considered:**
 Inline the SVG into index.html; copy the mark into the renderer directory; permit image extensions throughout the renderer root. These either duplicate the canonical asset or broaden the renderer protocol unnecessarily.
+
+## [2] Preserve the approved raster as the logo authority
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** branding source assets, renderer mark, generated PNG/iconset/ICNS, tests and documentation
+
+Treat the exact 1254x1254 approved PNG as the checksum-locked archival master. Use a standalone lossless SVG presentation that embeds these exact PNG bytes for the renderer and generation pipeline. Do not claim that the generated artwork had a vector source, and do not substitute another trace or generative approximation without a new explicit review.
+
+**Triggered by:** Packaged-app review showed the hand-authored SVG did not resemble the approved logo; source comparison found the user's screenshot was pixel-identical to an earlier generated PNG and no original SVG existed.
+
+**Alternatives considered:**
+Keep refining the failed hand trace; auto-trace the raster into thousands of approximate paths; use a non-portable SVG that loads the PNG through a second protocol request. These risk further visual drift or fail to provide a standalone asset that Chromium can render reliably.

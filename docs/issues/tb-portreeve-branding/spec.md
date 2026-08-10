@@ -56,4 +56,10 @@ The global Definition of Done in the software development workflow applies.
 
 ## Changes
 
-Append spec amendments here. Do not remove or weaken original criteria.
+- **2026-08-09 source correction:** The artwork the user approved was generated as a
+  1254px PNG, not an SVG. Preserve that exact PNG as the archival source and retain a
+  checksum-locked SVG presentation rather than substituting approximate hand-authored
+  geometry. AC4's visual contract applies to the preserved approved artwork and its SVG
+  presentation. AC5 and AC6 permit faithful opaque mark renditions because the approved
+  master includes its intentional warm background; the horizontal lockup retains its
+  transparent outer canvas.

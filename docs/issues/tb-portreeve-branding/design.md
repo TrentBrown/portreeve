@@ -118,4 +118,9 @@ Create `apps/desktop/assets/branding/` with:
 
 ## Changes
 
-No changes after the design gate yet.
+- **2026-08-09 approved-artwork correction:** Investigation after packaged-app review
+  proved the selected rendition was a generated 1254px PNG and that no original SVG
+  existed. The exact PNG now replaces the inaccurate hand-authored reconstruction as the
+  archival master. A standalone lossless SVG presentation embeds the exact master bytes
+  for application and asset-pipeline use; no new generative interpretation or lossy
+  tracing is allowed.

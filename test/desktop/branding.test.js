@@ -1,5 +1,6 @@
 // @ts-check
 
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { describe, expect, test } from 'bun:test';
@@ -60,14 +61,36 @@ describe('Fogbound Coast desktop theme', () => {
 });
 
 describe('PortReeve logo assets', () => {
-  test('locks the approved mark and exact cap sequence into the SVG master', async () => {
+  test('preserves the exact approved artwork and presents it through SVG', async () => {
+    const approved = await readFile(
+      resolve(brandingRoot, 'portreeve-approved-original.png'),
+    );
+    expect(createHash('sha256').update(approved).digest('hex')).toBe(
+      'cf664538a4bfc275ed77e0ec8c1faa4f658b112abe5ad2aeea37e29772f45c69',
+    );
+    expect(
+      await pngDimensions(resolve(brandingRoot, 'portreeve-approved-original.png')),
+    ).toEqual({ width: 1254, height: 1254, colorType: 2 });
+
     const mark = await readFile(resolve(brandingRoot, 'portreeve-mark.svg'), 'utf8');
-    expect(mark).toContain('A right-facing bearded harbor steward');
+    const original = await readFile(
+      resolve(brandingRoot, 'portreeve-approved-original.svg'),
+      'utf8',
+    );
+    expect(mark).toContain('The approved right-facing bearded harbor steward');
+    expect(mark).toContain('href="data:image/png;base64,');
     expect(mark).toContain('aria-label="80 · 443 · 3000 · 8080"');
-    expect(mark).toContain('#12344c');
-    expect(mark).toContain('#176b70');
-    expect(mark).toContain('#fafcfc');
-    expect(mark).not.toMatch(/lighthouse|ship|dock/i);
+    expect(original).toContain('href="data:image/png;base64,');
+    expect(original).toContain('aria-label="80 · 443 · 3000 · 8080"');
+    for (const svg of [mark, original]) {
+      const encoded = svg.match(/href="data:image\/png;base64,([^"]+)"/)?.[1];
+      expect(encoded).toBeDefined();
+      expect(
+        createHash('sha256')
+          .update(Buffer.from(encoded ?? '', 'base64'))
+          .digest('hex'),
+      ).toBe('cf664538a4bfc275ed77e0ec8c1faa4f658b112abe5ad2aeea37e29772f45c69');
+    }
   });
 
   test('integrates the decorative mark with the exact product header', async () => {
@@ -78,11 +101,11 @@ describe('PortReeve logo assets', () => {
     expect(html).toContain('<h1>PortReeve</h1>');
   });
 
-  test('includes common transparent PNGs and the macOS asset family', async () => {
+  test('includes faithful common PNGs and the macOS asset family', async () => {
     for (const size of [32, 128, 256, 512, 1024]) {
       expect(
         await pngDimensions(resolve(brandingRoot, 'png', `portreeve-mark-${size}.png`)),
-      ).toEqual({ width: size, height: size, colorType: 6 });
+      ).toEqual({ width: size, height: size, colorType: 2 });
     }
     expect(
       await pngDimensions(

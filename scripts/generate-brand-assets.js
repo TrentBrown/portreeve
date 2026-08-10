@@ -1,11 +1,13 @@
 // @ts-check
 
 import { execFileSync } from 'node:child_process';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const workspaceRoot = process.cwd();
 const brandingRoot = resolve(workspaceRoot, 'apps', 'desktop', 'assets', 'branding');
+const approvedOriginal = resolve(brandingRoot, 'portreeve-approved-original.png');
+const approvedOriginalSvg = resolve(brandingRoot, 'portreeve-approved-original.svg');
 const markSource = resolve(brandingRoot, 'portreeve-mark.svg');
 const lockupSource = resolve(brandingRoot, 'portreeve-lockup.svg');
 const appIconSource = resolve(brandingRoot, 'portreeve-app-icon.svg');
@@ -15,6 +17,26 @@ const iconsetRoot = resolve(brandingRoot, 'PortReeve.iconset');
 const rsvgConvert = process.env.PORTREEVE_RSVG_CONVERT ?? 'rsvg-convert';
 const iconutil = process.env.PORTREEVE_ICONUTIL ?? '/usr/bin/iconutil';
 const magick = process.env.PORTREEVE_MAGICK ?? 'magick';
+
+const embeddedOriginal = await readFile(approvedOriginal, 'base64');
+await writeFile(
+  approvedOriginalSvg,
+  renderApprovedSvg({
+    title: 'Approved PortReeve logo artwork',
+    description:
+      'Lossless SVG presentation of the original approved 1254-pixel PortReeve artwork.',
+    embeddedOriginal,
+  }),
+);
+await writeFile(
+  markSource,
+  renderApprovedSvg({
+    title: 'PortReeve harbor steward',
+    description:
+      'The approved right-facing bearded harbor steward wearing a nautical cap whose band reads 80, 443, 3000, and 8080.',
+    embeddedOriginal,
+  }),
+);
 
 await rm(pngRoot, { recursive: true, force: true });
 await rm(iconsetRoot, { recursive: true, force: true });
@@ -83,4 +105,16 @@ function render(source, destination, width, height) {
     destination,
     source,
   ]);
+}
+
+/**
+ * @param {{title: string, description: string, embeddedOriginal: string}} input
+ */
+function renderApprovedSvg({ title, description, embeddedOriginal }) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254" role="img" aria-labelledby="title description">
+  <title id="title">${title}</title>
+  <desc id="description">${description}</desc>
+  <image href="data:image/png;base64,${embeddedOriginal}" width="1254" height="1254" preserveAspectRatio="xMidYMid meet" aria-label="80 · 443 · 3000 · 8080" />
+</svg>
+`;
 }
