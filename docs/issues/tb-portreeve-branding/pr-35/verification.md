@@ -4,7 +4,7 @@
 
 **Base:** `a597d096e17221a0c6562445f4697f2281a8aa2f`
 
-**Evaluated source:** `8452c1cb4d2c9e79b26296e33cd827def4c0a91d`
+**Evaluated source:** `422a7cff823994653aadd4b849570f6de490a3b1`
 
 ## Matrix
 
@@ -18,7 +18,7 @@
 | Lint | `bun run lint` | PASS |
 | Changed-file format | `bun x prettier --check` over every changed text file and the feature folder | PASS |
 | Repository format baseline | `bun run format:check` | KNOWN UNRELATED: only two pre-existing `.handoffs/*.md` files are reported; neither is in this diff |
-| Focused unit/security | `bun test test/desktop/branding.test.js test/desktop/protocol.test.js` | PASS: 7 tests, 116 assertions; the archival and application SVGs embed their respective checksum-locked masters |
+| Focused unit/security | `bun test test/desktop/branding.test.js test/desktop/protocol.test.js` | PASS: 7 tests, 117 assertions; the header contract now locks the mark at 96px in addition to the archival/application asset checks |
 | Full repository suite | `bun test` | 385 PASS, 3 host-state failures in `test/cli/lifecycle-commands.test.js`; the installed real launch agent violates those tests' unsupervised premise |
 | Isolated lifecycle reconciliation | `PORTREEVE_SUPERVISOR_DEFINITION=/tmp/portreeve-branding-test-agent.plist PORTREEVE_SUPERVISOR_LABEL=com.trentbrown.portreeve.branding-tests bun test test/cli/lifecycle-commands.test.js` | PASS: 5 tests, 22 assertions |
 | Asset generation | `bun run branding:generate` with `rsvg-convert`, ImageMagick, and `iconutil` | PASS |
@@ -26,7 +26,7 @@
 | Bundle icon | SHA-256 and `cmp` of source `PortReeve.icns` and packaged `Contents/Resources/electron.icns` | PASS: byte-identical `ad6e4aeb633755dc605041d463147d48c747d194e4be6df3e49f6985f0ae410d` |
 | Packaged assets | ASAR inventory for the ICNS, archival PNG/SVG, transparent master, and application-facing SVG | PASS |
 | Packaged executable | Launched `PortReeve.app/Contents/MacOS/PortReeve --disable-gpu` and observed the process remain live until the controlled stop | PASS |
-| Renderer runtime | Playwright loaded the real renderer HTML/CSS, substituted the same packaged production SVG for the custom-protocol URL, and captured the 1224x800 Overview | PASS: the transparent steward integrates directly with the Fogbound Coast canvas; title, navigation, cards, controls, and layout render without a cream square |
+| Renderer runtime | Playwright loaded the real renderer HTML/CSS, substituted the same packaged production SVG for the custom-protocol URL, and captured the Overview at 1224x800 and 720x800 | PASS: the mark renders at 96x96, the port numbers are just legible, and the title, refresh control, navigation, cards, and minimum-width layout remain balanced |
 | Small-size visual | Inspected generated 16-1024px contact sheet | PASS: steward silhouette and teal cap band remain identifiable |
 | Cross-platform package | macOS x64 package | N/A locally; packaging source retains the existing x64 path and only changes the shared icon/assets inputs |
 

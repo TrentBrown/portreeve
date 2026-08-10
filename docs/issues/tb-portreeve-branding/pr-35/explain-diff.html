@@ -100,7 +100,7 @@ button.primary {
 app://portreeve/branding/mark.svg → branding root → SVG/PNG
 app://portreeve/branding/../x.svg → canonical escape → 404</pre>
         <h3>4. Packaging and proof</h3>
-        <p>The desktop stage now copies <code>assets/</code> and passes <code>PortReeve.icns</code> to Electron Packager. Verification compared the packaged icon byte-for-byte with the committed source, inspected the ASAR inventory, and launched the packaged arm64 application. The result is the same mark in the header, bundle, Finder/Dock resource, and reusable asset folder.</p>
+        <p>The desktop stage now copies <code>assets/</code> and passes <code>PortReeve.icns</code> to Electron Packager. Verification compared the packaged icon byte-for-byte with the committed source, inspected the ASAR inventory, and launched the packaged arm64 application. The header mark is 96px rather than 64px, making the port sequence just legible without overpowering the title. Playwright checks at 1224px and the 720px minimum width confirm that the larger mark, Refresh control, navigation, and content remain balanced.</p>
       </section>
 
       <section id="quiz">
@@ -113,7 +113,7 @@ app://portreeve/branding/../x.svg → canonical escape → 404</pre>
         <div class="quiz" data-answer="2"><h3>6. What proves Electron used the intended ICNS despite probing for a newer .icon?</h3><div class="answers"><button>The package command exited zero.</button><button>The ASAR contains the SVG mark.</button><button>The source ICNS and packaged electron.icns have identical bytes and SHA-256.</button></div><p class="feedback"></p></div>
       </section>
     </main>
-    <footer>Explains pinned diff <code>a597d096…8452c1cb</code>. Generated for PortReeve PR #35.</footer>
+    <footer>Explains pinned diff <code>a597d096…422a7cff</code>. Generated for PortReeve PR #35.</footer>
     <script>
       for (const quiz of document.querySelectorAll('.quiz')) {
         const answer = Number(quiz.dataset.answer);

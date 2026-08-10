@@ -1,6 +1,6 @@
 # Code Review - PR #35
 
-**Pinned range:** `a597d096e17221a0c6562445f4697f2281a8aa2f..8452c1cb4d2c9e79b26296e33cd827def4c0a91d`
+**Pinned range:** `a597d096e17221a0c6562445f4697f2281a8aa2f..422a7cff823994653aadd4b849570f6de490a3b1`
 
 ## Findings
 
@@ -14,6 +14,9 @@ branding route preserves
 GET/host checks, independent canonical roots, realpath containment, extension allowlists,
 and the existing restrictive CSP. Protocol tests cover renderer/image type separation,
 traversal, malformed encoding, symlink escape, wrong host, and non-GET requests.
+The final header-size adjustment is a fixed 64px-to-96px CSS change protected by a
+focused contract assertion and Playwright checks at both the normal and minimum widths;
+it introduces no new responsive branch or asset duplication.
 
 ## Residual Risks and Test Gaps
 

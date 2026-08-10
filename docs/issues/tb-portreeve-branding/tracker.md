@@ -31,9 +31,9 @@
 - **Evidence packet:** [pr-35](pr-35/)
 - **Result:** R1-R8 are `PASS`; zero `NOT YET` or `FAIL` criteria remain. Pinned
   source-image pixel comparison, archival/transparent checksum and embedded-byte tests,
-  typecheck, lint, changed-file formatting, 7 focused branding/protocol tests with 116
+  typecheck, lint, changed-file formatting, 7 focused branding/protocol tests with 117
   assertions, package construction, byte-identical bundle icon, ASAR inspection,
-  packaged-executable smoke, and real-renderer Playwright acceptance pass. The host-aware
+  packaged-executable smoke, and 96px normal/minimum-width Playwright acceptance pass. The host-aware
   full suite passes 385 tests; its three lifecycle
   failures are caused by the real installed launch agent and all five tests in that
   file pass with an isolated supervisor label. Feature-record retention is tracked.

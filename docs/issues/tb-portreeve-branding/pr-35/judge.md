@@ -8,7 +8,7 @@
 |---|-----------|--------|----------|
 | R1 | Centralized Fogbound theme | PASS | `apps/desktop/renderer/theme.css`; component literal scan in `test/desktop/branding.test.js`. |
 | R2 | Accessible application states | PASS | Seven explicit foreground/background ratios and packaged runtime inspection. |
-| R3 | Header integration | PASS | `apps/desktop/renderer/index.html` and the Playwright renderer smoke show the transparent mark in the exact accessible header. |
+| R3 | Header integration | PASS | The CSS/test contract fixes the transparent mark at 96px; Playwright at 1224px and 720px shows barely legible port numbers and a balanced accessible header. |
 | R4 | Approved artwork contract | PASS | The archival and transparent PNG checksums are fixed, and each standalone SVG embeds its intended master with the cap sequence labeled. |
 | R5 | Complete asset family | PASS | Committed archival/transparent SVG/PNG/iconset/ICNS/contact-sheet inventory and dimension assertions. |
 | R6 | Rendition consistency | PASS | One generator rebuilds the SVG presentations and derives all rasters; transparency composites, renderer smoke, and contact-sheet checks pass. |
