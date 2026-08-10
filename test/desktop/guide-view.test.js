@@ -105,9 +105,12 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(html).toContain('Start services');
   expect(html).toContain('Actors in these integration paths');
   expect(html).toContain('Colors identify the same actor wherever it appears.');
-  expect(html.match(/class="guide-actor-swatch guide-actor-/g)).toHaveLength(7);
+  expect(html.match(/class="guide-actor-pill guide-actor-/g)).toHaveLength(20);
   expect(html).toContain('The person or agent that initiates and observes');
   expect(html).toContain('Transient shell operations invoked to manage the stack.');
+  expect(html).toContain('Highest lifecycle fidelity');
+  expect(html).not.toContain('The least integration hair');
+  expect(html).toContain('Acquisition and binding share one control flow.');
   expect(html).toContain('aria-label="Canonical PortReeve stack lifecycle"');
   expect(html).toContain('class="guide-sequence-note note-portreeve concept-claim"');
   expect(html).toContain('class="guide-object-model"');
@@ -127,9 +130,9 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(packageJson).not.toMatch(/"mermaid"/);
   expect(css).toContain('.guide-sequence-lifelines');
   expect(css).toContain('.guide-message.reverse::after');
-  expect(html.match(/class="guide-actor-developer"/g)).toHaveLength(3);
-  expect(html.match(/class="guide-actor-portreeve"/g)).toHaveLength(3);
-  expect(html.match(/class="guide-actor-services"/g)).toHaveLength(3);
+  expect(html.match(/guide-actor-developer/g)).toHaveLength(4);
+  expect(html.match(/guide-actor-portreeve/g)).toHaveLength(4);
+  expect(html.match(/guide-actor-services/g)).toHaveLength(4);
   for (const actor of ['desktop', 'generated', 'project', 'commands', 'services']) {
     expect(css).toContain(`.guide-actor-${actor}`);
   }

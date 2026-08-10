@@ -275,11 +275,12 @@
                     <i></i><i></i><i></i><i></i><i></i>
                   </div>
                   <div class="guide-sequence-actors">
-                    <span class="guide-actor-developer">Developer</span
-                    ><span class="guide-actor-desktop">Desktop</span
-                    ><span class="guide-actor-portreeve">PortReeve</span
-                    ><span class="guide-actor-commands">Commands</span
-                    ><span class="guide-actor-services">Services</span>
+                    <span class="guide-actor-pill guide-actor-developer">Developer</span
+                    ><span class="guide-actor-pill guide-actor-desktop">Desktop</span
+                    ><span class="guide-actor-pill guide-actor-portreeve"
+                      >PortReeve</span
+                    ><span class="guide-actor-pill guide-actor-commands">Commands</span
+                    ><span class="guide-actor-pill guide-actor-services">Services</span>
                   </div>
                   <ol aria-label="Built-in driver startup sequence">
                     <li class="guide-message flow-1-2"><span>Start</span></li>
@@ -327,10 +328,12 @@
                     <i></i><i></i><i></i><i></i>
                   </div>
                   <div class="guide-sequence-actors">
-                    <span class="guide-actor-developer">Developer</span
-                    ><span class="guide-actor-generated">Generated tool</span
-                    ><span class="guide-actor-portreeve">PortReeve</span
-                    ><span class="guide-actor-services">Services</span>
+                    <span class="guide-actor-pill guide-actor-developer">Developer</span
+                    ><span class="guide-actor-pill guide-actor-generated"
+                      >Generated tool</span
+                    ><span class="guide-actor-pill guide-actor-portreeve"
+                      >PortReeve</span
+                    ><span class="guide-actor-pill guide-actor-services">Services</span>
                   </div>
                   <ol aria-label="Generated launcher startup sequence">
                     <li class="guide-message flow-1-2"><span>Start</span></li>
@@ -366,9 +369,9 @@
               <p class="guide-path-rank">Best</p>
               <h4>Native integration</h4>
               <p>
-                Call PortReeve from your own service-management code through the
-                official client or common protocol. Your existing tool remains fully in
-                control.
+                Call PortReeve from your service-management code so lease acquisition,
+                startup, binding confirmation, and cleanup share one project-owned
+                control flow.
               </p>
               <figure class="guide-mini-sequence guide-sequence-four">
                 <div class="guide-sequence-canvas">
@@ -376,10 +379,12 @@
                     <i></i><i></i><i></i><i></i>
                   </div>
                   <div class="guide-sequence-actors">
-                    <span class="guide-actor-developer">Developer</span
-                    ><span class="guide-actor-project">Project tool</span
-                    ><span class="guide-actor-portreeve">PortReeve</span
-                    ><span class="guide-actor-services">Services</span>
+                    <span class="guide-actor-pill guide-actor-developer">Developer</span
+                    ><span class="guide-actor-pill guide-actor-project"
+                      >Project tool</span
+                    ><span class="guide-actor-pill guide-actor-portreeve"
+                      >PortReeve</span
+                    ><span class="guide-actor-pill guide-actor-services">Services</span>
                   </div>
                   <ol aria-label="Native integration startup sequence">
                     <li class="guide-message flow-1-2"><span>Start</span></li>
@@ -394,7 +399,7 @@
                     </li>
                   </ol>
                 </div>
-                <figcaption>Your existing code remains in control.</figcaption>
+                <figcaption>Acquisition and binding share one control flow.</figcaption>
               </figure>
               <dl>
                 <div>
@@ -407,7 +412,7 @@
                 </div>
                 <div>
                   <dt>Payoff</dt>
-                  <dd>The least integration hair</dd>
+                  <dd>Highest lifecycle fidelity</dd>
                 </div>
               </dl>
             </article>
@@ -423,24 +428,16 @@
             </header>
             <ul class="guide-actor-legend-list">
               <li>
-                <span
-                  class="guide-actor-swatch guide-actor-developer"
-                  aria-hidden="true"
-                ></span>
+                <span class="guide-actor-pill guide-actor-developer">Developer</span>
                 <div>
                   <small>Initiator</small>
-                  <strong>Developer</strong>
                   <p>The person or agent that initiates and observes the operation.</p>
                 </div>
               </li>
               <li>
-                <span
-                  class="guide-actor-swatch guide-actor-desktop"
-                  aria-hidden="true"
-                ></span>
+                <span class="guide-actor-pill guide-actor-desktop">Desktop</span>
                 <div>
                   <small>Integration tool</small>
-                  <strong>Desktop</strong>
                   <p>
                     PortReeve's built-in driver, which injects addresses and invokes
                     configured commands.
@@ -448,37 +445,28 @@
                 </div>
               </li>
               <li>
-                <span
-                  class="guide-actor-swatch guide-actor-generated"
-                  aria-hidden="true"
-                ></span>
+                <span class="guide-actor-pill guide-actor-generated"
+                  >Generated tool</span
+                >
                 <div>
                   <small>Integration tool</small>
-                  <strong>Generated tool</strong>
                   <p>An independent launcher generated for use without Desktop.</p>
                 </div>
               </li>
               <li>
-                <span
-                  class="guide-actor-swatch guide-actor-project"
-                  aria-hidden="true"
-                ></span>
+                <span class="guide-actor-pill guide-actor-project">Project tool</span>
                 <div>
                   <small>Integration tool</small>
-                  <strong>Project tool</strong>
                   <p>
-                    The project's native service manager using the client or protocol.
+                    The project's native service manager, coordinating PortReeve at its
+                    exact lifecycle boundaries.
                   </p>
                 </div>
               </li>
               <li>
-                <span
-                  class="guide-actor-swatch guide-actor-portreeve"
-                  aria-hidden="true"
-                ></span>
+                <span class="guide-actor-pill guide-actor-portreeve">PortReeve</span>
                 <div>
                   <small>Port authority</small>
-                  <strong>PortReeve</strong>
                   <p>
                     The per-user authority that allocates, resolves, and verifies. It
                     starts no service.
@@ -486,24 +474,16 @@
                 </div>
               </li>
               <li>
-                <span
-                  class="guide-actor-swatch guide-actor-commands"
-                  aria-hidden="true"
-                ></span>
+                <span class="guide-actor-pill guide-actor-commands">Commands</span>
                 <div>
                   <small>Project runtime</small>
-                  <strong>Commands</strong>
                   <p>Transient shell operations invoked to manage the stack.</p>
                 </div>
               </li>
               <li>
-                <span
-                  class="guide-actor-swatch guide-actor-services"
-                  aria-hidden="true"
-                ></span>
+                <span class="guide-actor-pill guide-actor-services">Services</span>
                 <div>
                   <small>Project runtime</small>
-                  <strong>Services</strong>
                   <p>Processes or containers that run and bind the assigned ports.</p>
                 </div>
               </li>

@@ -153,7 +153,9 @@ The Guide presents three integration paths:
   application or library that uses the PortReeve server without requiring the desktop
   at runtime.
 - **Best — Native integration:** call PortReeve from the project's existing
-  service-management code through the official client or common socket protocol.
+  service-management code through the official client or common socket protocol so
+  lease acquisition, provider startup, binding confirmation, and cleanup share the
+  project's exact lifecycle boundaries.
 
 A responsive semantic sequence diagram follows one stack from definition and durable
 claims through allocation generation, activation leases, resolution, provider startup,
@@ -164,7 +166,8 @@ integration tool occupies the same lifecycle in the Good, Better, and Best paths
 Good path includes the additional command-to-service handoff, while subdued identity
 colors keep Desktop, generated and project tools, commands, services, and PortReeve
 visually distinct. One shared actor legend beneath the comparison defines the union of
-those identities without repeating explanations inside every card. Native expandable
+those identities, reusing the exact labeled actor pills from the diagrams rather than a
+separate color key. Native expandable
 sections cover host and Docker evidence, sandbox discovery, shared interfaces, trust
 boundaries, and deliberate non-goals. The Guide adds no live refresh source, IPC
 capability, external content, or runtime diagram dependency.

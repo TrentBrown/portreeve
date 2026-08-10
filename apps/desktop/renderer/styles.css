@@ -1017,16 +1017,16 @@ tbody tr:last-child td {
   display: grid;
   gap: 7px;
 }
-.guide-sequence-actors span {
+.guide-actor-pill {
   display: grid;
-  min-height: 36px;
+  min-height: 32px;
   place-items: center;
   border: 1px solid var(--guide-actor-border, var(--pr-color-border));
   border-radius: 8px;
   background: var(--guide-actor-background, var(--pr-color-surface-subtle));
   color: var(--pr-color-logo-ink);
-  padding: 6px;
-  font-size: 12px;
+  padding: 4px 6px;
+  font-size: 9px;
   font-weight: 750;
   line-height: 1.2;
   text-align: center;
@@ -1034,16 +1034,11 @@ tbody tr:last-child td {
 .guide-mini-sequence .guide-sequence-actors {
   gap: 3px;
 }
-.guide-mini-sequence .guide-sequence-actors span {
-  min-height: 32px;
+.guide-mini-sequence .guide-sequence-actors .guide-actor-pill {
   padding: 4px 2px;
-  font-size: 9px;
 }
 .guide-mini-sequence-dense .guide-sequence-actors {
   gap: 2px;
-}
-.guide-mini-sequence-dense .guide-sequence-actors span {
-  font-size: 8px;
 }
 .guide-actor-developer {
   --guide-actor-border: var(--pr-color-border-strong);
@@ -1245,22 +1240,16 @@ tbody tr:last-child td {
 }
 .guide-actor-legend-list li {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-columns: 92px minmax(0, 1fr);
   gap: 9px;
   align-items: start;
   border-top: 1px solid var(--pr-color-border-subtle);
   padding: 11px 4px 2px;
 }
-.guide-actor-swatch {
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-  border: 1px solid var(--guide-actor-border, var(--pr-color-border));
-  border-radius: 5px;
-  background: var(--guide-actor-background, var(--pr-color-surface-subtle));
+.guide-actor-legend-list .guide-actor-pill {
+  width: 92px;
 }
-.guide-actor-legend-list small,
-.guide-actor-legend-list strong {
+.guide-actor-legend-list small {
   display: block;
 }
 .guide-actor-legend-list small {
@@ -1270,10 +1259,6 @@ tbody tr:last-child td {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-.guide-actor-legend-list strong {
-  color: var(--pr-color-logo-ink);
-  font-size: 13px;
 }
 .guide-actor-legend-list p {
   margin: 3px 0 0;
