@@ -131,7 +131,8 @@ test('public guides cover desktop and one representative mixed-stack launcher', 
     readFile(resolve('examples', 'mixed-stack', 'portreeve.stack.json'), 'utf8'),
   ]);
   expect(desktop).toContain('The Stacks tab never starts or stops a project process');
-  expect(desktop).toContain('Launcher is the fourth primary tab');
+  expect(desktop).toContain('Launchers is the fourth primary tab');
+  expect(desktop).toContain('Guide is the rightmost primary tab');
   expect(desktop).toContain('actionable');
   expect(example).toContain('bun run stacks:verify');
   expect(example).toContain('PORTREEVE_ENDPOINTS_FILE');

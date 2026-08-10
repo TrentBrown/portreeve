@@ -26,16 +26,24 @@
       <button class="tab active" type="button" data-view="overview">Overview</button>
       <button class="tab" type="button" data-view="ports">Ports</button>
       <button class="tab" type="button" data-view="stacks">Stacks</button>
-      <button class="tab" type="button" data-view="launcher">Launcher</button>
+      <button class="tab" type="button" data-view="launcher">Launchers</button>
+      <button class="tab" type="button" data-view="guide">Guide</button>
     </nav>
     <main>
-      <p id="notice" class="notice" role="status">Loading PortReeve status…</p>
-      <section id="operation-result" class="operation-result" aria-live="polite" hidden>
-        <h2>Last operation</h2>
-        <p id="operation-message"></p>
-        <ul id="operation-details"></ul>
-      </section>
-      <ul id="errors" class="errors" aria-label="Current errors" hidden></ul>
+      <div id="runtime-status">
+        <p id="notice" class="notice" role="status">Loading PortReeve status…</p>
+        <section
+          id="operation-result"
+          class="operation-result"
+          aria-live="polite"
+          hidden
+        >
+          <h2>Last operation</h2>
+          <p id="operation-message"></p>
+          <ul id="operation-details"></ul>
+        </section>
+        <ul id="errors" class="errors" aria-label="Current errors" hidden></ul>
+      </div>
       <section id="overview" aria-labelledby="overview-title">
         <h2 id="overview-title">Overview</h2>
         <div id="status-cards" class="cards"></div>
@@ -154,7 +162,7 @@
         <div id="launcher-browser">
           <div class="section-heading">
             <div>
-              <h2 id="launcher-title">Launcher</h2>
+              <h2 id="launcher-title">Launchers</h2>
               <p>
                 PortReeve allocates and verifies addresses. Your launcher remains
                 responsible for starting, stopping, and observing the project stack.
@@ -189,6 +197,253 @@
           </div>
         </div>
         <div id="launcher-editor" class="launcher-editor" hidden></div>
+      </section>
+      <section id="guide" class="guide" aria-labelledby="guide-title" hidden>
+        <header class="guide-hero">
+          <p class="eyebrow">How PortReeve fits</p>
+          <h2 id="guide-title">Guide</h2>
+          <p class="guide-lede">
+            PortReeve is the local authority for development TCP ports on your machine.
+            It gives projects, worktrees, processes, containers, and development
+            sandboxes stable network identities without making every project solve port
+            conflicts independently.
+          </p>
+          <p class="guide-principle">
+            <strong>PortReeve coordinates addresses.</strong>
+            <span>Project tools coordinate work.</span>
+          </p>
+          <p>
+            One PortReeve server runs for the current operating-system user. The desktop
+            application, <code>portreeve</code> CLI, official JavaScript client, and
+            project launchers all communicate with that same authority.
+          </p>
+        </header>
+
+        <section class="guide-section" aria-labelledby="guide-paths-title">
+          <div class="guide-section-heading">
+            <p class="eyebrow">Choose your integration</p>
+            <h3 id="guide-paths-title">
+              Start with low friction, then move ownership home
+            </h3>
+            <p>
+              Every path leaves service lifecycle with project-owned commands. They
+              differ in what invokes those commands and what must be present at runtime.
+            </p>
+          </div>
+          <div class="guide-paths">
+            <article class="guide-path">
+              <p class="guide-path-rank">Good</p>
+              <h4>Built-in driver</h4>
+              <p>
+                Configure Start, Stop, Restart, and Status commands in Launchers.
+                PortReeve Desktop injects resolved endpoints and runs your existing
+                stack commands.
+              </p>
+              <dl>
+                <div>
+                  <dt>Friction</dt>
+                  <dd>Lowest</dd>
+                </div>
+                <div>
+                  <dt>Runtime</dt>
+                  <dd>Desktop application</dd>
+                </div>
+                <div>
+                  <dt>Best for</dt>
+                  <dd>Exploring and proving the integration</dd>
+                </div>
+              </dl>
+            </article>
+            <article class="guide-path guide-path-featured">
+              <p class="guide-path-rank">Better</p>
+              <h4>Generated launcher</h4>
+              <p>
+                Generate a separate launcher application or library that coordinates
+                with PortReeve and invokes your project commands without the desktop.
+              </p>
+              <dl>
+                <div>
+                  <dt>Friction</dt>
+                  <dd>Moderate</dd>
+                </div>
+                <div>
+                  <dt>Runtime</dt>
+                  <dd>Server plus generated tool</dd>
+                </div>
+                <div>
+                  <dt>Tradeoff</dt>
+                  <dd>Another project artifact to maintain</dd>
+                </div>
+              </dl>
+            </article>
+            <article class="guide-path">
+              <p class="guide-path-rank">Best</p>
+              <h4>Native integration</h4>
+              <p>
+                Call PortReeve from your own service-management code through the
+                official client or common protocol. Your existing tool remains fully in
+                control.
+              </p>
+              <dl>
+                <div>
+                  <dt>Friction</dt>
+                  <dd>Highest initially</dd>
+                </div>
+                <div>
+                  <dt>Runtime</dt>
+                  <dd>Server plus your project tool</dd>
+                </div>
+                <div>
+                  <dt>Payoff</dt>
+                  <dd>The least integration hair</dd>
+                </div>
+              </dl>
+            </article>
+          </div>
+        </section>
+
+        <section class="guide-section" aria-labelledby="guide-architecture-title">
+          <div class="guide-section-heading">
+            <p class="eyebrow">Architecture</p>
+            <h3 id="guide-architecture-title">
+              One authority, project-owned execution
+            </h3>
+          </div>
+          <figure class="guide-architecture">
+            <div class="guide-interface-row" aria-label="PortReeve interfaces">
+              <span>Desktop</span>
+              <span><code>portreeve</code> CLI</span>
+              <span>JavaScript client</span>
+              <span>Project launcher</span>
+            </div>
+            <p class="guide-contract">
+              Private HTTP/JSON over the per-user Unix-domain socket
+            </p>
+            <div class="guide-system-map">
+              <article class="guide-zone guide-authority">
+                <p class="guide-zone-label">PortReeve authority</p>
+                <h4>Coordinate the endpoint plan</h4>
+                <ul>
+                  <li>Claims, leases, generations, and activations</li>
+                  <li>Durable assignments in the SQLite registry</li>
+                  <li>Fresh listener, process, and Docker evidence</li>
+                  <li>
+                    launchd or <code>systemd --user</code> keeps this server running
+                  </li>
+                </ul>
+              </article>
+              <div class="guide-handoff" aria-label="Shared coordination boundary">
+                <span>allocate</span>
+                <span>resolve</span>
+                <span>confirm</span>
+              </div>
+              <article class="guide-zone guide-project">
+                <p class="guide-zone-label">Project workspace or worktree</p>
+                <h4>Turn the plan into a running stack</h4>
+                <ol>
+                  <li>
+                    <code>portreeve.stack.json</code> declares topology and constraints
+                  </li>
+                  <li>
+                    The launcher controls order, environment, Compose, and secrets
+                  </li>
+                  <li>Host processes and containers bind the assigned endpoints</li>
+                  <li>Project health checks decide when applications are ready</li>
+                  <li>A reduced read-only snapshot may inform sandbox consumers</li>
+                </ol>
+              </article>
+            </div>
+            <figcaption>
+              All interfaces reach the same per-user server. PortReeve plans and
+              verifies addresses; the project launcher starts, observes, and stops the
+              providers.
+            </figcaption>
+          </figure>
+          <aside class="guide-callout" aria-labelledby="guide-readiness-title">
+            <h4 id="guide-readiness-title">Ownership is not readiness</h4>
+            <p>
+              PortReeve can confirm that an endpoint is listening and that the expected
+              process or container owns it. It does not claim that the application is
+              healthy or ready to serve requests.
+            </p>
+          </aside>
+        </section>
+
+        <section
+          class="guide-section guide-deep-dives"
+          aria-labelledby="guide-details-title"
+        >
+          <div class="guide-section-heading">
+            <p class="eyebrow">Concepts</p>
+            <h3 id="guide-details-title">How coordination works</h3>
+          </div>
+          <details>
+            <summary>Allocate, bind, and confirm</summary>
+            <div>
+              <p>
+                A caller identifies the project, workspace, component, and endpoint,
+                then acquires a short-lived lease for a durable assignment. The service
+                binds that port and confirms ownership using fresh evidence. JavaScript
+                services can use <code>withPort()</code> to hide this negotiation.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>Stacks, generations, and activations</summary>
+            <div>
+              <p>
+                One independently runnable stack belongs to each root. Its components
+                expose named endpoints and declare dependencies in
+                <code>portreeve.stack.json</code>; current port numbers remain in
+                PortReeve. A generation keeps the whole stack on one coherent endpoint
+                plan, and each start attempt receives a new activation.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>Process and Docker evidence</summary>
+            <div>
+              <p>
+                Fresh <code>lsof</code> listener evidence is live truth for host ports;
+                stored process IDs are context, not authority. Docker confirmation uses
+                running-container state, exact labels, and publication evidence.
+                PortReeve does not stop project processes or containers itself.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>Sandbox discovery and trust boundaries</summary>
+            <div>
+              <p>
+                Sandboxed code never receives the control socket. A trusted launcher may
+                write an activation-scoped, read-only endpoint snapshot containing only
+                the addresses that consumer needs—not tokens, host paths, process IDs,
+                container IDs, database access, or mutation authority.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>Desktop, CLI, client, and server</summary>
+            <div>
+              <p>
+                There is one per-user installation and authority, not separate desktop
+                and CLI servers. Desktop, CLI, and the official JavaScript client use
+                the same private HTTP/JSON socket contract; only the server mutates
+                SQLite.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>What PortReeve deliberately does not do</summary>
+            <div>
+              <p>
+                PortReeve is not a general project-process supervisor, Docker Compose
+                replacement, startup-order engine, secret manager, application health
+                system, reverse proxy, DNS server, or sandbox control plane.
+              </p>
+            </div>
+          </details>
+        </section>
       </section>
     </main>
 

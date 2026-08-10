@@ -20,7 +20,7 @@ test('wires the primary Launcher experience, cross-links, and close protection',
 
   expect(renderer).toContain('createLauncherView({');
   expect(renderer).toContain("activeView === 'launcher'");
-  expect(renderer).toContain("actionButton('Open in Launcher'");
+  expect(renderer).toContain("actionButton('Open in Launchers'");
   expect(renderer).toContain("activateNamedTab('stacks')");
   expect(renderer).toContain('subscribeApplicationCloseBlocked');
   expect(renderer).toContain('launcherView.isDirty()');

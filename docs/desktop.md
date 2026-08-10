@@ -99,9 +99,9 @@ evidence remains visible for diagnosis but withholds stack mutation controls unt
 current evidence returns; the server revalidates every requested action as final
 authority.
 
-## Launcher
+## Launchers
 
-Launcher is the fourth primary tab, after Stacks. It is the low-friction bridge from an
+Launchers is the fourth primary tab, after Stacks. It is the low-friction bridge from an
 applied stack's current PortReeve allocation to project-owned lifecycle commands. The
 stack-linked browser shows configuration, exact-revision trust, integration maturity,
 fresh evidence, action availability, bounded current-session output, and the latest
@@ -130,6 +130,29 @@ the user explicitly selects **Save output**.
 See [Project launchers](launchers.md) for the file schema, environment contract,
 command-only and verified semantics, CLI workflow, degraded recovery, concurrency,
 retention, and platform boundaries.
+
+## Guide
+
+Guide is the rightmost primary tab. It is a static, offline orientation surface that
+describes the installed release's stable mental model without depending on current
+server evidence. It explains that PortReeve coordinates addresses while project tools
+coordinate work, and that listener ownership does not establish application readiness.
+
+The Guide presents three integration paths:
+
+- **Good — Built-in driver:** configure existing stack commands in Launchers and let
+  PortReeve Desktop inject resolved endpoint variables and invoke them.
+- **Better — Generated launcher:** move that integration into a separate launcher
+  application or library that uses the PortReeve server without requiring the desktop
+  at runtime.
+- **Best — Native integration:** call PortReeve from the project's existing
+  service-management code through the official client or common socket protocol.
+
+A responsive semantic architecture rendition and native expandable sections cover the
+single per-user authority, project-owned launchers and providers, two-phase
+confirmation, generations and activations, host and Docker evidence, sandbox discovery,
+shared interfaces, trust boundaries, and deliberate non-goals. The Guide adds no live
+refresh source, IPC capability, external content, or runtime diagram dependency.
 
 ## Trust and data boundary
 

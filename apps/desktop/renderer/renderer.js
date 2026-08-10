@@ -38,6 +38,7 @@ const portDetail = requiredElement('port-detail');
 const operationResult = requiredElement('operation-result');
 const operationMessage = requiredElement('operation-message');
 const operationDetails = requiredElement('operation-details');
+const runtimeStatus = requiredElement('runtime-status');
 const stackList = requiredElement('stack-list');
 const stackDetail = requiredElement('stack-detail');
 const stacksBrowser = requiredElement('stacks-browser');
@@ -616,7 +617,7 @@ function renderStackDetail(stack) {
   actions.className = 'actions stack-actions';
   actions.append(
     actionButton('Edit Definition', () => stackEditor.openKnown(stack.id)),
-    actionButton('Open in Launcher', () => openLauncherFromStack(stack.id)),
+    actionButton('Open in Launchers', () => openLauncherFromStack(stack.id)),
   );
   const allowedActions = availableStackActions(snapshot, stack);
   if (allowedActions.includes('prepare')) {
@@ -944,6 +945,8 @@ function activateTab(tab, view) {
   requiredElement('ports').hidden = view !== 'ports';
   requiredElement('stacks').hidden = view !== 'stacks';
   requiredElement('launcher').hidden = view !== 'launcher';
+  requiredElement('guide').hidden = view !== 'guide';
+  runtimeStatus.hidden = view === 'guide';
 }
 
 /** @param {string} view */
