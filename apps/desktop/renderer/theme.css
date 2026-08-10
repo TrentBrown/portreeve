@@ -1,0 +1,31 @@
+:root {
+  --pr-color-canvas: #edf2f3;
+  --pr-color-surface: #fafcfc;
+  --pr-color-surface-raised: #ffffff;
+  --pr-color-surface-subtle: #e1ecec;
+  --pr-color-text: #26383f;
+  --pr-color-logo-ink: #12344c;
+  --pr-color-text-muted: #5b6b73;
+  --pr-color-border: #becbd0;
+  --pr-color-border-strong: #9eafb5;
+  --pr-color-border-subtle: #d8e1e4;
+  --pr-color-primary: #176b70;
+  --pr-color-primary-strong: #115359;
+  --pr-color-on-primary: #ffffff;
+  --pr-color-accent: #c75532;
+  --pr-color-accent-soft: #f9e5de;
+  --pr-color-success: #26745d;
+  --pr-color-success-soft: #dceee7;
+  --pr-color-warning: #8b5b18;
+  --pr-color-warning-soft: #f8ecd7;
+  --pr-color-danger: #9e3f3b;
+  --pr-color-danger-soft: #f7e2e0;
+  --pr-color-code-background: #15282f;
+  --pr-color-code-text: #eaf6f5;
+  --pr-color-focus-ring: rgb(23 107 112 / 22%);
+  --pr-color-shadow-soft: rgb(23 49 62 / 7%);
+  --pr-color-shadow-strong: rgb(14 34 43 / 28%);
+  --pr-color-shadow-sticky: rgb(23 49 62 / 10%);
+  --pr-color-overlay: rgb(14 30 37 / 45%);
+  --pr-color-surface-translucent: rgb(250 252 252 / 96%);
+}

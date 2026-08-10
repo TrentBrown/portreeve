@@ -4,15 +4,25 @@ import { readFile, realpath } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 
 /** @type {Readonly<Record<string, string>>} */
-const contentTypes = Object.freeze({
+const rendererContentTypes = Object.freeze({
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
 });
 
-/** @param {import('electron').Protocol} protocol @param {string} rendererRoot */
-export function registerRendererProtocol(protocol, rendererRoot) {
-  const canonicalRootPromise = realpath(rendererRoot);
+/** @type {Readonly<Record<string, string>>} */
+const brandingContentTypes = Object.freeze({
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+});
+
+/**
+ * @param {import('electron').Protocol} protocol
+ * @param {{rendererRoot: string, brandingRoot: string}} roots
+ */
+export function registerRendererProtocol(protocol, { rendererRoot, brandingRoot }) {
+  const canonicalRendererRootPromise = realpath(rendererRoot);
+  const canonicalBrandingRootPromise = realpath(brandingRoot);
   protocol.handle('app', async (request) => {
     const url = new URL(request.url);
     if (url.hostname !== 'portreeve' || request.method !== 'GET') {
@@ -24,13 +34,21 @@ export function registerRendererProtocol(protocol, rendererRoot) {
     } catch {
       return new Response('Not found', { status: 404 });
     }
+    const isBrandingAsset = relativePath.startsWith('branding/');
+    const requestedPath = isBrandingAsset
+      ? relativePath.slice('branding/'.length)
+      : relativePath || 'index.html';
     try {
-      const canonicalRoot = await canonicalRootPromise;
-      const path = await realpath(resolve(canonicalRoot, relativePath || 'index.html'));
+      const canonicalRoot = await (isBrandingAsset
+        ? canonicalBrandingRootPromise
+        : canonicalRendererRootPromise);
+      const path = await realpath(resolve(canonicalRoot, requestedPath));
       if (!path.startsWith(`${canonicalRoot}${sep}`)) {
         return new Response('Not found', { status: 404 });
       }
-      const contentType = contentTypes[extname(path)];
+      const contentType = (
+        isBrandingAsset ? brandingContentTypes : rendererContentTypes
+      )[extname(path)];
       if (contentType === undefined) {
         return new Response('Not found', { status: 404 });
       }

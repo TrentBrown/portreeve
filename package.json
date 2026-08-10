@@ -18,6 +18,7 @@
     "packages/*"
   ],
   "scripts": {
+    "branding:generate": "\"$npm_execpath\" scripts/generate-brand-assets.js",
     "build": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/build.js",
     "check": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" run typecheck && \"$npm_execpath\" run lint && \"$npm_execpath\" run format:check && \"$npm_execpath\" test",
     "desktop:package": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/package-desktop.js",

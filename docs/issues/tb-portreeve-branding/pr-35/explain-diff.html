@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #35 · PortReeve Fogbound Coast branding</title>
+    <style>
+      :root {
+        --canvas: #edf2f3;
+        --surface: #fafcfc;
+        --ink: #12344c;
+        --text: #26383f;
+        --muted: #5b6b73;
+        --sea: #176b70;
+        --coral: #c75532;
+        --border: #becbd0;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--canvas); color: var(--text); font: 17px/1.65 system-ui, sans-serif; }
+      header, main, footer { width: min(980px, calc(100% - 36px)); margin: auto; }
+      header { padding: 64px 0 30px; }
+      h1, h2, h3 { color: var(--ink); line-height: 1.15; }
+      h1 { margin: 0; font: 700 clamp(38px, 7vw, 68px)/1.05 Georgia, serif; }
+      h2 { margin-top: 56px; font: 700 34px/1.15 Georgia, serif; }
+      h3 { margin-top: 30px; }
+      .eyebrow { color: var(--sea); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+      .lede { max-width: 760px; color: var(--muted); font-size: 21px; }
+      nav, .card, .callout, .diagram, .quiz { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 22px; }
+      nav a { display: inline-block; margin: 4px 18px 4px 0; color: var(--sea); font-weight: 700; }
+      code { color: var(--ink); }
+      pre { overflow: auto; border-radius: 12px; background: #15282f; color: #eaf6f5; padding: 18px; white-space: pre-wrap; }
+      .callout { border-left: 6px solid var(--coral); }
+      .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: center; }
+      .flow div { border: 2px solid var(--sea); border-radius: 12px; padding: 14px; text-align: center; }
+      .flow span { color: var(--coral); text-align: center; font-size: 24px; font-weight: 800; }
+      .mock { display: grid; grid-template-columns: 76px 1fr auto; gap: 16px; align-items: center; }
+      .mock img { width: 76px; height: 76px; }
+      .mock strong { display: block; color: var(--ink); font: 700 30px Georgia, serif; }
+      .mock small { color: var(--muted); font-weight: 800; letter-spacing: .1em; }
+      .swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+      .swatch { min-height: 90px; border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 700; }
+      .answers { display: grid; gap: 8px; }
+      .answers button { border: 1px solid var(--border); border-radius: 10px; background: white; color: var(--text); padding: 12px; text-align: left; cursor: pointer; }
+      .answers button:hover, .answers button:focus-visible { border-color: var(--sea); outline: 3px solid rgb(23 107 112 / 22%); }
+      .feedback { min-height: 28px; margin: 10px 0 0; font-weight: 700; }
+      footer { padding: 60px 0; color: var(--muted); }
+      @media (max-width: 720px) { .flow, .swatches { grid-template-columns: 1fr; } .flow span { transform: rotate(90deg); } .mock { grid-template-columns: 60px 1fr; } .mock button { grid-column: 1 / -1; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="eyebrow">PR #35 · feature-final</p>
+      <h1>Giving PortReeve a durable visual identity</h1>
+      <p class="lede">Fogbound Coast is now a system rather than a screenshot: semantic application colors, the exact approved harbor-steward artwork, reproducible macOS assets, and a narrow path from the package to the renderer.</p>
+    </header>
+    <main>
+      <nav aria-label="Contents"><a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#quiz">Quiz</a></nav>
+
+      <section id="background">
+        <h2>Background</h2>
+        <p>Before this change, the desktop application already had a coherent layout, but its colors lived directly inside component rules. That makes an experiment deceptively expensive: changing “green” means finding every green, deciding whether it represents an action, selection, success, or focus, and hoping no state was missed. The packaged application also inherited Electron's generic icon, while the selected PortReeve portrait existed only as exploratory artwork.</p>
+        <div class="callout"><strong>Two kinds of identity are being stabilized.</strong> The theme assigns meaning to colors. The logo preserves the exact approved artwork. Neither should depend on copying values or retracing shapes by eye.</div>
+        <h3>The security boundary that already existed</h3>
+        <p>The renderer does not load arbitrary files. Its custom <code>app://</code> protocol accepts only the PortReeve hostname, only GET requests, only canonical paths beneath a trusted root, and only an extension allowlist. Branding must cross that boundary without turning the renderer root into a general-purpose file server.</p>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <div class="diagram flow" aria-label="Brand asset flow"><div>Approved archive<br /><small>cream PNG + SVG</small></div><span>→</span><div>Production master<br /><small>original RGB + alpha</small></div><span>→</span><div>Reusable mark<br /><small>transparent SVG + PNG</small></div><span>→</span><div>Bounded icon<br /><small>Fogbound tile + ICNS</small></div></div>
+        <p>The essential move is to separate provenance, reusable artwork, and bounded application icons. The checksum-locked 1254px cream artwork remains the archival authority. A second checksum-locked PNG preserves its RGB artwork while adding only an exterior alpha mask. The header, lockup, and reusable PNGs consume that transparent master; the macOS icon intentionally places it on a Fogbound Coast tile. This also corrects an earlier hand-authored SVG whose shapes did not match the selected artwork.</p>
+        <div class="card mock"><img src="../../../../apps/desktop/assets/branding/portreeve-mark.svg" alt="PortReeve harbor steward" /><div><small>LOCAL PORT AUTHORITY</small><strong>PortReeve</strong></div><button>Refresh</button></div>
+        <div class="swatches" aria-label="Fogbound Coast samples">
+          <div class="swatch" style="background:#12344c;color:white">Logo ink<br />#12344C</div>
+          <div class="swatch" style="background:#176b70;color:white">Sea teal<br />#176B70</div>
+          <div class="swatch" style="background:#edf2f3;color:#26383f">Canvas<br />#EDF2F3</div>
+          <div class="swatch" style="background:#fafcfc;color:#26383f">Surface<br />#FAFCFC</div>
+          <div class="swatch" style="background:#c75532;color:white">Signal coral<br />#C75532</div>
+        </div>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <h3>1. Semantic theme</h3>
+        <p><code>theme.css</code> names canvas, surfaces, text, borders, actions, status colors, code output, focus, shadows, and overlays. Component CSS now consumes those names. A test rejects independent hexadecimal or RGB literals in component styles and calculates WCAG contrast for the actual foreground/background pairs.</p>
+        <pre>:root {
+  --pr-color-logo-ink: #12344c;
+  --pr-color-primary: #176b70;
+  --pr-color-canvas: #edf2f3;
+}
+
+button.primary {
+  background: var(--pr-color-primary);
+  color: var(--pr-color-on-primary);
+}</pre>
+        <h3>2. Approved artwork and generation</h3>
+        <p>The approved artwork was generated as a PNG; no original vector SVG existed. <code>portreeve-approved-original.png</code> is therefore the checksum-locked archival master, including its cream background. <code>portreeve-transparent-master.png</code> is the production cutout. The generator embeds each master in its intended standalone SVG, then renders transparent common PNGs and lockup, the bounded 1024px app tile, ten conventional iconset files, a compiled ICNS, and a visual contact sheet. A pixel comparison between the recovered source and the user's reference screenshot reports RMSE <code>0 (0)</code>.</p>
+        <h3>3. Narrow renderer route</h3>
+        <p>The protocol has two independent canonical roots. HTML, CSS, and JavaScript remain confined to the renderer root. Only PNG and SVG are accepted beneath <code>/branding/</code>. Traversal and symlink escapes are rejected after <code>realpath</code>, so an allowed extension cannot smuggle an outside file through the route.</p>
+        <pre>app://portreeve/index.html          → renderer root → HTML/CSS/JS
+app://portreeve/branding/mark.svg → branding root → SVG/PNG
+app://portreeve/branding/../x.svg → canonical escape → 404</pre>
+        <h3>4. Packaging and proof</h3>
+        <p>The desktop stage now copies <code>assets/</code> and passes <code>PortReeve.icns</code> to Electron Packager. Verification compared the packaged icon byte-for-byte with the committed source, inspected the ASAR inventory, and launched the packaged arm64 application. The header mark is 96px rather than 64px, making the port sequence just legible without overpowering the title. Playwright checks at 1224px and the 720px minimum width confirm that the larger mark, Refresh control, navigation, and content remain balanced.</p>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="1"><h3>1. Why is sea teal a semantic token rather than a component literal?</h3><div class="answers"><button>It lets every SVG inherit CSS at runtime.</button><button>It lets components name an interaction role while the colorway remains replaceable.</button><button>It prevents macOS from recoloring the icon.</button></div><p class="feedback"></p></div>
+        <div class="quiz" data-answer="2"><h3>2. What prevents an SVG symlink from escaping the branding directory?</h3><div class="answers"><button>The filename must contain “portreeve”.</button><button>The CSP blocks all symlinks before the request.</button><button>The resolved real path must remain beneath the separately canonicalized branding root.</button></div><p class="feedback"></p></div>
+        <div class="quiz" data-answer="0"><h3>3. Which file is the exact approved logo source of truth?</h3><div class="answers"><button>portreeve-approved-original.png</button><button>portreeve-app-icon-1024.png</button><button>PortReeve.icns</button></div><p class="feedback"></p></div>
+        <div class="quiz" data-answer="1"><h3>4. Which renditions should retain a deliberate background?</h3><div class="answers"><button>The desktop header and horizontal lockup.</button><button>The archival original and bounded macOS application icon.</button><button>Every PNG because macOS ignores alpha.</button></div><p class="feedback"></p></div>
+        <div class="quiz" data-answer="1"><h3>5. Why may the cap numbers disappear at 16px without failing the spec?</h3><div class="answers"><button>The 16px file is retained only for Windows.</button><button>Small-size identity depends on the steward silhouette and teal band; normal-size text remains exact.</button><button>The ICNS stores a hidden text alternative used by Finder.</button></div><p class="feedback"></p></div>
+        <div class="quiz" data-answer="2"><h3>6. What proves Electron used the intended ICNS despite probing for a newer .icon?</h3><div class="answers"><button>The package command exited zero.</button><button>The ASAR contains the SVG mark.</button><button>The source ICNS and packaged electron.icns have identical bytes and SHA-256.</button></div><p class="feedback"></p></div>
+      </section>
+    </main>
+    <footer>Explains pinned diff <code>a597d096…422a7cff</code>. Generated for PortReeve PR #35.</footer>
+    <script>
+      for (const quiz of document.querySelectorAll('.quiz')) {
+        const answer = Number(quiz.dataset.answer);
+        const feedback = quiz.querySelector('.feedback');
+        quiz.querySelectorAll('button').forEach((button, index) => button.addEventListener('click', () => {
+          const correct = index === answer;
+          feedback.textContent = correct ? 'Correct — that is the contract this PR establishes.' : 'Not quite. Revisit the preceding section and compare authority with rendition.';
+          feedback.style.color = correct ? '#176b70' : '#9e3f3b';
+        }));
+      }
+    </script>
+  </body>
+</html>
