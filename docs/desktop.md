@@ -164,6 +164,12 @@ sections cover host and Docker evidence, sandbox discovery, shared interfaces, t
 boundaries, and deliberate non-goals. The Guide adds no live refresh source, IPC
 capability, external content, or runtime diagram dependency.
 
+A visible sandbox callout explains why isolated agent environments do not remove the
+need for PortReeve. Containers may reuse internal ports, but browser-visible and
+host-testable publications still share the host namespace. A trusted host launcher
+coordinates those publications and may mount a reduced read-only endpoint snapshot;
+the PortReeve control socket and lease credentials never enter the sandbox.
+
 ## Trust and data boundary
 
 Electron runs a sandboxed renderer with context isolation, Node integration disabled,

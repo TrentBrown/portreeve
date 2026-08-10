@@ -1174,6 +1174,9 @@ tbody tr:last-child td {
   margin-bottom: 0;
   line-height: 1.55;
 }
+.guide-callout p + p {
+  margin-top: 10px;
+}
 .guide-deep-dives details {
   margin-top: 10px;
   border: 1px solid var(--pr-color-border);

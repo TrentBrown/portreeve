@@ -563,6 +563,27 @@
               healthy or ready to serve requests.
             </p>
           </aside>
+          <aside class="guide-callout" aria-labelledby="guide-sandbox-value-title">
+            <h4 id="guide-sandbox-value-title">
+              Sandboxes move the conflict boundary—not the need for PortReeve
+            </h4>
+            <p>
+              Docker-based development sandboxes such as Dr. Sandbox can safely reuse
+              the same internal ports on isolated networks. The conflict returns when
+              their APIs, front-end clients, or debugging endpoints are published for a
+              developer's browser or host-side tools: every publication still competes
+              in the machine's one shared host-port namespace. Host PortReeve gives each
+              worktree stack stable, discoverable loopback publications without
+              collisions.
+            </p>
+            <p>
+              A trusted host launcher coordinates PortReeve and the sandbox runtime. It
+              may mount an activation-scoped, read-only endpoint snapshot into the
+              sandbox, but never the PortReeve control socket or lease credentials. One
+              host authority can therefore coordinate many isolated sandboxes without
+              weakening their security boundary.
+            </p>
+          </aside>
         </section>
 
         <section
@@ -611,9 +632,11 @@
             <summary>Sandbox discovery and trust boundaries</summary>
             <div>
               <p>
-                Sandboxed code never receives the control socket. A trusted launcher may
-                write an activation-scoped, read-only endpoint snapshot containing only
-                the addresses that consumer needs—not tokens, host paths, process IDs,
+                Sandboxed code never receives the control socket. PortReeve runs on the
+                host because separate authorities inside isolated sandboxes cannot
+                coordinate their shared host publications. A trusted launcher may write
+                an activation-scoped, read-only endpoint snapshot containing only the
+                addresses that consumer needs—not tokens, host paths, process IDs,
                 container IDs, database access, or mutation authority.
               </p>
             </div>
