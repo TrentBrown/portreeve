@@ -1039,6 +1039,12 @@ tbody tr:last-child td {
   padding: 4px 2px;
   font-size: 9px;
 }
+.guide-mini-sequence-dense .guide-sequence-actors {
+  gap: 2px;
+}
+.guide-mini-sequence-dense .guide-sequence-actors span {
+  font-size: 8px;
+}
 .guide-mini-sequence .guide-actor-developer {
   border-color: var(--pr-color-border-strong);
   background: var(--pr-color-surface-raised);
@@ -1057,7 +1063,7 @@ tbody tr:last-child td {
 }
 .guide-mini-sequence .guide-actor-portreeve {
   border-color: var(--pr-color-logo-ink);
-  background: var(--pr-color-surface-subtle);
+  background: var(--pr-color-actor-portreeve-background);
 }
 .guide-mini-sequence .guide-actor-commands {
   border-color: var(--pr-color-actor-commands-border);
@@ -1124,6 +1130,18 @@ tbody tr:last-child td {
 }
 .guide-mini-sequence .guide-message > span {
   font-size: 9px;
+}
+.guide-mini-sequence-dense .guide-message {
+  height: 36px;
+}
+.guide-mini-sequence-dense .guide-message::before {
+  top: 23px;
+}
+.guide-mini-sequence-dense .guide-message::after {
+  top: 19px;
+}
+.guide-mini-sequence-dense .guide-message > span {
+  font-size: 8px;
 }
 .guide-sequence-four .flow-1-2 {
   --sequence-start: 12.5%;

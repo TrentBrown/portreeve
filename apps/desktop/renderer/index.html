@@ -267,16 +267,19 @@
                 PortReeve Desktop injects resolved endpoints and runs your existing
                 stack commands.
               </p>
-              <figure class="guide-mini-sequence guide-sequence-four">
+              <figure
+                class="guide-mini-sequence guide-mini-sequence-dense guide-sequence-five"
+              >
                 <div class="guide-sequence-canvas">
                   <div class="guide-sequence-lifelines" aria-hidden="true">
-                    <i></i><i></i><i></i><i></i>
+                    <i></i><i></i><i></i><i></i><i></i>
                   </div>
                   <div class="guide-sequence-actors">
                     <span class="guide-actor-developer">Developer</span
                     ><span class="guide-actor-desktop">Desktop</span
                     ><span class="guide-actor-portreeve">PortReeve</span
-                    ><span class="guide-actor-commands">Commands</span>
+                    ><span class="guide-actor-commands">Commands</span
+                    ><span class="guide-actor-services">Services</span>
                   </div>
                   <ol aria-label="Built-in driver startup sequence">
                     <li class="guide-message flow-1-2"><span>Start</span></li>
@@ -284,7 +287,10 @@
                       <span>Plan and lease</span>
                     </li>
                     <li class="guide-message flow-2-4">
-                      <span>Inject and invoke</span>
+                      <span>Inject command</span>
+                    </li>
+                    <li class="guide-message flow-4-5">
+                      <span>Start services</span>
                     </li>
                     <li class="guide-message flow-2-3">
                       <span>Confirm bindings</span>

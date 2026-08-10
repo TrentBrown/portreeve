@@ -95,9 +95,14 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(html.match(/<details>/g)).toHaveLength(6);
   expect(html).toContain('<figure class="guide-architecture guide-sequence-five">');
   expect(html).toContain('<figcaption>');
+  expect(html.match(/class="guide-mini-sequence/g)).toHaveLength(3);
   expect(html.match(/class="guide-mini-sequence guide-sequence-four"/g)).toHaveLength(
-    3,
+    2,
   );
+  expect(html).toContain(
+    'class="guide-mini-sequence guide-mini-sequence-dense guide-sequence-five"',
+  );
+  expect(html).toContain('Start services');
   expect(html).toContain('aria-label="Canonical PortReeve stack lifecycle"');
   expect(html).toContain('class="guide-sequence-note note-portreeve concept-claim"');
   expect(html).toContain('class="guide-object-model"');
@@ -119,11 +124,12 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(css).toContain('.guide-message.reverse::after');
   expect(html.match(/class="guide-actor-developer"/g)).toHaveLength(3);
   expect(html.match(/class="guide-actor-portreeve"/g)).toHaveLength(3);
-  expect(html.match(/class="guide-actor-services"/g)).toHaveLength(2);
+  expect(html.match(/class="guide-actor-services"/g)).toHaveLength(3);
   for (const actor of ['desktop', 'generated', 'project', 'commands', 'services']) {
     expect(css).toContain(`.guide-mini-sequence .guide-actor-${actor}`);
   }
   expect(css).toContain('background: var(--pr-color-success-soft)');
+  expect(css).toContain('background: var(--pr-color-actor-portreeve-background)');
   expect(css).toContain('background: var(--pr-color-accent-soft)');
   expect(css).toContain('.guide-object-model');
   expect(css).toContain('@media (max-width: 900px)');

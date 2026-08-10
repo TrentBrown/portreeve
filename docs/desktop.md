@@ -159,12 +159,13 @@ A responsive semantic sequence diagram follows one stack from definition and dur
 claims through allocation generation, activation leases, resolution, provider startup,
 fresh-evidence confirmation, and shutdown. Concept callouts attach Claim, Generation,
 Activation, and Lease to the messages that create them, and a nested state-model diagram
-shows their lifetimes and containment. Compact four-lifeline sequences distinguish which
-integration tool occupies the same lifecycle in the Good, Better, and Best paths, with
-subdued identity colors keeping Desktop, generated and project tools, commands, and
-services visually distinct. Native expandable sections cover host and Docker evidence,
-sandbox discovery, shared interfaces, trust boundaries, and deliberate non-goals. The
-Guide adds no live refresh source, IPC
+shows their lifetimes and containment. Compact sequence diagrams distinguish which
+integration tool occupies the same lifecycle in the Good, Better, and Best paths. The
+Good path includes the additional command-to-service handoff, while subdued identity
+colors keep Desktop, generated and project tools, commands, services, and PortReeve
+visually distinct. Native expandable sections cover host and Docker evidence, sandbox
+discovery, shared interfaces, trust boundaries, and deliberate non-goals. The Guide adds
+no live refresh source, IPC
 capability, external content, or runtime diagram dependency.
 
 A visible sandbox-boundary sequence explains why isolated agent environments do not
