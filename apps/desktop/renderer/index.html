@@ -412,6 +412,103 @@
               </dl>
             </article>
           </div>
+          <aside class="guide-actor-legend" aria-labelledby="guide-actor-legend-title">
+            <header>
+              <p class="eyebrow">Actor key</p>
+              <h4 id="guide-actor-legend-title">Actors in these integration paths</h4>
+              <p>
+                Colors identify the same actor wherever it appears. Each path changes
+                who performs the integration work, not PortReeve's responsibility.
+              </p>
+            </header>
+            <ul class="guide-actor-legend-list">
+              <li>
+                <span
+                  class="guide-actor-swatch guide-actor-developer"
+                  aria-hidden="true"
+                ></span>
+                <div>
+                  <small>Initiator</small>
+                  <strong>Developer</strong>
+                  <p>The person or agent that initiates and observes the operation.</p>
+                </div>
+              </li>
+              <li>
+                <span
+                  class="guide-actor-swatch guide-actor-desktop"
+                  aria-hidden="true"
+                ></span>
+                <div>
+                  <small>Integration tool</small>
+                  <strong>Desktop</strong>
+                  <p>
+                    PortReeve's built-in driver, which injects addresses and invokes
+                    configured commands.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span
+                  class="guide-actor-swatch guide-actor-generated"
+                  aria-hidden="true"
+                ></span>
+                <div>
+                  <small>Integration tool</small>
+                  <strong>Generated tool</strong>
+                  <p>An independent launcher generated for use without Desktop.</p>
+                </div>
+              </li>
+              <li>
+                <span
+                  class="guide-actor-swatch guide-actor-project"
+                  aria-hidden="true"
+                ></span>
+                <div>
+                  <small>Integration tool</small>
+                  <strong>Project tool</strong>
+                  <p>
+                    The project's native service manager using the client or protocol.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span
+                  class="guide-actor-swatch guide-actor-portreeve"
+                  aria-hidden="true"
+                ></span>
+                <div>
+                  <small>Port authority</small>
+                  <strong>PortReeve</strong>
+                  <p>
+                    The per-user authority that allocates, resolves, and verifies. It
+                    starts no service.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span
+                  class="guide-actor-swatch guide-actor-commands"
+                  aria-hidden="true"
+                ></span>
+                <div>
+                  <small>Project runtime</small>
+                  <strong>Commands</strong>
+                  <p>Transient shell operations invoked to manage the stack.</p>
+                </div>
+              </li>
+              <li>
+                <span
+                  class="guide-actor-swatch guide-actor-services"
+                  aria-hidden="true"
+                ></span>
+                <div>
+                  <small>Project runtime</small>
+                  <strong>Services</strong>
+                  <p>Processes or containers that run and bind the assigned ports.</p>
+                </div>
+              </li>
+            </ul>
+          </aside>
         </section>
 
         <section class="guide-section" aria-labelledby="guide-architecture-title">

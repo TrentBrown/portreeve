@@ -1021,9 +1021,9 @@ tbody tr:last-child td {
   display: grid;
   min-height: 36px;
   place-items: center;
-  border: 1px solid var(--pr-color-border);
+  border: 1px solid var(--guide-actor-border, var(--pr-color-border));
   border-radius: 8px;
-  background: var(--pr-color-surface-subtle);
+  background: var(--guide-actor-background, var(--pr-color-surface-subtle));
   color: var(--pr-color-logo-ink);
   padding: 6px;
   font-size: 12px;
@@ -1045,33 +1045,33 @@ tbody tr:last-child td {
 .guide-mini-sequence-dense .guide-sequence-actors span {
   font-size: 8px;
 }
-.guide-mini-sequence .guide-actor-developer {
-  border-color: var(--pr-color-border-strong);
-  background: var(--pr-color-surface-raised);
+.guide-actor-developer {
+  --guide-actor-border: var(--pr-color-border-strong);
+  --guide-actor-background: var(--pr-color-surface-raised);
 }
-.guide-mini-sequence .guide-actor-desktop {
-  border-color: var(--pr-color-primary);
-  background: var(--pr-color-success-soft);
+.guide-actor-desktop {
+  --guide-actor-border: var(--pr-color-primary);
+  --guide-actor-background: var(--pr-color-success-soft);
 }
-.guide-mini-sequence .guide-actor-generated {
-  border-color: var(--pr-color-actor-generated-border);
-  background: var(--pr-color-actor-generated-background);
+.guide-actor-generated {
+  --guide-actor-border: var(--pr-color-actor-generated-border);
+  --guide-actor-background: var(--pr-color-actor-generated-background);
 }
-.guide-mini-sequence .guide-actor-project {
-  border-color: var(--pr-color-actor-project-border);
-  background: var(--pr-color-actor-project-background);
+.guide-actor-project {
+  --guide-actor-border: var(--pr-color-actor-project-border);
+  --guide-actor-background: var(--pr-color-actor-project-background);
 }
-.guide-mini-sequence .guide-actor-portreeve {
-  border-color: var(--pr-color-logo-ink);
-  background: var(--pr-color-actor-portreeve-background);
+.guide-actor-portreeve {
+  --guide-actor-border: var(--pr-color-logo-ink);
+  --guide-actor-background: var(--pr-color-actor-portreeve-background);
 }
-.guide-mini-sequence .guide-actor-commands {
-  border-color: var(--pr-color-actor-commands-border);
-  background: var(--pr-color-actor-commands-background);
+.guide-actor-commands {
+  --guide-actor-border: var(--pr-color-actor-commands-border);
+  --guide-actor-background: var(--pr-color-actor-commands-background);
 }
-.guide-mini-sequence .guide-actor-services {
-  border-color: var(--pr-color-accent);
-  background: var(--pr-color-accent-soft);
+.guide-actor-services {
+  --guide-actor-border: var(--pr-color-accent);
+  --guide-actor-background: var(--pr-color-accent-soft);
 }
 .guide-sequence-canvas ol {
   position: relative;
@@ -1206,6 +1206,80 @@ tbody tr:last-child td {
   margin: 18px 0 0;
   border-top: 1px solid var(--pr-color-border-subtle);
   padding-top: 12px;
+}
+.guide-actor-legend {
+  margin-top: 18px;
+  border: 1px solid var(--pr-color-border);
+  border-radius: 14px;
+  background: var(--pr-color-surface);
+  box-shadow: 0 8px 28px var(--pr-color-shadow-soft);
+  padding: 20px 22px;
+}
+.guide-actor-legend header {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.8fr) minmax(0, 1.4fr);
+  gap: 8px 28px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+.guide-actor-legend header .eyebrow {
+  grid-column: 1 / -1;
+}
+.guide-actor-legend h4 {
+  margin: 0;
+  font-size: 18px;
+}
+.guide-actor-legend header > p:last-child {
+  margin: 0;
+  color: var(--pr-color-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.guide-actor-legend-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.guide-actor-legend-list li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  border-top: 1px solid var(--pr-color-border-subtle);
+  padding: 11px 4px 2px;
+}
+.guide-actor-swatch {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  border: 1px solid var(--guide-actor-border, var(--pr-color-border));
+  border-radius: 5px;
+  background: var(--guide-actor-background, var(--pr-color-surface-subtle));
+}
+.guide-actor-legend-list small,
+.guide-actor-legend-list strong {
+  display: block;
+}
+.guide-actor-legend-list small {
+  margin-bottom: 2px;
+  color: var(--pr-color-text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.guide-actor-legend-list strong {
+  color: var(--pr-color-logo-ink);
+  font-size: 13px;
+}
+.guide-actor-legend-list p {
+  margin: 3px 0 0;
+  color: var(--pr-color-text-muted);
+  font-size: 11px;
+  line-height: 1.4;
 }
 .guide-path dl div {
   display: grid;
@@ -1543,6 +1617,10 @@ dialog form > input {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .guide-paths {
+    grid-template-columns: 1fr;
+  }
+  .guide-actor-legend header,
+  .guide-actor-legend-list {
     grid-template-columns: 1fr;
   }
   .guide-hero {
