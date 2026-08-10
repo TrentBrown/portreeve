@@ -172,18 +172,19 @@ const actionDefinitions = Object.freeze({
 });
 
 for (const tab of document.querySelectorAll('.tab')) {
-  tab.addEventListener('click', async () => {
+  tab.addEventListener('click', () => {
     const view = /** @type {HTMLElement} */ (tab).dataset.view;
-    if (view !== 'stacks' && stackEditor.isOpen()) {
-      if (!(await stackEditor.requestClose())) return;
-    }
-    if (view !== 'launcher' && launcherView.isOpen()) {
-      if (!(await launcherView.requestClose())) return;
-    }
-    activateTab(tab, view);
-    if (view === 'launcher') await launcherView.open();
+    void requestView(tab, view);
   });
 }
+
+requiredElement('open-guide').addEventListener('click', async () => {
+  const guideTab = document.querySelector('.tab[data-view="guide"]');
+  if (guideTab === null) throw new Error('Missing guide tab.');
+  if (!(await requestView(guideTab, 'guide'))) return;
+  requiredElement('guide-title').focus({ preventScroll: true });
+  window.scrollTo({ top: 0, left: 0 });
+});
 
 let closeAfterDiscard = false;
 let closePromptOpen = false;
@@ -954,6 +955,19 @@ function activateNamedTab(view) {
   const tab = document.querySelector(`.tab[data-view="${view}"]`);
   if (tab === null) throw new Error(`Missing ${view} tab.`);
   activateTab(tab, view);
+}
+
+/** @param {Element} tab @param {string|undefined} view */
+async function requestView(tab, view) {
+  if (view !== 'stacks' && stackEditor.isOpen()) {
+    if (!(await stackEditor.requestClose())) return false;
+  }
+  if (view !== 'launcher' && launcherView.isOpen()) {
+    if (!(await launcherView.requestClose())) return false;
+  }
+  activateTab(tab, view);
+  if (view === 'launcher') await launcherView.open();
+  return true;
 }
 
 /** @param {string} stackId */

@@ -137,6 +137,10 @@ Guide is the rightmost primary tab. It is a static, offline orientation surface 
 describes the installed release's stable mental model without depending on current
 server evidence. It explains that PortReeve coordinates addresses while project tools
 coordinate work, and that listener ownership does not establish application readiness.
+An always-visible **What is PortReeve?** link beneath the product name opens the Guide
+at its identity section. That opening pairs a large, legible brand mark with a plain
+product definition and a short explanation of the historical *portreeve* name. The link
+uses the same unsaved-editor protections as primary-tab navigation.
 
 The Guide presents three integration paths:
 

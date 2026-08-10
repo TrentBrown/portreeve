@@ -28,8 +28,12 @@ test('presents the five primary views with plural collection naming', async () =
   expect(renderer).toContain("actionButton('Open in Launchers'");
   expect(renderer).toContain("requiredElement('guide').hidden = view !== 'guide'");
   expect(renderer).toContain("runtimeStatus.hidden = view === 'guide'");
-  expect(renderer).toContain("if (view !== 'stacks' && stackEditor.isOpen())");
-  expect(renderer).toContain("if (view !== 'launcher' && launcherView.isOpen())");
+  expect(
+    renderer.match(/if \(view !== 'stacks' && stackEditor\.isOpen\(\)\)/g),
+  ).toHaveLength(1);
+  expect(
+    renderer.match(/if \(view !== 'launcher' && launcherView\.isOpen\(\)\)/g),
+  ).toHaveLength(1);
 });
 
 test('ships the Guide as static semantic architecture and integration guidance', async () => {
@@ -41,8 +45,16 @@ test('ships the Guide as static semantic architecture and integration guidance',
   ]);
 
   expect(html).toContain('id="guide"');
+  expect(html).toContain('id="open-guide"');
+  expect(html).toContain('What is PortReeve?');
+  expect(html).toContain('<h2 id="guide-title" tabindex="-1">');
+  expect(html).toContain('Familiar ports: 80 · 443 · 3000 · 8080');
+  expect(html).toContain('a civic official');
+  expect(html).toContain('market town—not only a seaport');
   expect(html).toContain('PortReeve coordinates addresses.');
-  expect(html).toContain('Project tools coordinate work.');
+  expect(html).toMatch(
+    /Your project tools start, supervise, and evaluate the health of your\s+services\./,
+  );
   for (const phrase of [
     'Good',
     'Built-in driver',
@@ -66,8 +78,16 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(html).not.toMatch(/<script[^>]+(?:mermaid|https?:)/i);
   expect(html).not.toMatch(/<(?:iframe|object|embed)\b/i);
   expect(renderer).not.toMatch(/fetch\(|WebSocket|EventSource/);
+  expect(renderer).toContain('void requestView(tab, view)');
+  expect(renderer).toContain("await requestView(guideTab, 'guide')");
+  expect(renderer).toContain(
+    "requiredElement('guide-title').focus({ preventScroll: true })",
+  );
   expect(packageJson).not.toMatch(/"mermaid"/);
   expect(css).toContain('.guide-system-map');
   expect(css).toContain('@media (max-width: 900px)');
   expect(css).toContain('.guide-interface-row');
+  expect(css).toMatch(
+    /\.guide-identity-mark img\s*{[^}]*width:\s*220px;[^}]*height:\s*220px;/,
+  );
 });

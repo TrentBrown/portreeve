@@ -19,6 +19,9 @@
       <div class="app-title">
         <p class="eyebrow">Local port authority</p>
         <h1>PortReeve</h1>
+        <button id="open-guide" class="header-guide-link" type="button">
+          What is PortReeve?
+        </button>
       </div>
       <button id="refresh" type="button">Refresh</button>
     </header>
@@ -200,23 +203,41 @@
       </section>
       <section id="guide" class="guide" aria-labelledby="guide-title" hidden>
         <header class="guide-hero">
-          <p class="eyebrow">How PortReeve fits</p>
-          <h2 id="guide-title">Guide</h2>
-          <p class="guide-lede">
-            PortReeve is the local authority for development TCP ports on your machine.
-            It gives projects, worktrees, processes, containers, and development
-            sandboxes stable network identities without making every project solve port
-            conflicts independently.
-          </p>
-          <p class="guide-principle">
-            <strong>PortReeve coordinates addresses.</strong>
-            <span>Project tools coordinate work.</span>
-          </p>
-          <p>
-            One PortReeve server runs for the current operating-system user. The desktop
-            application, <code>portreeve</code> CLI, official JavaScript client, and
-            project launchers all communicate with that same authority.
-          </p>
+          <figure class="guide-identity-mark">
+            <img
+              src="app://portreeve/branding/portreeve-mark.svg"
+              alt="PortReeve harbor steward wearing a cap marked with ports 80, 443, 3000, and 8080."
+            />
+            <figcaption>Familiar ports: 80 · 443 · 3000 · 8080</figcaption>
+          </figure>
+          <div class="guide-identity-copy">
+            <p class="eyebrow">Guide</p>
+            <h2 id="guide-title" tabindex="-1">What is PortReeve?</h2>
+            <p class="guide-lede">
+              PortReeve is the per-user authority for development TCP ports on your
+              machine. It gives projects and services stable network addresses, avoids
+              conflicts, and verifies which process or container owns each endpoint.
+            </p>
+            <p>
+              The name borrows from the historical <em>portreeve</em>: a civic official
+              responsible for administering a port or market borough. In the older term,
+              <em>port</em> could mean a market town—not only a seaport. We use it as a
+              modern play on words: PortReeve is the local official responsible for
+              coordinating your machine's network ports.
+            </p>
+            <p class="guide-principle">
+              <strong>PortReeve coordinates addresses.</strong>
+              <span
+                >Your project tools start, supervise, and evaluate the health of your
+                services.</span
+              >
+            </p>
+            <p>
+              One PortReeve server runs for the current operating-system user. The
+              desktop application, <code>portreeve</code> CLI, official JavaScript
+              client, and project launchers all communicate with that same authority.
+            </p>
+          </div>
         </header>
 
         <section class="guide-section" aria-labelledby="guide-paths-title">

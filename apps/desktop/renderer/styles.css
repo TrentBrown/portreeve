@@ -40,6 +40,23 @@ select {
   min-width: 0;
   flex: 1;
 }
+.header-guide-link {
+  width: fit-content;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--pr-color-primary-strong);
+  padding: 2px 0;
+  font-size: 13px;
+  text-decoration: underline;
+  text-decoration-color: var(--pr-color-border-strong);
+  text-underline-offset: 3px;
+}
+.header-guide-link:hover,
+.header-guide-link:focus-visible {
+  text-decoration-color: currentColor;
+}
 .eyebrow {
   margin: 0 0 4px;
   color: var(--pr-color-text-muted);
@@ -852,6 +869,10 @@ tbody tr:last-child td {
 }
 .guide-hero {
   position: relative;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 30px;
+  align-items: center;
   overflow: hidden;
   border: 1px solid var(--pr-color-border);
   border-radius: 18px;
@@ -870,7 +891,22 @@ tbody tr:last-child td {
   margin-bottom: 12px;
   font-size: 36px;
 }
-.guide-hero > p:last-child {
+.guide-identity-mark {
+  margin: 0;
+  text-align: center;
+}
+.guide-identity-mark img {
+  display: block;
+  width: 220px;
+  height: 220px;
+}
+.guide-identity-mark figcaption {
+  margin-top: 8px;
+  color: var(--pr-color-text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.guide-identity-copy > p:last-child {
   max-width: 830px;
   margin-bottom: 0;
   color: var(--pr-color-text-muted);
@@ -1165,6 +1201,12 @@ dialog form > input {
   .guide-paths,
   .guide-system-map {
     grid-template-columns: 1fr;
+  }
+  .guide-hero {
+    grid-template-columns: 1fr;
+  }
+  .guide-identity-mark {
+    justify-self: center;
   }
   .guide-path > p:not(.guide-path-rank) {
     min-height: 0;
