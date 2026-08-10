@@ -80,6 +80,22 @@ test('accepts a protected graceful shutdown request through the client', async (
   await expect(client.health()).rejects.toMatchObject({ code: 'unavailable' });
 });
 
+test('refuses a shutdown request with a malformed client envelope', async () => {
+  const { socketPath } = await startFixture();
+  const response = await fetch('http://portreeve/v1/server/stop', {
+    unix: socketPath,
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ client: { softwareVersion: 'x' } }),
+  });
+
+  expect(response.status).toBe(400);
+  expect(await response.json()).toMatchObject({ error: { code: 'invalid_input' } });
+  expect(await new PortreeveClient({ socketPath }).health()).toMatchObject({
+    mode: 'manual',
+  });
+});
+
 test('refuses a second server on the active per-user socket', async () => {
   const { socketPath, allocationService } = await startFixture();
 

@@ -17,6 +17,7 @@ import {
   ClaimReassignRequestSchema,
   ClaimRecordResponseSchema,
   ClaimsListSchema,
+  ClientCompatibilitySchema,
   ConfigSetRequestSchema,
   ConfirmRequestSchema,
   ConfirmResponseSchema,
@@ -419,14 +420,10 @@ async function handleRequest(
     const body = await request.json();
     if (pathname === '/v1/server/stop') {
       const requestBody = z
-        .object({ client: z.record(z.string(), z.unknown()) })
+        .object({ client: ClientCompatibilitySchema })
         .passthrough()
         .parse(body);
-      assertCompatible(
-        /** @type {{protocol: {minimum: number, maximum: number}, requiredCapabilities: string[]}} */ (
-          requestBody.client
-        ),
-      );
+      assertCompatible(requestBody.client);
       requestStop();
       return success(
         requestId,
