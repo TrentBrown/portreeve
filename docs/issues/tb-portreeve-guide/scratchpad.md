@@ -8,7 +8,7 @@ entries are appended to `decisions.md`.
 
 ## [1] Keep the Guide semantic, local, and unprivileged
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
