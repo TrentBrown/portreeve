@@ -46,9 +46,10 @@ test('ships the Guide as static semantic architecture and integration guidance',
 
   expect(html).toContain('id="guide"');
   expect(html).toContain('id="open-guide"');
+  expect(html).toContain('What is this?');
   expect(html).toContain('What is PortReeve?');
   expect(html).toContain('<h2 id="guide-title" tabindex="-1">');
-  expect(html).toContain('Familiar ports: 80 · 443 · 3000 · 8080');
+  expect(html).not.toContain('Familiar ports:');
   expect(html).toContain('a civic official');
   expect(html).toContain('market town—not only a seaport');
   expect(html).toContain('PortReeve coordinates addresses.');
