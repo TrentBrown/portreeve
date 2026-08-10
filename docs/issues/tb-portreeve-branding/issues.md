@@ -19,7 +19,7 @@ Operational task breakdown derived from the plan.
 Create semantic CSS constants, replace renderer literals, and verify required
 contrast pairs.
 
-## I-2 - Author canonical vector logo
+## I-2 - Preserve the approved logo master
 
 - **Status:** in-review
 - **Estimate:** 4h
@@ -28,8 +28,9 @@ contrast pairs.
 - **Depends on:** none
 - **PR:** [#35](https://github.com/TrentBrown/portreeve/pull/35)
 
-Translate the approved bearded steward and curved port-number band into a clean
-Fogbound Coast SVG master and horizontal lockup.
+Preserve the exact approved bearded steward artwork as the checksum-locked archival
+master, provide a standalone SVG presentation that embeds it without visual drift, and
+retain the horizontal lockup.
 
 ## I-3 - Generate production asset family
 
@@ -40,8 +41,8 @@ Fogbound Coast SVG master and horizontal lockup.
 - **Depends on:** I-2
 - **PR:** [#35](https://github.com/TrentBrown/portreeve/pull/35)
 
-Generate transparent PNGs, macOS master, iconset, ICNS, contact sheet, and
-asset documentation from the SVG.
+Generate faithful PNGs, macOS master, iconset, ICNS, contact sheet, and asset
+documentation from the approved master and its standalone SVG presentation.
 
 ## I-4 - Integrate desktop header and restricted asset route
 

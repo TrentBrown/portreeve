@@ -12,9 +12,9 @@
 | R1 | Centralized Fogbound theme | PASS | [#35](https://github.com/TrentBrown/portreeve/pull/35) | Semantic constants and literal-scan test pass. |
 | R2 | Accessible application states | PASS | [#35](https://github.com/TrentBrown/portreeve/pull/35) | Required WCAG AA contrast pairs and runtime states pass. |
 | R3 | Header integration | PASS | [#35](https://github.com/TrentBrown/portreeve/pull/35) | Exact accessible header renders in the packaged app. |
-| R4 | Canonical SVG contract | PASS | [#35](https://github.com/TrentBrown/portreeve/pull/35) | Approved portrait, palette, and cap sequence are locked by test. |
+| R4 | Approved artwork contract | PASS | [#35](https://github.com/TrentBrown/portreeve/pull/35) | The exact approved PNG checksum and both SVG embeddings are locked by test. |
 | R5 | Complete asset family | PASS | [#35](https://github.com/TrentBrown/portreeve/pull/35) | SVG, PNG, iconset, ICNS, contact sheet, and documentation exist. |
-| R6 | Rendition consistency | PASS | [#35](https://github.com/TrentBrown/portreeve/pull/35) | Generated dimensions, transparency, palette, and contact sheet pass. |
+| R6 | Rendition consistency | PASS | [#35](https://github.com/TrentBrown/portreeve/pull/35) | Generated dimensions, approved geometry, backgrounds, and contact sheet pass. |
 | R7 | macOS packaging | PASS | [#35](https://github.com/TrentBrown/portreeve/pull/35) | Packaged icon hash, ASAR assets, protocol, and runtime load verified. |
 | R8 | Small-size resilience | PASS | [#35](https://github.com/TrentBrown/portreeve/pull/35) | 16-1024px contact sheet retains portrait and cap-band identity. |
 
@@ -25,14 +25,15 @@
 - **PR:** [#35](https://github.com/TrentBrown/portreeve/pull/35)
 - **Status:** in review
 - **Scope:** P1-P6 / I-1-I-5 and feature-final evaluation: semantic Fogbound Coast
-  theme, accessible state colors, approved SVG mark and lockup, generated raster and
-  macOS assets, restricted branding protocol route, header integration, and packaged
-  application icon.
+  theme, accessible state colors, exact approved logo master and standalone SVG
+  presentation, generated raster and macOS assets, restricted branding protocol route,
+  header integration, and packaged application icon.
 - **Evidence packet:** [pr-35](pr-35/)
 - **Result:** R1-R8 are `PASS`; zero `NOT YET` or `FAIL` criteria remain. Pinned
-  typecheck, lint, changed-file formatting, focused branding/protocol tests, package
-  construction, byte-identical bundle icon, ASAR inspection, and packaged runtime
-  acceptance pass. The host-aware full suite passes 385 tests; its three lifecycle
+  source-image pixel comparison, checksum and embedded-byte tests, typecheck, lint,
+  changed-file formatting, focused branding/protocol tests, package construction,
+  byte-identical bundle icon, ASAR inspection, and corrected packaged runtime acceptance
+  pass. The host-aware full suite passes 385 tests; its three lifecycle
   failures are caused by the real installed launch agent and all five tests in that
   file pass with an isolated supervisor label. Feature-record retention is tracked.
   Judge: PASS. Code review: no findings.

@@ -51,7 +51,7 @@
     <header>
       <p class="eyebrow">PR #35 · feature-final</p>
       <h1>Giving PortReeve a durable visual identity</h1>
-      <p class="lede">Fogbound Coast is now a system rather than a screenshot: semantic application colors, one canonical harbor-steward mark, reproducible macOS assets, and a narrow path from the package to the renderer.</p>
+      <p class="lede">Fogbound Coast is now a system rather than a screenshot: semantic application colors, the exact approved harbor-steward artwork, reproducible macOS assets, and a narrow path from the package to the renderer.</p>
     </header>
     <main>
       <nav aria-label="Contents"><a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#quiz">Quiz</a></nav>
@@ -59,15 +59,15 @@
       <section id="background">
         <h2>Background</h2>
         <p>Before this change, the desktop application already had a coherent layout, but its colors lived directly inside component rules. That makes an experiment deceptively expensive: changing “green” means finding every green, deciding whether it represents an action, selection, success, or focus, and hoping no state was missed. The packaged application also inherited Electron's generic icon, while the selected PortReeve portrait existed only as exploratory artwork.</p>
-        <div class="callout"><strong>Two kinds of identity are being stabilized.</strong> The theme assigns meaning to colors. The logo assigns one reproducible shape to the product. Neither should depend on copying values by eye.</div>
+        <div class="callout"><strong>Two kinds of identity are being stabilized.</strong> The theme assigns meaning to colors. The logo preserves the exact approved artwork. Neither should depend on copying values or retracing shapes by eye.</div>
         <h3>The security boundary that already existed</h3>
         <p>The renderer does not load arbitrary files. Its custom <code>app://</code> protocol accepts only the PortReeve hostname, only GET requests, only canonical paths beneath a trusted root, and only an extension allowlist. Branding must cross that boundary without turning the renderer root into a general-purpose file server.</p>
       </section>
 
       <section id="intuition">
         <h2>Intuition</h2>
-        <div class="diagram flow" aria-label="Brand asset flow"><div>Semantic tokens<br /><small>theme.css</small></div><span>→</span><div>Components<br /><small>styles.css</small></div><span>→</span><div>Canonical mark<br /><small>SVG</small></div><span>→</span><div>Derived assets<br /><small>PNG · iconset · ICNS</small></div></div>
-        <p>The essential move is to separate decisions from renditions. “Primary action” is a decision; <code>#176b70</code> is its current rendition. “The bearded steward with the numbered cap” is a decision; a 32px PNG and a macOS ICNS are renditions. The code now gives each decision one obvious home.</p>
+        <div class="diagram flow" aria-label="Brand asset flow"><div>Semantic tokens<br /><small>theme.css</small></div><span>→</span><div>Components<br /><small>styles.css</small></div><span>→</span><div>Approved master<br /><small>PNG + embedded SVG</small></div><span>→</span><div>Derived assets<br /><small>PNG · iconset · ICNS</small></div></div>
+        <p>The essential move is to separate authority from renditions. “Primary action” is a decision; <code>#176b70</code> is its current rendition. The checksum-locked 1254px approved artwork is the logo authority; a standalone SVG, a 32px PNG, and a macOS ICNS are renditions. This corrects an earlier hand-authored SVG whose shapes did not match the selected artwork.</p>
         <div class="card mock"><img src="../../../../apps/desktop/assets/branding/portreeve-mark.svg" alt="PortReeve harbor steward" /><div><small>LOCAL PORT AUTHORITY</small><strong>PortReeve</strong></div><button>Refresh</button></div>
         <div class="swatches" aria-label="Fogbound Coast samples">
           <div class="swatch" style="background:#12344c;color:white">Logo ink<br />#12344C</div>
@@ -92,8 +92,8 @@ button.primary {
   background: var(--pr-color-primary);
   color: var(--pr-color-on-primary);
 }</pre>
-        <h3>2. Canonical artwork and generation</h3>
-        <p><code>portreeve-mark.svg</code> is the master: isolated right-facing steward, navy beard and cap, sea-teal band, and the exact gently wrapped sequence <code>80 · 443 · 3000 · 8080</code>. The generator renders common transparent PNGs, the opaque 1024px app tile, ten conventional iconset files, a compiled ICNS, and a visual contact sheet.</p>
+        <h3>2. Approved artwork and generation</h3>
+        <p>The approved artwork was generated as a PNG; no original vector SVG existed. <code>portreeve-approved-original.png</code> is therefore the checksum-locked archival master. The generator creates standalone SVG presentations that embed those exact PNG bytes, then renders common PNGs, the 1024px app tile, ten conventional iconset files, a compiled ICNS, and a visual contact sheet. A pixel comparison between the recovered source and the user's reference screenshot reports RMSE <code>0 (0)</code>.</p>
         <h3>3. Narrow renderer route</h3>
         <p>The protocol has two independent canonical roots. HTML, CSS, and JavaScript remain confined to the renderer root. Only PNG and SVG are accepted beneath <code>/branding/</code>. Traversal and symlink escapes are rejected after <code>realpath</code>, so an allowed extension cannot smuggle an outside file through the route.</p>
         <pre>app://portreeve/index.html          → renderer root → HTML/CSS/JS
@@ -107,12 +107,12 @@ app://portreeve/branding/../x.svg → canonical escape → 404</pre>
         <h2>Quiz</h2>
         <div class="quiz" data-answer="1"><h3>1. Why is sea teal a semantic token rather than a component literal?</h3><div class="answers"><button>It lets every SVG inherit CSS at runtime.</button><button>It lets components name an interaction role while the colorway remains replaceable.</button><button>It prevents macOS from recoloring the icon.</button></div><p class="feedback"></p></div>
         <div class="quiz" data-answer="2"><h3>2. What prevents an SVG symlink from escaping the branding directory?</h3><div class="answers"><button>The filename must contain “portreeve”.</button><button>The CSP blocks all symlinks before the request.</button><button>The resolved real path must remain beneath the separately canonicalized branding root.</button></div><p class="feedback"></p></div>
-        <div class="quiz" data-answer="0"><h3>3. Which file is the logo geometry source of truth?</h3><div class="answers"><button>portreeve-mark.svg</button><button>portreeve-app-icon-1024.png</button><button>PortReeve.icns</button></div><p class="feedback"></p></div>
+        <div class="quiz" data-answer="0"><h3>3. Which file is the exact approved logo source of truth?</h3><div class="answers"><button>portreeve-approved-original.png</button><button>portreeve-app-icon-1024.png</button><button>PortReeve.icns</button></div><p class="feedback"></p></div>
         <div class="quiz" data-answer="1"><h3>4. Why may the cap numbers disappear at 16px without failing the spec?</h3><div class="answers"><button>The 16px file is retained only for Windows.</button><button>Small-size identity depends on the steward silhouette and teal band; normal-size text remains exact.</button><button>The ICNS stores a hidden text alternative used by Finder.</button></div><p class="feedback"></p></div>
         <div class="quiz" data-answer="2"><h3>5. What proves Electron used the intended ICNS despite probing for a newer .icon?</h3><div class="answers"><button>The package command exited zero.</button><button>The ASAR contains the SVG mark.</button><button>The source ICNS and packaged electron.icns have identical bytes and SHA-256.</button></div><p class="feedback"></p></div>
       </section>
     </main>
-    <footer>Explains pinned diff <code>a597d096…c93a7310</code>. Generated for PortReeve PR #35.</footer>
+    <footer>Explains pinned diff <code>a597d096…4e18e2b8</code>. Generated for PortReeve PR #35.</footer>
     <script>
       for (const quiz of document.querySelectorAll('.quiz')) {
         const answer = Number(quiz.dataset.answer);

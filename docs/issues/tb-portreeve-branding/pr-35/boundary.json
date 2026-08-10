@@ -13,10 +13,10 @@
     "baseRefName": "main",
     "baseRefOid": "a597d096e17221a0c6562445f4697f2281a8aa2f",
     "headRefName": "tb-portreeve-branding",
-    "headRefOid": "c93a7310e42f2428a20d4968cdace044870f6477"
+    "headRefOid": "4e18e2b8c20fe5c1ac99c07d33e8d6360a01d69d"
   },
   "mergeBaseSha": "a597d096e17221a0c6562445f4697f2281a8aa2f",
-  "evaluatedSourceSha": "c93a7310e42f2428a20d4968cdace044870f6477",
+  "evaluatedSourceSha": "4e18e2b8c20fe5c1ac99c07d33e8d6360a01d69d",
   "featureBaseSha": "a597d096e17221a0c6562445f4697f2281a8aa2f",
   "applicability": {
     "specEvaluation": true,
