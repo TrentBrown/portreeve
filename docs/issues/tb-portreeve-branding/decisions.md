@@ -37,3 +37,20 @@ Treat the exact 1254x1254 approved PNG as the checksum-locked archival master. U
 Keep refining the failed hand trace; auto-trace the raster into thousands of approximate paths; use a non-portable SVG that loads the PNG through a second protocol request. These risk further visual drift or fail to provide a standalone asset that Chromium can render reliably.
 
 **Promoted:** 2026-08-09. PR: #35 https://github.com/TrentBrown/portreeve/pull/35.
+
+---
+
+## Separate the archival background from the production mark
+
+**Confidence:** HIGH
+
+**Blast Radius:** branding source assets, desktop header, reusable mark and lockup renditions, macOS icon generation, tests and documentation
+
+Keep the checksum-locked cream-background PNG and its SVG presentation unchanged as provenance artifacts. Use a second checksum-locked transparent PNG master for the application-facing SVG, header, lockup, and common mark PNGs. Preserve the original RGB artwork and change only exterior alpha. Continue to render the macOS application icon on its intentional Fogbound Coast tile.
+
+**Triggered by:** The preserved approved artwork includes a cream background that reads as an unintended square when the mark is placed in the desktop interface.
+
+**Alternatives considered:**
+Use the cream-background master everywhere - rejected because the square competes with application surfaces; replace cream with a colorway color everywhere - rejected because it reduces reuse and changes the archival source; make the complete macOS icon transparent - rejected because the icon tile is an intentional bounded composition.
+
+**Promoted:** 2026-08-09. PR: #35 https://github.com/TrentBrown/portreeve/pull/35.
