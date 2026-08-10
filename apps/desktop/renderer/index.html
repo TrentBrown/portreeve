@@ -267,17 +267,29 @@
                 PortReeve Desktop injects resolved endpoints and runs your existing
                 stack commands.
               </p>
-              <figure
-                class="guide-path-diagram"
-                aria-label="Developer uses PortReeve Desktop, which invokes project commands and coordinates with the PortReeve server."
-              >
-                <div class="guide-mini-flow">
-                  <span>Developer</span><b aria-hidden="true">→</b
-                  ><strong>Desktop</strong>
+              <figure class="guide-mini-sequence guide-sequence-four">
+                <div class="guide-sequence-canvas">
+                  <div class="guide-sequence-lifelines" aria-hidden="true">
+                    <i></i><i></i><i></i><i></i>
+                  </div>
+                  <div class="guide-sequence-actors">
+                    <span>Developer</span><span>Desktop</span><span>PortReeve</span
+                    ><span>Commands</span>
+                  </div>
+                  <ol aria-label="Built-in driver startup sequence">
+                    <li class="guide-message flow-1-2"><span>Start</span></li>
+                    <li class="guide-message flow-2-3">
+                      <span>Plan and lease</span>
+                    </li>
+                    <li class="guide-message flow-2-4">
+                      <span>Inject and invoke</span>
+                    </li>
+                    <li class="guide-message flow-2-3">
+                      <span>Confirm bindings</span>
+                    </li>
+                  </ol>
                 </div>
-                <div class="guide-mini-branches">
-                  <span>→ Project commands</span><span>→ PortReeve server</span>
-                </div>
+                <figcaption>Desktop remains in the runtime path.</figcaption>
               </figure>
               <dl>
                 <div>
@@ -301,17 +313,29 @@
                 Generate a separate launcher application or library that coordinates
                 with PortReeve and invokes your project commands without the desktop.
               </p>
-              <figure
-                class="guide-path-diagram"
-                aria-label="Developer or agent uses a generated launcher, which starts project services and coordinates with the PortReeve server."
-              >
-                <div class="guide-mini-flow">
-                  <span>Developer / agent</span><b aria-hidden="true">→</b
-                  ><strong>Generated launcher</strong>
+              <figure class="guide-mini-sequence guide-sequence-four">
+                <div class="guide-sequence-canvas">
+                  <div class="guide-sequence-lifelines" aria-hidden="true">
+                    <i></i><i></i><i></i><i></i>
+                  </div>
+                  <div class="guide-sequence-actors">
+                    <span>Developer</span><span>Generated tool</span
+                    ><span>PortReeve</span><span>Services</span>
+                  </div>
+                  <ol aria-label="Generated launcher startup sequence">
+                    <li class="guide-message flow-1-2"><span>Start</span></li>
+                    <li class="guide-message flow-2-3">
+                      <span>Plan and lease</span>
+                    </li>
+                    <li class="guide-message flow-2-4">
+                      <span>Inject and start</span>
+                    </li>
+                    <li class="guide-message flow-2-3">
+                      <span>Confirm bindings</span>
+                    </li>
+                  </ol>
                 </div>
-                <div class="guide-mini-branches">
-                  <span>→ Project services</span><span>→ PortReeve server</span>
-                </div>
+                <figcaption>Desktop is absent at runtime.</figcaption>
               </figure>
               <dl>
                 <div>
@@ -336,18 +360,29 @@
                 official client or common protocol. Your existing tool remains fully in
                 control.
               </p>
-              <figure
-                class="guide-path-diagram"
-                aria-label="Developer or agent uses the project's own management tool, which starts project services and calls the PortReeve client or protocol."
-              >
-                <div class="guide-mini-flow">
-                  <span>Developer / agent</span><b aria-hidden="true">→</b
-                  ><strong>Project tool</strong>
+              <figure class="guide-mini-sequence guide-sequence-four">
+                <div class="guide-sequence-canvas">
+                  <div class="guide-sequence-lifelines" aria-hidden="true">
+                    <i></i><i></i><i></i><i></i>
+                  </div>
+                  <div class="guide-sequence-actors">
+                    <span>Developer</span><span>Project tool</span><span>PortReeve</span
+                    ><span>Services</span>
+                  </div>
+                  <ol aria-label="Native integration startup sequence">
+                    <li class="guide-message flow-1-2"><span>Start</span></li>
+                    <li class="guide-message flow-2-3">
+                      <span>Plan via client</span>
+                    </li>
+                    <li class="guide-message flow-2-4">
+                      <span>Inject and start</span>
+                    </li>
+                    <li class="guide-message flow-2-3">
+                      <span>Confirm bindings</span>
+                    </li>
+                  </ol>
                 </div>
-                <div class="guide-mini-branches">
-                  <span>→ Project services</span
-                  ><span>→ Client / protocol → server</span>
-                </div>
+                <figcaption>Your existing code remains in control.</figcaption>
               </figure>
               <dl>
                 <div>
@@ -378,183 +413,138 @@
               PortReeve concepts, and startup sequence below do not.
             </p>
           </div>
-          <figure class="guide-architecture">
-            <div class="guide-actor-row" aria-label="Actors in a PortReeve stack">
-              <span>Stack definition</span>
-              <span>Integration tool</span>
-              <span>PortReeve server</span>
-              <span>Processes / containers</span>
-              <span>Dependent components</span>
+          <figure class="guide-architecture guide-sequence-five">
+            <div class="guide-sequence-scroll">
+              <div class="guide-sequence-canvas">
+                <div class="guide-sequence-lifelines" aria-hidden="true">
+                  <i></i><i></i><i></i><i></i><i></i>
+                </div>
+                <div class="guide-sequence-actors">
+                  <span>Stack definition</span><span>Integration tool</span
+                  ><span>PortReeve</span><span>Host / Docker evidence</span
+                  ><span>Project runtime</span>
+                </div>
+                <ol aria-label="Canonical PortReeve stack lifecycle">
+                  <li class="guide-sequence-divider"><span>Define and plan</span></li>
+                  <li class="guide-message flow-1-2"><span>Read topology</span></li>
+                  <li class="guide-message flow-2-3"><span>Apply</span></li>
+                  <li class="guide-sequence-note note-portreeve concept-claim">
+                    <span
+                      ><strong>Claim</strong> Durable endpoint identity and
+                      assignment.</span
+                    >
+                  </li>
+                  <li class="guide-message flow-2-3"><span>Prepare</span></li>
+                  <li class="guide-message flow-2-3 reverse">
+                    <span>Generation G17</span>
+                  </li>
+                  <li class="guide-sequence-note note-portreeve concept-generation">
+                    <span
+                      ><strong>Generation</strong> Immutable, complete allocation plan
+                      for the stack.</span
+                    >
+                  </li>
+
+                  <li class="guide-sequence-divider"><span>Begin one attempt</span></li>
+                  <li class="guide-message flow-2-3"><span>Begin G17</span></li>
+                  <li class="guide-message flow-2-3 reverse">
+                    <span>Activation A42 + leases</span>
+                  </li>
+                  <li class="guide-sequence-note note-portreeve concept-activation">
+                    <span
+                      ><strong>Activation</strong> One run attempt.
+                      <strong>Lease</strong> Temporary right to bind one endpoint.</span
+                    >
+                  </li>
+                  <li class="guide-message flow-2-3"><span>Resolve A42</span></li>
+                  <li class="guide-message flow-2-3 reverse">
+                    <span>Own + dependency addresses</span>
+                  </li>
+
+                  <li class="guide-sequence-divider">
+                    <span>Start and prove ownership</span>
+                  </li>
+                  <li class="guide-message flow-2-5">
+                    <span>Inject addresses + start</span>
+                  </li>
+                  <li class="guide-message flow-4-5 reverse">
+                    <span>Bind / publish assigned ports</span>
+                  </li>
+                  <li class="guide-message flow-2-3"><span>Confirm lease</span></li>
+                  <li class="guide-message flow-3-4">
+                    <span>Fresh lsof / Docker inspect</span>
+                  </li>
+                  <li class="guide-message flow-3-4 reverse">
+                    <span>Ownership evidence</span>
+                  </li>
+                  <li class="guide-message flow-2-3 reverse">
+                    <span>Confirmed / degraded</span>
+                  </li>
+
+                  <li class="guide-sequence-divider"><span>Run and finish</span></li>
+                  <li class="guide-message flow-2-5">
+                    <span>Inject resolved dependencies</span>
+                  </li>
+                  <li class="guide-sequence-note note-runtime">
+                    <span
+                      ><strong>Project health</strong> The integration tool—not
+                      PortReeve—decides when applications are ready.</span
+                    >
+                  </li>
+                  <li class="guide-message flow-2-5"><span>Stop providers</span></li>
+                  <li class="guide-message flow-2-3">
+                    <span>Reconcile / end A42</span>
+                  </li>
+                  <li class="guide-message flow-3-4">
+                    <span>Fresh absence evidence</span>
+                  </li>
+                  <li class="guide-message flow-2-3 reverse">
+                    <span>Activation ended</span>
+                  </li>
+                </ol>
+              </div>
             </div>
-            <ol class="guide-sequence" aria-label="How one PortReeve stack starts">
-              <li>
-                <div class="guide-sequence-stage">
-                  <span>1</span><strong>Define and plan</strong>
-                </div>
-                <div class="guide-sequence-events">
-                  <p>
-                    <b>Stack definition</b><span aria-hidden="true">→</span
-                    ><b>Integration tool</b><span aria-hidden="true">→</span
-                    ><strong>Apply</strong><span aria-hidden="true">→</span
-                    ><b>PortReeve</b>
-                  </p>
-                  <p class="guide-sequence-result">
-                    One durable <strong>claim</strong> records the logical identity and
-                    assignment policy for each published endpoint.
-                  </p>
-                  <p>
-                    <b>Integration tool</b><span aria-hidden="true">→</span
-                    ><strong>Prepare / allocate</strong><span aria-hidden="true">→</span
-                    ><b>PortReeve</b>
-                  </p>
-                  <p class="guide-sequence-result">
-                    PortReeve returns an immutable <strong>generation</strong>: one
-                    coherent port plan for the entire stack.
-                  </p>
-                </div>
-              </li>
-              <li>
-                <div class="guide-sequence-stage">
-                  <span>2</span><strong>Begin one attempt</strong>
-                </div>
-                <div class="guide-sequence-events">
-                  <p>
-                    <b>Integration tool</b><span aria-hidden="true">→</span
-                    ><strong>Begin</strong><span aria-hidden="true">→</span
-                    ><b>PortReeve</b>
-                  </p>
-                  <p class="guide-sequence-result">
-                    PortReeve creates an <strong>activation</strong> and atomically
-                    issues temporary <strong>leases</strong> for its endpoints.
-                  </p>
-                  <p>
-                    <b>Integration tool</b><span aria-hidden="true">↔</span
-                    ><strong>Resolve</strong><span aria-hidden="true">↔</span
-                    ><b>PortReeve</b>
-                  </p>
-                  <p class="guide-sequence-result">
-                    Each component receives only its own addresses and declared
-                    dependency addresses from that generation.
-                  </p>
-                </div>
-              </li>
-              <li>
-                <div class="guide-sequence-stage">
-                  <span>3</span><strong>Start and prove ownership</strong>
-                </div>
-                <div class="guide-sequence-events">
-                  <p>
-                    <b>Integration tool</b><span aria-hidden="true">→</span
-                    ><strong>Start and inject</strong><span aria-hidden="true">→</span
-                    ><b>Processes / containers</b>
-                  </p>
-                  <p class="guide-sequence-result">
-                    Project-owned providers bind the leased ports. PortReeve starts
-                    nothing itself.
-                  </p>
-                  <p>
-                    <b>Integration tool</b><span aria-hidden="true">→</span
-                    ><strong>Confirm</strong><span aria-hidden="true">→</span
-                    ><b>PortReeve</b><span aria-hidden="true">↔</span
-                    ><b>Fresh provider evidence</b>
-                  </p>
-                  <p class="guide-sequence-result">
-                    Process-tree, listener, or Docker evidence proves who owns each
-                    endpoint before its lease is confirmed.
-                  </p>
-                </div>
-              </li>
-              <li>
-                <div class="guide-sequence-stage">
-                  <span>4</span><strong>Run and finish</strong>
-                </div>
-                <div class="guide-sequence-events">
-                  <p>
-                    <b>Integration tool</b><span aria-hidden="true">→</span
-                    ><strong>Inject resolved addresses</strong
-                    ><span aria-hidden="true">→</span><b>Dependent components</b>
-                  </p>
-                  <p class="guide-sequence-result">
-                    Project checks—not PortReeve—decide when applications are healthy
-                    and ready.
-                  </p>
-                  <p>
-                    <b>Integration tool</b><span aria-hidden="true">→</span
-                    ><strong>Stop</strong><span aria-hidden="true">→</span
-                    ><b>Processes / containers</b>
-                  </p>
-                  <p class="guide-sequence-result">
-                    The integration tool stops the providers it owns.
-                  </p>
-                  <p>
-                    <b>Integration tool</b><span aria-hidden="true">→</span
-                    ><strong>Reconcile / end</strong><span aria-hidden="true">→</span
-                    ><b>PortReeve</b><span aria-hidden="true">↔</span
-                    ><b>Fresh provider evidence</b>
-                  </p>
-                  <p class="guide-sequence-result">
-                    PortReeve uses fresh evidence before ending the activation; it never
-                    signals project processes or stops containers.
-                  </p>
-                </div>
-              </li>
-            </ol>
             <figcaption>
-              All coordination calls use private HTTP/JSON over the per-user Unix-domain
-              socket. Good, Better, and Best change the integration tool—not this
-              lifecycle or the PortReeve authority.
+              Apply creates durable claims. Prepare allocates one immutable generation.
+              Begin creates one activation and its temporary leases. Resolve returns
+              addresses; Confirm proves ownership using fresh evidence.
             </figcaption>
           </figure>
-          <div class="guide-concept-grid" aria-label="PortReeve concept glossary">
-            <article>
-              <h4>Claim</h4>
-              <p>
-                The durable relationship between one logical endpoint and its port
-                assignment. It survives individual runs.
-              </p>
-            </article>
-            <article>
-              <h4>Generation</h4>
-              <p>
-                An immutable, complete port plan for one stack definition revision. It
-                may be reused across attempts while still valid.
-              </p>
-            </article>
-            <article>
-              <h4>Activation</h4>
-              <p>
-                One attempt to run one generation. Restarting creates a new activation
-                without necessarily changing the assigned ports.
-              </p>
-            </article>
-            <article>
-              <h4>Lease</h4>
-              <p>
-                A temporary, credential-protected right to bind one endpoint during an
-                activation. It must be renewed, confirmed, abandoned, or expire.
-              </p>
-            </article>
-          </div>
-          <div class="guide-operation-grid" aria-label="Core coordination operations">
-            <article>
-              <h4>Allocate / prepare</h4>
-              <p>Selects the complete port plan. It starts no process or container.</p>
-            </article>
-            <article>
-              <h4>Resolve</h4>
-              <p>
-                Returns addresses from one generation. It asserts neither ownership nor
-                readiness.
-              </p>
-            </article>
-            <article>
-              <h4>Confirm</h4>
-              <p>
-                Uses fresh evidence to prove the expected provider owns its endpoint. It
-                does not establish application health.
-              </p>
-            </article>
-          </div>
+
+          <figure class="guide-object-model" aria-labelledby="guide-object-model-title">
+            <div class="guide-object-heading">
+              <p class="eyebrow">State model</p>
+              <h4 id="guide-object-model-title">How the coordination objects nest</h4>
+            </div>
+            <div class="guide-object-stack">
+              <div class="guide-object-stack-title">
+                <strong>Stack</strong><span>one independently runnable root</span>
+              </div>
+              <div class="guide-object-body">
+                <section class="guide-object-claims">
+                  <h5>Durable claims</h5>
+                  <span><strong>api.http</strong> → port assignment</span>
+                  <span><strong>website.http</strong> → port assignment</span>
+                </section>
+                <section class="guide-object-generation">
+                  <h5>Generation G17</h5>
+                  <p>Immutable complete port plan</p>
+                  <div class="guide-object-activation">
+                    <h5>Activation A42</h5>
+                    <p>One attempt to run G17</p>
+                    <div class="guide-object-leases">
+                      <span><strong>Lease</strong> api.http</span>
+                      <span><strong>Lease</strong> website.http</span>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+            <figcaption>
+              Claims outlive runs. A valid generation may serve several activation
+              attempts; every activation receives fresh endpoint leases.
+            </figcaption>
+          </figure>
           <aside class="guide-callout" aria-labelledby="guide-readiness-title">
             <h4 id="guide-readiness-title">Ownership is not readiness</h4>
             <p>
@@ -563,27 +553,80 @@
               healthy or ready to serve requests.
             </p>
           </aside>
-          <aside class="guide-callout" aria-labelledby="guide-sandbox-value-title">
-            <h4 id="guide-sandbox-value-title">
-              Sandboxes move the conflict boundary—not the need for PortReeve
-            </h4>
-            <p>
-              Docker-based development sandboxes such as Dr. Sandbox can safely reuse
-              the same internal ports on isolated networks. The conflict returns when
-              their APIs, front-end clients, or debugging endpoints are published for a
-              developer's browser or host-side tools: every publication still competes
-              in the machine's one shared host-port namespace. Host PortReeve gives each
-              worktree stack stable, discoverable loopback publications without
-              collisions.
-            </p>
-            <p>
-              A trusted host launcher coordinates PortReeve and the sandbox runtime. It
-              may mount an activation-scoped, read-only endpoint snapshot into the
-              sandbox, but never the PortReeve control socket or lease credentials. One
-              host authority can therefore coordinate many isolated sandboxes without
-              weakening their security boundary.
-            </p>
-          </aside>
+          <section class="guide-sandbox" aria-labelledby="guide-sandbox-value-title">
+            <div class="guide-section-heading">
+              <p class="eyebrow">Sandbox boundary</p>
+              <h4 id="guide-sandbox-value-title">
+                Sandboxes move the conflict boundary—not the need for PortReeve
+              </h4>
+              <p>
+                Dr. Sandbox and similar environments can reuse internal ports. Their
+                browser-visible and host-testable publications still compete in one
+                shared host-port namespace, so one host PortReeve authority coordinates
+                stable loopback addresses for every worktree stack.
+              </p>
+            </div>
+            <figure class="guide-sandbox-sequence guide-sequence-five">
+              <div class="guide-sequence-scroll">
+                <div class="guide-trust-bands" aria-hidden="true">
+                  <span>Trusted host</span><span>Isolation boundary</span>
+                </div>
+                <div class="guide-sequence-canvas">
+                  <div class="guide-sequence-lifelines" aria-hidden="true">
+                    <i></i><i></i><i></i><i></i><i></i>
+                  </div>
+                  <div class="guide-sequence-actors">
+                    <span>Host launcher</span><span>Host PortReeve</span
+                    ><span>Developer browser</span><span>Docker / sandbox</span
+                    ><span>Sandbox consumer</span>
+                  </div>
+                  <ol aria-label="Sandbox publication and discovery sequence">
+                    <li class="guide-message flow-1-2">
+                      <span>Prepare + begin</span>
+                    </li>
+                    <li class="guide-message flow-1-2 reverse">
+                      <span>Host ports + leases</span>
+                    </li>
+                    <li class="guide-message flow-1-4">
+                      <span>Start + publish loopback ports</span>
+                    </li>
+                    <li class="guide-message flow-1-2">
+                      <span>Confirm Docker endpoint</span>
+                    </li>
+                    <li class="guide-message flow-2-4">
+                      <span>Fresh inspect + publication evidence</span>
+                    </li>
+                    <li class="guide-message flow-2-4 reverse">
+                      <span>Verified container mapping</span>
+                    </li>
+                    <li class="guide-message flow-1-2">
+                      <span>Request component snapshot</span>
+                    </li>
+                    <li class="guide-message flow-1-2 reverse">
+                      <span>Reduced endpoint document</span>
+                    </li>
+                    <li class="guide-message flow-1-5">
+                      <span>Mount read-only snapshot</span>
+                    </li>
+                    <li class="guide-sequence-note note-sandbox">
+                      <span
+                        ><strong>Isolation preserved</strong> Addresses enter the
+                        sandbox; the control socket and lease credentials do not.</span
+                      >
+                    </li>
+                    <li class="guide-message flow-3-4">
+                      <span>Open 127.0.0.1:host-port</span>
+                    </li>
+                  </ol>
+                </div>
+              </div>
+              <figcaption>
+                Fixed internal ports remain isolated. PortReeve coordinates only the
+                shared host publications and the safe discovery document used by the
+                sandbox.
+              </figcaption>
+            </figure>
+          </section>
         </section>
 
         <section
@@ -591,29 +634,36 @@
           aria-labelledby="guide-details-title"
         >
           <div class="guide-section-heading">
-            <p class="eyebrow">Concepts</p>
-            <h3 id="guide-details-title">How coordination works</h3>
+            <p class="eyebrow">Diagram details</p>
+            <h3 id="guide-details-title">Follow the concepts deeper</h3>
+            <p>
+              These notes expand the sequence and state-model diagrams without adding
+              more steps to their first reading.
+            </p>
           </div>
           <details>
-            <summary>Allocate, bind, and confirm</summary>
+            <summary>Claims, preparation, and leases</summary>
             <div>
               <p>
-                A caller identifies the project, workspace, component, and endpoint,
-                then acquires a short-lived lease for a durable assignment. The service
-                binds that port and confirms ownership using fresh evidence. JavaScript
-                services can use <code>withPort()</code> to hide this negotiation.
+                Apply links every published endpoint to a durable claim. Prepare uses
+                those claims to allocate one complete generation without starting a
+                lease deadline. Begin then issues an activation-scoped lease for every
+                selected endpoint. For a standalone service, <code>withPort()</code>
+                hides the corresponding acquire, bind, and confirm negotiation.
               </p>
             </div>
           </details>
           <details>
-            <summary>Stacks, generations, and activations</summary>
+            <summary>Generations, activations, resolve, and confirm</summary>
             <div>
               <p>
                 One independently runnable stack belongs to each root. Its components
                 expose named endpoints and declare dependencies in
                 <code>portreeve.stack.json</code>; current port numbers remain in
                 PortReeve. A generation keeps the whole stack on one coherent endpoint
-                plan, and each start attempt receives a new activation.
+                plan, while each start attempt receives a new activation. Resolve reads
+                addresses from that generation; Confirm separately proves that the
+                expected process or container actually owns a leased endpoint.
               </p>
             </div>
           </details>

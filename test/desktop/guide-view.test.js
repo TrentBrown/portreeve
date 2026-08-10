@@ -76,16 +76,16 @@ test('ships the Guide as static semantic architecture and integration guidance',
     'Generation',
     'Activation',
     'Lease',
-    'Allocate / prepare',
+    'Prepare allocates one immutable generation',
     'Resolve',
     'Confirm',
     'Ownership is not readiness',
     'Sandboxes move the conflict boundary—not the need for PortReeve',
     'Dr. Sandbox',
-    'one shared host-port namespace',
-    'never the PortReeve control socket or lease credentials',
-    'Allocate, bind, and confirm',
-    'Stacks, generations, and activations',
+    'shared host-port namespace',
+    'the control socket and lease credentials do not',
+    'Claims, preparation, and leases',
+    'Generations, activations, resolve, and confirm',
     'Process and Docker evidence',
     'Sandbox discovery and trust boundaries',
     'What PortReeve deliberately does not do',
@@ -93,12 +93,19 @@ test('ships the Guide as static semantic architecture and integration guidance',
     expect(html).toContain(phrase);
   }
   expect(html.match(/<details>/g)).toHaveLength(6);
-  expect(html).toContain('<figure class="guide-architecture">');
+  expect(html).toContain('<figure class="guide-architecture guide-sequence-five">');
   expect(html).toContain('<figcaption>');
-  expect(html.match(/class="guide-path-diagram"/g)).toHaveLength(3);
-  expect(html).toContain('class="guide-sequence"');
-  expect(html).toContain('class="guide-concept-grid"');
-  expect(html).toContain('class="guide-operation-grid"');
+  expect(html.match(/class="guide-mini-sequence guide-sequence-four"/g)).toHaveLength(
+    3,
+  );
+  expect(html).toContain('aria-label="Canonical PortReeve stack lifecycle"');
+  expect(html).toContain('class="guide-sequence-note note-portreeve concept-claim"');
+  expect(html).toContain('class="guide-object-model"');
+  expect(html).toContain('class="guide-object-generation"');
+  expect(html).toContain('class="guide-object-activation"');
+  expect(html).toContain('class="guide-object-leases"');
+  expect(html).toContain('aria-label="Sandbox publication and discovery sequence"');
+  expect(html).toContain('Addresses enter the');
   expect(html).not.toMatch(/<script[^>]+(?:mermaid|https?:)/i);
   expect(html).not.toMatch(/<(?:iframe|object|embed)\b/i);
   expect(renderer).not.toMatch(/fetch\(|WebSocket|EventSource/);
@@ -108,10 +115,11 @@ test('ships the Guide as static semantic architecture and integration guidance',
     "requiredElement('guide-title').focus({ preventScroll: true })",
   );
   expect(packageJson).not.toMatch(/"mermaid"/);
-  expect(css).toContain('.guide-sequence');
-  expect(css).toContain('.guide-concept-grid');
+  expect(css).toContain('.guide-sequence-lifelines');
+  expect(css).toContain('.guide-message.reverse::after');
+  expect(css).toContain('.guide-object-model');
   expect(css).toContain('@media (max-width: 900px)');
-  expect(css).toContain('.guide-actor-row');
+  expect(css).toContain('.guide-trust-bands');
   expect(css).toMatch(
     /\.guide-identity-mark img\s*{[^}]*width:\s*220px;[^}]*height:\s*220px;/,
   );

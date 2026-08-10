@@ -157,18 +157,20 @@ The Guide presents three integration paths:
 
 A responsive semantic sequence diagram follows one stack from definition and durable
 claims through allocation generation, activation leases, resolution, provider startup,
-fresh-evidence confirmation, and shutdown. A four-part glossary defines Claim,
-Generation, Activation, and Lease, while compact diagrams distinguish which integration
-tool occupies the same lifecycle in the Good, Better, and Best paths. Native expandable
-sections cover host and Docker evidence, sandbox discovery, shared interfaces, trust
-boundaries, and deliberate non-goals. The Guide adds no live refresh source, IPC
+fresh-evidence confirmation, and shutdown. Concept callouts attach Claim, Generation,
+Activation, and Lease to the messages that create them, and a nested state-model diagram
+shows their lifetimes and containment. Compact four-lifeline sequences distinguish which
+integration tool occupies the same lifecycle in the Good, Better, and Best paths. Native
+expandable sections cover host and Docker evidence, sandbox discovery, shared interfaces,
+trust boundaries, and deliberate non-goals. The Guide adds no live refresh source, IPC
 capability, external content, or runtime diagram dependency.
 
-A visible sandbox callout explains why isolated agent environments do not remove the
-need for PortReeve. Containers may reuse internal ports, but browser-visible and
-host-testable publications still share the host namespace. A trusted host launcher
-coordinates those publications and may mount a reduced read-only endpoint snapshot;
-the PortReeve control socket and lease credentials never enter the sandbox.
+A visible sandbox-boundary sequence explains why isolated agent environments do not
+remove the need for PortReeve. Containers may reuse internal ports, but browser-visible
+and host-testable publications still share the host namespace. It follows the trusted
+host launcher through allocation, loopback publication, Docker evidence, reduced
+snapshot creation, read-only mounting, and browser access; the PortReeve control socket
+and lease credentials never enter the sandbox.
 
 ## Trust and data boundary
 
