@@ -80,3 +80,15 @@ and complete the PR-boundary verification.
 Retain the exact cream-background master as provenance, introduce the checksum-locked
 transparent production master, regenerate reusable marks and application assets, and
 verify the intentional Fogbound Coast macOS icon tile remains intact.
+
+## I-7 - Improve header mark legibility
+
+- **Status:** in-review
+- **Estimate:** 0.5h
+- **Plan steps:** P4
+- **Rubric criteria:** R3, R8
+- **Depends on:** I-4, I-6
+- **PR:** [#35](https://github.com/TrentBrown/portreeve/pull/35)
+
+Increase the desktop header mark from 64px to 96px so the port-number sequence is just
+legible while preserving the normal-width and minimum-width header layouts.

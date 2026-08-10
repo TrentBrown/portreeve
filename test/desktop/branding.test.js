@@ -102,10 +102,12 @@ describe('PortReeve logo assets', () => {
 
   test('integrates the decorative mark with the exact product header', async () => {
     const html = await readFile(resolve(rendererRoot, 'index.html'), 'utf8');
+    const styles = await readFile(resolve(rendererRoot, 'styles.css'), 'utf8');
     expect(html).toContain('src="app://portreeve/branding/portreeve-mark.svg"');
     expect(html).toMatch(/class="app-logo"[\s\S]*alt=""[\s\S]*aria-hidden="true"/);
     expect(html).toContain('<p class="eyebrow">Local port authority</p>');
     expect(html).toContain('<h1>PortReeve</h1>');
+    expect(styles).toMatch(/\.app-logo\s*{[^}]*width:\s*96px;[^}]*height:\s*96px;/);
   });
 
   test('includes faithful common PNGs and the macOS asset family', async () => {

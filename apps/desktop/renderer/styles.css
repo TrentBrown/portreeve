@@ -32,8 +32,8 @@ select {
   padding: 28px 36px 20px;
 }
 .app-logo {
-  width: 64px;
-  height: 64px;
+  width: 96px;
+  height: 96px;
   flex: 0 0 auto;
 }
 .app-title {
