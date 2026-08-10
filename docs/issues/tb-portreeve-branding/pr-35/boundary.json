@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "scope": "feature-final",
+  "featureId": "tb-portreeve-branding",
+  "repositoryAlias": "portreeve",
+  "packetId": "pr-35",
+  "pullRequest": {
+    "repository": "TrentBrown/portreeve",
+    "number": 35,
+    "url": "https://github.com/TrentBrown/portreeve/pull/35",
+    "state": "OPEN",
+    "isDraft": true,
+    "baseRefName": "main",
+    "baseRefOid": "a597d096e17221a0c6562445f4697f2281a8aa2f",
+    "headRefName": "tb-portreeve-branding",
+    "headRefOid": "c93a7310e42f2428a20d4968cdace044870f6477"
+  },
+  "mergeBaseSha": "a597d096e17221a0c6562445f4697f2281a8aa2f",
+  "evaluatedSourceSha": "c93a7310e42f2428a20d4968cdace044870f6477",
+  "featureBaseSha": "a597d096e17221a0c6562445f4697f2281a8aa2f",
+  "applicability": {
+    "specEvaluation": true,
+    "judge": true,
+    "patternReview": false
+  },
+  "gates": {
+    "verification": { "disposition": "passed", "reason": null },
+    "specEvaluation": { "disposition": "passed", "reason": null },
+    "judge": { "disposition": "passed", "reason": null },
+    "codeReview": { "disposition": "passed", "reason": null },
+    "patternReview": {
+      "disposition": "not_applicable",
+      "reason": "No pattern-review scope is configured"
+    },
+    "explainDiff": { "disposition": "passed", "reason": null }
+  }
+}

@@ -8,7 +8,7 @@ entries are appended to `decisions.md`.
 
 ## [1] Allowlist packaged branding assets on the app protocol
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
