@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 120 120" role="img" aria-labelledby="title description">
+  <title id="title">PortReeve harbor steward</title>
+  <desc id="description">A right-facing bearded harbor steward wearing a nautical cap whose band reads 80, 443, 3000, and 8080.</desc>
+  <defs>
+    <style>
+      .logo-ink { fill: #12344c; }
+      .logo-paper { fill: #fafcfc; }
+      .logo-band { fill: #176b70; }
+      .logo-band-text { fill: #ffffff; }
+      .logo-outline { stroke: #12344c; }
+      .logo-paper-outline { stroke: #fafcfc; }
+    </style>
+  </defs>
+
+  <g id="portreeve-mark">
+    <path class="logo-ink" d="M31 49 Q21 59 24 82 L20 98 Q39 102 54 111 L78 111 L73 98 Q66 91 66 82 Z" />
+    <path
+      class="logo-paper logo-outline"
+      d="M27 43 Q26 66 33 80 L45 88 L64 87 L71 74 Q79 71 85 64 L82 58 L92 54 L86 47 L79 39 Z"
+      stroke-width="3"
+      stroke-linejoin="round"
+    />
+    <path class="logo-ink" d="M53 79 Q61 70 71 72 L83 67 Q86 82 75 93 Q62 101 48 88 Z" />
+    <path class="logo-ink" d="M42 46 Q30 54 31 76 L23 76 L22 47 Z" />
+    <path class="logo-ink" d="M13 24 Q52 3 97 12 Q104 14 104 21 L103 30 Q59 23 16 40 Q10 37 11 30 Z" />
+    <path
+      class="logo-band logo-paper-outline"
+      d="M13 35 Q57 17 105 26 L106 42 Q58 35 17 51 Z"
+      stroke-width="2"
+      stroke-linejoin="round"
+    />
+    <path class="logo-ink" d="M103 39 Q112 39 114 43 Q109 48 88 49 L87 43 Z" />
+    <g
+      class="logo-band-text"
+      font-family="Arial, Helvetica, sans-serif"
+      font-size="5.5"
+      font-weight="700"
+      aria-label="80 · 443 · 3000 · 8080"
+    >
+      <text x="18" y="43.5" transform="rotate(-12 18 43.5)">80</text>
+      <text x="29" y="39.5" transform="rotate(-9 29 39.5)">·</text>
+      <text x="34" y="38.5" transform="rotate(-7 34 38.5)">443</text>
+      <text x="48" y="34.9" transform="rotate(-5 48 34.9)">·</text>
+      <text x="53" y="34.5" transform="rotate(-3 53 34.5)">3000</text>
+      <text x="72" y="31.6" transform="rotate(-1 72 31.6)">·</text>
+      <text x="77" y="31.8" transform="rotate(2 77 31.8)">8080</text>
+    </g>
+    <path
+      d="M64 51 Q70 47 76 51"
+      fill="none"
+      stroke="#12344c"
+      stroke-width="2.4"
+      stroke-linecap="round"
+    />
+    <circle class="logo-ink" cx="72" cy="53" r="1.6" />
+  </g>
+</svg>

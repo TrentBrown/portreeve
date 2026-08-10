@@ -74,7 +74,10 @@ async function startDesktop() {
     (_webContents, _permission, callback) => callback(false),
   );
   session.defaultSession.setPermissionCheckHandler(() => false);
-  registerRendererProtocol(protocol, resolve(desktopRoot, 'renderer'));
+  registerRendererProtocol(protocol, {
+    rendererRoot: resolve(desktopRoot, 'renderer'),
+    brandingRoot: resolve(desktopRoot, 'assets', 'branding'),
+  });
 
   const artifact = app.isPackaged
     ? await resolveBundledReleaseCandidate({ resourcesRoot: process.resourcesPath })

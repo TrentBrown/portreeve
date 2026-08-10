@@ -38,6 +38,9 @@ await cp(resolve(desktopRoot, 'preload'), resolve(stage, 'preload'), {
 await cp(resolve(desktopRoot, 'renderer'), resolve(stage, 'renderer'), {
   recursive: true,
 });
+await cp(resolve(desktopRoot, 'assets'), resolve(stage, 'assets'), {
+  recursive: true,
+});
 
 const build = await Bun.build({
   entrypoints: [resolve(desktopRoot, 'main', 'index.js')],
@@ -91,6 +94,7 @@ const paths = await packager({
   electronVersion: '43.2.0',
   appVersion: metadata.version,
   appBundleId: 'com.trentbrown.portreeve.desktop',
+  icon: resolve(desktopRoot, 'assets', 'branding', 'PortReeve.icns'),
   asar: true,
   overwrite: true,
   prune: false,
