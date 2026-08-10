@@ -117,9 +117,12 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(packageJson).not.toMatch(/"mermaid"/);
   expect(css).toContain('.guide-sequence-lifelines');
   expect(css).toContain('.guide-message.reverse::after');
-  expect(css).toContain(
-    '.guide-mini-sequence .guide-sequence-actors span:nth-child(2)',
-  );
+  expect(html.match(/class="guide-actor-developer"/g)).toHaveLength(3);
+  expect(html.match(/class="guide-actor-portreeve"/g)).toHaveLength(3);
+  expect(html.match(/class="guide-actor-services"/g)).toHaveLength(2);
+  for (const actor of ['desktop', 'generated', 'project', 'commands', 'services']) {
+    expect(css).toContain(`.guide-mini-sequence .guide-actor-${actor}`);
+  }
   expect(css).toContain('background: var(--pr-color-success-soft)');
   expect(css).toContain('background: var(--pr-color-accent-soft)');
   expect(css).toContain('.guide-object-model');

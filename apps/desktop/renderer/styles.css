@@ -1039,19 +1039,31 @@ tbody tr:last-child td {
   padding: 4px 2px;
   font-size: 9px;
 }
-.guide-mini-sequence .guide-sequence-actors span:nth-child(1) {
+.guide-mini-sequence .guide-actor-developer {
   border-color: var(--pr-color-border-strong);
   background: var(--pr-color-surface-raised);
 }
-.guide-mini-sequence .guide-sequence-actors span:nth-child(2) {
+.guide-mini-sequence .guide-actor-desktop {
   border-color: var(--pr-color-primary);
   background: var(--pr-color-success-soft);
 }
-.guide-mini-sequence .guide-sequence-actors span:nth-child(3) {
+.guide-mini-sequence .guide-actor-generated {
+  border-color: var(--pr-color-actor-generated-border);
+  background: var(--pr-color-actor-generated-background);
+}
+.guide-mini-sequence .guide-actor-project {
+  border-color: var(--pr-color-actor-project-border);
+  background: var(--pr-color-actor-project-background);
+}
+.guide-mini-sequence .guide-actor-portreeve {
   border-color: var(--pr-color-logo-ink);
   background: var(--pr-color-surface-subtle);
 }
-.guide-mini-sequence .guide-sequence-actors span:nth-child(4) {
+.guide-mini-sequence .guide-actor-commands {
+  border-color: var(--pr-color-actor-commands-border);
+  background: var(--pr-color-actor-commands-background);
+}
+.guide-mini-sequence .guide-actor-services {
   border-color: var(--pr-color-accent);
   background: var(--pr-color-accent-soft);
 }
