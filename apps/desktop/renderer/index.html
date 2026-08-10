@@ -263,9 +263,9 @@
               <p class="guide-path-rank">Good</p>
               <h4>Built-in driver</h4>
               <p>
-                Configure Start, Stop, Restart, and Status commands in Launchers.
-                PortReeve Desktop injects resolved endpoints and runs your existing
-                stack commands.
+                Configure shell commands such as <code>npm run dev</code> in Launchers.
+                Desktop injects resolved endpoints and invokes them to drive your
+                project's existing lifecycle tooling.
               </p>
               <figure
                 class="guide-mini-sequence guide-mini-sequence-dense guide-sequence-five"
@@ -279,7 +279,8 @@
                     ><span class="guide-actor-pill guide-actor-desktop">Desktop</span
                     ><span class="guide-actor-pill guide-actor-portreeve"
                       >PortReeve</span
-                    ><span class="guide-actor-pill guide-actor-commands">Commands</span
+                    ><span class="guide-actor-pill guide-actor-commands"
+                      >Shell command</span
                     ><span class="guide-actor-pill guide-actor-services">Services</span>
                   </div>
                   <ol aria-label="Built-in driver startup sequence">
@@ -288,7 +289,7 @@
                       <span>Plan and lease</span>
                     </li>
                     <li class="guide-message flow-2-4">
-                      <span>Inject command</span>
+                      <span>Invoke shell</span>
                     </li>
                     <li class="guide-message flow-4-5">
                       <span>Start services</span>
@@ -319,8 +320,8 @@
               <p class="guide-path-rank">Better</p>
               <h4>Generated launcher</h4>
               <p>
-                Generate a separate launcher application or library that coordinates
-                with PortReeve and invokes your project commands without the desktop.
+                Generate an independent launcher or library that coordinates with
+                PortReeve and invokes your existing project tooling without Desktop.
               </p>
               <figure class="guide-mini-sequence guide-sequence-four">
                 <div class="guide-sequence-canvas">
@@ -367,10 +368,10 @@
             </article>
             <article class="guide-path">
               <p class="guide-path-rank">Best</p>
-              <h4>Native integration</h4>
+              <h4>Project integration</h4>
               <p>
-                Call PortReeve from your service-management code so lease acquisition,
-                startup, binding confirmation, and cleanup share one project-owned
+                Have your existing project tooling call PortReeve directly so lease
+                acquisition, startup, binding confirmation, and cleanup share one
                 control flow.
               </p>
               <figure class="guide-mini-sequence guide-sequence-four">
@@ -381,12 +382,12 @@
                   <div class="guide-sequence-actors">
                     <span class="guide-actor-pill guide-actor-developer">Developer</span
                     ><span class="guide-actor-pill guide-actor-project"
-                      >Project tool</span
+                      >Project tooling</span
                     ><span class="guide-actor-pill guide-actor-portreeve"
                       >PortReeve</span
                     ><span class="guide-actor-pill guide-actor-services">Services</span>
                   </div>
-                  <ol aria-label="Native integration startup sequence">
+                  <ol aria-label="Project integration startup sequence">
                     <li class="guide-message flow-1-2"><span>Start</span></li>
                     <li class="guide-message flow-2-3">
                       <span>Plan via client</span>
@@ -454,12 +455,14 @@
                 </div>
               </li>
               <li>
-                <span class="guide-actor-pill guide-actor-project">Project tool</span>
+                <span class="guide-actor-pill guide-actor-project"
+                  >Project tooling</span
+                >
                 <div>
                   <small>Integration tool</small>
                   <p>
-                    Native service manager that requests leases and confirms bound
-                    providers in one control flow.
+                    Project-owned scripts, CLIs, or orchestrators behind commands such
+                    as <code>npm run dev</code>; here, they call PortReeve directly.
                   </p>
                 </div>
               </li>
@@ -474,10 +477,14 @@
                 </div>
               </li>
               <li>
-                <span class="guide-actor-pill guide-actor-commands">Commands</span>
+                <span class="guide-actor-pill guide-actor-commands">Shell command</span>
                 <div>
                   <small>Project runtime</small>
-                  <p>Transient shell operations invoked to manage the stack.</p>
+                  <p>
+                    A developer-entered invocation—commonly
+                    <code>npm run dev</code> for Start—that drives the project's
+                    existing lifecycle tooling.
+                  </p>
                 </div>
               </li>
               <li>
@@ -488,13 +495,13 @@
                 </div>
               </li>
             </ul>
-            <section class="guide-native-advantage">
-              <h5>What native integration adds</h5>
+            <section class="guide-project-integration-advantage">
+              <h5>What project integration adds</h5>
               <p>
                 PortReeve's confirmation guarantee is the same wherever the verified
                 activation protocol is used; a generated launcher can obtain the same
-                ownership proof. Native integration removes the extra adapter boundary:
-                the project tool that owns provider lifecycles also owns lease
+                ownership proof. Project integration removes the extra adapter boundary:
+                the project tooling that owns provider lifecycles also owns lease
                 acquisition, binding confirmation, failure handling, and cleanup.
               </p>
               <p>

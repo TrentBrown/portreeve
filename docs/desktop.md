@@ -147,13 +147,14 @@ machine, where shared default ports would otherwise collide frequently.
 
 The Guide presents three integration paths:
 
-- **Good — Built-in driver:** configure existing stack commands in Launchers and let
-  PortReeve Desktop inject resolved endpoint variables and invoke them.
+- **Good — Built-in driver:** configure shell commands such as `npm run dev` in
+  Launchers and let PortReeve Desktop inject resolved endpoint variables before those
+  commands drive the project's existing lifecycle tooling.
 - **Better — Generated launcher:** move that integration into a separate launcher
-  application or library that uses the PortReeve server without requiring the desktop
-  at runtime.
-- **Best — Native integration:** call PortReeve from the project's existing
-  service-management code through the official client or common socket protocol so
+  application or library that uses the PortReeve server and invokes existing project
+  tooling without requiring the desktop at runtime.
+- **Best — Project integration:** have the project's existing scripts, CLIs, or
+  orchestrators call PortReeve through the official client or common socket protocol so
   lease acquisition, provider startup, binding confirmation, and cleanup share the
   project's exact lifecycle boundaries. Its payoff is the tightest lifecycle coupling,
   not a different PortReeve confirmation guarantee.
@@ -164,8 +165,8 @@ fresh-evidence confirmation, and shutdown. Concept callouts attach Claim, Genera
 Activation, and Lease to the messages that create them, and a nested state-model diagram
 shows their lifetimes and containment. Compact sequence diagrams distinguish which
 integration tool occupies the same lifecycle in the Good, Better, and Best paths. The
-Good path includes the additional command-to-service handoff, while subdued identity
-colors keep Desktop, generated and project tools, commands, services, and PortReeve
+Good path includes the additional shell-command-to-service handoff, while subdued
+identity colors keep Desktop, generated and project tooling, shell commands, services, and PortReeve
 visually distinct. One shared actor legend beneath the comparison defines the union of
 those identities, reusing the exact labeled actor pills from the diagrams rather than a
 separate color key. Native expandable
@@ -174,11 +175,11 @@ boundaries, and deliberate non-goals. The Guide adds no live refresh source, IPC
 capability, external content, or runtime diagram dependency.
 
 The shared actor key explicitly explains that a generated launcher can use the same
-verified-activation protocol and obtain the same ownership proof. Native integration
-removes the extra adapter boundary: the project tool requests leases, starts providers,
-and calls Confirm only after binding, supplying the live process or container identity.
-PortReeve then verifies fresh ownership evidence. This is deliberately distinct from an
-application readiness or successful-request check, which remains project-owned.
+verified-activation protocol and obtain the same ownership proof. Project integration
+removes the extra adapter boundary: project-owned tooling requests leases, starts
+providers, and calls Confirm only after binding, supplying the live process or container
+identity. PortReeve then verifies fresh ownership evidence. This is deliberately distinct
+from an application readiness or successful-request check, which remains project-owned.
 
 A visible sandbox-boundary sequence explains why isolated agent environments do not
 remove the need for PortReeve. Containers may reuse internal ports, but browser-visible

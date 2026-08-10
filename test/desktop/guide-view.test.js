@@ -65,7 +65,7 @@ test('ships the Guide as static semantic architecture and integration guidance',
     'Better',
     'Generated launcher',
     'Best',
-    'Native integration',
+    'Project integration',
     'One authority, project-owned execution',
     'The integration tool changes between Good, Better, and Best.',
     'Define and plan',
@@ -107,15 +107,17 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(html).toContain('Colors identify the same actor wherever it appears.');
   expect(html.match(/class="guide-actor-pill guide-actor-/g)).toHaveLength(20);
   expect(html).toContain('The person or agent that initiates and observes');
-  expect(html).toContain('Transient shell operations invoked to manage the stack.');
+  expect(html).toContain('npm run dev');
+  expect(html).toContain('Shell command');
+  expect(html).toContain('Project tooling');
   expect(html).toContain('Tightest lifecycle coupling');
   expect(html).not.toContain('The least integration hair');
   expect(html).not.toContain('Highest lifecycle fidelity');
   expect(html).toContain('Acquisition and binding share one control flow.');
-  expect(html).toContain('What native integration adds');
+  expect(html).toContain('What project integration adds');
   expect(html).toContain('a generated launcher can obtain the same');
   expect(html).toContain('Confirmation proves ownership, not application readiness.');
-  expect(html).toContain('confirms bound');
+  expect(html).toContain('expected provider owns the binding');
   expect(html).toContain('aria-label="Canonical PortReeve stack lifecycle"');
   expect(html).toContain('class="guide-sequence-note note-portreeve concept-claim"');
   expect(html).toContain('class="guide-object-model"');
@@ -146,7 +148,8 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(css).toContain('background: var(--pr-color-accent-soft)');
   expect(css).toContain('.guide-object-model');
   expect(css).toContain('.guide-actor-legend-list');
-  expect(css).toContain('.guide-native-advantage');
+  expect(css).toContain('.guide-project-integration-advantage');
+  expect(css).toContain('align-items: baseline');
   expect(css).toContain('@media (max-width: 900px)');
   expect(css).toContain('.guide-trust-bands');
   expect(css).toMatch(
