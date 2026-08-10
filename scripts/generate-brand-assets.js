@@ -8,6 +8,7 @@ const workspaceRoot = process.cwd();
 const brandingRoot = resolve(workspaceRoot, 'apps', 'desktop', 'assets', 'branding');
 const approvedOriginal = resolve(brandingRoot, 'portreeve-approved-original.png');
 const approvedOriginalSvg = resolve(brandingRoot, 'portreeve-approved-original.svg');
+const transparentMaster = resolve(brandingRoot, 'portreeve-transparent-master.png');
 const markSource = resolve(brandingRoot, 'portreeve-mark.svg');
 const lockupSource = resolve(brandingRoot, 'portreeve-lockup.svg');
 const appIconSource = resolve(brandingRoot, 'portreeve-app-icon.svg');
@@ -19,13 +20,14 @@ const iconutil = process.env.PORTREEVE_ICONUTIL ?? '/usr/bin/iconutil';
 const magick = process.env.PORTREEVE_MAGICK ?? 'magick';
 
 const embeddedOriginal = await readFile(approvedOriginal, 'base64');
+const embeddedTransparentMaster = await readFile(transparentMaster, 'base64');
 await writeFile(
   approvedOriginalSvg,
   renderApprovedSvg({
     title: 'Approved PortReeve logo artwork',
     description:
       'Lossless SVG presentation of the original approved 1254-pixel PortReeve artwork.',
-    embeddedOriginal,
+    embeddedArtwork: embeddedOriginal,
   }),
 );
 await writeFile(
@@ -34,7 +36,7 @@ await writeFile(
     title: 'PortReeve harbor steward',
     description:
       'The approved right-facing bearded harbor steward wearing a nautical cap whose band reads 80, 443, 3000, and 8080.',
-    embeddedOriginal,
+    embeddedArtwork: embeddedTransparentMaster,
   }),
 );
 
@@ -108,13 +110,13 @@ function render(source, destination, width, height) {
 }
 
 /**
- * @param {{title: string, description: string, embeddedOriginal: string}} input
+ * @param {{title: string, description: string, embeddedArtwork: string}} input
  */
-function renderApprovedSvg({ title, description, embeddedOriginal }) {
+function renderApprovedSvg({ title, description, embeddedArtwork }) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254" role="img" aria-labelledby="title description">
   <title id="title">${title}</title>
   <desc id="description">${description}</desc>
-  <image href="data:image/png;base64,${embeddedOriginal}" width="1254" height="1254" preserveAspectRatio="xMidYMid meet" aria-label="80 · 443 · 3000 · 8080" />
+  <image href="data:image/png;base64,${embeddedArtwork}" width="1254" height="1254" preserveAspectRatio="xMidYMid meet" aria-label="80 · 443 · 3000 · 8080" />
 </svg>
 `;
 }

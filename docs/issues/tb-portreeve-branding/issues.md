@@ -67,3 +67,16 @@ the mark in the responsive desktop header.
 
 Stage branding assets, configure the ICNS, run packaging, inspect the bundle,
 and complete the PR-boundary verification.
+
+## I-6 - Separate archival and production backgrounds
+
+- **Status:** in-review
+- **Estimate:** 1h
+- **Plan steps:** P2, P3, P4, P5
+- **Rubric criteria:** R3, R4, R5, R6, R7
+- **Depends on:** I-2, I-3, I-4
+- **PR:** [#35](https://github.com/TrentBrown/portreeve/pull/35)
+
+Retain the exact cream-background master as provenance, introduce the checksum-locked
+transparent production master, regenerate reusable marks and application assets, and
+verify the intentional Fogbound Coast macOS icon tile remains intact.

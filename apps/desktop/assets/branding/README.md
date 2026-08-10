@@ -8,10 +8,14 @@ approximation. Its SHA-256 is
 `cf664538a4bfc275ed77e0ec8c1faa4f658b112abe5ad2aeea37e29772f45c69`.
 
 The approved source was generated as a PNG; no original vector file existed.
-`portreeve-approved-original.svg` is a standalone lossless scalable SVG presentation
-that embeds the exact original artwork. `portreeve-mark.svg` is the identical
-application-facing presentation. Keeping the PNG beside the self-contained SVG makes the
-original provenance and checksum directly inspectable.
+`portreeve-approved-original.svg` is a standalone lossless SVG presentation that embeds
+the exact original artwork. The cream background remains part of these archival files so
+the approved source is never silently altered.
+
+`portreeve-transparent-master.png` is the production cutout. It preserves the original
+RGB artwork and adds only an exterior alpha mask. Its SHA-256 is
+`987a5fa503f00faa5d5870fd7d57422508ad989cc7eb60857e9c6db8183888f8`. `portreeve-mark.svg`
+embeds this transparent master for the desktop header and reusable logo renditions.
 
 The exact cap-band sequence is `80 · 443 · 3000 · 8080`.
 
@@ -23,11 +27,11 @@ line.
 
 - `portreeve-approved-original.png`: exact archival artwork approved by the user.
 - `portreeve-approved-original.svg`: scalable lossless presentation of the original.
-- `portreeve-mark.svg`: application-facing presentation of the approved original.
+- `portreeve-transparent-master.png`: checksum-locked transparent production cutout.
+- `portreeve-mark.svg`: application-facing presentation of the transparent master.
 - `portreeve-lockup.svg`: scalable horizontal brand lockup.
 - `portreeve-app-icon.svg`: scalable macOS tile source.
-- `png/portreeve-mark-*.png`: faithful opaque common-size renditions of the approved
-  artwork.
+- `png/portreeve-mark-*.png`: transparent common-size production renditions.
 - `png/portreeve-lockup-1520x480.png`: large raster lockup.
 - `portreeve-app-icon-1024.png`: full-size macOS raster master.
 - `PortReeve.iconset/`: standard 16 through 1024 pixel macOS iconset.
@@ -44,8 +48,8 @@ bun run branding:generate
 
 Override tool paths with `PORTREEVE_RSVG_CONVERT`, `PORTREEVE_MAGICK`, or
 `PORTREEVE_ICONUTIL` when necessary. Never edit derived PNG or ICNS files directly. The
-command also rebuilds both standalone SVG presentations by embedding the archival PNG;
-edit neither SVG by hand.
+command also rebuilds the two standalone SVG presentations from their respective PNG
+masters; edit neither SVG by hand.
 
 Application theme constants live in `apps/desktop/renderer/theme.css`. Changing the
 product colorway does not silently recolor the approved original artwork. Any future

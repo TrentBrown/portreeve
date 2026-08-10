@@ -72,6 +72,16 @@ describe('PortReeve logo assets', () => {
       await pngDimensions(resolve(brandingRoot, 'portreeve-approved-original.png')),
     ).toEqual({ width: 1254, height: 1254, colorType: 2 });
 
+    const transparent = await readFile(
+      resolve(brandingRoot, 'portreeve-transparent-master.png'),
+    );
+    expect(createHash('sha256').update(transparent).digest('hex')).toBe(
+      '987a5fa503f00faa5d5870fd7d57422508ad989cc7eb60857e9c6db8183888f8',
+    );
+    expect(
+      await pngDimensions(resolve(brandingRoot, 'portreeve-transparent-master.png')),
+    ).toEqual({ width: 1254, height: 1254, colorType: 6 });
+
     const mark = await readFile(resolve(brandingRoot, 'portreeve-mark.svg'), 'utf8');
     const original = await readFile(
       resolve(brandingRoot, 'portreeve-approved-original.svg'),
@@ -82,15 +92,12 @@ describe('PortReeve logo assets', () => {
     expect(mark).toContain('aria-label="80 · 443 · 3000 · 8080"');
     expect(original).toContain('href="data:image/png;base64,');
     expect(original).toContain('aria-label="80 · 443 · 3000 · 8080"');
-    for (const svg of [mark, original]) {
-      const encoded = svg.match(/href="data:image\/png;base64,([^"]+)"/)?.[1];
-      expect(encoded).toBeDefined();
-      expect(
-        createHash('sha256')
-          .update(Buffer.from(encoded ?? '', 'base64'))
-          .digest('hex'),
-      ).toBe('cf664538a4bfc275ed77e0ec8c1faa4f658b112abe5ad2aeea37e29772f45c69');
-    }
+    expect(embeddedPngHash(original)).toBe(
+      'cf664538a4bfc275ed77e0ec8c1faa4f658b112abe5ad2aeea37e29772f45c69',
+    );
+    expect(embeddedPngHash(mark)).toBe(
+      '987a5fa503f00faa5d5870fd7d57422508ad989cc7eb60857e9c6db8183888f8',
+    );
   });
 
   test('integrates the decorative mark with the exact product header', async () => {
@@ -105,7 +112,7 @@ describe('PortReeve logo assets', () => {
     for (const size of [32, 128, 256, 512, 1024]) {
       expect(
         await pngDimensions(resolve(brandingRoot, 'png', `portreeve-mark-${size}.png`)),
-      ).toEqual({ width: size, height: size, colorType: 2 });
+      ).toEqual({ width: size, height: size, colorType: 6 });
     }
     expect(
       await pngDimensions(
@@ -150,6 +157,15 @@ async function pngDimensions(path) {
     height: png.readUInt32BE(20),
     colorType: png[25] ?? -1,
   };
+}
+
+/** @param {string} svg */
+function embeddedPngHash(svg) {
+  const encoded = svg.match(/href="data:image\/png;base64,([^"]+)"/)?.[1];
+  expect(encoded).toBeDefined();
+  return createHash('sha256')
+    .update(Buffer.from(encoded ?? '', 'base64'))
+    .digest('hex');
 }
 
 /** @param {string} foreground @param {string} background */

@@ -124,3 +124,8 @@ Create `apps/desktop/assets/branding/` with:
   archival master. A standalone lossless SVG presentation embeds the exact master bytes
   for application and asset-pipeline use; no new generative interpretation or lossy
   tracing is allowed.
+- **2026-08-09 background-treatment correction:** Keep the exact cream-background master
+  unchanged as provenance, and derive a second checksum-locked transparent production
+  master by preserving the original RGB artwork and adding only an exterior alpha mask.
+  The application header, reusable mark, and lockup consume the transparent master. The
+  bounded macOS icon retains its intentional Fogbound Coast tile.

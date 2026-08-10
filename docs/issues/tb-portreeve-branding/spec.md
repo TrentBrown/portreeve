@@ -63,3 +63,9 @@ The global Definition of Done in the software development workflow applies.
   presentation. AC5 and AC6 permit faithful opaque mark renditions because the approved
   master includes its intentional warm background; the horizontal lockup retains its
   transparent outer canvas.
+- **2026-08-09 production-background correction:** Preserve the cream-background master
+  and its SVG presentation unchanged for provenance, but use a checksum-locked
+  transparent PNG master for the application-facing SVG, header, lockup, and common mark
+  PNGs. This supersedes only the preceding amendment's permission for opaque reusable
+  mark renditions. The macOS application icon continues to use its intentional Fogbound
+  Coast tile. AC3-AC6 and R3-R6 require this archival-versus-production split.
