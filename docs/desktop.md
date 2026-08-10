@@ -99,9 +99,9 @@ evidence remains visible for diagnosis but withholds stack mutation controls unt
 current evidence returns; the server revalidates every requested action as final
 authority.
 
-## Launcher
+## Launchers
 
-Launcher is the fourth primary tab, after Stacks. It is the low-friction bridge from an
+Launchers is the fourth primary tab, after Stacks. It is the low-friction bridge from an
 applied stack's current PortReeve allocation to project-owned lifecycle commands. The
 stack-linked browser shows configuration, exact-revision trust, integration maturity,
 fresh evidence, action availability, bounded current-session output, and the latest
@@ -130,6 +130,69 @@ the user explicitly selects **Save output**.
 See [Project launchers](launchers.md) for the file schema, environment contract,
 command-only and verified semantics, CLI workflow, degraded recovery, concurrency,
 retention, and platform boundaries.
+
+## Guide
+
+Guide is the rightmost primary tab. It is a static, offline orientation surface that
+describes the installed release's stable mental model without depending on current
+server evidence. It explains that PortReeve coordinates addresses while project tools
+coordinate work, and that listener ownership does not establish application readiness.
+An always-visible **What is this?** link beneath the product name opens the Guide
+at its identity section. That opening pairs a large, legible brand mark with a plain
+product definition and a short explanation of the historical *portreeve* name. The link
+uses the same unsaved-editor protections as primary-tab navigation.
+The identity section also describes the motivating concurrent-development case: several
+agents running independent copies of the same stack from different Git worktrees on one
+machine, where shared default ports would otherwise collide frequently.
+
+The Guide presents three integration paths:
+
+- **Good — Built-in driver:** configure shell commands such as `npm run dev` in
+  Launchers and let PortReeve Desktop inject resolved endpoint variables before those
+  commands drive the project's existing lifecycle tooling.
+- **Better — Generated launcher:** move that integration into a separate launcher
+  application or library that uses the PortReeve server and invokes existing project
+  tooling without requiring the desktop at runtime. Like the built-in driver, it
+  exposes resolved endpoints to launched shell commands as environment variables.
+- **Best — Project integration:** have the project's existing scripts, CLIs, or
+  orchestrators call PortReeve through the official client or common socket protocol so
+  lease acquisition, provider startup, binding confirmation, and cleanup share the
+  project's exact lifecycle boundaries. Its payoff is the tightest lifecycle coupling,
+  not a different PortReeve confirmation guarantee. Project tooling may still pass
+  assignments to child processes through environment variables.
+
+The comparison identifies this port-access boundary explicitly: Good and Better convert
+resolved endpoints into shell environment variables, while Project integration requests
+assignments directly from PortReeve.
+
+A responsive semantic sequence diagram follows one stack from definition and durable
+claims through allocation generation, activation leases, resolution, provider startup,
+fresh-evidence confirmation, and shutdown. Concept callouts attach Claim, Generation,
+Activation, and Lease to the messages that create them, and a nested state-model diagram
+shows their lifetimes and containment. Compact sequence diagrams distinguish which
+integration tool occupies the same lifecycle in the Good, Better, and Best paths. The
+Good path includes the additional shell-command-to-service handoff, while subdued
+identity colors keep Desktop, generated and project tooling, shell commands, services, and PortReeve
+visually distinct. One shared actor legend beneath the comparison defines the union of
+those identities, reusing the exact labeled actor pills from the diagrams rather than a
+separate color key. Native expandable
+sections cover host and Docker evidence, sandbox discovery, shared interfaces, trust
+boundaries, and deliberate non-goals. The Guide adds no live refresh source, IPC
+capability, external content, or runtime diagram dependency.
+
+The shared actor key explicitly explains that a generated launcher can use the same
+verified-activation protocol and obtain the same ownership proof. Project integration
+removes the extra adapter boundary: project-owned tooling requests leases, starts
+providers, and calls Confirm only after binding, supplying the live process or container
+identity. PortReeve then verifies fresh ownership evidence. This is deliberately distinct
+from an application readiness or successful-request check, which remains project-owned.
+
+A visible sandbox-boundary sequence explains why isolated agent environments do not
+remove the need for PortReeve. Containers may reuse internal ports, but browser-visible
+and host-testable publications still share the host namespace. It follows the trusted
+host launcher through allocation, loopback publication, Docker evidence, reduced
+snapshot creation, read-only mounting, and browser access; the PortReeve control socket
+and lease credentials never enter the sandbox.
 
 ## Trust and data boundary
 

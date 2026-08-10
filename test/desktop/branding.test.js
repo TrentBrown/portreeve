@@ -21,6 +21,13 @@ const fogboundCoast = Object.freeze({
   '--pr-color-warning-soft': '#f8ecd7',
   '--pr-color-danger': '#9e3f3b',
   '--pr-color-danger-soft': '#f7e2e0',
+  '--pr-color-actor-generated-background': '#f1eadb',
+  '--pr-color-actor-generated-border': '#806933',
+  '--pr-color-actor-portreeve-background': '#cfdee3',
+  '--pr-color-actor-project-background': '#e1e8f2',
+  '--pr-color-actor-project-border': '#4b6684',
+  '--pr-color-actor-commands-background': '#eee4ef',
+  '--pr-color-actor-commands-border': '#745477',
   '--pr-color-code-background': '#15282f',
   '--pr-color-code-text': '#eaf6f5',
 });
@@ -52,6 +59,10 @@ describe('Fogbound Coast desktop theme', () => {
       ['#ffffff', '#176b70'],
       ['#8b5b18', '#f8ecd7'],
       ['#9e3f3b', '#f7e2e0'],
+      ['#12344c', '#f1eadb'],
+      ['#12344c', '#cfdee3'],
+      ['#12344c', '#e1e8f2'],
+      ['#12344c', '#eee4ef'],
       ['#eaf6f5', '#15282f'],
     ];
     for (const [foreground, background] of pairs) {
