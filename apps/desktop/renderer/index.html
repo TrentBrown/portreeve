@@ -289,7 +289,7 @@
                       <span>Plan and lease</span>
                     </li>
                     <li class="guide-message flow-2-4">
-                      <span>Invoke shell</span>
+                      <span>Inject env + invoke</span>
                     </li>
                     <li class="guide-message flow-4-5">
                       <span>Start services</span>
@@ -309,6 +309,10 @@
                 <div>
                   <dt>Runtime</dt>
                   <dd>Desktop application</dd>
+                </div>
+                <div>
+                  <dt>Port access</dt>
+                  <dd>Environment variables</dd>
                 </div>
                 <div>
                   <dt>Best for</dt>
@@ -342,7 +346,7 @@
                       <span>Plan and lease</span>
                     </li>
                     <li class="guide-message flow-2-4">
-                      <span>Inject and start</span>
+                      <span>Inject env + start</span>
                     </li>
                     <li class="guide-message flow-2-3">
                       <span>Confirm bindings</span>
@@ -359,6 +363,10 @@
                 <div>
                   <dt>Runtime</dt>
                   <dd>Server plus generated tool</dd>
+                </div>
+                <div>
+                  <dt>Port access</dt>
+                  <dd>Environment variables</dd>
                 </div>
                 <div>
                   <dt>Tradeoff</dt>
@@ -390,7 +398,7 @@
                   <ol aria-label="Project integration startup sequence">
                     <li class="guide-message flow-1-2"><span>Start</span></li>
                     <li class="guide-message flow-2-3">
-                      <span>Plan via client</span>
+                      <span>Request ports</span>
                     </li>
                     <li class="guide-message flow-2-4">
                       <span>Inject and start</span>
@@ -412,12 +420,22 @@
                   <dd>Server plus your project tool</dd>
                 </div>
                 <div>
+                  <dt>Port access</dt>
+                  <dd>Direct PortReeve client</dd>
+                </div>
+                <div>
                   <dt>Payoff</dt>
                   <dd>Tightest lifecycle coupling</dd>
                 </div>
               </dl>
             </article>
           </div>
+          <p class="guide-port-access-note">
+            Good and Better expose resolved endpoints as environment variables to the
+            shell commands they launch. With Project integration, project tooling
+            requests assignments directly from PortReeve—though it may still pass them
+            to child processes through environment variables.
+          </p>
           <aside class="guide-actor-legend" aria-labelledby="guide-actor-legend-title">
             <header>
               <p class="eyebrow">Actor key</p>

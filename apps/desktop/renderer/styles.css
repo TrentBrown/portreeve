@@ -1202,6 +1202,12 @@ tbody tr:last-child td {
   border-top: 1px solid var(--pr-color-border-subtle);
   padding-top: 12px;
 }
+.guide-port-access-note {
+  margin: 14px 4px 0;
+  color: var(--pr-color-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
 .guide-actor-legend {
   margin-top: 18px;
   border: 1px solid var(--pr-color-border);

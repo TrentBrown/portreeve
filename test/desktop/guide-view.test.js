@@ -110,6 +110,14 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(html).toContain('npm run dev');
   expect(html).toContain('Shell command');
   expect(html).toContain('Project tooling');
+  expect(html).toContain('Inject env + invoke');
+  expect(html).toContain('Inject env + start');
+  expect(html).toContain('Request ports');
+  expect(html.match(/<dt>Port access<\/dt>/g)).toHaveLength(3);
+  expect(html.match(/<dd>Environment variables<\/dd>/g)).toHaveLength(2);
+  expect(html).toContain('<dd>Direct PortReeve client</dd>');
+  expect(html).toContain('requests assignments directly from PortReeve');
+  expect(html).toMatch(/pass them\s+to child processes through environment variables/);
   expect(html).toContain('Tightest lifecycle coupling');
   expect(html).not.toContain('The least integration hair');
   expect(html).not.toContain('Highest lifecycle fidelity');

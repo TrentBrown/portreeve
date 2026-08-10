@@ -152,12 +152,18 @@ The Guide presents three integration paths:
   commands drive the project's existing lifecycle tooling.
 - **Better — Generated launcher:** move that integration into a separate launcher
   application or library that uses the PortReeve server and invokes existing project
-  tooling without requiring the desktop at runtime.
+  tooling without requiring the desktop at runtime. Like the built-in driver, it
+  exposes resolved endpoints to launched shell commands as environment variables.
 - **Best — Project integration:** have the project's existing scripts, CLIs, or
   orchestrators call PortReeve through the official client or common socket protocol so
   lease acquisition, provider startup, binding confirmation, and cleanup share the
   project's exact lifecycle boundaries. Its payoff is the tightest lifecycle coupling,
-  not a different PortReeve confirmation guarantee.
+  not a different PortReeve confirmation guarantee. Project tooling may still pass
+  assignments to child processes through environment variables.
+
+The comparison identifies this port-access boundary explicitly: Good and Better convert
+resolved endpoints into shell environment variables, while Project integration requests
+assignments directly from PortReeve.
 
 A responsive semantic sequence diagram follows one stack from definition and durable
 claims through allocation generation, activation leases, resolution, provider startup,
