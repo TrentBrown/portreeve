@@ -1039,6 +1039,22 @@ tbody tr:last-child td {
   padding: 4px 2px;
   font-size: 9px;
 }
+.guide-mini-sequence .guide-sequence-actors span:nth-child(1) {
+  border-color: var(--pr-color-border-strong);
+  background: var(--pr-color-surface-raised);
+}
+.guide-mini-sequence .guide-sequence-actors span:nth-child(2) {
+  border-color: var(--pr-color-primary);
+  background: var(--pr-color-success-soft);
+}
+.guide-mini-sequence .guide-sequence-actors span:nth-child(3) {
+  border-color: var(--pr-color-logo-ink);
+  background: var(--pr-color-surface-subtle);
+}
+.guide-mini-sequence .guide-sequence-actors span:nth-child(4) {
+  border-color: var(--pr-color-accent);
+  background: var(--pr-color-accent-soft);
+}
 .guide-sequence-canvas ol {
   position: relative;
   z-index: 1;
