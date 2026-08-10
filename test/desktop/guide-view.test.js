@@ -67,6 +67,18 @@ test('ships the Guide as static semantic architecture and integration guidance',
     'Best',
     'Native integration',
     'One authority, project-owned execution',
+    'The integration tool changes between Good, Better, and Best.',
+    'Define and plan',
+    'Begin one attempt',
+    'Start and prove ownership',
+    'Run and finish',
+    'Claim',
+    'Generation',
+    'Activation',
+    'Lease',
+    'Allocate / prepare',
+    'Resolve',
+    'Confirm',
     'Ownership is not readiness',
     'Allocate, bind, and confirm',
     'Stacks, generations, and activations',
@@ -79,6 +91,10 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(html.match(/<details>/g)).toHaveLength(6);
   expect(html).toContain('<figure class="guide-architecture">');
   expect(html).toContain('<figcaption>');
+  expect(html.match(/class="guide-path-diagram"/g)).toHaveLength(3);
+  expect(html).toContain('class="guide-sequence"');
+  expect(html).toContain('class="guide-concept-grid"');
+  expect(html).toContain('class="guide-operation-grid"');
   expect(html).not.toMatch(/<script[^>]+(?:mermaid|https?:)/i);
   expect(html).not.toMatch(/<(?:iframe|object|embed)\b/i);
   expect(renderer).not.toMatch(/fetch\(|WebSocket|EventSource/);
@@ -88,9 +104,10 @@ test('ships the Guide as static semantic architecture and integration guidance',
     "requiredElement('guide-title').focus({ preventScroll: true })",
   );
   expect(packageJson).not.toMatch(/"mermaid"/);
-  expect(css).toContain('.guide-system-map');
+  expect(css).toContain('.guide-sequence');
+  expect(css).toContain('.guide-concept-grid');
   expect(css).toContain('@media (max-width: 900px)');
-  expect(css).toContain('.guide-interface-row');
+  expect(css).toContain('.guide-actor-row');
   expect(css).toMatch(
     /\.guide-identity-mark img\s*{[^}]*width:\s*220px;[^}]*height:\s*220px;/,
   );

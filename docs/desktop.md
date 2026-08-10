@@ -155,11 +155,14 @@ The Guide presents three integration paths:
 - **Best — Native integration:** call PortReeve from the project's existing
   service-management code through the official client or common socket protocol.
 
-A responsive semantic architecture rendition and native expandable sections cover the
-single per-user authority, project-owned launchers and providers, two-phase
-confirmation, generations and activations, host and Docker evidence, sandbox discovery,
-shared interfaces, trust boundaries, and deliberate non-goals. The Guide adds no live
-refresh source, IPC capability, external content, or runtime diagram dependency.
+A responsive semantic sequence diagram follows one stack from definition and durable
+claims through allocation generation, activation leases, resolution, provider startup,
+fresh-evidence confirmation, and shutdown. A four-part glossary defines Claim,
+Generation, Activation, and Lease, while compact diagrams distinguish which integration
+tool occupies the same lifecycle in the Good, Better, and Best paths. Native expandable
+sections cover host and Docker evidence, sandbox discovery, shared interfaces, trust
+boundaries, and deliberate non-goals. The Guide adds no live refresh source, IPC
+capability, external content, or runtime diagram dependency.
 
 ## Trust and data boundary
 
