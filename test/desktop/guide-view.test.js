@@ -52,6 +52,9 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(html).not.toContain('Familiar ports:');
   expect(html).toContain('a civic official');
   expect(html).toContain('market town—not only a seaport');
+  expect(html).toContain('concurrent agentic development');
+  expect(html).toContain('different Git worktrees on one machine');
+  expect(html).toContain('collisions become frequent');
   expect(html).toContain('PortReeve coordinates addresses.');
   expect(html).toMatch(
     /Your project tools start, supervise, and evaluate the health of your\s+services\./,

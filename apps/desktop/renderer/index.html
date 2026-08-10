@@ -218,6 +218,13 @@
               conflicts, and verifies which process or container owns each endpoint.
             </p>
             <p>
+              This becomes especially valuable during concurrent agentic development.
+              Multiple agents may run independent copies of the same stack from
+              different Git worktrees on one machine. Those copies naturally prefer the
+              same default ports, so collisions become frequent unless a shared
+              authority coordinates their assignments.
+            </p>
+            <p>
               The name borrows from the historical <em>portreeve</em>: a civic official
               responsible for administering a port or market borough. In the older term,
               <em>port</em> could mean a market town—not only a seaport. We use it as a

@@ -141,6 +141,9 @@ An always-visible **What is this?** link beneath the product name opens the Guid
 at its identity section. That opening pairs a large, legible brand mark with a plain
 product definition and a short explanation of the historical *portreeve* name. The link
 uses the same unsaved-editor protections as primary-tab navigation.
+The identity section also describes the motivating concurrent-development case: several
+agents running independent copies of the same stack from different Git worktrees on one
+machine, where shared default ports would otherwise collide frequently.
 
 The Guide presents three integration paths:
 
