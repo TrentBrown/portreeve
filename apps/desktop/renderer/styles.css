@@ -1266,6 +1266,29 @@ tbody tr:last-child td {
   font-size: 11px;
   line-height: 1.4;
 }
+.guide-native-advantage {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.65fr) repeat(2, minmax(0, 1fr));
+  gap: 14px 22px;
+  margin-top: 18px;
+  border-top: 1px solid var(--pr-color-border);
+  background: var(--pr-color-surface-subtle);
+  padding: 17px 18px;
+}
+.guide-native-advantage h5 {
+  margin: 0;
+  color: var(--pr-color-logo-ink);
+  font-size: 15px;
+}
+.guide-native-advantage p {
+  margin: 0;
+  color: var(--pr-color-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.guide-native-advantage strong {
+  color: var(--pr-color-logo-ink);
+}
 .guide-path dl div {
   display: grid;
   grid-template-columns: 72px 1fr;
@@ -1605,7 +1628,8 @@ dialog form > input {
     grid-template-columns: 1fr;
   }
   .guide-actor-legend header,
-  .guide-actor-legend-list {
+  .guide-actor-legend-list,
+  .guide-native-advantage {
     grid-template-columns: 1fr;
   }
   .guide-hero {

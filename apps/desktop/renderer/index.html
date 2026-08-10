@@ -412,7 +412,7 @@
                 </div>
                 <div>
                   <dt>Payoff</dt>
-                  <dd>Highest lifecycle fidelity</dd>
+                  <dd>Tightest lifecycle coupling</dd>
                 </div>
               </dl>
             </article>
@@ -458,8 +458,8 @@
                 <div>
                   <small>Integration tool</small>
                   <p>
-                    The project's native service manager, coordinating PortReeve at its
-                    exact lifecycle boundaries.
+                    Native service manager that requests leases and confirms bound
+                    providers in one control flow.
                   </p>
                 </div>
               </li>
@@ -488,6 +488,24 @@
                 </div>
               </li>
             </ul>
+            <section class="guide-native-advantage">
+              <h5>What native integration adds</h5>
+              <p>
+                PortReeve's confirmation guarantee is the same wherever the verified
+                activation protocol is used; a generated launcher can obtain the same
+                ownership proof. Native integration removes the extra adapter boundary:
+                the project tool that owns provider lifecycles also owns lease
+                acquisition, binding confirmation, failure handling, and cleanup.
+              </p>
+              <p>
+                <strong
+                  >Confirmation proves ownership, not application readiness.</strong
+                >
+                It succeeds only after fresh listener or Docker evidence shows that the
+                expected provider owns the binding. Whether the application can handle a
+                real request remains a project-owned health decision.
+              </p>
+            </section>
           </aside>
         </section>
 

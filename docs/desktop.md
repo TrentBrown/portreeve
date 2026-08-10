@@ -155,7 +155,8 @@ The Guide presents three integration paths:
 - **Best — Native integration:** call PortReeve from the project's existing
   service-management code through the official client or common socket protocol so
   lease acquisition, provider startup, binding confirmation, and cleanup share the
-  project's exact lifecycle boundaries.
+  project's exact lifecycle boundaries. Its payoff is the tightest lifecycle coupling,
+  not a different PortReeve confirmation guarantee.
 
 A responsive semantic sequence diagram follows one stack from definition and durable
 claims through allocation generation, activation leases, resolution, provider startup,
@@ -171,6 +172,13 @@ separate color key. Native expandable
 sections cover host and Docker evidence, sandbox discovery, shared interfaces, trust
 boundaries, and deliberate non-goals. The Guide adds no live refresh source, IPC
 capability, external content, or runtime diagram dependency.
+
+The shared actor key explicitly explains that a generated launcher can use the same
+verified-activation protocol and obtain the same ownership proof. Native integration
+removes the extra adapter boundary: the project tool requests leases, starts providers,
+and calls Confirm only after binding, supplying the live process or container identity.
+PortReeve then verifies fresh ownership evidence. This is deliberately distinct from an
+application readiness or successful-request check, which remains project-owned.
 
 A visible sandbox-boundary sequence explains why isolated agent environments do not
 remove the need for PortReeve. Containers may reuse internal ports, but browser-visible
