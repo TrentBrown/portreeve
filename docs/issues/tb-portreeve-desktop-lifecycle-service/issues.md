@@ -22,7 +22,7 @@ fixtures before another caller adopts the service.
 
 ## I-2 - Add deadlines, uncertain recovery, and mutation locking
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R4, R5, R8
@@ -35,12 +35,12 @@ decision before implementation.
 
 ## I-3 - Replace the desktop CLI lifecycle adapter
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 1.5d
 - **Plan steps:** P4
 - **Rubric criteria:** R1, R3, R8
 - **Depends on:** I-1, I-2
-- **PR:** -
+- **PR:** [#39](https://github.com/TrentBrown/portreeve/pull/39)
 
 Construct the fixed trusted controller in Electron main, enforce controller/
 artifact version identity, and remove every desktop lifecycle subprocess path

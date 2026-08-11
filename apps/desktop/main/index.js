@@ -18,7 +18,7 @@ import {
   resolveBundledReleaseCandidate,
   resolveLocalReleaseCandidate,
 } from './artifact.js';
-import { createLifecycleAdapter } from './cli-adapter.js';
+import { createDesktopLifecycleController } from './lifecycle-controller.js';
 import { createStateCoordinator } from './coordinator.js';
 import { createInventoryAdapter } from './inventory-adapter.js';
 import { createLauncherAdapter } from './launcher-adapter.js';
@@ -120,9 +120,14 @@ async function startDesktop() {
       return selection.canceled ? null : (selection.filePaths[0] ?? null);
     },
   });
+  const lifecycle = createDesktopLifecycleController(artifact);
   const coordinator = createStateCoordinator({
-    artifact: { ...artifact, desktopVersion: app.getVersion() },
-    lifecycle: createLifecycleAdapter({ executablePath: artifact.executablePath }),
+    artifact: {
+      ...artifact,
+      desktopVersion: app.getVersion(),
+      controller: lifecycle.compatibility,
+    },
+    lifecycle,
     inventory: createInventoryAdapter(client),
     stacks: createStackAdapter(client, {
       documents,

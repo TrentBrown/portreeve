@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR 39 explained — trusted Desktop lifecycle controller</title>
+    <style>
+      :root {
+        --ink: #172a36;
+        --muted: #5a6d75;
+        --paper: #f7f2e8;
+        --card: #fffdf8;
+        --line: #d7d0c4;
+        --navy: #08345f;
+        --green: #12634c;
+        --green-soft: #dceee5;
+        --amber: #a65f18;
+        --amber-soft: #f7e8d1;
+        --blue-soft: #dce9f4;
+        --red-soft: #f5dfda;
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--paper);
+        font: 17px/1.62 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      header {
+        padding: 4.5rem max(1.25rem, calc((100vw - 1060px) / 2));
+        color: white;
+        background: linear-gradient(135deg, var(--navy), #0e5375 65%, var(--green));
+      }
+      header p { max-width: 780px; color: #e9f1f4; }
+      h1 { margin: 0 0 1rem; font: 700 clamp(2.4rem, 7vw, 4.8rem)/1.02 Georgia, serif; }
+      h2 { margin-top: 3.8rem; font: 700 2.25rem/1.15 Georgia, serif; color: var(--navy); }
+      h3 { margin-top: 2rem; color: var(--green); }
+      main { max-width: 1060px; margin: auto; padding: 1.5rem 1.25rem 5rem; }
+      nav, .card, .callout, .diagram, .quiz {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--card);
+        box-shadow: 0 5px 16px rgb(23 42 54 / 7%);
+      }
+      nav { margin-top: -2rem; padding: 1rem 1.35rem; position: relative; }
+      nav a { display: inline-block; margin: .35rem 1.1rem .35rem 0; color: var(--green); font-weight: 700; }
+      code { padding: .1rem .35rem; border-radius: 5px; background: #ece8df; font-size: .92em; }
+      pre {
+        overflow-x: auto;
+        white-space: pre-wrap;
+        padding: 1rem;
+        border-radius: 10px;
+        color: #eef7f6;
+        background: #142f3e;
+      }
+      .eyebrow { letter-spacing: .13em; text-transform: uppercase; font-size: .78rem; font-weight: 800; }
+      .sha { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; word-break: break-all; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+      .card { padding: 1.15rem 1.25rem; }
+      .card h3 { margin-top: 0; }
+      .callout { padding: 1.1rem 1.3rem; border-left: 6px solid var(--green); }
+      .callout.warning { border-left-color: var(--amber); background: var(--amber-soft); }
+      .diagram { padding: 1.25rem; margin: 1.4rem 0; overflow-x: auto; }
+      .flow { display: flex; align-items: center; justify-content: center; gap: .75rem; min-width: 760px; }
+      .actor { min-width: 145px; padding: .8rem; text-align: center; border: 2px solid var(--navy); border-radius: 999px; background: var(--blue-soft); font-weight: 750; }
+      .actor.green { border-color: var(--green); background: var(--green-soft); }
+      .actor.amber { border-color: var(--amber); background: var(--amber-soft); }
+      .arrow { color: var(--muted); font-size: 1.5rem; font-weight: 800; }
+      .before-after { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: stretch; }
+      .panel { padding: 1rem; border-radius: 12px; border: 1px solid var(--line); background: white; }
+      .panel.before { background: var(--red-soft); }
+      .panel.after { background: var(--green-soft); }
+      .panel ol { padding-left: 1.2rem; }
+      .sequence { display: grid; gap: .35rem; min-width: 730px; }
+      .message { display: grid; grid-template-columns: 170px 1fr 170px; align-items: center; }
+      .message span:nth-child(2) { border-top: 2px solid var(--muted); text-align: center; color: var(--muted); font-size: .88rem; }
+      .message.reverse span:nth-child(2) { border-top-style: dashed; }
+      .message strong { text-align: center; }
+      .badge { display: inline-block; padding: .18rem .55rem; border-radius: 999px; background: var(--green-soft); color: var(--green); font-weight: 800; font-size: .82rem; }
+      .quiz { padding: 1.2rem; margin: 1rem 0; }
+      .answers { display: grid; gap: .55rem; }
+      .answers button { text-align: left; border: 1px solid var(--line); border-radius: 9px; padding: .75rem; background: white; color: var(--ink); cursor: pointer; }
+      .answers button:hover { border-color: var(--green); }
+      .answers button.correct { border-color: var(--green); background: var(--green-soft); }
+      .answers button.wrong { border-color: #a44336; background: var(--red-soft); }
+      .feedback { min-height: 1.6rem; margin-top: .6rem; font-weight: 650; }
+      footer { color: var(--muted); border-top: 1px solid var(--line); margin-top: 4rem; padding-top: 1rem; }
+      @media (max-width: 720px) {
+        header { padding-top: 3rem; }
+        .before-after { grid-template-columns: 1fr; }
+        .before-after > .arrow { transform: rotate(90deg); text-align: center; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="eyebrow">PortReeve · PR 39 · I-3 / P4</div>
+      <h1>The Desktop stops talking to itself through a CLI.</h1>
+      <p>
+        PR 39 replaces a lifecycle subprocess boundary with one trusted Electron-main controller over the shared lifecycle service. It keeps the verified standalone executable as the thing that gets installed.
+      </p>
+      <p class="sha">Pinned diff: 6e2b36359d3ecc788ed6f328bf24fd2f30366f32..7efceb1c2fe0adbea0d457579d00b4b355f1240d</p>
+    </header>
+    <main>
+      <nav aria-label="Table of contents">
+        <a href="#background">Background</a>
+        <a href="#intuition">Intuition</a>
+        <a href="#code">Code</a>
+        <a href="#safety">Safety cases</a>
+        <a href="#quiz">Quiz</a>
+      </nav>
+
+      <section id="background">
+        <h2>Background</h2>
+        <p>
+          PortReeve has three distinct forms that are easy to blur together. The daemon owns the durable port registry and answers the Unix-socket protocol. The standalone executable is the public CLI and the byte-for-byte artifact installed under launchd or systemd-user. The Desktop application is a management console. There is one PortReeve installation, not a separate Desktop-only server.
+        </p>
+        <div class="grid">
+          <article class="card"><h3>Daemon</h3><p>Allocates ports, stores claims and stacks, and exposes the local socket protocol.</p></article>
+          <article class="card"><h3>Standalone artifact</h3><p>Runs the CLI and daemon. Its checksum is verified before Desktop may install or upgrade it.</p></article>
+          <article class="card"><h3>Desktop</h3><p>Presents evidence and named operations. Its renderer is sandboxed and cannot own native authority.</p></article>
+        </div>
+
+        <h3>The old route</h3>
+        <p>
+          The Desktop used to spawn the verified executable for every lifecycle action, ask for JSON, buffer its output, impose an adapter timeout, parse a CLI envelope, and translate that envelope back into Desktop state. This was safe enough during early development, but it made one trusted PortReeve adapter invoke another trusted PortReeve adapter.
+        </p>
+        <div class="diagram" aria-label="Old Desktop lifecycle flow">
+          <div class="flow">
+            <div class="actor">Renderer</div><div class="arrow">→</div>
+            <div class="actor green">Electron main</div><div class="arrow">→</div>
+            <div class="actor amber">CLI child process</div><div class="arrow">→</div>
+            <div class="actor green">Lifecycle code</div>
+          </div>
+        </div>
+        <p>
+          The child-process boundary duplicated policy. The CLI adapter owned a 10- or 30-second timeout even though the underlying native work could still be running. Failures arrived as process output rather than canonical lifecycle evidence. Cross-process locking and uncertain-outcome recovery, delivered in PR 38, made that split especially unnecessary.
+        </p>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <div class="before-after">
+          <article class="panel before">
+            <h3>Before</h3>
+            <ol><li>Spawn <code>portreeve start --json</code>.</li><li>Wait for stdout and an exit code.</li><li>Parse the CLI envelope.</li><li>Re-validate the nested result.</li></ol>
+          </article>
+          <div class="arrow">→</div>
+          <article class="panel after">
+            <h3>After</h3>
+            <ol><li>Call <code>LifecycleService.start()</code>.</li><li>Validate the canonical result.</li><li>Reduce it for the renderer.</li><li>Keep the verified artifact for installation.</li></ol>
+          </article>
+        </div>
+        <div class="callout">
+          <strong>The key separation:</strong> the Desktop embeds lifecycle <em>control logic</em>, but it does not install that embedded JavaScript as the server. It still promotes the checksum-verified standalone executable.
+        </div>
+
+        <h3>A toy example</h3>
+        <p>
+          Suppose the Desktop controller is PortReeve <code>0.1.0</code> and the verified artifact manifest also says <code>0.1.0</code>. A Start click goes directly to the shared service. The service acquires the global lifecycle lease, gathers before-evidence, performs native work, gathers after-evidence, and returns one validated result.
+        </p>
+        <div class="diagram" aria-label="New direct controller sequence">
+          <div class="sequence">
+            <div class="message"><strong>Renderer</strong><span>start</span><strong>Main controller</strong></div>
+            <div class="message"><strong>Main controller</strong><span>start()</span><strong>LifecycleService</strong></div>
+            <div class="message reverse"><strong>Main controller</strong><span>canonical result</span><strong>LifecycleService</strong></div>
+            <div class="message reverse"><strong>Renderer</strong><span>safe reduced result</span><strong>Main controller</strong></div>
+          </div>
+        </div>
+        <p>
+          If the versions differ, Desktop still starts. Status, ports, stacks, launchers, and purge preview can remain useful. Native lifecycle mutations stop before entering the service, and the interface states both versions and says that mutations are disabled.
+        </p>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <h3>1. One fixed controller</h3>
+        <p>
+          <code>apps/desktop/main/lifecycle-controller.js</code> receives the already verified artifact and the embedded <code>PORTREEVE_VERSION</code>. Production startup supplies no home, socket, supervisor, environment, or arguments. The controller creates the shared service with only this installation source:
+        </p>
+        <pre>createLifecycleService({
+  sourceExecutable: artifact.executablePath
+})</pre>
+        <p>
+          Status, all six lifecycle mutations, purge preview, and purge execution call the service directly. The controller still validates each returned value against the canonical schemas; direct calls do not mean unchecked calls.
+        </p>
+
+        <h3>2. Exact identity, fail closed</h3>
+        <p>
+          The PortReeve controller version must exactly equal the artifact manifest version. Desktop's own application version is deliberately separate. A mismatch creates a stable <code>controller_artifact_version_mismatch</code> error. Every mutation checks it before service entry.
+        </p>
+        <pre>controller 0.1.0 + artifact 0.1.0 → mutations enabled
+controller 0.1.0 + artifact 0.2.0 → reads available, mutations disabled</pre>
+
+        <h3>3. Minimal renderer evidence</h3>
+        <p>
+          The strict Desktop snapshot adds only controller version, a mutation-enabled boolean, and a safe error. It does not reveal the executable path or permit the renderer to choose it. Schema refinement rejects contradictory states such as “enabled with an error.”
+        </p>
+        <div class="grid">
+          <div class="card"><span class="badge">Visible</span><p>Controller version, mutation state, stable mismatch code and message.</p></div>
+          <div class="card"><span class="badge">Main only</span><p>Executable path, purge token, default home/socket, native supervisor and arguments.</p></div>
+        </div>
+
+        <h3>4. The old subprocess implementation disappears</h3>
+        <p>
+          The PR deletes <code>cli-adapter.js</code> and its subprocess-oriented tests. Security coverage now asserts that the Electron entry and controller contain no <code>child_process</code>, <code>spawn</code>, or CLI fallback. Native supervisor helpers may still execute launchctl or systemctl inside the shared lifecycle implementation; what disappeared is the Desktop spawning PortReeve's CLI as its API.
+        </p>
+
+        <h3>5. Tests stop seeing the developer's real service</h3>
+        <p>
+          A full test run while the legitimate global launchd agent was active exposed an old fixture flaw. Temporary data and socket paths were paired with the real global supervisor label. The tests now inject unique launchd labels and systemd units, so a local PortReeve installation can keep running throughout the suite.
+        </p>
+      </section>
+
+      <section id="safety">
+        <h2>Safety cases</h2>
+        <div class="grid">
+          <article class="card"><h3>Matching versions</h3><p>All named lifecycle operations enter the shared service. Existing lock, deadline, rollback, recovery, and no-downgrade policy applies.</p></article>
+          <article class="card"><h3>Mismatched versions</h3><p>Desktop opens, explains the mismatch, hides native lifecycle buttons, and refuses direct IPC mutation attempts before service entry.</p></article>
+          <article class="card"><h3>Purge</h3><p>Preview remains readable. Its secret token stays in main and is single-use. On mismatch the dialog becomes preview-only and execution remains blocked in depth.</p></article>
+          <article class="card"><h3>Newer installed service</h3><p>Matching controller/artifact identity does not authorize downgrade. The shared manager still compares installed and running versions and refuses replacement.</p></article>
+        </div>
+        <div class="callout warning">
+          <strong>Deliberately unfinished:</strong> I-4 adds close protection and the complete copyable diagnostic packet. I-5 proves packaged identity and Electron runtime behavior. I-6 completes real macOS/Linux lifecycle and interruption testing.
+        </div>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="2">
+          <h3>1. What is installed when Desktop upgrades PortReeve?</h3>
+          <div class="answers"><button>Electron's bundled lifecycle JavaScript</button><button>The public client package from npm</button><button>The checksum-verified standalone executable</button><button>A generated platform-specific wrapper script</button></div>
+          <div class="feedback"></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <h3>2. Why is a controller/artifact mismatch not fatal to Desktop startup?</h3>
+          <div class="answers"><button>Desktop silently recompiles the artifact</button><button>Compatible read-only daemon features can remain useful while mutations fail closed</button><button>The versions are advisory and mutations remain safe</button><button>The installed service always supplies the controller code</button></div>
+          <div class="feedback"></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <h3>3. Which privileged choice can the renderer make?</h3>
+          <div class="answers"><button>The executable path</button><button>The PortReeve home and socket</button><button>The launchd label or systemd unit</button><button>None; it can request only allowlisted named operations</button></div>
+          <div class="feedback"></div>
+        </div>
+        <div class="quiz" data-answer="0">
+          <h3>4. What happens to a purge confirmation token?</h3>
+          <div class="answers"><button>It stays in Electron main and is consumed once</button><button>It is returned to the renderer for the DELETE dialog</button><button>It is stored in Desktop preferences until restart</button><button>It is replaced by an unconditional purge flag</button></div>
+          <div class="feedback"></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <h3>5. What subprocess behavior remains legitimate after this PR?</h3>
+          <div class="answers"><button>Electron main spawning portreeve status for fresh evidence</button><button>Electron main using the CLI only for purge</button><button>The shared native adapters invoking launchctl or systemctl</button><button>A hidden CLI fallback when direct calls fail schema validation</button></div>
+          <div class="feedback"></div>
+        </div>
+      </section>
+      <footer>
+        Generated for the exact pinned PR 39 source range. The reports beside this file contain verification, specification, judge, and code-review evidence.
+      </footer>
+    </main>
+    <script>
+      for (const quiz of document.querySelectorAll('.quiz')) {
+        const correct = Number(quiz.dataset.answer);
+        const buttons = [...quiz.querySelectorAll('button')];
+        const feedback = quiz.querySelector('.feedback');
+        buttons.forEach((button, index) => button.addEventListener('click', () => {
+          buttons.forEach((candidate, candidateIndex) => {
+            candidate.disabled = true;
+            candidate.classList.toggle('correct', candidateIndex === correct);
+          });
+          if (index === correct) {
+            feedback.textContent = 'Correct — that preserves the trust and product boundary introduced by the PR.';
+          } else {
+            button.classList.add('wrong');
+            feedback.textContent = 'Not quite. The highlighted answer follows the direct-controller and verified-artifact contract.';
+          }
+        }));
+      }
+    </script>
+  </body>
+</html>

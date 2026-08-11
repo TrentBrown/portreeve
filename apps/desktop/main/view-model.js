@@ -5,7 +5,7 @@ import { DesktopSnapshotSchema } from '../shared/schemas.js';
 import { NOT_CHECKED_UPDATE_STATE } from './update.js';
 
 /**
- * @param {{artifact: {source: 'local-release-candidate'|'published', desktopVersion: string, version: string, filename: string, sha256: string}, update?: unknown, lifecycle: unknown, ports: unknown[], stacks?: unknown[], errors?: unknown[], refreshedAt: string, stale?: boolean, lastSuccessfulAt?: string|null}} input
+ * @param {{artifact: {source: 'local-release-candidate'|'published', desktopVersion: string, version: string, filename: string, sha256: string, controller: {version: string, mutationsEnabled: boolean, error: {code: string, message: string}|null}}, update?: unknown, lifecycle: unknown, ports: unknown[], stacks?: unknown[], errors?: Array<{source: 'lifecycle'|'inventory'|'stacks', code: string, message: string, observedAt: string}>, refreshedAt: string, stale?: boolean, lastSuccessfulAt?: string|null}} input
  */
 export function createDesktopSnapshot(input) {
   const lifecycle = /** @type {any} */ (input.lifecycle);
@@ -20,6 +20,7 @@ export function createDesktopSnapshot(input) {
       version: input.artifact.version,
       filename: input.artifact.filename,
       sha256: input.artifact.sha256,
+      controller: input.artifact.controller,
     },
     update: input.update ?? NOT_CHECKED_UPDATE_STATE,
     lifecycle:
@@ -51,7 +52,18 @@ export function createDesktopSnapshot(input) {
           },
     ports: input.ports.map(reducePort),
     stacks: (input.stacks ?? []).map(reduceStack),
-    errors: input.errors ?? [],
+    errors: [
+      ...(input.errors ?? []),
+      ...(input.artifact.controller.error === null
+        ? []
+        : [
+            {
+              source: /** @type {'lifecycle'} */ ('lifecycle'),
+              ...input.artifact.controller.error,
+              observedAt: input.refreshedAt,
+            },
+          ]),
+    ],
   });
 }
 

@@ -3,7 +3,7 @@
 import { afterEach, expect, test } from 'bun:test';
 import { mkdtemp, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import {
   lifecycleStatusCommand,
   purgeCommand,
@@ -11,6 +11,7 @@ import {
 } from '../../src/cli/commands/lifecycle.js';
 import { EXIT_CODES } from '../../src/protocol/constants.js';
 import { prepareRuntimeDirectories } from '../../src/platform/paths.js';
+import { createLifecycleService } from '../../src/supervision/service.js';
 import { captureOutput, parseRenderedJson } from '../fixtures/cli-runtime.js';
 
 /** @type {string[]} */
@@ -33,12 +34,31 @@ async function isolatedHome() {
   return home;
 }
 
+/** @param {string} home @param {string} [socket] */
+function isolatedLifecycle(home, socket = join(home, 'portreeve.sock')) {
+  const identity = basename(home);
+  return createLifecycleService({
+    home,
+    socket,
+    environment: {
+      PORTREEVE_SUPERVISOR_DEFINITION: join(home, 'portreeve-supervisor'),
+      PORTREEVE_SUPERVISOR_LABEL: `com.portreeve.test.${identity}`,
+      PORTREEVE_SUPERVISOR_UNIT: `portreeve-test-${identity}.service`,
+    },
+  });
+}
+
 test('reports an uninstalled and unsupervised installation as a state difference', async () => {
   const home = await isolatedHome();
   const socket = join(home, 'portreeve.sock');
 
   const json = await captureOutput(() =>
-    lifecycleStatusCommand({ home, socket, json: true }),
+    lifecycleStatusCommand({
+      home,
+      socket,
+      json: true,
+      service: isolatedLifecycle(home, socket),
+    }),
   );
   expect(json.exitCode).toBe(EXIT_CODES.stateDifference);
   expect(parseRenderedJson(json.lines)).toMatchObject({
@@ -50,7 +70,9 @@ test('reports an uninstalled and unsupervised installation as a state difference
     },
   });
 
-  const human = await captureOutput(() => lifecycleStatusCommand({ home, socket }));
+  const human = await captureOutput(() =>
+    lifecycleStatusCommand({ home, socket, service: isolatedLifecycle(home, socket) }),
+  );
   expect(human.lines[0]).toMatch(/^PortReeve mode: none; observed /u);
   expect(human.lines[1]).toBe('Installation: absent; managed version unavailable.');
   expect(human.lines[2]).toMatch(/^Supervisor: unavailable \(/u);
@@ -62,7 +84,12 @@ test('reports an uninstalled and unsupervised installation as a state difference
 test('refuses to stop a manual server that is not running', async () => {
   const home = await isolatedHome();
   const stopped = await captureOutput(() =>
-    stopManualCommand({ home, socket: join(home, 'portreeve.sock'), json: true }),
+    stopManualCommand({
+      home,
+      socket: join(home, 'portreeve.sock'),
+      json: true,
+      service: isolatedLifecycle(home),
+    }),
   );
 
   expect(stopped.exitCode).toBe(EXIT_CODES.conflict);
@@ -77,7 +104,11 @@ test('refuses to stop a manual server that is not running', async () => {
   });
 
   const human = await captureOutput(() =>
-    stopManualCommand({ home, socket: join(home, 'portreeve.sock') }),
+    stopManualCommand({
+      home,
+      socket: join(home, 'portreeve.sock'),
+      service: isolatedLifecycle(home),
+    }),
   );
   expect(human.lines[0]).toBe('PortReeve stop-manual: refused.');
   expect(human.lines[1]).toMatch(/^Before: absent installation, /u);
@@ -115,7 +146,13 @@ test('previews and then executes a purge bound to its own evidence token', async
   await writeFile(join(home, 'registry.sqlite'), 'placeholder');
 
   const preview = await captureOutput(() =>
-    purgeCommand({ home, socket, dryRun: true, json: true }),
+    purgeCommand({
+      home,
+      socket,
+      dryRun: true,
+      json: true,
+      service: isolatedLifecycle(home, socket),
+    }),
   );
   const rendered = parseRenderedJson(preview.lines);
   expect(rendered).toMatchObject({
@@ -125,7 +162,13 @@ test('previews and then executes a purge bound to its own evidence token', async
   expect(rendered.preview.confirmationToken).toMatch(/^[0-9a-f]{64}$/u);
 
   const stale = await captureOutput(() =>
-    purgeCommand({ home, socket, confirm: 'f'.repeat(64), json: true }),
+    purgeCommand({
+      home,
+      socket,
+      confirm: 'f'.repeat(64),
+      json: true,
+      service: isolatedLifecycle(home, socket),
+    }),
   );
   expect(stale.exitCode).toBe(EXIT_CODES.conflict);
   expect(parseRenderedJson(stale.lines)).toMatchObject({
@@ -133,7 +176,12 @@ test('previews and then executes a purge bound to its own evidence token', async
   });
 
   const executed = await captureOutput(() =>
-    purgeCommand({ home, socket, confirm: rendered.preview.confirmationToken }),
+    purgeCommand({
+      home,
+      socket,
+      confirm: rendered.preview.confirmationToken,
+      service: isolatedLifecycle(home, socket),
+    }),
   );
   expect(executed.exitCode).toBe(0);
   expect(executed.lines[0]).toBe('PortReeve purge: succeeded.');

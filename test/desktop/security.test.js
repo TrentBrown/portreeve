@@ -50,7 +50,7 @@ test('accepts IPC only from the main local renderer frame', () => {
 test('keeps server, storage, generic shell, and PATH lookup out of desktop code', async () => {
   const files = [
     'apps/desktop/main/index.js',
-    'apps/desktop/main/cli-adapter.js',
+    'apps/desktop/main/lifecycle-controller.js',
     'apps/desktop/main/inventory-adapter.js',
     'apps/desktop/main/launcher-adapter.js',
     'apps/desktop/main/stack-adapter.js',
@@ -67,13 +67,25 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
   expect(source).not.toMatch(/src\/(?:server|storage)|sqlite|openDatabase/i);
   expect(source).not.toMatch(/(?<!\.)\bexec(?:Sync)?\s*\(/);
   expect(source.match(/shell\.openExternal/g)).toHaveLength(1);
-  expect(source).toContain('shell: false');
   expect(source).toContain('new PortreeveClient()');
-  expect(source).toContain('executablePath: artifact.executablePath');
+  expect(source).toContain('sourceExecutable: artifact.executablePath');
   expect(source).toContain('openDownloadPage: async () =>');
   expect(source).not.toContain('openDownloadPage: async (url) =>');
   expect(source.match(/clipboard\.writeText/g)).toHaveLength(1);
   expect(source).not.toContain('navigator.clipboard');
+});
+
+test('constructs one fixed in-process lifecycle controller without a CLI subprocess path', async () => {
+  const [entry, controller] = await Promise.all([
+    readFile('apps/desktop/main/index.js', 'utf8'),
+    readFile('apps/desktop/main/lifecycle-controller.js', 'utf8'),
+  ]);
+  const lifecycleSource = `${entry}\n${controller}`;
+  expect(entry).toContain('createDesktopLifecycleController(artifact)');
+  expect(controller).toContain('sourceExecutable: artifact.executablePath');
+  expect(lifecycleSource).not.toMatch(/node:child_process|\bspawn\s*\(|\bexec\s*\(/);
+  expect(lifecycleSource).not.toContain('cli-adapter');
+  expect(controller).not.toMatch(/PORTREEVE_(?:HOME|SOCKET|SUPERVISOR)/);
 });
 
 test('keeps stack file paths and evidence out of the preload document API', async () => {

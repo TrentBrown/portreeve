@@ -542,6 +542,17 @@ export const DesktopSnapshotSchema = z
         version: SemanticVersionSchema,
         filename: z.string().min(1),
         sha256: z.string().regex(/^[a-f0-9]{64}$/),
+        controller: z
+          .object({
+            version: SemanticVersionSchema,
+            mutationsEnabled: z.boolean(),
+            error: SafeErrorSchema.nullable(),
+          })
+          .strict()
+          .refine(
+            ({ mutationsEnabled, error }) => mutationsEnabled === (error === null),
+            'Lifecycle controller compatibility evidence is inconsistent.',
+          ),
       })
       .strict(),
     update: DesktopUpdateStateSchema,

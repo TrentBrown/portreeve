@@ -305,6 +305,11 @@ function render(next) {
   versions.replaceChildren(
     definition('Desktop app', next.artifact.desktopVersion),
     definition('Bundled CLI', next.artifact.version),
+    definition('Lifecycle controller', next.artifact.controller.version),
+    definition(
+      'Lifecycle mutations',
+      next.artifact.controller.mutationsEnabled ? 'Enabled' : 'Disabled',
+    ),
     definition('Managed CLI', lifecycle?.versions.managed ?? 'Not installed'),
     definition('Running server', lifecycle?.versions.running ?? 'Not running'),
     definition(
@@ -356,7 +361,7 @@ function renderActions() {
       return button;
     }),
   );
-  guidance.textContent = actionGuidance(snapshot.lifecycle, actions);
+  guidance.textContent = actionGuidance(snapshot, actions);
   const uninstall = /** @type {HTMLButtonElement} */ (requiredElement('uninstall'));
   uninstall.disabled = busy || !canUninstall(snapshot);
 }
@@ -419,8 +424,9 @@ async function invokeStack(invoke) {
 async function previewPurge() {
   await runBusy(async () => {
     const preview = await window.portreeveDesktop.previewPurge();
+    const mutationsEnabled = snapshot.artifact.controller.mutationsEnabled;
     requiredElement('purge-summary').textContent = preview.allowed
-      ? `${preview.paths.length} paths beneath ${preview.root} are eligible for deletion.`
+      ? `${preview.paths.length} paths beneath ${preview.root} are eligible for deletion.${mutationsEnabled ? '' : ' Preview only: lifecycle mutations are disabled.'}`
       : 'PortReeve refused this reset preview. Review the evidence below.';
     requiredElement('purge-paths').replaceChildren(
       ...preview.paths.map((/** @type {any} */ entry) => {
@@ -439,7 +445,7 @@ async function previewPurge() {
     );
     refusals.hidden = preview.refused.length === 0;
     purgeConfirmation.value = '';
-    purgeConfirmation.disabled = !preview.allowed;
+    purgeConfirmation.disabled = !preview.allowed || !mutationsEnabled;
     purgeAccept.disabled = true;
     purgeDialog.showModal();
     const accepted = await dialogResult(purgeDialog);
@@ -923,8 +929,15 @@ function listenerDetail(listener) {
   return article;
 }
 
-/** @param {any} lifecycle @param {string[]} actions */
-function actionGuidance(lifecycle, actions) {
+/** @param {any} current @param {string[]} actions */
+function actionGuidance(current, actions) {
+  const lifecycle = current.lifecycle;
+  if (!current.artifact.controller.mutationsEnabled) {
+    return (
+      current.artifact.controller.error?.message ??
+      'Lifecycle mutations are disabled because the controller is incompatible.'
+    );
+  }
   if (lifecycle === null) return 'Lifecycle evidence is unavailable. Refresh to retry.';
   if (lifecycle.mode === 'ambiguous') {
     return 'Execution mode is ambiguous. Mutations are withheld until the evidence is clear.';
@@ -933,7 +946,7 @@ function actionGuidance(lifecycle, actions) {
     return 'The managed installation is invalid. Review lifecycle evidence before changing it.';
   }
   if (actions.length === 0) return 'No service action is currently needed.';
-  return 'Available actions reflect fresh lifecycle evidence and are revalidated by the CLI.';
+  return 'Available actions reflect fresh lifecycle evidence and are revalidated by the lifecycle controller.';
 }
 
 /** @param {Element} tab @param {string|undefined} view */

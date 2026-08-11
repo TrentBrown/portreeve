@@ -44,6 +44,11 @@ export function provisionalArtifact() {
     version: '0.1.0',
     filename: 'portreeve-v0.1.0-macos-x64',
     sha256: 'a'.repeat(64),
+    controller: {
+      version: '0.1.0',
+      mutationsEnabled: true,
+      error: null,
+    },
   };
 }
 

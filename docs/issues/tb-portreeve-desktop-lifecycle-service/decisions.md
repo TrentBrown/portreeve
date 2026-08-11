@@ -71,3 +71,20 @@ Expand the canonical purge outcome vocabulary with failed. Use failed when a pur
 Return partial for every purge timeout - rejected because it falsely claims an observed state change. Throw before returning a purge receipt - rejected because it discards canonical before and after evidence. Encode failed only in an error field while retaining partial - rejected because the outcome and evidence would disagree.
 
 **Promoted:** 2026-08-10. PR: #38.
+
+---
+
+## Expose controller compatibility as renderer-safe artifact metadata
+
+**Confidence:** HIGH
+
+**Blast Radius:** Desktop lifecycle controller, strict snapshot schema, renderer lifecycle controls, and compatibility tests
+
+Construct the fixed controller in Electron main from the checksum-verified artifact and embedded PortReeve version. Carry only controller version, a mutation-enabled boolean, and a stable safe mismatch error into the strict Desktop artifact snapshot. Treat the mismatch as a current lifecycle error that suppresses native lifecycle actions and purge execution, while successful status, port, stack, and launcher evidence remains current and usable. The direct controller continues to allow status and purge preview, but all mutations fail closed before entering the shared lifecycle service.
+
+**Triggered by:** I-3 must visibly disable lifecycle mutations on controller and bundled-artifact mismatch without disabling compatible read-only daemon features
+
+**Alternatives considered:**
+Abort Desktop startup on mismatch - rejected because compatible read-only daemon features must remain usable. Hide the mismatch until a mutation is attempted - rejected because the packaging defect must be visible. Put privileged controller inputs into the snapshot or IPC - rejected because the renderer must not control or receive paths, environment, supervisor, socket, or native arguments.
+
+**Promoted:** 2026-08-10. PR: #39.

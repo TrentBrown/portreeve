@@ -18,7 +18,7 @@ import { createDesktopSnapshot, reduceStackEndpointSnapshot } from './view-model
 import { basename } from 'node:path';
 
 /**
- * @param {{artifact: {source: 'local-release-candidate'|'published', desktopVersion: string, version: string, filename: string, sha256: string}, lifecycle: any, inventory: {listPorts(): Promise<unknown[]>}, stacks?: any, launchers?: any, updates?: {check(): Promise<unknown>, openDownloadPage(): Promise<unknown>}, now?: () => Date, intervalMilliseconds?: number, schedule?: (callback: () => void, milliseconds: number) => any, cancel?: (timer: any) => void}} options
+ * @param {{artifact: {source: 'local-release-candidate'|'published', desktopVersion: string, version: string, filename: string, sha256: string, controller: {version: string, mutationsEnabled: boolean, error: {code: string, message: string}|null}}, lifecycle: any, inventory: {listPorts(): Promise<unknown[]>}, stacks?: any, launchers?: any, updates?: {check(): Promise<unknown>, openDownloadPage(): Promise<unknown>}, now?: () => Date, intervalMilliseconds?: number, schedule?: (callback: () => void, milliseconds: number) => any, cancel?: (timer: any) => void}} options
  */
 export function createStateCoordinator(options) {
   const now = options.now ?? (() => new Date());
