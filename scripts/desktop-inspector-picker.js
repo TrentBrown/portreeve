@@ -9,8 +9,14 @@ export function installDesktopInspectorPicker() {
   const inspectorWindow = /** @type {Window & {
     __portreeveInspectorInstalled?: boolean,
     __portreeveInspectorSelection?: unknown,
+    __portreeveInspectorSelections?: unknown,
     __portreeveInspectorDescribe?: (element: Element) => unknown,
-    __portreeveInspectorSelect?: (element: Element, report?: boolean) => unknown,
+    __portreeveInspectorSelect?: (
+      element: Element,
+      extend?: boolean,
+      report?: boolean
+    ) => unknown,
+    __portreeveInspectorClear?: (report?: boolean) => unknown,
     __portreeveInspectorReport?: (descriptor: unknown) => Promise<void>
   }} */ (window);
   if (inspectorWindow.__portreeveInspectorInstalled) return;
@@ -74,14 +80,14 @@ export function installDesktopInspectorPicker() {
     return parts.join(' > ');
   };
 
-  /** @param {Element} element */
-  const describe = (element) => {
+  /** @param {Element} element @param {string} [selectedAt] */
+  const describe = (element, selectedAt = new Date().toISOString()) => {
     const style = window.getComputedStyle(element);
     const rectangle = element.getBoundingClientRect();
     const text = (element.textContent ?? '').replace(/\s+/gu, ' ').trim();
     return {
       schemaVersion: 1,
-      selectedAt: new Date().toISOString(),
+      selectedAt,
       selector: selectorFor(element),
       tag: element.tagName.toLowerCase(),
       id: element.id || null,
@@ -135,22 +141,10 @@ export function installDesktopInspectorPicker() {
   };
   inspectorWindow.__portreeveInspectorDescribe = describe;
 
-  const highlight = document.createElement('div');
-  highlight.setAttribute('data-portreeve-inspector-ui', 'highlight');
-  Object.assign(highlight.style, {
-    position: 'fixed',
-    zIndex: '2147483646',
-    display: 'none',
-    pointerEvents: 'none',
-    border: '2px solid #d9782d',
-    background: 'rgb(217 120 45 / 12%)',
-    boxShadow: '0 0 0 1px rgb(255 255 255 / 85%)',
-  });
-
   const status = document.createElement('div');
   status.setAttribute('data-portreeve-inspector-ui', 'status');
   status.textContent =
-    'Inspector ready · Option-click selects · Normal clicks are live';
+    'Inspector ready · Option-click selects · Shift-Option-click extends · Normal clicks are live';
   Object.assign(status.style, {
     position: 'fixed',
     zIndex: '2147483647',
@@ -166,36 +160,156 @@ export function installDesktopInspectorPicker() {
     boxShadow: '0 5px 18px rgb(16 42 67 / 25%)',
     pointerEvents: 'none',
   });
-  document.documentElement.append(highlight, status);
+  document.documentElement.append(status);
 
-  /** @type {Element | null} */
-  let selected = null;
-  const positionHighlight = () => {
-    if (selected === null || !selected.isConnected) {
-      highlight.style.display = 'none';
+  const selectionLimit = 10;
+  /** @type {Array<{element: Element, selectedAt: string}>} */
+  const selections = [];
+  /** @type {Array<{box: HTMLDivElement, badge: HTMLSpanElement}>} */
+  const highlights = [];
+
+  const createHighlight = () => {
+    const box = document.createElement('div');
+    box.setAttribute('data-portreeve-inspector-ui', 'highlight');
+    Object.assign(box.style, {
+      position: 'fixed',
+      zIndex: '2147483646',
+      display: 'none',
+      pointerEvents: 'none',
+      boxSizing: 'border-box',
+      border: '2px solid #d9782d',
+      background: 'rgb(217 120 45 / 12%)',
+      boxShadow: '0 0 0 1px rgb(255 255 255 / 85%)',
+    });
+    const badge = document.createElement('span');
+    badge.setAttribute('data-portreeve-inspector-ui', 'selection-number');
+    Object.assign(badge.style, {
+      position: 'absolute',
+      top: '-11px',
+      left: '-11px',
+      minWidth: '20px',
+      height: '20px',
+      padding: '0 5px',
+      border: '1px solid rgb(255 255 255 / 90%)',
+      borderRadius: '999px',
+      background: '#d9782d',
+      color: '#fffdf8',
+      font: '700 11px/18px system-ui, sans-serif',
+      textAlign: 'center',
+      boxSizing: 'border-box',
+      boxShadow: '0 2px 7px rgb(16 42 67 / 28%)',
+    });
+    box.append(badge);
+    document.documentElement.append(box);
+    return { box, badge };
+  };
+
+  const selectionSnapshot = () => ({
+    schemaVersion: 2,
+    capturedAt: new Date().toISOString(),
+    selectionLimit,
+    selections: selections.map(({ element, selectedAt }, index) => ({
+      selectionNumber: index + 1,
+      ...describe(element, selectedAt),
+    })),
+  });
+
+  /** @param {string} [message] */
+  const updateStatus = (message) => {
+    if (message !== undefined) {
+      status.textContent = `${message} · Normal clicks are live`;
       return;
     }
-    const rectangle = selected.getBoundingClientRect();
-    Object.assign(highlight.style, {
-      display: 'block',
-      left: `${rectangle.left}px`,
-      top: `${rectangle.top}px`,
-      width: `${rectangle.width}px`,
-      height: `${rectangle.height}px`,
-    });
+    if (selections.length === 0) {
+      status.textContent =
+        'Inspector ready · Option-click selects · Shift-Option-click extends · Normal clicks are live';
+      return;
+    }
+    if (selections.length === 1) {
+      const onlySelection = selections[0];
+      if (onlySelection === undefined) return;
+      status.textContent = `Selected 1 · ${selectorFor(onlySelection.element)} · Shift-Option-click extends · Normal clicks are live`;
+      return;
+    }
+    status.textContent = `Selected ${selections.length} · Shift-Option-click toggles membership · Normal clicks are live`;
   };
 
-  /** @param {Element} element @param {boolean} [report] */
-  const selectElement = (element, report = true) => {
-    selected = element;
-    const descriptor = describe(element);
-    inspectorWindow.__portreeveInspectorSelection = descriptor;
-    status.textContent = `Selected · ${descriptor.selector} · Normal clicks are live`;
-    positionHighlight();
-    if (report) void inspectorWindow.__portreeveInspectorReport?.(descriptor);
-    return descriptor;
+  const positionHighlights = () => {
+    while (highlights.length < selections.length) highlights.push(createHighlight());
+    while (highlights.length > selections.length) highlights.pop()?.box.remove();
+    for (const [index, selection] of selections.entries()) {
+      const highlight = highlights[index];
+      if (highlight === undefined) continue;
+      if (!selection.element.isConnected) {
+        highlight.box.style.display = 'none';
+        continue;
+      }
+      const rectangle = selection.element.getBoundingClientRect();
+      highlight.badge.textContent = String(index + 1);
+      Object.assign(highlight.box.style, {
+        display: 'block',
+        left: `${rectangle.left}px`,
+        top: `${rectangle.top}px`,
+        width: `${rectangle.width}px`,
+        height: `${rectangle.height}px`,
+      });
+    }
+  };
+
+  /** @param {ReturnType<typeof selectionSnapshot>} snapshot @param {boolean} report */
+  const publishSelection = (snapshot, report) => {
+    inspectorWindow.__portreeveInspectorSelections = snapshot;
+    inspectorWindow.__portreeveInspectorSelection = snapshot.selections.at(-1) ?? null;
+    if (report) void inspectorWindow.__portreeveInspectorReport?.(snapshot);
+    return snapshot;
+  };
+
+  /**
+   * @param {Element} element
+   * @param {boolean} [extend]
+   * @param {boolean} [report]
+   */
+  const selectElement = (element, extend = false, report = true) => {
+    for (let index = selections.length - 1; index >= 0; index -= 1) {
+      const selection = selections[index];
+      if (selection !== undefined && !selection.element.isConnected) {
+        selections.splice(index, 1);
+      }
+    }
+    const existingIndex = selections.findIndex(
+      (selection) => selection.element === element,
+    );
+    if (extend) {
+      if (existingIndex >= 0) {
+        selections.splice(existingIndex, 1);
+      } else if (selections.length >= selectionLimit) {
+        updateStatus(`Selection limit of ${selectionLimit} reached`);
+        return selectionSnapshot();
+      } else {
+        selections.push({ element, selectedAt: new Date().toISOString() });
+      }
+    } else {
+      selections.splice(0, selections.length, {
+        element,
+        selectedAt: new Date().toISOString(),
+      });
+    }
+    const snapshot = selectionSnapshot();
+    updateStatus();
+    positionHighlights();
+    return publishSelection(snapshot, report);
   };
   inspectorWindow.__portreeveInspectorSelect = selectElement;
+
+  /** @param {boolean} [report] */
+  const clearSelection = (report = true) => {
+    selections.splice(0);
+    const snapshot = selectionSnapshot();
+    updateStatus();
+    positionHighlights();
+    return publishSelection(snapshot, report);
+  };
+  inspectorWindow.__portreeveInspectorClear = clearSelection;
 
   /** @param {PointerEvent} event */
   const select = (event) => {
@@ -210,7 +324,7 @@ export function installDesktopInspectorPicker() {
     if (!(element instanceof Element)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    selectElement(element);
+    selectElement(element, event.shiftKey);
   };
 
   /** @param {MouseEvent} event */
@@ -222,6 +336,6 @@ export function installDesktopInspectorPicker() {
 
   document.addEventListener('pointerdown', select, true);
   document.addEventListener('click', suppressClick, true);
-  window.addEventListener('resize', positionHighlight);
-  document.addEventListener('scroll', positionHighlight, true);
+  window.addEventListener('resize', positionHighlights);
+  document.addEventListener('scroll', positionHighlights, true);
 }

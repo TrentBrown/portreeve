@@ -21,25 +21,29 @@ renderer element and the agent can connect that selection to its implementation.
    Otherwise, launch `bun run desktop:inspect` in an interactive terminal session and
    keep that session open. Allow the release build and Electron startup to finish before
    declaring the inspector ready.
-3. Tell the user that the inspection window is ready and ask them to Option-click the
-   element they want to discuss. Do not require them to describe an element that the
-   picker can identify.
+3. Tell the user that the inspection window is ready. Ask them to Option-click one
+   element or Shift-Option-click additional elements they want to discuss. Do not
+   require them to describe elements that the picker can identify.
 
 The harness isolates Electron caches and Desktop preferences, but it still connects to
-the user's live per-user PortReeve service. Emphasize that Option-click selects without
-activating. Do not issue ordinary clicks or lifecycle operations unless the user
-explicitly requests the action and its effect is understood.
+the user's live per-user PortReeve service. Emphasize that Option-click replaces the
+selection and Shift-Option-click extends or reduces it without activating elements. Do
+not issue ordinary clicks or lifecycle operations unless the user explicitly requests
+the action and its effect is understood.
 
 ## Read and inspect selections
 
-- Read the JSON descriptor printed after an Option-click. If the terminal session is
-  available, send `selected` to print the latest selection again.
-- Use the `Latest selection` path announced at startup when the session output is no
-  longer immediately available. The descriptor contains the selector, text, attributes,
+- Read the ordered JSON selection set printed after an Option-click or
+  Shift-Option-click. Use the numbered outlines and `selectionNumber` fields to
+  correlate elements. If the terminal session is available, send `selected` to print the
+  set again.
+- Use the `Latest selection set` path announced at startup when the session output is no
+  longer immediately available. Each descriptor contains the selector, text, attributes,
   bounding box, and selected computed styles.
 - Use `inspect <selector>` for refreshed DOM and style evidence, `snapshot` for the
   accessibility tree, and `screenshot` when spatial context materially helps.
-- Use `select <selector>` or `hover <selector>` for non-activating inspection from the
+- Use `select <selector>` to replace the selection, `add <selector>` to toggle a member,
+  `clear` to empty the set, or `hover <selector>` for non-activating inspection from the
   terminal. Treat `click <selector>` as a live action subject to the same safety
   boundary as a normal click in the app.
 
