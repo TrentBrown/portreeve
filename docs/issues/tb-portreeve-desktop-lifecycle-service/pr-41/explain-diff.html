@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR 41 · Proving the packaged PortReeve controller</title>
+    <style>
+      :root {
+        --ink: #102c3b;
+        --muted: #526970;
+        --paper: #f6f1e7;
+        --card: #fffdf8;
+        --line: #cad7d2;
+        --green: #17624b;
+        --blue: #cfe4ed;
+        --gold: #f1d89b;
+        --rose: #efd0ca;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--paper);
+        font: 17px/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main { width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 80px; }
+      header { padding: 42px; border-radius: 24px; color: white; background: var(--ink); }
+      header p { max-width: 760px; color: #dce9e5; }
+      h1 { margin: 0 0 12px; font: 700 clamp(34px, 6vw, 64px)/1.05 Georgia, serif; }
+      h2 { margin-top: 64px; font: 700 36px/1.2 Georgia, serif; }
+      h3 { margin-top: 28px; }
+      nav { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+      nav a { color: var(--ink); background: white; border-radius: 999px; padding: 7px 13px; text-decoration: none; }
+      code { padding: 2px 5px; border-radius: 5px; background: #e8ede7; font-size: 0.91em; }
+      pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 18px; border-radius: 12px; color: #eaf4f0; background: #183747; }
+      .callout, .card { padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
+      .callout { border-left: 6px solid var(--green); }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+      .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: stretch; margin: 24px 0; }
+      .step { position: relative; padding: 18px 14px; text-align: center; border-radius: 14px; background: var(--blue); }
+      .step:nth-child(2) { background: var(--gold); }
+      .step:nth-child(3) { background: #d4e7d7; }
+      .step:nth-child(4) { background: var(--rose); }
+      .step:not(:last-child)::after { content: "→"; position: absolute; right: -15px; top: 35%; z-index: 2; font-size: 24px; }
+      .label { display: inline-block; margin-bottom: 6px; color: var(--green); font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+      .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+      .old { border-top: 6px solid #a54a43; }
+      .new { border-top: 6px solid var(--green); }
+      .quiz { margin: 18px 0; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+      .answers { display: grid; gap: 8px; }
+      button { padding: 10px 12px; text-align: left; border: 1px solid #91aaa2; border-radius: 9px; color: var(--ink); background: white; cursor: pointer; }
+      button:hover { border-color: var(--green); }
+      button.correct { background: #d5eadb; }
+      button.wrong { background: #f2d5d0; }
+      .feedback { min-height: 28px; margin-bottom: 0; font-weight: 650; }
+      .small { color: var(--muted); font-size: 14px; }
+      @media (max-width: 720px) {
+        header { padding: 28px 22px; }
+        .flow, .compare { grid-template-columns: 1fr; }
+        .step:not(:last-child)::after { content: "↓"; right: 48%; top: auto; bottom: -22px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="label" style="color:#9cd1bd">PortReeve PR #41</div>
+        <h1>Proving what we actually ship</h1>
+        <p>
+          The Desktop had already stopped delegating lifecycle work to the CLI.
+          This slice closes the verification gap: it proves that the packaged
+          application contains the direct controller, embeds the exact release
+          artifact, behaves identically under Bun and Electron Node, and can
+          start safely as a real <code>.app</code>.
+        </p>
+        <nav>
+          <a href="#background">Background</a>
+          <a href="#intuition">Intuition</a>
+          <a href="#code">Code</a>
+          <a href="#quiz">Quiz</a>
+        </nav>
+      </header>
+
+      <section id="background">
+        <h2>Background</h2>
+        <p>
+          PortReeve has two different executable concerns. The standalone CLI
+          binary is the public command-line product and the byte sequence that
+          lifecycle installation promotes into the managed location. The
+          Electron main process, however, should call the shared JavaScript
+          lifecycle service directly. It must not launch that binary merely to
+          ask it to perform lifecycle work.
+        </p>
+        <div class="compare">
+          <div class="card old">
+            <span class="label">Retired delegation</span>
+            <h3>Desktop → CLI → service</h3>
+            <p>Electron spawned the CLI, parsed JSON, and owned timeout and output handling.</p>
+          </div>
+          <div class="card new">
+            <span class="label">Current authority</span>
+            <h3>Desktop → shared service</h3>
+            <p>Electron constructs a fixed controller in process. The verified binary is only the installation payload.</p>
+          </div>
+        </div>
+        <p>
+          Source-level tests established that architecture in earlier slices.
+          Packaging introduces a different question: did the build really put
+          those exact pieces into <code>app.asar</code>, beside the intended
+          manifest-selected executable? A green unit test cannot answer that by
+          itself.
+        </p>
+        <div class="callout">
+          <strong>A useful distinction:</strong> “no lifecycle CLI spawning” does
+          not mean “no child processes.” The shared lifecycle service still has
+          legitimate reasons to invoke <code>launchctl</code>, <code>systemctl</code>,
+          <code>lsof</code>, and related native tools. The forbidden behavior is
+          delegating the lifecycle operation back through the PortReeve CLI adapter.
+        </div>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition: three seals on one package</h2>
+        <p>
+          Think of packaging as sealing a crate. We check the inventory before
+          closing it, inspect the closed crate, and finally operate the delivered
+          product in a harmless mode.
+        </p>
+        <div class="flow">
+          <div class="step"><strong>1. Before</strong><br />module graph and version agreement</div>
+          <div class="step"><strong>2. Assemble</strong><br />ASAR plus release resources</div>
+          <div class="step"><strong>3. After</strong><br />checksum, metadata, and bundle inspection</div>
+          <div class="step"><strong>4. Run</strong><br />real app, isolated read-only status</div>
+        </div>
+        <h3>Toy example</h3>
+        <p>Suppose the source controller says <code>0.1.0</code> but a stale release directory contains <code>0.0.9</code>.</p>
+        <pre>controllerVersion = 0.1.0
+desktopVersion    = 0.1.0
+artifactVersion   = 0.0.9
+
+result: package fails before Electron Packager runs</pre>
+        <p>
+          If all three versions agree, the build records a small attestation in
+          the ASAR. The post-package check independently opens the archive,
+          re-reads that attestation and package metadata, validates the embedded
+          manifest and SHA-256 checksum, and checks the main bundle for direct
+          controller markers and retired adapter markers.
+        </p>
+        <div class="grid">
+          <div class="card"><span class="label">Identity</span><br />Desktop = controller = release manifest</div>
+          <div class="card"><span class="label">Composition</span><br />Artifact resolver + direct controller + shared service</div>
+          <div class="card"><span class="label">Exclusion</span><br />No retired lifecycle CLI adapter module or fingerprints</div>
+          <div class="card"><span class="label">Behavior</span><br />One contract under Bun and Electron Node</div>
+        </div>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <h3>1. Packaging becomes a verification pipeline</h3>
+        <p>
+          <code>scripts/package-desktop.js</code> requests Bun's build metafile,
+          verifies the source-module graph, selects the release artifact through
+          the existing checksum-aware resolver, and refuses any version drift.
+          It writes a compact <code>desktop-verification.json</code> into the staged
+          application before Electron Packager assembles the ASAR.
+        </p>
+        <h3>2. The assembled application is inspected</h3>
+        <p>
+          <code>scripts/desktop-package-lib.js</code> uses the build-only
+          <code>@electron/asar</code> dependency to require the package document,
+          attestation, and main bundle. It also resolves the executable from the
+          packaged release manifest, checking its safe filename and SHA-256
+          checksum through the same artifact resolver used at application startup.
+        </p>
+        <h3>3. One contract runs in two JavaScript worlds</h3>
+        <p>
+          <code>test/desktop/runtime-contract.js</code> is deliberately ordinary
+          JavaScript. It constructs the controller with a fake canonical service,
+          exercises status, all six ordinary lifecycle mutations, manual stop,
+          and evidence-bound purge, then verifies exact installation provenance.
+          The runner executes the same file once with pinned Bun and once with
+          Electron using <code>ELECTRON_RUN_AS_NODE=1</code>.
+        </p>
+        <h3>4. The real app gets a harmless smoke entrance</h3>
+        <p>
+          When the private packaging flag is present, Electron main resolves the
+          packaged artifact, constructs the fixed controller, calls only
+          <code>status()</code>, prints a bounded identity marker, and quits. The
+          packaging harness supplies temporary home, state, socket, supervisor,
+          and Electron user-data paths. The branch returns before creating the
+          PortReeve client, launcher runtime, IPC handlers, or browser window.
+        </p>
+        <div class="callout">
+          This smoke proves startup and read-only integration. It intentionally
+          does not claim to prove install, restart, interruption, or close
+          protection. Those native mutations belong to the final P7 slice.
+        </div>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="1">
+          <h3>1. Why is checking the Bun module graph better than rejecting every child-process import?</h3>
+          <div class="answers">
+            <button>Because Bun cannot bundle Node child-process APIs into Electron applications</button>
+            <button>Because native supervisor and lsof processes are legitimate; only lifecycle delegation through the PortReeve CLI adapter is forbidden</button>
+            <button>Because module graphs validate executable SHA-256 checksums automatically</button>
+          </div><p class="feedback"></p>
+        </div>
+        <div class="quiz" data-answer="2">
+          <h3>2. What happens if the controller is 0.1.0 and the release manifest is 0.0.9?</h3>
+          <div class="answers">
+            <button>The app packages, but Desktop lifecycle buttons are disabled at runtime</button>
+            <button>The older artifact is silently replaced by the controller bundle</button>
+            <button>Packaging fails before assembly because exact version identity is required</button>
+          </div><p class="feedback"></p>
+        </div>
+        <div class="quiz" data-answer="0">
+          <h3>3. Why execute the same contract with Bun and Electron Node?</h3>
+          <div class="answers">
+            <button>To prove ordinary shared lifecycle JavaScript has equivalent controller behavior in both production runtimes</button>
+            <button>To prove Electron can run the compiled standalone Bun executable in its renderer</button>
+            <button>To compare the performance of the two command-line parsers</button>
+          </div><p class="feedback"></p>
+        </div>
+        <div class="quiz" data-answer="1">
+          <h3>4. Which operation may the packaged smoke perform?</h3>
+          <div class="answers">
+            <button>Install, provided the managed destination is under the temporary home</button>
+            <button>Status only, followed by a bounded identity marker and exit</button>
+            <button>Start and stop, provided both finish before the timeout</button>
+          </div><p class="feedback"></p>
+        </div>
+        <div class="quiz" data-answer="2">
+          <h3>5. What remains for the final P7 slice?</h3>
+          <div class="answers">
+            <button>Replacing the Desktop CLI lifecycle adapter with direct calls</button>
+            <button>Adding checksum verification for the packaged executable</button>
+            <button>Real native mutation, contention, close, interruption/recovery, and Linux systemd-user evidence</button>
+          </div><p class="feedback"></p>
+        </div>
+      </section>
+      <p class="small">Pinned explanation: PR #41, base 91f824d, source 6e8e645.</p>
+    </main>
+    <script>
+      for (const quiz of document.querySelectorAll('.quiz')) {
+        const answer = Number(quiz.dataset.answer);
+        const buttons = [...quiz.querySelectorAll('button')];
+        buttons.forEach((button, index) => button.addEventListener('click', () => {
+          buttons.forEach((item) => item.classList.remove('correct', 'wrong'));
+          button.classList.add(index === answer ? 'correct' : 'wrong');
+          quiz.querySelector('.feedback').textContent = index === answer
+            ? 'Correct — that is the contract this slice proves.'
+            : 'Not quite. Revisit the background and verification flow above.';
+        }));
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "scope": "slice",
+  "featureId": "tb-portreeve-desktop-lifecycle-service",
+  "repositoryAlias": "portreeve",
+  "packetId": "pr-41",
+  "pullRequest": {
+    "repository": "TrentBrown/portreeve",
+    "number": 41,
+    "url": "https://github.com/TrentBrown/portreeve/pull/41",
+    "state": "OPEN",
+    "isDraft": true,
+    "baseRefName": "main",
+    "baseRefOid": "91f824dc7625701d05001a33dc510fd279e8f5c1",
+    "headRefName": "tb-portreeve-desktop-lifecycle-service-05-runtime-packaging",
+    "headRefOid": "6e8e645538e7be56b868d4e66da3281c5eee39c0"
+  },
+  "mergeBaseSha": "91f824dc7625701d05001a33dc510fd279e8f5c1",
+  "evaluatedSourceSha": "6e8e645538e7be56b868d4e66da3281c5eee39c0",
+  "featureBaseSha": null,
+  "applicability": {
+    "specEvaluation": true,
+    "judge": true,
+    "patternReview": false
+  },
+  "gates": {
+    "verification": { "disposition": "passed", "reason": null },
+    "specEvaluation": { "disposition": "passed", "reason": null },
+    "judge": { "disposition": "passed", "reason": null },
+    "codeReview": { "disposition": "passed", "reason": null },
+    "patternReview": {
+      "disposition": "not_applicable",
+      "reason": "No pattern-review scope is configured"
+    },
+    "explainDiff": { "disposition": "passed", "reason": null }
+  }
+}

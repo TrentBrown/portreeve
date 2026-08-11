@@ -48,7 +48,7 @@ while retaining the verified artifact as the installation payload.
 
 ## I-4 - Add desktop close protection and safe diagnostics
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1.5d
 - **Plan steps:** P5
 - **Rubric criteria:** R2, R3, R6, R7
@@ -61,12 +61,12 @@ copyable renderer-safe failures.
 
 ## I-5 - Verify packaging and both JavaScript runtimes
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P6
 - **Rubric criteria:** R1, R3, R8
 - **Depends on:** I-3, I-4
-- **PR:** -
+- **PR:** [#41](https://github.com/TrentBrown/portreeve/pull/41)
 
 Validate packaged controller/artifact identity, absence of lifecycle CLI
 spawning, common contract behavior under Bun and Electron Node, and compiled/

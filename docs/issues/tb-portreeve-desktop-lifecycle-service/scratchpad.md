@@ -95,3 +95,21 @@ Keep the active lifecycle mutation as main-process coordinator state and combine
 
 **Alternatives considered:**
 Use renderer-local busy state as close authority - rejected because renderer state can be stale and does not cover Command-Q. Put activity into periodic snapshots only - rejected because mutation start must be visible immediately. Preserve bounded stdout or stderr in diagnostics - rejected because even bounded privileged output can contain credentials, arguments, and unvalidated filesystem paths.
+
+## [7] Verify the packaged direct-controller boundary
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Desktop packaging, build dependencies, packaged smoke mode, and release verification
+
+Make packaging fail before and after assembly unless the embedded controller version equals the checksum-verified release manifest version. Add @electron/asar as a build-time-only dependency so verification can inspect the final app.asar and require the direct lifecycle controller module graph while rejecting the removed cli-adapter module. Verify runtime parity by executing one source contract under Bun and Electron's Node context. Add a narrowly environment-gated packaged smoke that uses isolated state, calls only lifecycle status, emits a bounded version marker, and exits before creating launcher or renderer authority.
+
+**Triggered by:** I-5 must prove controller/artifact identity and absence of the retired lifecycle CLI adapter in the shipped application
+
+**Alternatives considered:**
+Inspect only minified bundle strings - rejected because string presence cannot
+prove which source modules entered the bundle. Exercise lifecycle mutations from
+the package smoke - rejected because packaging verification must be safe on a
+developer's ordinary machine; isolated native mutation coverage belongs to P7.
