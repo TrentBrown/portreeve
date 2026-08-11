@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PortReeve PR #42 — Native verification and feature completion</title>
+  <style>
+    :root {
+      --ink: #102d3b;
+      --muted: #526872;
+      --paper: #f7f3ea;
+      --card: #fffdf8;
+      --line: #cbd5d1;
+      --sea: #0d5c4d;
+      --sky: #d8ebe6;
+      --gold: #d7a94d;
+      --danger: #9a3b32;
+      --code: #e9efed;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 44px 0 72px; }
+    h1, h2, h3 { font-family: Georgia, serif; line-height: 1.15; }
+    h1 { margin: 8px 0 12px; font-size: clamp(2.2rem, 5vw, 4rem); }
+    h2 { margin-top: 48px; font-size: 2rem; }
+    h3 { margin: 0 0 8px; }
+    p { max-width: 78ch; }
+    code { padding: .12rem .3rem; background: var(--code); border-radius: 4px; }
+    .eyebrow { color: var(--sea); font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    .lede { color: var(--muted); font-size: 1.2rem; }
+    .verdict { display: inline-block; padding: 6px 12px; color: #fff; background: var(--sea); border-radius: 999px; font-weight: 750; }
+    .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .card { padding: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 8px 24px rgb(16 45 59 / 8%); }
+    .metric { font: 700 2rem/1 Georgia, serif; color: var(--sea); }
+    .small { color: var(--muted); font-size: .92rem; }
+    .flow { overflow-x: auto; padding: 24px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+    .flow-row { min-width: 850px; display: grid; grid-template-columns: 1fr 52px 1fr 52px 1fr 52px 1fr; align-items: center; }
+    .actor { min-height: 112px; display: grid; place-items: center; padding: 14px; text-align: center; border-radius: 12px; background: var(--sky); border: 2px solid var(--sea); }
+    .arrow { text-align: center; color: var(--sea); font-size: 2rem; }
+    .callout { border-left: 5px solid var(--gold); padding: 12px 18px; background: #fff9e9; }
+    table { width: 100%; border-collapse: collapse; background: var(--card); }
+    th, td { padding: 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+    th { background: var(--sky); }
+    .pass { color: var(--sea); font-weight: 800; }
+    details { margin: 10px 0; padding: 12px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+    summary { cursor: pointer; font-weight: 700; }
+    .answer { margin-bottom: 0; color: var(--muted); }
+    footer { margin-top: 52px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Pull request #42 · final feature boundary</div>
+  <h1>The lifecycle refactor is proven on real hosts</h1>
+  <p class="lede">This last slice does not add another production authority. It closes the evidence gap: one real process holds the lifecycle lease, the Desktop’s actual coordinator guards shutdown, and isolated launchd/systemd-user jobs exercise the native mutations.</p>
+  <p><span class="verdict">Feature verdict: PASS</span></p>
+
+  <section class="grid" aria-label="Verification summary">
+    <article class="card"><div class="metric">422</div><h3>Tests</h3><p class="small">2,059 assertions across 89 files, with zero failures.</p></article>
+    <article class="card"><div class="metric">4</div><h3>Native hosts</h3><p class="small">macOS x64/arm64 and Linux x64/arm64 passed at the exact source SHA.</p></article>
+    <article class="card"><div class="metric">2</div><h3>JavaScript runtimes</h3><p class="small">The same eight-operation contract passed under Bun and Electron Node.</p></article>
+    <article class="card"><div class="metric">8/8</div><h3>Rubric criteria</h3><p class="small">No remaining <code>NOT YET</code> or <code>FAIL</code> status.</p></article>
+  </section>
+
+  <h2>What changed in this PR</h2>
+  <div class="flow" role="img" aria-label="Interruption recovery verification sequence">
+    <div class="flow-row">
+      <div class="actor"><strong>Holder process</strong><br>enters <code>restart()</code><br>and owns the Unix listener</div>
+      <div class="arrow">→</div>
+      <div class="actor"><strong>Contender service</strong><br>gets prompt <code>lifecycle_busy</code><br>while reads remain live</div>
+      <div class="arrow">→</div>
+      <div class="actor"><strong>SIGKILL</strong><br>kernel releases ownership<br>socket artifact remains</div>
+      <div class="arrow">→</div>
+      <div class="actor"><strong>Next service instance</strong><br>uses fresh listener/status evidence<br>and completes <code>restart()</code></div>
+    </div>
+  </div>
+  <p>This is deliberately a service-boundary test. It exercises the same canonical result and locking authority used by both CLI and Desktop without adding a privileged packaged-app testing backdoor.</p>
+
+  <div class="grid">
+    <article class="card">
+      <h3>Real process contention</h3>
+      <p>A helper process invokes the real <code>LifecycleService.restart()</code> and pauses only after mutation begins. A second service proves prompt refusal, read availability, and post-crash recovery.</p>
+    </article>
+    <article class="card">
+      <h3>Real Desktop close state</h3>
+      <p>The production state coordinator starts a pending lifecycle mutation. Both the window-close and application-quit guards block with the exact active operation, then allow closing after settlement.</p>
+    </article>
+    <article class="card">
+      <h3>Real native supervisors</h3>
+      <p>The release matrix performs isolated install, start, upgrade, restart, stop, uninstall, purge, and cleanup through launchd and systemd-user on four host/architecture combinations.</p>
+    </article>
+  </div>
+
+  <h2>Why the evidence is separated</h2>
+  <div class="callout">
+    <strong>Each test proves one authority honestly.</strong> A normal-close guard cannot prevent SIGKILL. A packaged read-only startup smoke should not gain mutation authority. The service test proves crash recovery, the coordinator test proves graceful close protection, package inspection proves the shipped graph, and native jobs prove supervisor behavior.
+  </div>
+
+  <h2>The complete six-PR outcome</h2>
+  <table>
+    <thead><tr><th>Concern</th><th>Before</th><th>After</th></tr></thead>
+    <tbody>
+      <tr><td>Lifecycle policy</td><td>CLI owned orchestration; Desktop shelled out</td><td>One runtime-neutral lifecycle service serves both callers</td></tr>
+      <tr><td>Concurrency</td><td>Caller-level coordination</td><td>Atomic per-user Unix listener lease across processes</td></tr>
+      <tr><td>Timeouts</td><td>Adapter could stop waiting while work continued</td><td>Service-owned deadlines and bounded fresh-evidence recovery</td></tr>
+      <tr><td>Desktop trust</td><td>Subprocess adapter and broad failure surface</td><td>Fixed main-process controller and strict safe diagnostics</td></tr>
+      <tr><td>Shutdown</td><td>No canonical mutation-close authority</td><td>Main-process coordinator blocks both normal close paths</td></tr>
+      <tr><td>Packaging</td><td>Artifact presence</td><td>Version identity, module graph, final ASAR, and real startup verified</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Rubric result</h2>
+  <table>
+    <thead><tr><th>Criterion</th><th>Result</th><th>Key proof</th></tr></thead>
+    <tbody>
+      <tr><td>R1 Shared lifecycle authority</td><td class="pass">PASS</td><td>Shared service, direct module graph, native mutations</td></tr>
+      <tr><td>R2 Canonical result parity</td><td class="pass">PASS</td><td>Shared schemas and CLI/Desktop parity fixtures</td></tr>
+      <tr><td>R3 Trusted controller</td><td class="pass">PASS</td><td>Fixed inputs, strict IPC, exact version identity</td></tr>
+      <tr><td>R4 Deadlines and recovery</td><td class="pass">PASS</td><td>Bounded work plus fresh after-evidence</td></tr>
+      <tr><td>R5 Cross-process exclusion</td><td class="pass">PASS</td><td>Real holder/contender/SIGKILL recovery</td></tr>
+      <tr><td>R6 Desktop lifecycle behavior</td><td class="pass">PASS</td><td>Actual coordinator bound to both close guards</td></tr>
+      <tr><td>R7 Safe diagnostics</td><td class="pass">PASS</td><td>Allowlisted packets and seeded leakage rejection</td></tr>
+      <tr><td>R8 Compatibility and native parity</td><td class="pass">PASS</td><td>Bun/Electron, package, launchd, systemd-user matrix</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Check your understanding</h2>
+  <details><summary>1. Why is PID metadata not used to reclaim the lifecycle lock?</summary><p class="answer">PIDs can be stale or reused. PortReeve probes the Unix listener for fresh ownership evidence; a refused connection identifies an abandoned socket artifact.</p></details>
+  <details><summary>2. What can still run while a mutation owns the lifecycle lease?</summary><p class="answer">Read-only status and purge preview remain available. Another mutation is refused promptly with <code>lifecycle_busy</code>.</p></details>
+  <details><summary>3. Why not test native mutations through a hidden packaged-app switch?</summary><p class="answer">That would ship extra privileged authority solely for tests. The isolated native release matrix already exercises real launchd/systemd-user mutations safely.</p></details>
+  <details><summary>4. What happens when a lifecycle operation times out after mutation may have begun?</summary><p class="answer">The service gathers bounded fresh after-evidence and returns a canonical timed-out <code>partial</code> or <code>failed</code> result; an adapter cannot label it cancelled simply because it stopped waiting.</p></details>
+  <details><summary>5. Is the standalone PortReeve executable obsolete after this refactor?</summary><p class="answer">No. It remains the public CLI, the installed daemon payload, and the future MCP entry point. Only Desktop lifecycle orchestration moved from spawning it to calling the shared service in process.</p></details>
+
+  <footer>Reviewed range: feature base <code>a237358</code> through source <code>7e54606</code>. Focused PR #42 slice: <code>a52e80f..7e54606</code>.</footer>
+</main>
+</body>
+</html>

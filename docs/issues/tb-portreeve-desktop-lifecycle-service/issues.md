@@ -74,12 +74,12 @@ packaged smoke behavior.
 
 ## I-6 - Complete native lifecycle and interruption verification
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1.5d
 - **Plan steps:** P7
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
 - **Depends on:** I-2, I-4, I-5
-- **PR:** -
+- **PR:** [#42](https://github.com/TrentBrown/portreeve/pull/42)
 
 Run and retain the macOS launchd, Linux systemd-user, real contention,
 desktop-close, and force-interruption/recovery evidence required for the final

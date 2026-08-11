@@ -116,7 +116,7 @@ developer's ordinary machine; isolated native mutation coverage belongs to P7.
 
 ## [8] Separate interruption recovery from native host mutation evidence
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

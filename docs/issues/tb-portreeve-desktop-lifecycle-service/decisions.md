@@ -125,3 +125,31 @@ the package smoke - rejected because packaging verification must be safe on a
 developer's ordinary machine; isolated native mutation coverage belongs to P7.
 
 **Promoted:** 2026-08-10. PR: https://github.com/TrentBrown/portreeve/pull/41.
+
+---
+
+## Separate interruption recovery from native host mutation evidence
+
+**Confidence:** HIGH
+
+**Blast Radius:** Final lifecycle verification, cross-process fixtures, Desktop close integration tests, and release evidence
+
+Verify caller death at the shared lifecycle-service boundary with a real second
+process holding the Unix listener lease: a contender must receive
+`lifecycle_busy` while status and purge preview remain available, then SIGKILL
+the holder and prove a new service instance recovers through fresh status
+evidence and completes a mutation. Separately bind the real Desktop coordinator
+to both window and application close guards during a pending direct-controller
+mutation. Use the existing isolated native release matrix for real launchd and
+systemd-user mutations. Together these tests cover distinct authorities without
+adding a dangerous packaged-app mutation backdoor.
+
+**Triggered by:** P7 requires force-interruption recovery, live Desktop close protection, and real launchd/systemd-user evidence without pretending a normal close can prevent SIGKILL
+
+**Alternatives considered:**
+Treat the existing raw lock test as sufficient - rejected because it does not
+exercise canonical busy results, concurrent reads, or service-owned recovery.
+Add a mutation-capable packaged Desktop test hook - rejected because it would
+ship unnecessary privileged mutation authority solely for verification.
+
+**Promoted:** 2026-08-10. PR: https://github.com/TrentBrown/portreeve/pull/42.
