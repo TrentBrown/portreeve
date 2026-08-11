@@ -30,6 +30,15 @@ Docker confirmation, optional skip, failure abandonment, reconciliation, and end
 Equivalent retries return the existing or already-achieved result instead of repeating
 the effect.
 
+Normal reclaim, claim reassignment/deletion/pruning, stack document apply and pruning,
+and public settings changes use focused preview and execute tools. Preview persists the
+daemon's current evidence in a five-minute receipt. Execute sends only that receipt and
+the explicit target; the daemon recovers the stored proposal, recomputes process,
+Docker, registry, settings, or document-fingerprint evidence, and rejects stale state.
+A completed receipt replays its recorded result. Canonical stack tools accept an
+explicit stack root and typed definition, read or write only `portreeve.stack.json`, and
+never expose raw file contents or general filesystem authority.
+
 Raw lease tokens never cross MCP. The bridge keeps them only in a process-local vault
 and returns unguessable credential handles that cannot be used by another bridge
 process. Pending leases renew automatically no later than one-third of their observed

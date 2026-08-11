@@ -32,6 +32,7 @@ import {
   TimestampSchema,
 } from '../protocol/schemas.js';
 import { CredentialCustody, CredentialCustodyError } from './credential-custody.js';
+import { registerConsequentialTools } from './consequential-tools.js';
 import { MCP_MAX_PAGE_SIZE, pageMcpValues } from './pagination.js';
 
 const REQUIRED_CAPABILITY = 'mcp-foundations-v1';
@@ -444,6 +445,11 @@ export function createPortreeveMcpServer(options = {}) {
   });
 
   registerCoordinationTools({ server, client, custody, mutationResults });
+  registerConsequentialTools({
+    client,
+    registerTool: (definition) => register(server, definition),
+    daemonOperation: (operation) => daemonRead(client, operation),
+  });
 
   const closeServer = server.close.bind(server);
   server.close = async () => {

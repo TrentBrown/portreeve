@@ -16,11 +16,19 @@ test('protocol documentation covers every public endpoint', async () => {
     '/v1/ports/{port}',
     '/v1/ports/{port}/reclaim',
     '/v1/ports/{port}/unsafe-evict',
+    '/v1/actions/ports/{port}/reclaim/preview',
+    '/v1/actions/ports/{port}/reclaim/execute',
     '/v1/claims',
     '/v1/claims/{claimId}',
     '/v1/claims/{claimId}/reassign',
     '/v1/claims/{claimId}/delete',
     '/v1/claims/prune',
+    '/v1/actions/claims/{claimId}/reassign/preview',
+    '/v1/actions/claims/{claimId}/reassign/execute',
+    '/v1/actions/claims/{claimId}/delete/preview',
+    '/v1/actions/claims/{claimId}/delete/execute',
+    '/v1/actions/claims/prune/preview',
+    '/v1/actions/claims/prune/execute',
     '/v1/config',
     '/v1/history',
     '/v1/logs',
@@ -33,6 +41,14 @@ test('protocol documentation covers every public endpoint', async () => {
     '/v1/stacks/{stackId}',
     '/v1/stacks/apply',
     '/v1/stacks/prune',
+    '/v1/stack-document',
+    '/v1/actions/stack-definition/validate',
+    '/v1/actions/stacks/apply/preview',
+    '/v1/actions/stacks/apply/execute',
+    '/v1/actions/stacks/prune/preview',
+    '/v1/actions/stacks/prune/execute',
+    '/v1/actions/settings/preview',
+    '/v1/actions/settings/execute',
     '/v1/stacks/{stackId}/status',
     '/v1/stacks/{stackId}/prepare',
     '/v1/stack-activations/begin',
@@ -195,7 +211,7 @@ test('public guides describe the final stack-root and desktop editor contract', 
   expect(stacks).toMatch(/need not be a\s+Git repository/u);
   expect(client).toMatch(/does not discover, read, or write/u);
   expect(cli).toMatch(/does not prepare a\s+generation/u);
-  expect(protocol).toMatch(/protocol has no project-file operation/u);
+  expect(protocol).toMatch(/not general file\s+discovery or arbitrary-path APIs/u);
   expect(desktop).toContain('Create or Edit Stack');
   expect(desktop).toContain('opaque document ID');
   expect(safety).toMatch(/exact bytes observed/u);

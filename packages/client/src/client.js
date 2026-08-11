@@ -121,6 +121,59 @@ export class PortreeveClient {
     );
   }
 
+  /** @param {string} stackRoot */
+  async getStackDocument(stackRoot) {
+    const canonicalRoot = await canonicalStackRoot(stackRoot);
+    return requestJson(
+      this.socketPath,
+      'GET',
+      `/v1/stack-document${queryString({ stackRoot: canonicalRoot })}`,
+    );
+  }
+
+  /** @param {unknown} definition */
+  async validateStackDefinition(definition) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      '/v1/actions/stack-definition/validate',
+      this.withClient({ definition }, ['mcp-foundations-v1']),
+    );
+  }
+
+  /** @param {{stackRoot: string, definition: unknown, idempotencyKey?: string}} request */
+  async previewStackApply(request) {
+    const stackRoot = await canonicalStackRoot(request.stackRoot);
+    return requestJson(
+      this.socketPath,
+      'POST',
+      '/v1/actions/stacks/apply/preview',
+      this.withClient(
+        {
+          stackRoot,
+          definition: request.definition,
+          ...(request.idempotencyKey === undefined
+            ? {}
+            : { idempotencyKey: request.idempotencyKey }),
+        },
+        ['mcp-foundations-v1'],
+      ),
+    );
+  }
+
+  /** @param {{stackRoot: string, receiptId: string}} request */
+  async executeStackApply(request) {
+    const stackRoot = await canonicalStackRoot(request.stackRoot);
+    return requestJson(
+      this.socketPath,
+      'POST',
+      '/v1/actions/stacks/apply/execute',
+      this.withClient({ stackRoot, receiptId: request.receiptId }, [
+        'mcp-foundations-v1',
+      ]),
+    );
+  }
+
   /** @param {{project?: string, stackRoot?: string}} [filters] */
   async listStacks(filters = {}) {
     const normalized = { ...filters };
@@ -313,6 +366,26 @@ export class PortreeveClient {
     );
   }
 
+  /** @param {{olderThanMilliseconds: number, idempotencyKey?: string}} options */
+  async previewStacksPrune(options) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      '/v1/actions/stacks/prune/preview',
+      this.withClient(options, ['mcp-foundations-v1']),
+    );
+  }
+
+  /** @param {string} receiptId */
+  async executeStacksPrune(receiptId) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      '/v1/actions/stacks/prune/execute',
+      this.withClient({ receiptId }, ['mcp-foundations-v1']),
+    );
+  }
+
   /** @param {string} activationId @param {string} component */
   async resolveStackEndpoints(activationId, component) {
     await this.#requireCapabilities(['stack-discovery-v1']);
@@ -456,6 +529,26 @@ export class PortreeveClient {
     );
   }
 
+  /** @param {string} claimId @param {{preferredPort?: number, exactPort?: number, idempotencyKey?: string}} [options] */
+  async previewClaimReassign(claimId, options = {}) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/actions/claims/${claimId}/reassign/preview`,
+      this.withClient(options, ['mcp-foundations-v1']),
+    );
+  }
+
+  /** @param {string} claimId @param {string} receiptId */
+  async executeClaimReassign(claimId, receiptId) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/actions/claims/${claimId}/reassign/execute`,
+      this.withClient({ receiptId }, ['mcp-foundations-v1']),
+    );
+  }
+
   /**
    * @param {string} claimId
    */
@@ -468,6 +561,26 @@ export class PortreeveClient {
     );
   }
 
+  /** @param {string} claimId @param {{idempotencyKey?: string}} [options] */
+  async previewClaimDelete(claimId, options = {}) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/actions/claims/${claimId}/delete/preview`,
+      this.withClient(options, ['mcp-foundations-v1']),
+    );
+  }
+
+  /** @param {string} claimId @param {string} receiptId */
+  async executeClaimDelete(claimId, receiptId) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/actions/claims/${claimId}/delete/execute`,
+      this.withClient({ receiptId }, ['mcp-foundations-v1']),
+    );
+  }
+
   /**
    * @param {{olderThanMilliseconds: number, dryRun: boolean}} options
    */
@@ -477,6 +590,26 @@ export class PortreeveClient {
       'POST',
       '/v1/claims/prune',
       this.withClient(options, ['administration-v1']),
+    );
+  }
+
+  /** @param {{olderThanMilliseconds: number, idempotencyKey?: string}} options */
+  async previewClaimsPrune(options) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      '/v1/actions/claims/prune/preview',
+      this.withClient(options, ['mcp-foundations-v1']),
+    );
+  }
+
+  /** @param {string} receiptId */
+  async executeClaimsPrune(receiptId) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      '/v1/actions/claims/prune/execute',
+      this.withClient({ receiptId }, ['mcp-foundations-v1']),
     );
   }
 
@@ -493,6 +626,26 @@ export class PortreeveClient {
       'POST',
       '/v1/config',
       this.withClient({ updates }, ['administration-v1']),
+    );
+  }
+
+  /** @param {Record<string, unknown>} updates @param {{idempotencyKey?: string}} [options] */
+  async previewConfigUpdate(updates, options = {}) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      '/v1/actions/settings/preview',
+      this.withClient({ updates, ...options }, ['mcp-foundations-v1']),
+    );
+  }
+
+  /** @param {string} receiptId */
+  async executeConfigUpdate(receiptId) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      '/v1/actions/settings/execute',
+      this.withClient({ receiptId }, ['mcp-foundations-v1']),
     );
   }
 
@@ -565,6 +718,26 @@ export class PortreeveClient {
         },
         ['reclamation-v1'],
       ),
+    );
+  }
+
+  /** @param {number} port @param {{policy: 'never'|'graceful'|'force-after-grace', idempotencyKey?: string}} options */
+  async previewPortReclaim(port, options) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/actions/ports/${port}/reclaim/preview`,
+      this.withClient(options, ['mcp-foundations-v1']),
+    );
+  }
+
+  /** @param {number} port @param {string} receiptId */
+  async executePortReclaim(port, receiptId) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/actions/ports/${port}/reclaim/execute`,
+      this.withClient({ receiptId }, ['mcp-foundations-v1']),
     );
   }
 

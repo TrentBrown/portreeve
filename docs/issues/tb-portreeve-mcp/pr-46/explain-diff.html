@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #46 - Consequential action receipts</title>
+    <style>
+      :root {
+        --ink: #102a36;
+        --muted: #52656c;
+        --paper: #f5f1e8;
+        --card: #fffdf8;
+        --line: #cbd5d1;
+        --navy: #06345f;
+        --green: #17684f;
+        --gold: #d6a64b;
+        --red: #a6453b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--paper);
+        font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main { width: min(1100px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 72px; }
+      header { border-left: 8px solid var(--green); padding: 4px 0 4px 22px; margin-bottom: 38px; }
+      h1, h2, h3 { font-family: Georgia, serif; color: var(--navy); line-height: 1.15; }
+      h1 { font-size: clamp(2rem, 5vw, 4rem); margin: 0 0 10px; }
+      h2 { margin-top: 44px; font-size: 1.8rem; }
+      h3 { margin: 0 0 8px; }
+      .lede { max-width: 780px; font-size: 1.18rem; color: var(--muted); }
+      .tag { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #dbeae4; color: var(--green); font-weight: 700; }
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; box-shadow: 0 7px 20px #183b4410; }
+      .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; gap: 10px; }
+      .step { background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 18px; }
+      .step strong { display: block; color: var(--navy); font-size: 1.06rem; }
+      .arrow { align-self: center; color: var(--green); font-size: 2rem; font-weight: 800; }
+      .danger { border-color: #e3b2ad; background: #fff7f5; }
+      .success { border-color: #9fc9b8; background: #f3fbf7; }
+      .callout { margin: 18px 0; padding: 18px 20px; border-left: 5px solid var(--gold); background: #fff9e9; }
+      pre { overflow: auto; padding: 18px; border-radius: 12px; background: #0b2533; color: #eaf3f0; white-space: pre; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .compare { width: 100%; border-collapse: collapse; background: var(--card); }
+      .compare th, .compare td { text-align: left; vertical-align: top; padding: 12px; border: 1px solid var(--line); }
+      .compare th { background: #e7efec; color: var(--navy); }
+      details { margin: 12px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: 12px 16px; }
+      summary { cursor: pointer; font-weight: 750; color: var(--navy); }
+      .answer { margin-top: 10px; color: var(--green); }
+      .files { columns: 2; column-gap: 30px; }
+      .files li { break-inside: avoid; margin-bottom: 7px; }
+      @media (max-width: 760px) {
+        .grid { grid-template-columns: 1fr; }
+        .flow { grid-template-columns: 1fr; }
+        .arrow { transform: rotate(90deg); justify-self: center; }
+        .files { columns: 1; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="tag">PortReeve MCP · Slice I-4</span>
+        <h1>Preview first. Execute only while the evidence still agrees.</h1>
+        <p class="lede">
+          PR #46 gives destructive and configuration-changing MCP operations a durable,
+          five-minute safety handshake. The model can inspect exactly what would happen;
+          the daemon remains the authority that decides whether it still may happen.
+        </p>
+      </header>
+
+      <section>
+        <h2>Why this slice exists</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>The risk</h3>
+            <p>A preview can become false seconds later when a listener, claim, file, setting, or stack changes.</p>
+          </article>
+          <article class="card">
+            <h3>The boundary</h3>
+            <p>The MCP process never gets authority from a remembered answer. It presents a receipt back to the daemon.</p>
+          </article>
+          <article class="card">
+            <h3>The result</h3>
+            <p>Seven consequential action families are now inspectable, stale-safe, explicit, and retryable.</p>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <h2>The core transaction</h2>
+        <div class="flow" aria-label="Preview execute receipt flow">
+          <div class="step">
+            <strong>1. Preview</strong>
+            The caller supplies an explicit target and proposed change. PortReeve records fresh evidence and returns a receipt.
+          </div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="step">
+            <strong>2. Decide</strong>
+            The agent or human reads a typed impact summary. The receipt expires after five minutes.
+          </div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="step success">
+            <strong>3. Execute</strong>
+            The caller sends only the receipt and explicit target. The daemon reloads the proposal and recomputes evidence.
+          </div>
+        </div>
+        <div class="callout">
+          If evidence changed, execution stops. If this receipt already completed, PortReeve replays the persisted result before looking at today's world. That makes retries safe without turning old authority into new authority.
+        </div>
+      </section>
+
+      <section>
+        <h2>What is covered</h2>
+        <table class="compare">
+          <thead><tr><th>Family</th><th>Preview binds</th><th>Execute can do</th></tr></thead>
+          <tbody>
+            <tr><td>Port</td><td>listener identity and reclamation evidence</td><td>reclaim an eligible owned listener</td></tr>
+            <tr><td>Claims</td><td>claim rows, ownership, worktree, and prune candidates</td><td>reassign, delete, or prune claims</td></tr>
+            <tr><td>Stack registry</td><td>definition, activations, launchers, and prune candidates</td><td>apply a definition or prune stacks</td></tr>
+            <tr><td>Settings</td><td>current settings fingerprint and desired patch</td><td>apply validated settings changes</td></tr>
+            <tr><td>Stack document</td><td>canonical path, validated structure, and byte fingerprint</td><td>create or safely replace the fixed document</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Document safety becomes one policy</h2>
+        <p>
+          The CLI/server and Desktop previously risked evolving separate definitions of a safe stack document. This slice introduces shared primitives for the fixed <code>portreeve.stack.json</code> file.
+        </p>
+        <pre><code>resolve canonical existing directory
+  → inspect the fixed filename without following a link
+  → require a regular file and at most 1 MiB
+  → parse and validate a typed stack definition
+  → fingerprint the exact bytes
+  → compare the expected fingerprint before atomic replace</code></pre>
+        <p>
+          MCP reads return the parsed definition and fingerprint, not arbitrary file contents. The Desktop adapter now delegates to these same primitives, retaining its overwrite/cancel behavior.
+        </p>
+      </section>
+
+      <section>
+        <h2>Important code paths</h2>
+        <ul class="files">
+          <li><code>src/actions/consequential-service.js</code> orchestrates action-specific proposal, evidence, preview, and execution.</li>
+          <li><code>src/actions/receipt-service.js</code> adds durable asynchronous execute and replay ordering.</li>
+          <li><code>src/stacks/document.js</code> owns canonical document validation and atomic writes.</li>
+          <li><code>src/server/server.js</code> exposes focused daemon HTTP/JSON operations.</li>
+          <li><code>packages/client/src/client.js</code> keeps MCP on the official client boundary.</li>
+          <li><code>src/mcp/consequential-tools.js</code> registers 16 strict preview/execute tools.</li>
+          <li><code>apps/desktop/main/stack-document.js</code> reuses the shared document policy.</li>
+          <li><code>test/mcp/stdio.test.js</code> proves real bridge preview, execute, and replay.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Review conclusions</h2>
+        <div class="grid">
+          <article class="card success"><h3>Passed</h3><p>453 tests, typecheck, lint, changed-file formatting, documentation checks, and standalone build.</p></article>
+          <article class="card"><h3>Intentionally absent</h3><p>No raw file tool, no generic JSON escape hatch, no project shell execution, and no unsafe any-owner eviction.</p></article>
+          <article class="card danger"><h3>Still deferred</h3><p>Docker snapshots and launcher coordination arrive in I-5; real host evidence-change cases remain I-7.</p></article>
+        </div>
+      </section>
+
+      <section>
+        <h2>Check your understanding</h2>
+        <details><summary>1. Why does execute accept a receipt and explicit target, but not the proposal?</summary><div class="answer">The daemon reloads the exact persisted proposal, preventing the caller from changing the approved operation between preview and execute.</div></details>
+        <details><summary>2. What happens when live evidence differs from preview evidence?</summary><div class="answer">An incomplete receipt is rejected as stale and the target mutation is not invoked.</div></details>
+        <details><summary>3. Why is completed replay checked before current evidence?</summary><div class="answer">A transport retry must return the already-achieved result even if the world changed afterward; it must not attempt the mutation again.</div></details>
+        <details><summary>4. Can MCP read any project file through the stack-document tool?</summary><div class="answer">No. The tool is restricted to the fixed stack document, returns validated structured data, rejects links/nonregular files, and enforces a size bound.</div></details>
+        <details><summary>5. Does previewing a port reclaim send a signal or write an audit event?</summary><div class="answer">No. Preview observes evidence only. The consequential effect belongs exclusively to receipt-backed execute.</div></details>
+      </section>
+    </main>
+  </body>
+</html>

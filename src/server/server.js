@@ -5,6 +5,8 @@ import { randomUUID } from 'node:crypto';
 import { createConnection } from 'node:net';
 import { z } from 'zod';
 import { AdministrationService } from '../administration/service.js';
+import { ConsequentialActionService } from '../actions/consequential-service.js';
+import { ActionReceiptError } from '../actions/receipt-service.js';
 import { ServerSettingsSchema } from '../domain/settings.js';
 import { CAPABILITIES, DOCKER_CAPABILITY } from '../protocol/constants.js';
 import {
@@ -87,6 +89,7 @@ import { StackCoordinationService } from '../stacks/coordination-service.js';
 import { StackAdministrationService } from '../stacks/administration-service.js';
 import { StackDiscoveryService } from '../stacks/discovery-service.js';
 import { StackDefinitionService } from '../stacks/service.js';
+import { StackDocumentError } from '../stacks/document.js';
 import { LauncherOperationService } from '../launcher/operation-service.js';
 
 /**
@@ -101,6 +104,7 @@ import { LauncherOperationService } from '../launcher/operation-service.js';
  *   stackAdministrationService?: StackAdministrationService,
  *   stackDiscoveryService?: StackDiscoveryService,
  *   launcherOperationService?: LauncherOperationService,
+ *   consequentialActionService?: ConsequentialActionService,
  *   dockerAdapter?: import('../docker/adapter.js').DockerEvidenceAdapter | null,
  *   diagnosticLog?: import('../observability/diagnostic-log.js').DiagnosticLog,
  *   mode?: 'manual' | 'supervised'
@@ -164,6 +168,15 @@ export async function startPortreeveServer(options) {
   const launcherOperationService =
     options.launcherOperationService ??
     new LauncherOperationService({ registry: options.allocationService.registry });
+  const consequentialActionService =
+    options.consequentialActionService ??
+    new ConsequentialActionService({
+      registry: options.allocationService.registry,
+      reclamationService,
+      administrationService,
+      stackDefinitionService,
+      stackAdministrationService,
+    });
   launcherOperationService.expire();
   const diagnosticLog = options.diagnosticLog;
   let stopped = false;
@@ -205,6 +218,7 @@ export async function startPortreeveServer(options) {
         stackDiscoveryService,
         stackAdministrationService,
         launcherOperationService,
+        consequentialActionService,
         capabilities,
         diagnosticLog,
         options.mode ?? 'manual',
@@ -251,6 +265,7 @@ export async function startPortreeveServer(options) {
  * @param {StackDiscoveryService} stackDiscoveryService
  * @param {StackAdministrationService} stackAdministrationService
  * @param {LauncherOperationService} launcherOperationService
+ * @param {ConsequentialActionService} consequentialActionService
  * @param {readonly string[]} capabilities
  * @param {import('../observability/diagnostic-log.js').DiagnosticLog | undefined} diagnosticLog
  * @param {'manual' | 'supervised'} mode
@@ -267,6 +282,7 @@ async function handleRequest(
   stackDiscoveryService,
   stackAdministrationService,
   launcherOperationService,
+  consequentialActionService,
   capabilities,
   diagnosticLog,
   mode,
@@ -454,6 +470,16 @@ async function handleRequest(
         ServerSettingsResponseSchema.parse(allocationService.registry.getSettings()),
       );
     }
+    if (request.method === 'GET' && pathname === '/v1/stack-document') {
+      const stackRoot = url.searchParams.get('stackRoot');
+      if (stackRoot === null) {
+        throw new RegistryError('invalid_input', 'stackRoot is required.');
+      }
+      return success(
+        requestId,
+        await consequentialActionService.getStackDocument(stackRoot),
+      );
+    }
     if (request.method === 'GET' && pathname === '/v1/history') {
       return success(
         requestId,
@@ -492,6 +518,7 @@ async function handleRequest(
       .passthrough()
       .parse(body).client;
     return await runWithOperationOrigin(compatibility.origin, async () => {
+      const actionInput = /** @type {any} */ (objectBody(body));
       if (pathname === '/v1/server/stop') {
         const requestBody = z
           .object({ client: z.record(z.string(), z.unknown()) })
@@ -516,6 +543,65 @@ async function handleRequest(
           ClaimPruneRequestSchema.parse(body),
         );
         return success(requestId, ClaimPruneResultSchema.parse(result));
+      }
+      if (pathname === '/v1/actions/claims/prune/preview') {
+        return success(
+          requestId,
+          await consequentialActionService.previewClaimsPrune(actionInput),
+        );
+      }
+      if (pathname === '/v1/actions/claims/prune/execute') {
+        return success(
+          requestId,
+          await consequentialActionService.executeClaimsPrune(actionInput),
+        );
+      }
+      if (pathname === '/v1/actions/stacks/prune/preview') {
+        return success(
+          requestId,
+          await consequentialActionService.previewStacksPrune(actionInput),
+        );
+      }
+      if (pathname === '/v1/actions/stacks/prune/execute') {
+        return success(
+          requestId,
+          await consequentialActionService.executeStacksPrune(actionInput),
+        );
+      }
+      if (pathname === '/v1/actions/settings/preview') {
+        return success(
+          requestId,
+          await consequentialActionService.previewSettingsUpdate(actionInput),
+        );
+      }
+      if (pathname === '/v1/actions/settings/execute') {
+        return success(
+          requestId,
+          await consequentialActionService.executeSettingsUpdate(actionInput),
+        );
+      }
+      if (pathname === '/v1/actions/stack-definition/validate') {
+        const input = z
+          .object({ client: ClientCompatibilitySchema, definition: z.unknown() })
+          .strict()
+          .parse(body);
+        assertCompatible(input.client);
+        return success(
+          requestId,
+          consequentialActionService.validateStackDefinition(input.definition),
+        );
+      }
+      if (pathname === '/v1/actions/stacks/apply/preview') {
+        return success(
+          requestId,
+          await consequentialActionService.previewStackApply(actionInput),
+        );
+      }
+      if (pathname === '/v1/actions/stacks/apply/execute') {
+        return success(
+          requestId,
+          await consequentialActionService.executeStackApply(actionInput),
+        );
       }
       if (pathname === '/v1/stacks/apply') {
         const requestBody = StackApplyRequestSchema.parse(body);
@@ -715,6 +801,30 @@ async function handleRequest(
         );
         return success(requestId, ClaimRecordResponseSchema.parse(result));
       }
+      const previewClaimReassign = pathname.match(
+        /^\/v1\/actions\/claims\/([0-9a-f-]+)\/reassign\/preview$/,
+      );
+      if (previewClaimReassign !== null) {
+        return success(
+          requestId,
+          await consequentialActionService.previewClaimReassign(
+            IdentifierSchema.parse(previewClaimReassign[1]),
+            actionInput,
+          ),
+        );
+      }
+      const executeClaimReassign = pathname.match(
+        /^\/v1\/actions\/claims\/([0-9a-f-]+)\/reassign\/execute$/,
+      );
+      if (executeClaimReassign !== null) {
+        return success(
+          requestId,
+          await consequentialActionService.executeClaimReassign(
+            IdentifierSchema.parse(executeClaimReassign[1]),
+            actionInput,
+          ),
+        );
+      }
       const deleteClaim = pathname.match(/^\/v1\/claims\/([0-9a-f-]+)\/delete$/);
       if (deleteClaim !== null) {
         const claimId = IdentifierSchema.parse(deleteClaim[1]);
@@ -728,6 +838,30 @@ async function handleRequest(
             changed,
             at: new Date().toISOString(),
           }),
+        );
+      }
+      const previewClaimDelete = pathname.match(
+        /^\/v1\/actions\/claims\/([0-9a-f-]+)\/delete\/preview$/,
+      );
+      if (previewClaimDelete !== null) {
+        return success(
+          requestId,
+          await consequentialActionService.previewClaimDelete(
+            IdentifierSchema.parse(previewClaimDelete[1]),
+            actionInput,
+          ),
+        );
+      }
+      const executeClaimDelete = pathname.match(
+        /^\/v1\/actions\/claims\/([0-9a-f-]+)\/delete\/execute$/,
+      );
+      if (executeClaimDelete !== null) {
+        return success(
+          requestId,
+          await consequentialActionService.executeClaimDelete(
+            IdentifierSchema.parse(executeClaimDelete[1]),
+            actionInput,
+          ),
         );
       }
       if (pathname === '/v1/config') {
@@ -763,6 +897,30 @@ async function handleRequest(
           ReclaimRequestSchema.parse(body),
         );
         return success(requestId, ReclamationResultSchema.parse(result));
+      }
+      const previewReclaim = pathname.match(
+        /^\/v1\/actions\/ports\/(\d+)\/reclaim\/preview$/,
+      );
+      if (previewReclaim !== null) {
+        return success(
+          requestId,
+          await consequentialActionService.previewPortReclaim(
+            PortSchema.parse(Number.parseInt(previewReclaim[1] ?? '', 10)),
+            actionInput,
+          ),
+        );
+      }
+      const executeReclaim = pathname.match(
+        /^\/v1\/actions\/ports\/(\d+)\/reclaim\/execute$/,
+      );
+      if (executeReclaim !== null) {
+        return success(
+          requestId,
+          await consequentialActionService.executePortReclaim(
+            PortSchema.parse(Number.parseInt(executeReclaim[1] ?? '', 10)),
+            actionInput,
+          ),
+        );
       }
 
       const unsafeEviction = pathname.match(/^\/v1\/ports\/(\d+)\/unsafe-evict$/);
@@ -877,6 +1035,25 @@ function success(requestId, data) {
  * @param {unknown} error
  */
 function errorResponse(requestId, error) {
+  if (error instanceof ActionReceiptError) {
+    return failure(requestId, error.code === 'not_found' ? 404 : 409, {
+      code: error.code === 'not_found' ? 'not_found' : 'conflict',
+      message: error.message,
+      retryable: false,
+      details: { ...error.details, receiptCode: error.code },
+    });
+  }
+  if (error instanceof StackDocumentError) {
+    const invalidInput = ['invalid_stack_root', 'invalid_stack_definition'].includes(
+      error.code,
+    );
+    return failure(requestId, invalidInput ? 400 : 409, {
+      code: invalidInput ? 'invalid_input' : 'conflict',
+      message: error.message,
+      retryable: false,
+      details: { ...error.details, documentCode: error.code },
+    });
+  }
   if (error instanceof CursorError) {
     return failure(requestId, 400, {
       code: 'invalid_input',

@@ -80,3 +80,18 @@ Add a narrow `POST /v1/leases/{leaseId}/renew` operation and official `renewLeas
 
 **Alternatives considered:**
 Exclude standalone leases from automatic custody; reacquire on every TTL; make the MCP bridge call storage directly; reuse the activation batch endpoint for non-activation leases.
+
+## [6] Route consequential actions through daemon receipts and shared fixed-path document primitives
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Unix HTTP/JSON protocol, official JavaScript client, MCP tool schemas, action services, stack document filesystem safety, Desktop stack editor
+
+Add focused preview and execute endpoints for normal reclaim, claim administration, stack apply and pruning, and public settings. Execute accepts only an explicit target and receipt ID; the daemon recovers the stored proposal, recomputes evidence, and records the terminal result for replay. Extract fixed portreeve.stack.json inspection, validation, fingerprinting, symlink refusal, and atomic compare-and-write into a shared module consumed by both daemon and Desktop. MCP receives structured definitions and document reads, never raw file contents or arbitrary paths.
+
+**Triggered by:** I-4 requires evidence-bound process and durable-state mutations plus one canonical stack-document policy across daemon and Desktop
+
+**Alternatives considered:**
+Let the bridge resubmit evidence; keep consequential actions as direct or dry-run requests; duplicate filesystem rules in Desktop and daemon; make the MCP bridge a filesystem authority.
