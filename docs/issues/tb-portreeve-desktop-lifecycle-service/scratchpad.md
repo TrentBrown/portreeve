@@ -8,7 +8,7 @@ entries are appended to `decisions.md`.
 
 ## [1] Keep CLI exit codes outside the lifecycle service
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

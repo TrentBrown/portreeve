@@ -9,12 +9,12 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Extract shared lifecycle service and migrate CLI
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P1, P3
 - **Rubric criteria:** R1, R2, R8
 - **Depends on:** none
-- **PR:** -
+- **PR:** [#37](https://github.com/TrentBrown/portreeve/pull/37)
 
 Create the canonical lifecycle application service and move the CLI onto it
 without changing observable CLI behavior. Establish contract and golden parity
