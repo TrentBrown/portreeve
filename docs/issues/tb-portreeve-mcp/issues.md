@@ -88,12 +88,12 @@ copy actions, safe diagnostics, and no third-party configuration writes.
 
 ## I-7 - Complete packaged and real-host verification
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P7
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
 - **Depends on:** I-3, I-4, I-5, I-6
-- **PR:** -
+- **PR:** [#49](https://github.com/TrentBrown/portreeve/pull/49)
 
 Run and retain the complete conformance, security, compiled, packaged,
 multi-bridge, unavailable/incompatible daemon, Codex, Claude Code, macOS,
