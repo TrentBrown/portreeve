@@ -422,9 +422,9 @@ export function createProgram() {
 
   stacks
     .command('snapshot <activation-id>')
-    .description('Write one redacted sandbox endpoint discovery document atomically')
-    .requiredOption('--component <name>', 'sandbox consumer component name')
-    .requiredOption('--gateway-host <host>', 'launcher-rendered sandbox gateway host')
+    .description('Write one redacted gateway-rewritten endpoint document atomically')
+    .requiredOption('--component <name>', 'endpoint consumer component name')
+    .requiredOption('--gateway-host <host>', 'launcher-supplied snapshot gateway host')
     .requiredOption('--file <path>', 'destination JSON document')
     .option('--socket <path>', 'override the Unix socket path')
     .option('--json', 'emit versioned JSON output')

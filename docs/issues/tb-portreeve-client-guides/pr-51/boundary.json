@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "scope": "slice",
+  "featureId": "tb-portreeve-client-guides",
+  "repositoryAlias": "portreeve",
+  "packetId": "pr-51",
+  "pullRequest": {
+    "repository": "TrentBrown/portreeve",
+    "number": 51,
+    "url": "https://github.com/TrentBrown/portreeve/pull/51",
+    "state": "OPEN",
+    "isDraft": true,
+    "baseRefName": "main",
+    "baseRefOid": "e8e330acfe748dea1db1264f75dda558e91de6d9",
+    "headRefName": "tb-portreeve-client-guides-02-authored-guides",
+    "headRefOid": "69978cd15f7a15a4b795f5478098cd1c8a8a8271"
+  },
+  "mergeBaseSha": "e8e330acfe748dea1db1264f75dda558e91de6d9",
+  "evaluatedSourceSha": "69978cd15f7a15a4b795f5478098cd1c8a8a8271",
+  "featureBaseSha": null,
+  "applicability": { "specEvaluation": true, "judge": true, "patternReview": true },
+  "gates": {
+    "verification": { "disposition": "passed", "reason": null },
+    "specEvaluation": { "disposition": "passed", "reason": null },
+    "judge": { "disposition": "passed", "reason": null },
+    "codeReview": { "disposition": "passed", "reason": null },
+    "patternReview": { "disposition": "passed", "reason": null },
+    "explainDiff": { "disposition": "passed", "reason": null }
+  }
+}

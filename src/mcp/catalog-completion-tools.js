@@ -94,7 +94,7 @@ export function registerCatalogCompletionTools({
     name: 'portreeve_stack_snapshot',
     title: 'Create a stack endpoint snapshot',
     description:
-      'Return one structured redacted Docker-sandbox endpoint snapshot without writing a file.',
+      'Return one structured redacted gateway-rewritten endpoint snapshot without writing a file or orchestrating its consumer.',
     inputSchema: z
       .object({
         activationId: IdentifierSchema,
@@ -104,7 +104,7 @@ export function registerCatalogCompletionTools({
           .min(1)
           .max(255)
           .refine((value) => !/[\s/]/u.test(value), {
-            message: 'sandbox gateway hosts must not contain whitespace or slashes',
+            message: 'snapshot gateway hosts must not contain whitespace or slashes',
           }),
       })
       .strict(),

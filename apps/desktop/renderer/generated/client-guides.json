@@ -5,16 +5,27 @@
     "mcp": {
       "sourcePath": "docs/mcp.md",
       "document": {
-        "title": "MCP bridge",
+        "title": "PortReeve MCP guide",
         "blocks": [
           {
             "type": "heading",
             "level": 1,
-            "id": "mcp-bridge",
+            "id": "portreeve-mcp-guide",
             "inline": [
               {
                 "type": "text",
-                "text": "MCP bridge"
+                "text": "PortReeve MCP guide"
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 2,
+            "id": "start-here",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Start here"
               }
             ]
           },
@@ -89,7 +100,7 @@
             "inline": [
               {
                 "type": "text",
-                "text": "The final coordination family adds one structured stack snapshot tool and five launcher-operation tools. "
+                "text": "The final coordination family adds one structured endpoint snapshot tool and five launcher-operation tools. "
               },
               {
                 "type": "code",
@@ -97,7 +108,7 @@
               },
               {
                 "type": "text",
-                "text": " returns an in-memory, redacted Docker-sandbox address document for an explicit activation, component, and gateway host; it never writes a file. Launcher begin, renew, complete, get, and bounded list coordinate lifecycle ownership only. They never execute the project's start, stop, restart, or status command. Begin requires a caller operation ID for retry identity and the exact launcher revision that the external launcher is using."
+                "text": " returns an in-memory, redacted, gateway-rewritten address document for an explicit activation and component; it never writes a file or implies that PortReeve orchestrates the consumer environment. Launcher begin, renew, complete, get, and bounded list coordinate lifecycle ownership only. They never execute the project's start, stop, restart, or status command. Begin requires a caller operation ID for retry identity and the exact launcher revision that the external launcher is using."
               }
             ]
           },
@@ -138,7 +149,7 @@
           },
           {
             "type": "heading",
-            "level": 2,
+            "level": 3,
             "id": "configure-an-mcp-host",
             "inline": [
               {
@@ -313,9 +324,849 @@
                 "text": " tab provides the same formats, exact/portable selection, optional labels, daemon compatibility evidence, copy actions, and visible setup errors through its restricted main-process boundary. It does not launch an agent host or execute project commands."
               }
             ]
+          },
+          {
+            "type": "heading",
+            "level": 3,
+            "id": "choose-the-right-client",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Choose the right client"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Desktop, MCP, CLI, and the JavaScript client are peer clients of the same per-user daemon. MCP is the best fit when an agent should inspect or coordinate PortReeve with strict typed tools. It intentionally cannot install, start, stop, or upgrade the daemon and cannot perform unsafe any-owner eviction. Use the CLI for service administration or trusted launcher commands; use the JavaScript client when project tooling should request and confirm bindings directly."
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "header": [
+              [
+                {
+                  "type": "text",
+                  "text": "Client"
+                }
+              ],
+              [
+                {
+                  "type": "text",
+                  "text": "Typical role"
+                }
+              ],
+              [
+                {
+                  "type": "text",
+                  "text": "Important authority boundary"
+                }
+              ]
+            ],
+            "rows": [
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Desktop"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Human inspection, stack editing, guided launchers"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Uses direct application services and explicit UI confirmation"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "MCP"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Agent inspection and evidence-bound coordination"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "No daemon lifecycle, shell execution, raw credentials, or unsafe eviction"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "CLI"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Terminal automation and complete local administration"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Launcher commands may execute project-trusted shell commands"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "JavaScript"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Native project-tool integration"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "The project owns process startup and confirms only after binding succeeds"
+                  }
+                ]
+              ]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "PortReeve Desktop is supported on macOS. The standalone CLI and its stdio MCP bridge are supported on macOS and Linux. The JavaScript client supports its documented Node.js and Bun runtimes when it can reach the local Unix socket. Windows is not supported. PortReeve can record ordinary Docker-backed endpoint evidence, but it does not currently provide Docker Sandbox orchestration or integration."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 2,
+            "id": "common-workflows",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Common workflows"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "The examples below are prompts for an MCP-capable agent. Each prompt is followed by the expected PortReeve tool sequence so the operation remains inspectable. Exact input and output schemas are in the "
+              },
+              {
+                "type": "link",
+                "text": "complete tool reference",
+                "href": "#searchable-complete-reference"
+              },
+              {
+                "type": "text",
+                "text": "."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 3,
+            "id": "configure-a-host-and-verify-compatibility",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Configure a host and verify compatibility"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Copy this prompt after adding PortReeve to your host:"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "text",
+            "text": "Verify that the local PortReeve MCP bridge can reach a compatible daemon. Report the\nbridge version, daemon version, protocol range, missing capabilities, and any safe\nsetup or service diagnostic I should run. Do not mutate anything."
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Expected sequence:"
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "ordered": true,
+            "items": [
+              [
+                {
+                  "type": "link",
+                  "text": "`portreeve_diagnostics`",
+                  "href": "#mcp-tool-portreeve-diagnostics"
+                },
+                {
+                  "type": "text",
+                  "text": " to distinguish bridge, socket, and daemon failures."
+                }
+              ],
+              [
+                {
+                  "type": "link",
+                  "text": "`portreeve_compatibility`",
+                  "href": "#mcp-tool-portreeve-compatibility"
+                },
+                {
+                  "type": "text",
+                  "text": " to compare the bridge contract with the running daemon."
+                }
+              ],
+              [
+                {
+                  "type": "link",
+                  "text": "`portreeve_health`",
+                  "href": "#mcp-tool-portreeve-health"
+                },
+                {
+                  "type": "text",
+                  "text": " when compatibility succeeds."
+                }
+              ]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Success evidence names both versions, a compatible protocol/capability result, and a healthy socket. If the host cannot start the bridge, regenerate configuration with "
+              },
+              {
+                "type": "code",
+                "text": "portreeve mcp setup --host codex"
+              },
+              {
+                "type": "text",
+                "text": ", "
+              },
+              {
+                "type": "code",
+                "text": "--host claude-code"
+              },
+              {
+                "type": "text",
+                "text": ", or "
+              },
+              {
+                "type": "code",
+                "text": "--host generic"
+              },
+              {
+                "type": "text",
+                "text": " in a terminal; MCP cannot repair its own host registration or daemon lifecycle."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 3,
+            "id": "inspect-ports-claims-and-one-stack",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Inspect ports, claims, and one stack"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "text",
+            "text": "Inspect PortReeve for workspace /absolute/worktree. Show current ports and durable\nclaims for that exact workspace. If it belongs to stack STACK_ID, also summarize its\nlatest generation, activation, and provider evidence. Do not mutate anything."
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Expected sequence:"
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "ordered": true,
+            "items": [
+              [
+                {
+                  "type": "link",
+                  "text": "`portreeve_ports_list`",
+                  "href": "#mcp-tool-portreeve-ports-list"
+                },
+                {
+                  "type": "text",
+                  "text": " with "
+                },
+                {
+                  "type": "code",
+                  "text": "{ \"workspace\": \"/absolute/worktree\", \"limit\": 50 }"
+                },
+                {
+                  "type": "text",
+                  "text": "."
+                }
+              ],
+              [
+                {
+                  "type": "link",
+                  "text": "`portreeve_claims_list`",
+                  "href": "#mcp-tool-portreeve-claims-list"
+                },
+                {
+                  "type": "text",
+                  "text": " with "
+                },
+                {
+                  "type": "code",
+                  "text": "{ \"workspaceRoot\": \"/absolute/worktree\", \"limit\": 50 }"
+                },
+                {
+                  "type": "text",
+                  "text": "."
+                }
+              ],
+              [
+                {
+                  "type": "link",
+                  "text": "`portreeve_stack_status`",
+                  "href": "#mcp-tool-portreeve-stack-status"
+                },
+                {
+                  "type": "text",
+                  "text": " with "
+                },
+                {
+                  "type": "code",
+                  "text": "{ \"stackId\": \"STACK_ID\" }"
+                },
+                {
+                  "type": "text",
+                  "text": " when the explicit stack is relevant."
+                }
+              ]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "The agent should separate durable claims from fresh listener/provider evidence and call out conflicting, mixed, unavailable, or stale observations rather than inferring ownership from a stored process identifier."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 3,
+            "id": "acquire-use-and-confirm-one-endpoint",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Acquire, use, and confirm one endpoint"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "text",
+            "text": "Acquire a sticky PortReeve lease for project PROJECT in workspace /absolute/worktree,\ncomponent api, endpoint http, preferring port 8080. Return the chosen port and opaque\ncredential handle. I will start the listener and give you its root PID; confirm only\nafter I say the listener successfully bound."
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Expected sequence:"
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "ordered": true,
+            "items": [
+              [
+                {
+                  "type": "link",
+                  "text": "`portreeve_lease_acquire`",
+                  "href": "#mcp-tool-portreeve-lease-acquire"
+                },
+                {
+                  "type": "text",
+                  "text": " with the explicit claim and "
+                },
+                {
+                  "type": "code",
+                  "text": "{ \"mode\": \"sticky\", \"preferredPort\": 8080, \"replacementPolicy\": \"never\" }"
+                },
+                {
+                  "type": "text",
+                  "text": "."
+                }
+              ],
+              [
+                {
+                  "type": "text",
+                  "text": "The project starts its service using the returned port. Native project integration can request this binding directly; shell-driven launchers commonly inject it as an environment variable."
+                }
+              ],
+              [
+                {
+                  "type": "text",
+                  "text": "Only after successful bind, "
+                },
+                {
+                  "type": "link",
+                  "text": "`portreeve_lease_confirm`",
+                  "href": "#mcp-tool-portreeve-lease-confirm"
+                },
+                {
+                  "type": "text",
+                  "text": " receives the bridge-local credential handle and the actual root PID."
+                }
+              ]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "If startup fails, use "
+              },
+              {
+                "type": "link",
+                "text": "`portreeve_lease_abandon`",
+                "href": "#mcp-tool-portreeve-lease-abandon"
+              },
+              {
+                "type": "text",
+                "text": " instead of confirming. The raw lease token never crosses MCP, and a credential handle from one bridge process does not work in another."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 3,
+            "id": "prepare-and-activate-an-intercommunicating-stack",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Prepare and activate an intercommunicating stack"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "text",
+            "text": "For stack STACK_ID, prepare one generation and begin a process-backed activation.\nResolve addresses separately for components api and web so I can inject each\ncomponent's own endpoints and declared dependencies. After I start each service, I\nwill provide its root PID. Confirm each endpoint only after its listener binds, then\nreport the final activation and provider evidence."
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Expected sequence:"
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "ordered": true,
+            "items": [
+              [
+                {
+                  "type": "link",
+                  "text": "`portreeve_stack_prepare`",
+                  "href": "#mcp-tool-portreeve-stack-prepare"
+                },
+                {
+                  "type": "text",
+                  "text": " returns or reuses one immutable generation."
+                }
+              ],
+              [
+                {
+                  "type": "link",
+                  "text": "`portreeve_activation_begin`",
+                  "href": "#mcp-tool-portreeve-activation-begin"
+                },
+                {
+                  "type": "text",
+                  "text": " leases the selected endpoints and retains credentials inside this bridge."
+                }
+              ],
+              [
+                {
+                  "type": "link",
+                  "text": "`portreeve_activation_resolve`",
+                  "href": "#mcp-tool-portreeve-activation-resolve"
+                },
+                {
+                  "type": "text",
+                  "text": " runs once per consumer component before its service starts."
+                }
+              ],
+              [
+                {
+                  "type": "text",
+                  "text": "The project launcher injects those resolved addresses and starts services in dependency order."
+                }
+              ],
+              [
+                {
+                  "type": "link",
+                  "text": "`portreeve_activation_confirm_endpoint`",
+                  "href": "#mcp-tool-portreeve-activation-confirm-endpoint"
+                },
+                {
+                  "type": "text",
+                  "text": " confirms each binding only after fresh process or ordinary Docker evidence exists."
+                }
+              ],
+              [
+                {
+                  "type": "link",
+                  "text": "`portreeve_stack_status`",
+                  "href": "#mcp-tool-portreeve-stack-status"
+                },
+                {
+                  "type": "text",
+                  "text": " reports the resulting generation, activation, and providers."
+                }
+              ]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "MCP launcher-operation tools can coordinate lifecycle ownership and evidence, but they do not execute the project's start, stop, restart, or status commands."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 3,
+            "id": "preview-reclaim-or-pruning-then-stop",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Preview reclaim or pruning, then stop"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "text",
+            "text": "Preview a graceful reclaim of port 8080. Summarize the current owner, listeners,\nproposed signals, receipt scope, and expiry. Stop after preview and wait for my\nexplicit approval of that specific preview. Do not execute based only on host-level\nautomatic tool approval."
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Use "
+              },
+              {
+                "type": "link",
+                "text": "`portreeve_port_reclaim_preview`",
+                "href": "#mcp-tool-portreeve-port-reclaim-preview"
+              },
+              {
+                "type": "text",
+                "text": " with "
+              },
+              {
+                "type": "code",
+                "text": "{ \"port\": 8080, \"policy\": \"graceful\" }"
+              },
+              {
+                "type": "text",
+                "text": ". The agent must report the fresh evidence and receipt, then pause. Only after the human explicitly approves that exact preview may it call "
+              },
+              {
+                "type": "link",
+                "text": "`portreeve_port_reclaim_execute`",
+                "href": "#mcp-tool-portreeve-port-reclaim-execute"
+              },
+              {
+                "type": "text",
+                "text": "."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Claims and stack pruning follow the same boundary: preview with "
+              },
+              {
+                "type": "link",
+                "text": "`portreeve_claims_prune_preview`",
+                "href": "#mcp-tool-portreeve-claims-prune-preview"
+              },
+              {
+                "type": "text",
+                "text": " or "
+              },
+              {
+                "type": "link",
+                "text": "`portreeve_stacks_prune_preview`",
+                "href": "#mcp-tool-portreeve-stacks-prune-preview"
+              },
+              {
+                "type": "text",
+                "text": ", summarize eligible targets and blockers, stop, and call the corresponding execute tool only after specific approval. A fresh, technically valid receipt protects execution from evidence drift; it does not prove current human intent."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 2,
+            "id": "troubleshooting-and-safety",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Troubleshooting and safety"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Start with "
+              },
+              {
+                "type": "link",
+                "text": "`portreeve_diagnostics`",
+                "href": "#mcp-tool-portreeve-diagnostics"
+              },
+              {
+                "type": "text",
+                "text": ". It remains available when the daemon is absent or incompatible and separates host/bridge startup from socket and protocol failures."
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "header": [
+              [
+                {
+                  "type": "text",
+                  "text": "Symptom"
+                }
+              ],
+              [
+                {
+                  "type": "text",
+                  "text": "Safest first response"
+                }
+              ]
+            ],
+            "rows": [
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Host cannot start PortReeve"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Run "
+                  },
+                  {
+                    "type": "code",
+                    "text": "portreeve mcp setup --host HOST"
+                  },
+                  {
+                    "type": "text",
+                    "text": " in a terminal and verify the configured absolute executable path; keep stdout reserved for MCP frames"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Daemon absent or unreachable"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Inspect diagnostics, then use Desktop or CLI lifecycle controls; MCP cannot install or start the daemon"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Incompatible daemon"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Report bridge and daemon versions plus missing capability evidence; upgrade through Desktop or CLI rather than retrying mutations"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Port appears occupied or ownership is ambiguous"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Inspect the port and claims, retain fresh listener evidence, and preview normal reclaim; never begin with destructive override"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Credential handle is missing or expired"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Reacquire or begin a new activation in the current bridge; handles are intentionally process-local and bounded"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Confirmation fails"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Verify that the service really bound the assigned port and provide the actual root PID or Docker container evidence; abandon on failed startup"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Activation is interrupted"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Inspect activation and provider evidence, then reconcile; do not infer liveness from a stored PID"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Stack definition or worktree does not match"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Read and validate the canonical stack document at the explicit root before previewing any replacement"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Preview receipt expired or is rejected"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Preview again, compare the new evidence, summarize it, and request approval again"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Protocol output is contaminated"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Ensure the bridge writes diagnostics only to stderr and that wrappers print nothing to stdout"
+                  }
+                ]
+              ]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "MCP excludes unsafe any-owner eviction, daemon lifecycle administration, arbitrary shell and filesystem access, raw logs, and project-command output. Consequential execute tools are evidence-bound but still require explicit human intent after the corresponding preview."
+              }
+            ]
           }
         ],
         "anchors": [
+          "searchable-complete-reference",
           "mcp-tool-portreeve-health",
           "mcp-tool-portreeve-compatibility",
           "mcp-tool-portreeve-diagnostics",
@@ -367,8 +1218,17 @@
           "mcp-tool-portreeve-settings-update-preview",
           "mcp-tool-portreeve-settings-update-execute",
           "mcp-tool-portreeve-history-list",
-          "mcp-bridge",
-          "configure-an-mcp-host"
+          "portreeve-mcp-guide",
+          "start-here",
+          "configure-an-mcp-host",
+          "choose-the-right-client",
+          "common-workflows",
+          "configure-a-host-and-verify-compatibility",
+          "inspect-ports-claims-and-one-stack",
+          "acquire-use-and-confirm-one-endpoint",
+          "prepare-and-activate-an-intercommunicating-stack",
+          "preview-reclaim-or-pruning-then-stop",
+          "troubleshooting-and-safety"
         ]
       },
       "reference": [
@@ -13726,7 +14586,7 @@
           "id": "mcp-tool-portreeve-stack-snapshot",
           "name": "portreeve_stack_snapshot",
           "title": "Create a stack endpoint snapshot",
-          "description": "Return one structured redacted Docker-sandbox endpoint snapshot without writing a file.",
+          "description": "Return one structured redacted gateway-rewritten endpoint snapshot without writing a file or orchestrating its consumer.",
           "family": "stacks",
           "safety": "read-only",
           "annotations": {
@@ -17872,16 +18732,556 @@
     "cli": {
       "sourcePath": "docs/cli-contract.md",
       "document": {
-        "title": "PortReeve CLI contract",
+        "title": "PortReeve CLI guide",
         "blocks": [
           {
             "type": "heading",
             "level": 1,
-            "id": "portreeve-cli-contract",
+            "id": "portreeve-cli-guide",
             "inline": [
               {
                 "type": "text",
-                "text": "PortReeve CLI contract"
+                "text": "PortReeve CLI guide"
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 2,
+            "id": "start-here",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Start here"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "The PortReeve CLI is the complete terminal client for the single per-user daemon. It can install and supervise that daemon, inspect global port evidence, coordinate stack bindings, run trusted project launchers, and perform explicitly confirmed maintenance. For a first local installation on macOS or Linux:"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "sh",
+            "text": "portreeve install\nportreeve start\nportreeve status --json"
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Start with "
+              },
+              {
+                "type": "link",
+                "text": "`portreeve status`",
+                "href": "#cli-command-portreeve-status"
+              },
+              {
+                "type": "text",
+                "text": " whenever you are unsure which executable, supervisor, socket, or server version is active. Use "
+              },
+              {
+                "type": "code",
+                "text": "--json"
+              },
+              {
+                "type": "text",
+                "text": " and exit status for automation rather than parsing human output."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Desktop, MCP, CLI, and the JavaScript client are peer clients of the same daemon. The CLI is the right fit for shell automation, service administration, and trusted project launcher commands. MCP gives agents strict inspection and coordination tools but no daemon lifecycle or unsafe eviction authority. The JavaScript client is the cleanest fit when a project's own tooling should request a binding, start the service, and confirm only after the bind succeeds."
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "header": [
+              [
+                {
+                  "type": "text",
+                  "text": "Client"
+                }
+              ],
+              [
+                {
+                  "type": "text",
+                  "text": "Typical role"
+                }
+              ],
+              [
+                {
+                  "type": "text",
+                  "text": "Important authority boundary"
+                }
+              ]
+            ],
+            "rows": [
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Desktop"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Human inspection, stack editing, guided launchers"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Uses direct application services and explicit UI confirmation"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "MCP"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Agent inspection and evidence-bound coordination"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Does not administer the daemon or execute project shell commands"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "CLI"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Terminal automation and complete local administration"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Launcher commands may execute project-trusted shell commands"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "JavaScript"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Native project-tool integration"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Project code owns startup and confirmation timing"
+                  }
+                ]
+              ]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "PortReeve Desktop is supported on macOS. Standalone CLI and MCP artifacts are supported on macOS and Linux. The JavaScript client supports its documented Node.js and Bun runtimes when it can reach the local Unix socket. Windows is not supported. Ordinary Docker-backed endpoint evidence is supported, but PortReeve does not currently provide Docker Sandbox orchestration or integration."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 2,
+            "id": "common-workflows",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Common workflows"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Commands use explicit placeholder variables so examples can be copied into a shell after the values are filled in. See the "
+              },
+              {
+                "type": "link",
+                "text": "complete command reference",
+                "href": "#searchable-complete-reference"
+              },
+              {
+                "type": "text",
+                "text": " for every option and exit behavior."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 3,
+            "id": "install-start-and-diagnose-the-service",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Install, start, and diagnose the service"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "sh",
+            "text": "portreeve install\nportreeve start\nportreeve status --json\nportreeve logs --json"
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "link",
+                "text": "`portreeve install`",
+                "href": "#cli-command-portreeve-install"
+              },
+              {
+                "type": "text",
+                "text": " installs per-user launchd supervision on macOS or systemd user supervision on Linux; it never requires root. "
+              },
+              {
+                "type": "link",
+                "text": "`portreeve start`",
+                "href": "#cli-command-portreeve-start"
+              },
+              {
+                "type": "text",
+                "text": " activates that installed service. The status result should show the managed executable, native supervisor, healthy socket, running version, and effective mode as separate evidence layers. Logs are a bounded diagnostic view, not a substitute for status evidence."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 3,
+            "id": "inspect-ports-and-ownership-evidence",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Inspect ports and ownership evidence"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "sh",
+            "text": "portreeve ports list --workspace \"/absolute/worktree\" --json\nportreeve ports inspect 8080 --json\nportreeve claims list --json"
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "link",
+                "text": "`portreeve ports list`",
+                "href": "#cli-command-portreeve-ports-list"
+              },
+              {
+                "type": "text",
+                "text": " combines durable claims with fresh listener evidence. "
+              },
+              {
+                "type": "link",
+                "text": "`portreeve ports inspect`",
+                "href": "#cli-command-portreeve-ports-inspect"
+              },
+              {
+                "type": "text",
+                "text": " shows one port in detail, while "
+              },
+              {
+                "type": "link",
+                "text": "`portreeve claims list`",
+                "href": "#cli-command-portreeve-claims-list"
+              },
+              {
+                "type": "text",
+                "text": " shows all durable identities independently so the exact workspace can be located in the result. Treat conflicting, mixed, Docker-managed, and unavailable evidence as distinct states; a stored PID is never proof of a current listener."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 3,
+            "id": "apply-prepare-and-activate-a-local-stack",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Apply, prepare, and activate a local stack"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "First apply the version-controlled topology at the exact root:"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "sh",
+            "text": "STACK_ROOT=\"/absolute/worktree\"\nportreeve stacks apply --stack-root \"$STACK_ROOT\" --json\nportreeve stacks status --stack-root \"$STACK_ROOT\" --json"
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Take the returned stack ID through allocation and activation:"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "sh",
+            "text": "STACK_ID=\"00000000-0000-0000-0000-000000000000\"\nportreeve stacks prepare \"$STACK_ID\" --json\nGENERATION_ID=\"00000000-0000-0000-0000-000000000000\"\nportreeve stacks begin \"$GENERATION_ID\" --json\nACTIVATION_ID=\"00000000-0000-0000-0000-000000000000\"\nportreeve stacks resolve \"$ACTIVATION_ID\" --component api --json\nportreeve stacks resolve \"$ACTIVATION_ID\" --component web --json"
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "link",
+                "text": "`stacks apply`",
+                "href": "#cli-command-portreeve-stacks-apply"
+              },
+              {
+                "type": "text",
+                "text": " records topology and claims but does not allocate or start anything. "
+              },
+              {
+                "type": "link",
+                "text": "`stacks prepare`",
+                "href": "#cli-command-portreeve-stacks-prepare"
+              },
+              {
+                "type": "text",
+                "text": " creates an immutable generation. "
+              },
+              {
+                "type": "link",
+                "text": "`stacks begin`",
+                "href": "#cli-command-portreeve-stacks-begin"
+              },
+              {
+                "type": "text",
+                "text": " leases its endpoints and prints private credentials only in JSON mode. Resolve each component separately, inject the assigned ports and dependency addresses into the service environment, and start services in dependency order."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "For each process endpoint, write only its "
+              },
+              {
+                "type": "code",
+                "text": "{ \"leaseId\", \"leaseToken\" }"
+              },
+              {
+                "type": "text",
+                "text": " to a private mode-0600 file, then confirm after the service actually binds:"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "sh",
+            "text": "LEASE_FILE=\"/private/path/api-http-lease.json\"\nROOT_PID=\"12345\"\nportreeve stacks confirm \"$ACTIVATION_ID\" --lease-file \"$LEASE_FILE\" --root-pid \"$ROOT_PID\" --json"
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "link",
+                "text": "`stacks confirm`",
+                "href": "#cli-command-portreeve-stacks-confirm"
+              },
+              {
+                "type": "text",
+                "text": " uses fresh listener lineage evidence. On failed startup, use "
+              },
+              {
+                "type": "link",
+                "text": "`stacks abandon`",
+                "href": "#cli-command-portreeve-stacks-abandon"
+              },
+              {
+                "type": "text",
+                "text": " with the same credential instead. Remove credential files after settlement. A trusted launcher should automate this two-phase acquire, bind, and confirm sequence so the race-sensitive details remain outside ordinary service code."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 3,
+            "id": "initialize-trust-and-run-a-project-launcher",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Initialize, trust, and run a project launcher"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "sh",
+            "text": "STACK_ROOT=\"/absolute/worktree\"\nportreeve launcher init --stack-root \"$STACK_ROOT\"\nportreeve launcher validate --stack-root \"$STACK_ROOT\" --json\nportreeve launcher trust --stack-root \"$STACK_ROOT\"\nportreeve launcher start --stack-root \"$STACK_ROOT\"\nportreeve launcher status --stack-root \"$STACK_ROOT\" --json"
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "link",
+                "text": "`launcher init`",
+                "href": "#cli-command-portreeve-launcher-init"
+              },
+              {
+                "type": "text",
+                "text": " creates an explicit "
+              },
+              {
+                "type": "code",
+                "text": "portreeve.launcher.json"
+              },
+              {
+                "type": "text",
+                "text": " only after showing its suggestions. Validate before trust. "
+              },
+              {
+                "type": "link",
+                "text": "`launcher trust`",
+                "href": "#cli-command-portreeve-launcher-trust"
+              },
+              {
+                "type": "text",
+                "text": " is interactive and binds approval to the exact launcher revision, shell, working directory, and commands. "
+              },
+              {
+                "type": "link",
+                "text": "`launcher start`",
+                "href": "#cli-command-portreeve-launcher-start"
+              },
+              {
+                "type": "text",
+                "text": " may run developer-authored commands such as "
+              },
+              {
+                "type": "code",
+                "text": "npm run dev"
+              },
+              {
+                "type": "text",
+                "text": "; it injects resolved bindings through the shell environment and confirms only from the evidence policy selected by the launcher."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 3,
+            "id": "preview-and-execute-reclaim-or-pruning-safely",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Preview and execute reclaim or pruning safely"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Always inspect the nonmutating form first:"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "sh",
+            "text": "portreeve ports reclaim 8080 --policy graceful --dry-run --json\nportreeve claims prune --older-than 7d --dry-run --json\nportreeve stacks prune --older-than 7d --dry-run --json"
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Review owners, listeners, eligible targets, blockers, and proposed signals. Then run the corresponding command without "
+              },
+              {
+                "type": "code",
+                "text": "--dry-run"
+              },
+              {
+                "type": "text",
+                "text": "; an interactive terminal asks for confirmation. Use "
+              },
+              {
+                "type": "code",
+                "text": "--yes"
+              },
+              {
+                "type": "text",
+                "text": " for noninteractive claims or stack prune execution only after an external approval step. "
+              },
+              {
+                "type": "link",
+                "text": "`ports unsafe-evict`",
+                "href": "#cli-command-portreeve-ports-unsafe-evict"
+              },
+              {
+                "type": "text",
+                "text": " is an explicit any-owner escape hatch, not the normal recovery path; inspect fresh ownership evidence and prefer normal reclaim first."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "level": 3,
+            "id": "output-contract",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Output contract"
               }
             ]
           },
@@ -17926,7 +19326,7 @@
           },
           {
             "type": "heading",
-            "level": 2,
+            "level": 4,
             "id": "exit-statuses",
             "inline": [
               {
@@ -18054,7 +19454,7 @@
           },
           {
             "type": "heading",
-            "level": 2,
+            "level": 4,
             "id": "operational-json-keys",
             "inline": [
               {
@@ -18717,7 +20117,7 @@
           },
           {
             "type": "heading",
-            "level": 2,
+            "level": 3,
             "id": "stack-definitions",
             "inline": [
               {
@@ -19078,7 +20478,7 @@
               },
               {
                 "type": "text",
-                "text": " requests a redacted activation-scoped sandbox document and atomically replaces "
+                "text": " requests a redacted activation-scoped endpoint discovery document and atomically replaces "
               },
               {
                 "type": "code",
@@ -19094,21 +20494,13 @@
               },
               {
                 "type": "text",
-                "text": ". The gateway is supplied by the trusted launcher—for example, "
-              },
-              {
-                "type": "code",
-                "text": "host.docker.internal"
-              },
-              {
-                "type": "text",
-                "text": " on macOS Docker Desktop or a launcher-discovered bridge address on Linux. PortReeve does not infer or verify sandbox topology. Mount the resulting document read-only and never mount the PortReeve control socket into the sandbox."
+                "text": ". The gateway is supplied by the trusted launcher. PortReeve validates the document contract but does not infer, verify, or orchestrate the consumer environment. This generic snapshot capability is not Docker Sandbox integration."
               }
             ]
           },
           {
             "type": "heading",
-            "level": 2,
+            "level": 3,
             "id": "project-launchers",
             "inline": [
               {
@@ -19268,7 +20660,7 @@
           },
           {
             "type": "heading",
-            "level": 2,
+            "level": 3,
             "id": "prune-consent",
             "inline": [
               {
@@ -19332,7 +20724,7 @@
           },
           {
             "type": "heading",
-            "level": 2,
+            "level": 3,
             "id": "server-lifecycle",
             "inline": [
               {
@@ -19356,7 +20748,7 @@
           },
           {
             "type": "heading",
-            "level": 3,
+            "level": 4,
             "id": "layered-status",
             "inline": [
               {
@@ -19547,7 +20939,7 @@
           },
           {
             "type": "heading",
-            "level": 3,
+            "level": 4,
             "id": "mutation-results",
             "inline": [
               {
@@ -19779,7 +21171,7 @@
           },
           {
             "type": "heading",
-            "level": 3,
+            "level": 4,
             "id": "complete-reset",
             "inline": [
               {
@@ -19892,9 +21284,311 @@
                 "text": " without claiming complete reset after partial failure."
               }
             ]
+          },
+          {
+            "type": "heading",
+            "level": 2,
+            "id": "troubleshooting-and-safety",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Troubleshooting and safety"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Start with "
+              },
+              {
+                "type": "link",
+                "text": "`portreeve status --json`",
+                "href": "#cli-command-portreeve-status"
+              },
+              {
+                "type": "text",
+                "text": ". Its layered evidence distinguishes installation, native supervisor, socket health, running server, version compatibility, and effective mode without treating any stored PID as current authority."
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "header": [
+              [
+                {
+                  "type": "text",
+                  "text": "Symptom"
+                }
+              ],
+              [
+                {
+                  "type": "text",
+                  "text": "Safest first response"
+                }
+              ]
+            ],
+            "rows": [
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Command is not found"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Use the bundled or managed executable path shown by Desktop; do not assume GUI applications inherit your shell "
+                  },
+                  {
+                    "type": "code",
+                    "text": "PATH"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Service is absent or stopped"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Inspect status, then run "
+                  },
+                  {
+                    "type": "code",
+                    "text": "portreeve install"
+                  },
+                  {
+                    "type": "text",
+                    "text": " or "
+                  },
+                  {
+                    "type": "code",
+                    "text": "portreeve start"
+                  },
+                  {
+                    "type": "text",
+                    "text": " as the current user; never use root"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Socket is unreachable or incompatible"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Read the status limitations and versions before restarting or upgrading; keep manual and supervised modes distinct"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "A port is occupied or ownership is ambiguous"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Run "
+                  },
+                  {
+                    "type": "code",
+                    "text": "ports inspect PORT --json"
+                  },
+                  {
+                    "type": "text",
+                    "text": ", inspect claims, and preview normal reclaim; unsafe eviction is not first-line advice"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "A lease expires or confirmation fails"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Verify the assigned listener and root PID, then begin a fresh activation or abandon the failed lease rather than reusing credentials"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "An activation is interrupted"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Inspect "
+                  },
+                  {
+                    "type": "code",
+                    "text": "stacks activation ID --json"
+                  },
+                  {
+                    "type": "text",
+                    "text": ", then reconcile provider evidence; end refuses live or unobservable providers"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Stack definition or worktree is wrong"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Use an explicit "
+                  },
+                  {
+                    "type": "code",
+                    "text": "--stack-root"
+                  },
+                  {
+                    "type": "text",
+                    "text": ", validate the nearest canonical file, and compare its registered revision before applying"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Launcher is untrusted"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Run launcher validate, inspect the exact shell and commands, then trust the current revision interactively"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "Start blocks in the terminal"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "The launcher may be configured for attached mode; cancellation is forwarded only to the process group started by that invocation"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "A command times out"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Inspect status and launcher evidence before retrying; do not assume the project process stopped when the CLI deadline elapsed"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "JSON automation behaves unexpectedly"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Check the documented exit band and top-level success key; "
+                  },
+                  {
+                    "type": "code",
+                    "text": "--json"
+                  },
+                  {
+                    "type": "text",
+                    "text": " selects output and never supplies prune consent"
+                  }
+                ]
+              ],
+              [
+                [
+                  {
+                    "type": "text",
+                    "text": "A preview or confirmation becomes stale"
+                  }
+                ],
+                [
+                  {
+                    "type": "text",
+                    "text": "Generate a fresh preview, compare the changed evidence, and obtain approval again"
+                  }
+                ]
+              ]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "inline": [
+              {
+                "type": "text",
+                "text": "Normal reclaim is limited by current ownership evidence. "
+              },
+              {
+                "type": "code",
+                "text": "force-after-grace"
+              },
+              {
+                "type": "text",
+                "text": " escalates only within the verified normal policy. "
+              },
+              {
+                "type": "code",
+                "text": "ports unsafe-evict"
+              },
+              {
+                "type": "text",
+                "text": " deliberately ignores ownership and can terminate an unrelated process; it requires separate, explicit use and should follow fresh "
+              },
+              {
+                "type": "code",
+                "text": "lsof"
+              },
+              {
+                "type": "text",
+                "text": "-backed inspection. PortReeve never signals Docker Desktop, the Docker daemon, or Docker port-forwarding processes."
+              }
+            ]
           }
         ],
         "anchors": [
+          "searchable-complete-reference",
           "cli-command-portreeve-serve",
           "cli-command-portreeve-mcp-serve",
           "cli-command-portreeve-mcp-setup",
@@ -19944,7 +21638,15 @@
           "cli-command-portreeve-config-set",
           "cli-command-portreeve-history",
           "cli-command-portreeve-logs",
-          "portreeve-cli-contract",
+          "portreeve-cli-guide",
+          "start-here",
+          "common-workflows",
+          "install-start-and-diagnose-the-service",
+          "inspect-ports-and-ownership-evidence",
+          "apply-prepare-and-activate-a-local-stack",
+          "initialize-trust-and-run-a-project-launcher",
+          "preview-and-execute-reclaim-or-pruning-safely",
+          "output-contract",
           "exit-statuses",
           "operational-json-keys",
           "stack-definitions",
@@ -19953,7 +21655,8 @@
           "server-lifecycle",
           "layered-status",
           "mutation-results",
-          "complete-reset"
+          "complete-reset",
+          "troubleshooting-and-safety"
         ]
       },
       "reference": [
@@ -22059,7 +23762,7 @@
           "family": "stacks",
           "safety": "read-only-or-local-generation",
           "safetyLabel": "Read-only or local generation",
-          "description": "Write one redacted sandbox endpoint discovery document atomically",
+          "description": "Write one redacted gateway-rewritten endpoint document atomically",
           "synopsis": "portreeve stacks snapshot <activation-id> [options]",
           "arguments": [
             {
@@ -22077,7 +23780,7 @@
               "optional": false,
               "variadic": false,
               "mandatory": true,
-              "description": "sandbox consumer component name",
+              "description": "endpoint consumer component name",
               "defaultValue": null,
               "choices": []
             },
@@ -22087,7 +23790,7 @@
               "optional": false,
               "variadic": false,
               "mandatory": true,
-              "description": "launcher-rendered sandbox gateway host",
+              "description": "launcher-supplied snapshot gateway host",
               "defaultValue": null,
               "choices": []
             },
@@ -23175,10 +24878,10 @@
       "kind": "command",
       "id": "cli-command-portreeve-stacks-snapshot",
       "title": "portreeve stacks snapshot",
-      "description": "Write one redacted sandbox endpoint discovery document atomically",
+      "description": "Write one redacted gateway-rewritten endpoint document atomically",
       "family": "stacks",
       "safety": "read-only-or-local-generation",
-      "searchText": "portreeve stacks snapshot write one redacted sandbox endpoint discovery document atomically stacks read-only-or-local-generation"
+      "searchText": "portreeve stacks snapshot write one redacted gateway-rewritten endpoint document atomically stacks read-only-or-local-generation"
     },
     {
       "guide": "cli",
@@ -23715,10 +25418,10 @@
       "kind": "tool",
       "id": "mcp-tool-portreeve-stack-snapshot",
       "title": "portreeve_stack_snapshot",
-      "description": "Return one structured redacted Docker-sandbox endpoint snapshot without writing a file.",
+      "description": "Return one structured redacted gateway-rewritten endpoint snapshot without writing a file or orchestrating its consumer.",
       "family": "stacks",
       "safety": "read-only",
-      "searchText": "portreeve_stack_snapshot create a stack endpoint snapshot return one structured redacted docker-sandbox endpoint snapshot without writing a file. stacks read-only"
+      "searchText": "portreeve_stack_snapshot create a stack endpoint snapshot return one structured redacted gateway-rewritten endpoint snapshot without writing a file or orchestrating its consumer. stacks read-only"
     },
     {
       "guide": "mcp",

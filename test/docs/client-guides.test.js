@@ -139,4 +139,25 @@ describe('client guide contract generation', () => {
     expect(bundle.guides.mcp.reference).toHaveLength(51);
     expect(bundle.searchIndex).toHaveLength(100);
   });
+
+  test('ships the approved authored workflows, safety boundaries, and platform contract', async () => {
+    const [mcp, cli] = await Promise.all([
+      readFile(join(process.cwd(), 'docs/mcp.md'), 'utf8'),
+      readFile(join(process.cwd(), 'docs/cli-contract.md'), 'utf8'),
+    ]);
+    for (const guide of [mcp, cli]) {
+      expect(guide).toContain('## Start here');
+      expect(guide).toContain('## Common workflows');
+      expect(guide).toContain('## Searchable complete reference');
+      expect(guide).toContain('## Troubleshooting and safety');
+      expect(guide).toMatch(/Windows is not\s+supported/u);
+      expect(guide).toMatch(/does\s+not\s+currently\s+provide Docker Sandbox/u);
+      expect(guide).not.toContain('Docker-sandbox');
+    }
+    expect(mcp).toContain('stop, and call the corresponding execute tool only');
+    expect(mcp).toContain('it does not prove current human intent');
+    expect(mcp).toContain('The raw lease token never crosses MCP');
+    expect(cli).toContain('portreeve launcher start --stack-root "$STACK_ROOT"');
+    expect(cli).toContain('ports unsafe-evict` deliberately ignores');
+  });
 });
