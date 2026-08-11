@@ -26,6 +26,7 @@ export async function runCommand(executable, args, options = {}) {
     const result = await execFileAsync(executable, args, {
       encoding: 'utf8',
       timeout: timeoutMilliseconds,
+      killSignal: 'SIGKILL',
       maxBuffer: 1024 * 1024,
       ...(options.signal ? { signal: options.signal } : {}),
     });

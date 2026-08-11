@@ -29,10 +29,14 @@ describe('native supervisor adapters', () => {
 
   test('terminates native commands at the supplied lifecycle deadline', async () => {
     await expect(
-      runCommand(process.execPath, ['-e', 'setTimeout(() => {}, 1000)'], {
-        timeoutMilliseconds: 20,
-        timeoutLayer: 'test-native-command',
-      }),
+      runCommand(
+        process.execPath,
+        ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"],
+        {
+          timeoutMilliseconds: 20,
+          timeoutLayer: 'test-native-command',
+        },
+      ),
     ).rejects.toMatchObject({
       code: 'lifecycle_timeout',
       layer: 'test-native-command',
