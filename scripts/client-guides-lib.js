@@ -82,7 +82,13 @@ export async function generateClientGuides({ root, write = false }) {
   };
   const bundle = await format(
     `export const CLIENT_GUIDES_ATTESTATION = Object.freeze(${JSON.stringify({ schemaVersion: 1, generatedForVersion: PORTREEVE_VERSION, cliCommands: cliReference.length, mcpTools: mcpReference.length }, null, 2)});\nexport default ${JSON.stringify(bundleData, null, 2)};\n`,
-    { parser: 'babel', printWidth: 88 },
+    {
+      parser: 'babel',
+      printWidth: 88,
+      semi: true,
+      singleQuote: true,
+      trailingComma: 'all',
+    },
   );
   const bundlePath = join(workspaceRoot, CLIENT_GUIDES_BUNDLE);
   const currentBundle = await readOptional(bundlePath);

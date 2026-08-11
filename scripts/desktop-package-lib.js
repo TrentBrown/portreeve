@@ -43,7 +43,7 @@ export function assertDesktopModuleGraph(inputs) {
 }
 
 /**
- * @param {{packageDocument: string, verificationDocument: string, mainBundle: string, preloadBundle: string, rendererDocument: string, guideBundleDocument: string, controllerVersion: string, artifactVersion: string}} options
+ * @param {{packageDocument: string, verificationDocument: string, mainBundle: string, preloadBundle: string, rendererDocument: string, rendererBundle: string, guideViewBundle: string, guideBundleDocument: string, controllerVersion: string, artifactVersion: string}} options
  */
 export function assertPackagedDesktopContents(options) {
   const metadata = JSON.parse(options.packageDocument);
@@ -80,6 +80,29 @@ export function assertPackagedDesktopContents(options) {
   ]) {
     if (!options.mainBundle.includes(marker)) {
       throw new Error(`Packaged Desktop main bundle is missing ${marker}.`);
+    }
+  }
+  for (const marker of [
+    "from './generated/client-guides.js'",
+    'createClientGuideView',
+    'clientInstallationEvidence',
+  ]) {
+    if (!options.rendererBundle.includes(marker)) {
+      throw new Error(`Packaged Desktop renderer bundle is missing ${marker}.`);
+    }
+  }
+  const guideRuntime = `${options.rendererBundle}\n${options.guideViewBundle}`;
+  for (const prohibited of [
+    'fetch(',
+    'innerHTML',
+    'DOMParser',
+    'marked',
+    'markdown-it',
+  ]) {
+    if (guideRuntime.includes(prohibited)) {
+      throw new Error(
+        `Packaged Desktop guide runtime contains prohibited marker ${prohibited}.`,
+      );
     }
   }
   for (const marker of [
@@ -136,6 +159,7 @@ export async function verifyPackagedDesktop(options) {
     '/main/index.js',
     '/preload/index.cjs',
     '/renderer/index.html',
+    '/renderer/renderer.js',
     '/renderer/client-guide-model.js',
     '/renderer/client-guide-view.js',
     '/renderer/generated/client-guides.js',
@@ -152,6 +176,10 @@ export async function verifyPackagedDesktop(options) {
     mainBundle: extractFile(asarPath, 'main/index.js').toString('utf8'),
     preloadBundle: extractFile(asarPath, 'preload/index.cjs').toString('utf8'),
     rendererDocument: extractFile(asarPath, 'renderer/index.html').toString('utf8'),
+    rendererBundle: extractFile(asarPath, 'renderer/renderer.js').toString('utf8'),
+    guideViewBundle: extractFile(asarPath, 'renderer/client-guide-view.js').toString(
+      'utf8',
+    ),
     guideBundleDocument: extractFile(
       asarPath,
       'renderer/generated/client-guides.js',

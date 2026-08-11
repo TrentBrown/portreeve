@@ -101,6 +101,34 @@ test('README is a truthful product landing page for the four peer clients', asyn
   expect(readme).not.toContain('npm install portreeve');
 });
 
+test('public documentation does not claim Docker Sandbox integration', async () => {
+  const files = [
+    'README.md',
+    'docs/client.md',
+    'docs/cli-contract.md',
+    'docs/desktop.md',
+    'docs/mcp.md',
+    'docs/protocol.md',
+    'docs/stacks.md',
+    'examples/mixed-stack/README.md',
+  ];
+  const documents = await Promise.all(
+    files.map((file) => readFile(resolve(file), 'utf8')),
+  );
+  const combined = documents.join('\n');
+  for (const unsupported of [
+    'Dr. Sandbox',
+    'Docker or Codex sandbox',
+    'Sandbox consumers',
+    'sandbox-only document',
+    'Sandbox publication and discovery sequence',
+  ]) {
+    expect(combined).not.toContain(unsupported);
+  }
+  expect(combined).toContain('does not currently provide Docker Sandbox');
+  expect(combined).toContain('generic snapshot');
+});
+
 test('release documentation distinguishes build from native execution', async () => {
   const installation = await readFile(resolve('docs', 'installation.md'), 'utf8');
   expect(installation).toMatch(/Cross-compilation alone\s+is not/u);

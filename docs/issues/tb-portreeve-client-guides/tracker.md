@@ -61,7 +61,7 @@
 ### PR #53 - Product README and Guide client bridge
 
 - **PR:** [#53](https://github.com/TrentBrown/portreeve/pull/53)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P4 / I-4: product landing README, compact architecture and client
   choice, truthful source setup, bounded Guide bridge, and consistent Docker
   Sandbox non-support language.
