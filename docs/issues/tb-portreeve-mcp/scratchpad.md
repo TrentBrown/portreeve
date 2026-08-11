@@ -83,7 +83,7 @@ Exclude standalone leases from automatic custody; reacquire on every TTL; make t
 
 ## [6] Route consequential actions through daemon receipts and shared fixed-path document primitives
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
