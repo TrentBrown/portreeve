@@ -71,10 +71,39 @@ function requireMutationResult(value) {
 
 function requireLifecycleMutationResult(value) {
   const result = requireMutationResult(value);
-  if (!Array.isArray(result.steps) || !isLifecycleDiagnostic(result.failure)) {
+  if (
+    !hasExactKeys(result, [
+      'schemaVersion',
+      'action',
+      'outcome',
+      'changed',
+      'message',
+      'errorCode',
+      'error',
+      'failure',
+      'steps',
+      'snapshot',
+    ]) ||
+    !isLifecycleOperation(result.action) ||
+    result.action === 'purge' ||
+    typeof result.changed !== 'boolean' ||
+    typeof result.message !== 'string' ||
+    !(result.errorCode === null || isLifecycleErrorCode(result.errorCode)) ||
+    !isLifecycleSafeError(result.error) ||
+    !Array.isArray(result.steps) ||
+    !result.steps.every(isLifecycleStep) ||
+    !isLifecycleDiagnostic(result.failure)
+  ) {
     throw new Error('The main process returned an invalid lifecycle result.');
   }
+  requireSnapshot(result.snapshot);
   return result;
+}
+
+function hasExactKeys(value, keys) {
+  if (typeof value !== 'object' || value === null) return false;
+  const actual = Object.keys(value);
+  return actual.length === keys.length && actual.every((key) => keys.includes(key));
 }
 
 function isLifecycleOperation(value) {
@@ -95,18 +124,100 @@ function isLifecycleDiagnostic(value) {
   return (
     typeof value === 'object' &&
     value !== null &&
+    hasExactKeys(value, [
+      'operation',
+      'layer',
+      'outcome',
+      'code',
+      'message',
+      'timedOut',
+      'nativeExitCode',
+      'before',
+      'after',
+      'recovery',
+    ]) &&
     isLifecycleOperation(value.operation) &&
-    typeof value.layer === 'string' &&
+    [
+      'controller',
+      'install',
+      'start',
+      'stop',
+      'stop-manual',
+      'restart',
+      'uninstall',
+      'health-verification',
+      'purge',
+    ].includes(value.layer) &&
     ['refused', 'partial', 'failed'].includes(value.outcome) &&
     isLifecycleErrorCode(value.code) &&
     typeof value.message === 'string' &&
     typeof value.timedOut === 'boolean' &&
     (value.nativeExitCode === null || Number.isInteger(value.nativeExitCode)) &&
+    isLifecycleEvidence(value.before) &&
+    isLifecycleEvidence(value.after) &&
     Array.isArray(value.recovery) &&
-    value.recovery.every((entry) => typeof entry === 'string') &&
-    !('output' in value) &&
-    !('stack' in value) &&
-    !('arguments' in value)
+    value.recovery.length >= 1 &&
+    value.recovery.length <= 4 &&
+    value.recovery.every((entry) => typeof entry === 'string')
+  );
+}
+
+function isLifecycleSafeError(value) {
+  if (value === null) return true;
+  return (
+    hasExactKeys(value, ['code', 'message']) &&
+    isLifecycleErrorCode(value.code) &&
+    typeof value.message === 'string'
+  );
+}
+
+function isLifecycleEvidence(value) {
+  if (value === null) return true;
+  return (
+    hasExactKeys(value, [
+      'mode',
+      'installation',
+      'supervisor',
+      'socket',
+      'limitations',
+    ]) &&
+    ['none', 'manual', 'supervised', 'ambiguous'].includes(value.mode) &&
+    ['absent', 'installed', 'invalid'].includes(value.installation) &&
+    ['unavailable', 'inactive', 'starting', 'active', 'failed'].includes(
+      value.supervisor,
+    ) &&
+    ['unavailable', 'healthy', 'unhealthy', 'incompatible'].includes(value.socket) &&
+    Array.isArray(value.limitations) &&
+    value.limitations.every((entry) => typeof entry === 'string')
+  );
+}
+
+function isLifecycleStep(value) {
+  return (
+    hasExactKeys(value, [
+      'operation',
+      'outcome',
+      'changed',
+      'errorCode',
+      'error',
+      'startedAt',
+      'completedAt',
+      'before',
+      'after',
+    ]) &&
+    ['install', 'start', 'stop', 'stop-manual', 'restart', 'uninstall'].includes(
+      value.operation,
+    ) &&
+    ['succeeded', 'no-change', 'refused', 'partial', 'failed'].includes(
+      value.outcome,
+    ) &&
+    typeof value.changed === 'boolean' &&
+    (value.errorCode === null || isLifecycleErrorCode(value.errorCode)) &&
+    isLifecycleSafeError(value.error) &&
+    typeof value.startedAt === 'string' &&
+    typeof value.completedAt === 'string' &&
+    isLifecycleEvidence(value.before) &&
+    isLifecycleEvidence(value.after)
   );
 }
 
@@ -136,10 +247,12 @@ function requireLifecycleActivity(value) {
     typeof value !== 'object' ||
     value === null ||
     value.schemaVersion !== 1 ||
+    !hasExactKeys(value, ['schemaVersion', 'active']) ||
     !(
       value.active === null ||
       (typeof value.active === 'object' &&
         value.active !== null &&
+        hasExactKeys(value.active, ['operation', 'startedAt']) &&
         isLifecycleOperation(value.active.operation) &&
         typeof value.active.startedAt === 'string')
     )
@@ -165,14 +278,31 @@ function requirePurgePreview(value) {
 function requirePurgeResult(value) {
   const result = requireMutationResult(value);
   if (
+    !hasExactKeys(result, [
+      'schemaVersion',
+      'outcome',
+      'message',
+      'removed',
+      'retained',
+      'missing',
+      'refused',
+      'errorCode',
+      'error',
+      'failure',
+      'snapshot',
+    ]) ||
+    typeof result.message !== 'string' ||
     !Array.isArray(result.removed) ||
     !Array.isArray(result.retained) ||
     !Array.isArray(result.missing) ||
     !Array.isArray(result.refused) ||
+    !(result.errorCode === null || isLifecycleErrorCode(result.errorCode)) ||
+    !isLifecycleSafeError(result.error) ||
     !isLifecycleDiagnostic(result.failure)
   ) {
     throw new Error('The main process returned an invalid purge result.');
   }
+  requireSnapshot(result.snapshot);
   return result;
 }
 
@@ -354,6 +484,7 @@ function requireApplicationCloseState(value) {
   if (
     typeof value !== 'object' ||
     value === null ||
+    !hasExactKeys(value, ['schemaVersion', 'allowed', 'lifecycle', 'attached']) ||
     value.schemaVersion !== 1 ||
     typeof value.allowed !== 'boolean' ||
     !Array.isArray(value.attached) ||
@@ -362,6 +493,7 @@ function requireApplicationCloseState(value) {
       (entry) =>
         typeof entry === 'object' &&
         entry !== null &&
+        hasExactKeys(entry, ['stackId', 'project', 'stackRootName', 'startedAt']) &&
         typeof entry.stackId === 'string' &&
         typeof entry.project === 'string' &&
         typeof entry.stackRootName === 'string' &&

@@ -17,7 +17,6 @@ test('renders active lifecycle close protection and copyable safe diagnostics', 
   expect(renderer).toContain('The operation cannot be cancelled safely.');
   expect(renderer).toContain('JSON.stringify(diagnostic, null, 2)');
   expect(preload).toContain('requireLifecycleMutationResult');
-  expect(preload).toContain("!('output' in value)");
-  expect(preload).toContain("!('stack' in value)");
-  expect(preload).toContain("!('arguments' in value)");
+  expect(preload).toContain('hasExactKeys(value');
+  expect(preload).toContain("'nativeExitCode'");
 });
