@@ -38,6 +38,7 @@ const channels = Object.freeze({
   saveLauncherOutput: 'portreeve:desktop:save-launcher-output',
   launcherOutput: 'portreeve:desktop:launcher-output',
   launcherSessionChanged: 'portreeve:desktop:launcher-session-changed',
+  lifecycleActivityChanged: 'portreeve:desktop:lifecycle-activity-changed',
   applicationCloseBlocked: 'portreeve:desktop:application-close-blocked',
   copyText: 'portreeve:desktop:copy-text',
 });
@@ -68,6 +69,199 @@ function requireMutationResult(value) {
   return value;
 }
 
+function requireLifecycleMutationResult(value) {
+  const result = requireMutationResult(value);
+  if (
+    !hasExactKeys(result, [
+      'schemaVersion',
+      'action',
+      'outcome',
+      'changed',
+      'message',
+      'errorCode',
+      'error',
+      'failure',
+      'steps',
+      'snapshot',
+    ]) ||
+    !isLifecycleOperation(result.action) ||
+    result.action === 'purge' ||
+    typeof result.changed !== 'boolean' ||
+    typeof result.message !== 'string' ||
+    !(result.errorCode === null || isLifecycleErrorCode(result.errorCode)) ||
+    !isLifecycleSafeError(result.error) ||
+    !Array.isArray(result.steps) ||
+    !result.steps.every(isLifecycleStep) ||
+    !isLifecycleDiagnostic(result.failure)
+  ) {
+    throw new Error('The main process returned an invalid lifecycle result.');
+  }
+  requireSnapshot(result.snapshot);
+  return result;
+}
+
+function hasExactKeys(value, keys) {
+  if (typeof value !== 'object' || value === null) return false;
+  const actual = Object.keys(value);
+  return actual.length === keys.length && actual.every((key) => keys.includes(key));
+}
+
+function isLifecycleOperation(value) {
+  return [
+    'install-and-start',
+    'start',
+    'stop',
+    'stop-manual',
+    'restart',
+    'upgrade',
+    'uninstall',
+    'purge',
+  ].includes(value);
+}
+
+function isLifecycleDiagnostic(value) {
+  if (value === null) return true;
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    hasExactKeys(value, [
+      'operation',
+      'layer',
+      'outcome',
+      'code',
+      'message',
+      'timedOut',
+      'nativeExitCode',
+      'before',
+      'after',
+      'recovery',
+    ]) &&
+    isLifecycleOperation(value.operation) &&
+    [
+      'controller',
+      'install',
+      'start',
+      'stop',
+      'stop-manual',
+      'restart',
+      'uninstall',
+      'health-verification',
+      'purge',
+    ].includes(value.layer) &&
+    ['refused', 'partial', 'failed'].includes(value.outcome) &&
+    isLifecycleErrorCode(value.code) &&
+    typeof value.message === 'string' &&
+    typeof value.timedOut === 'boolean' &&
+    (value.nativeExitCode === null || Number.isInteger(value.nativeExitCode)) &&
+    isLifecycleEvidence(value.before) &&
+    isLifecycleEvidence(value.after) &&
+    Array.isArray(value.recovery) &&
+    value.recovery.length >= 1 &&
+    value.recovery.length <= 4 &&
+    value.recovery.every((entry) => typeof entry === 'string')
+  );
+}
+
+function isLifecycleSafeError(value) {
+  if (value === null) return true;
+  return (
+    hasExactKeys(value, ['code', 'message']) &&
+    isLifecycleErrorCode(value.code) &&
+    typeof value.message === 'string'
+  );
+}
+
+function isLifecycleEvidence(value) {
+  if (value === null) return true;
+  return (
+    hasExactKeys(value, [
+      'mode',
+      'installation',
+      'supervisor',
+      'socket',
+      'limitations',
+    ]) &&
+    ['none', 'manual', 'supervised', 'ambiguous'].includes(value.mode) &&
+    ['absent', 'installed', 'invalid'].includes(value.installation) &&
+    ['unavailable', 'inactive', 'starting', 'active', 'failed'].includes(
+      value.supervisor,
+    ) &&
+    ['unavailable', 'healthy', 'unhealthy', 'incompatible'].includes(value.socket) &&
+    Array.isArray(value.limitations) &&
+    value.limitations.every((entry) => typeof entry === 'string')
+  );
+}
+
+function isLifecycleStep(value) {
+  return (
+    hasExactKeys(value, [
+      'operation',
+      'outcome',
+      'changed',
+      'errorCode',
+      'error',
+      'startedAt',
+      'completedAt',
+      'before',
+      'after',
+    ]) &&
+    ['install', 'start', 'stop', 'stop-manual', 'restart', 'uninstall'].includes(
+      value.operation,
+    ) &&
+    ['succeeded', 'no-change', 'refused', 'partial', 'failed'].includes(
+      value.outcome,
+    ) &&
+    typeof value.changed === 'boolean' &&
+    (value.errorCode === null || isLifecycleErrorCode(value.errorCode)) &&
+    isLifecycleSafeError(value.error) &&
+    typeof value.startedAt === 'string' &&
+    typeof value.completedAt === 'string' &&
+    isLifecycleEvidence(value.before) &&
+    isLifecycleEvidence(value.after)
+  );
+}
+
+function isLifecycleErrorCode(value) {
+  return [
+    'lifecycle_busy',
+    'lifecycle_timeout',
+    'conflict',
+    'incompatible_protocol',
+    'not_found',
+    'unsupported_platform',
+    'controller_artifact_version_mismatch',
+    'invalid_lifecycle_result',
+    'invalid_lifecycle_status',
+    'invalid_purge_preview',
+    'invalid_purge_result',
+    'purge_preview_required',
+    'supervised_health_verification_failed',
+    'unavailable',
+    'lifecycle_unavailable',
+    'internal',
+  ].includes(value);
+}
+
+function requireLifecycleActivity(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    !hasExactKeys(value, ['schemaVersion', 'active']) ||
+    !(
+      value.active === null ||
+      (typeof value.active === 'object' &&
+        value.active !== null &&
+        hasExactKeys(value.active, ['operation', 'startedAt']) &&
+        isLifecycleOperation(value.active.operation) &&
+        typeof value.active.startedAt === 'string')
+    )
+  ) {
+    throw new Error('The main process returned invalid lifecycle activity.');
+  }
+  return value;
+}
+
 function requirePurgePreview(value) {
   if (
     typeof value !== 'object' ||
@@ -79,6 +273,37 @@ function requirePurgePreview(value) {
     throw new Error('The main process returned an invalid purge preview.');
   }
   return value;
+}
+
+function requirePurgeResult(value) {
+  const result = requireMutationResult(value);
+  if (
+    !hasExactKeys(result, [
+      'schemaVersion',
+      'outcome',
+      'message',
+      'removed',
+      'retained',
+      'missing',
+      'refused',
+      'errorCode',
+      'error',
+      'failure',
+      'snapshot',
+    ]) ||
+    typeof result.message !== 'string' ||
+    !Array.isArray(result.removed) ||
+    !Array.isArray(result.retained) ||
+    !Array.isArray(result.missing) ||
+    !Array.isArray(result.refused) ||
+    !(result.errorCode === null || isLifecycleErrorCode(result.errorCode)) ||
+    !isLifecycleSafeError(result.error) ||
+    !isLifecycleDiagnostic(result.failure)
+  ) {
+    throw new Error('The main process returned an invalid purge result.');
+  }
+  requireSnapshot(result.snapshot);
+  return result;
 }
 
 function requireOpenDownloadResult(value) {
@@ -252,12 +477,28 @@ function requireLauncherSaveOutput(value) {
 }
 
 function requireApplicationCloseState(value) {
+  const lifecycle = requireLifecycleActivity({
+    schemaVersion: 1,
+    active: value?.lifecycle,
+  });
   if (
     typeof value !== 'object' ||
     value === null ||
+    !hasExactKeys(value, ['schemaVersion', 'allowed', 'lifecycle', 'attached']) ||
     value.schemaVersion !== 1 ||
     typeof value.allowed !== 'boolean' ||
-    !Array.isArray(value.attached)
+    !Array.isArray(value.attached) ||
+    lifecycle.active !== value.lifecycle ||
+    !value.attached.every(
+      (entry) =>
+        typeof entry === 'object' &&
+        entry !== null &&
+        hasExactKeys(entry, ['stackId', 'project', 'stackRootName', 'startedAt']) &&
+        typeof entry.stackId === 'string' &&
+        typeof entry.project === 'string' &&
+        typeof entry.stackRootName === 'string' &&
+        typeof entry.startedAt === 'string',
+    )
   ) {
     throw new Error('The main process returned an invalid application-close state.');
   }
@@ -271,21 +512,25 @@ contextBridge.exposeInMainWorld(
       requireSnapshot(await ipcRenderer.invoke(channels.getSnapshot)),
     refresh: async () => requireSnapshot(await ipcRenderer.invoke(channels.refresh)),
     installAndStart: async () =>
-      requireMutationResult(await ipcRenderer.invoke(channels.installAndStart)),
-    start: async () => requireMutationResult(await ipcRenderer.invoke(channels.start)),
-    stop: async () => requireMutationResult(await ipcRenderer.invoke(channels.stop)),
+      requireLifecycleMutationResult(
+        await ipcRenderer.invoke(channels.installAndStart),
+      ),
+    start: async () =>
+      requireLifecycleMutationResult(await ipcRenderer.invoke(channels.start)),
+    stop: async () =>
+      requireLifecycleMutationResult(await ipcRenderer.invoke(channels.stop)),
     stopManual: async () =>
-      requireMutationResult(await ipcRenderer.invoke(channels.stopManual)),
+      requireLifecycleMutationResult(await ipcRenderer.invoke(channels.stopManual)),
     restart: async () =>
-      requireMutationResult(await ipcRenderer.invoke(channels.restart)),
+      requireLifecycleMutationResult(await ipcRenderer.invoke(channels.restart)),
     upgrade: async () =>
-      requireMutationResult(await ipcRenderer.invoke(channels.upgrade)),
+      requireLifecycleMutationResult(await ipcRenderer.invoke(channels.upgrade)),
     uninstall: async () =>
-      requireMutationResult(await ipcRenderer.invoke(channels.uninstall)),
+      requireLifecycleMutationResult(await ipcRenderer.invoke(channels.uninstall)),
     previewPurge: async () =>
       requirePurgePreview(await ipcRenderer.invoke(channels.previewPurge)),
     executePurge: async (confirmation) =>
-      requireMutationResult(
+      requirePurgeResult(
         await ipcRenderer.invoke(channels.executePurge, { confirmation }),
       ),
     openDownloadPage: async () =>
@@ -412,6 +657,15 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.on(channels.launcherSessionChanged, listener);
       return () =>
         ipcRenderer.removeListener(channels.launcherSessionChanged, listener);
+    },
+    subscribeLifecycleActivity(callback) {
+      if (typeof callback !== 'function') {
+        throw new TypeError('Lifecycle activity subscriber must be a function.');
+      }
+      const listener = (_event, value) => callback(requireLifecycleActivity(value));
+      ipcRenderer.on(channels.lifecycleActivityChanged, listener);
+      return () =>
+        ipcRenderer.removeListener(channels.lifecycleActivityChanged, listener);
     },
     subscribeApplicationCloseBlocked(callback) {
       if (typeof callback !== 'function') {

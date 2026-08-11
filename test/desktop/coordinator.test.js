@@ -127,7 +127,7 @@ test('polls every five seconds without installing duplicate timers', async () =>
 test('serializes mutations with refresh and returns the mutation final snapshot', async () => {
   let mutating = false;
   let statusCalls = 0;
-  /** @type {() => void} */
+  /** @type {(value?: void) => void} */
   let releaseStart = () => {};
   /** @type {Promise<void>} */
   const gate = new Promise((resolvePromise) => {
@@ -204,7 +204,9 @@ test('reports install success followed by failed health verification as partial'
     changed: true,
     errorCode: 'supervised_health_verification_failed',
     failure: {
-      step: 'health-verification',
+      operation: 'install-and-start',
+      layer: 'health-verification',
+      outcome: 'partial',
       code: 'supervised_health_verification_failed',
       before: { mode: 'supervised' },
       after: { socket: 'healthy' },
@@ -216,7 +218,7 @@ test('reports install success followed by failed health verification as partial'
   ]);
 });
 
-test('preserves safe lifecycle error codes and messages for the renderer', async () => {
+test('replaces lifecycle error messages with allowlisted renderer-safe text', async () => {
   const coordinator = createStateCoordinator({
     artifact: provisionalArtifact(),
     lifecycle: {
@@ -247,14 +249,14 @@ test('preserves safe lifecycle error codes and messages for the renderer', async
     errorCode: 'internal',
     error: {
       code: 'internal',
-      message: 'PortReeve runtime file is not private; change its mode to 0600.',
+      message: 'PortReeve could not complete the lifecycle operation safely.',
     },
     steps: [
       {
         operation: 'restart',
         error: {
           code: 'internal',
-          message: 'PortReeve runtime file is not private; change its mode to 0600.',
+          message: 'PortReeve could not complete the lifecycle operation safely.',
         },
       },
     ],
@@ -275,6 +277,9 @@ test('returns actionable safe details and refreshes after an adapter-level mutat
           exitCode: 70,
           timedOut: false,
           output: 'PortReeve could not open its private runtime file.',
+          credentials: 'TOKEN=top-secret',
+          arguments: ['--home', '/private/path'],
+          stack: 'Error: private executable failure\n    at /private/path/file.js:1:1',
         });
       },
       async status() {
@@ -292,25 +297,100 @@ test('returns actionable safe details and refreshes after an adapter-level mutat
   coordinator.subscribe(() => {
     published += 1;
   });
-  expect(await coordinator.startService()).toMatchObject({
+  const result = await coordinator.startService();
+  expect(result).toMatchObject({
     outcome: 'failed',
     error: {
       code: 'lifecycle_unavailable',
-      message: 'private executable failure',
+      message:
+        'The lifecycle operation is currently unavailable; refresh host evidence before retrying.',
     },
     failure: {
-      step: 'spawn-cli',
-      exitCode: 70,
+      operation: 'start',
+      layer: 'start',
+      outcome: 'failed',
+      nativeExitCode: 70,
       timedOut: false,
-      output: {
-        text: 'PortReeve could not open its private runtime file.',
-        truncated: false,
-      },
+      before: null,
+      after: null,
     },
   });
+  const serialized = JSON.stringify(result);
+  expect(serialized).not.toContain('private executable failure');
+  expect(serialized).not.toContain('private runtime file');
+  expect(serialized).not.toContain('top-secret');
+  expect(serialized).not.toContain('--home');
+  expect(serialized).not.toContain('/private/path');
+  expect(serialized).not.toContain('file.js:1:1');
   expect(statusCalls).toBe(1);
   expect(published).toBe(1);
   expect(coordinator.current()?.lifecycle?.mode).toBe('supervised');
+});
+
+test('publishes lifecycle activity and protects close only for lifecycle mutations', async () => {
+  /** @type {(value?: void) => void} */
+  let releaseStart = () => {};
+  const startGate = new Promise((resolvePromise) => {
+    releaseStart = resolvePromise;
+  });
+  /** @type {(value?: void) => void} */
+  let releasePreview = () => {};
+  const previewGate = new Promise((resolvePromise) => {
+    releasePreview = resolvePromise;
+  });
+  const coordinator = createStateCoordinator({
+    artifact: provisionalArtifact(),
+    lifecycle: {
+      clearPurgePreview() {},
+      async start() {
+        await startGate;
+        return mutationResult('start');
+      },
+      async previewPurge() {
+        await previewGate;
+        return { allowed: false, root: '/safe', paths: [], refused: [] };
+      },
+      async status() {
+        return lifecycleSnapshot();
+      },
+    },
+    inventory: {
+      async listPorts() {
+        return [];
+      },
+    },
+    now: () => new Date(timestamp),
+  });
+  /** @type {unknown[]} */
+  const activities = [];
+  coordinator.subscribeLifecycleActivity((activity) => activities.push(activity));
+
+  const start = coordinator.startService();
+  await Bun.sleep(0);
+  expect(coordinator.applicationCloseState()).toMatchObject({
+    allowed: false,
+    lifecycle: { operation: 'start', startedAt: timestamp },
+  });
+  releaseStart();
+  await start;
+  expect(coordinator.applicationCloseState()).toMatchObject({
+    allowed: true,
+    lifecycle: null,
+  });
+  expect(activities).toEqual([
+    { schemaVersion: 1, active: { operation: 'start', startedAt: timestamp } },
+    { schemaVersion: 1, active: null },
+  ]);
+
+  const preview = coordinator.previewPurge();
+  await Bun.sleep(0);
+  expect(coordinator.applicationCloseState()).toMatchObject({
+    allowed: true,
+    lifecycle: null,
+  });
+  releasePreview();
+  await preview;
+  expect(activities).toHaveLength(2);
 });
 
 test('collects stack evidence and serializes stack mutations with other desktop work', async () => {

@@ -35,6 +35,12 @@
     <main>
       <div id="runtime-status">
         <p id="notice" class="notice" role="status">Loading PortReeve status…</p>
+        <p
+          id="active-lifecycle-operation"
+          class="notice warning"
+          role="status"
+          hidden
+        ></p>
         <section
           id="operation-result"
           class="operation-result"
@@ -44,6 +50,13 @@
           <h2>Last operation</h2>
           <p id="operation-message"></p>
           <ul id="operation-details"></ul>
+          <details id="lifecycle-diagnostic" hidden>
+            <summary>Diagnostic packet</summary>
+            <pre id="lifecycle-diagnostic-content" class="snapshot-content"></pre>
+            <button id="copy-lifecycle-diagnostic" type="button">
+              Copy diagnostic
+            </button>
+          </details>
         </section>
         <ul id="errors" class="errors" aria-label="Current errors" hidden></ul>
       </div>
@@ -929,7 +942,7 @@
     <dialog id="attached-close-dialog" aria-labelledby="attached-close-title">
       <form method="dialog">
         <h2 id="attached-close-title">Attached launcher is still running</h2>
-        <p>
+        <p id="application-close-message">
           PortReeve keeps attached launcher commands tied to this application. Stop or
           terminate them before closing, or keep the application open.
         </p>

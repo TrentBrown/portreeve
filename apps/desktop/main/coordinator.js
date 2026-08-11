@@ -1,6 +1,8 @@
 // @ts-check
 
 import {
+  DesktopApplicationCloseStateSchema,
+  DesktopLifecycleActivitySchema,
   DesktopLifecycleActionResultSchema,
   DesktopPurgePreviewSchema,
   DesktopPurgeResultSchema,
@@ -38,12 +40,16 @@ export function createStateCoordinator(options) {
   let active = null;
   /** @type {'refresh'|'mutation'|null} */
   let activeKind = null;
+  /** @type {null|{operation: 'install-and-start'|'start'|'stop'|'stop-manual'|'restart'|'upgrade'|'uninstall'|'purge', startedAt: string}} */
+  let activeLifecycle = null;
   /** @type {Promise<ReturnType<typeof DesktopUpdateStateSchema.parse>>|null} */
   let updateActive = null;
   /** @type {any} */
   let timer = null;
   /** @type {Set<(snapshot: ReturnType<typeof createDesktopSnapshot>) => void>} */
   const subscribers = new Set();
+  /** @type {Set<(activity: ReturnType<typeof DesktopLifecycleActivitySchema.parse>) => void>} */
+  const lifecycleSubscribers = new Set();
 
   /** @returns {Promise<ReturnType<typeof createDesktopSnapshot>>} */
   const refresh = () => {
@@ -64,8 +70,11 @@ export function createStateCoordinator(options) {
     return begin('refresh', collect);
   };
 
-  /** @param {() => Promise<any>} work */
-  function mutate(work) {
+  /**
+   * @param {() => Promise<any>} work
+   * @param {'install-and-start'|'start'|'stop'|'stop-manual'|'restart'|'upgrade'|'uninstall'|'purge'|null} [lifecycleOperation]
+   */
+  function mutate(work, lifecycleOperation = null) {
     if (activeKind === 'mutation') {
       throw desktopCoordinatorError(
         'desktop_busy',
@@ -73,7 +82,14 @@ export function createStateCoordinator(options) {
       );
     }
     const prior = active;
-    return begin('mutation', async () => {
+    if (lifecycleOperation !== null) {
+      activeLifecycle = {
+        operation: lifecycleOperation,
+        startedAt: now().toISOString(),
+      };
+      publishLifecycleActivity();
+    }
+    const operation = begin('mutation', async () => {
       if (prior !== null) await prior.catch(() => undefined);
       try {
         return await work();
@@ -82,6 +98,16 @@ export function createStateCoordinator(options) {
         throw error;
       }
     });
+    if (lifecycleOperation !== null) {
+      const clearLifecycle = () => {
+        if (activeLifecycle?.operation === lifecycleOperation) {
+          activeLifecycle = null;
+          publishLifecycleActivity();
+        }
+      };
+      void operation.then(clearLifecycle, clearLifecycle);
+    }
+    return operation;
   }
 
   /** @param {'refresh'|'mutation'} kind @param {() => Promise<any>} work */
@@ -176,6 +202,18 @@ export function createStateCoordinator(options) {
     for (const subscriber of subscribers) subscriber(value);
   }
 
+  function lifecycleActivity() {
+    return DesktopLifecycleActivitySchema.parse({
+      schemaVersion: 1,
+      active: activeLifecycle,
+    });
+  }
+
+  function publishLifecycleActivity() {
+    const activity = lifecycleActivity();
+    for (const subscriber of lifecycleSubscribers) subscriber(activity);
+  }
+
   /**
    * @param {'start'|'stop'|'stop-manual'|'restart'|'upgrade'|'uninstall'} action
    * @param {() => Promise<any>} invoke
@@ -186,25 +224,26 @@ export function createStateCoordinator(options) {
       try {
         const result = await invoke();
         const finalSnapshot = await collect();
+        const error =
+          result.error === null || result.error === undefined
+            ? null
+            : safeLifecycleError(result.error);
         return DesktopLifecycleActionResultSchema.parse({
           schemaVersion: 1,
           action,
           outcome: result.outcome,
           changed: result.changed,
           message: lifecycleMessage(action, result.outcome),
-          errorCode: result.error?.code ?? null,
-          error:
-            result.error === null || result.error === undefined
-              ? null
-              : safeError(result.error),
+          errorCode: error?.code ?? null,
+          error,
           steps: [reduceStep(result)],
-          failure: lifecycleResultFailure(result),
+          failure: lifecycleResultFailure(action, result),
           snapshot: finalSnapshot,
         });
       } catch (error) {
         return lifecycleFailure(action, error, await collect());
       }
-    });
+    }, action);
   }
 
   /** @param {'apply'|'prepare'|'reconcile'|'end'} action @param {() => Promise<{outcome: string, changed: boolean, message: string}>} invoke */
@@ -271,6 +310,12 @@ export function createStateCoordinator(options) {
       subscribers.add(subscriber);
       return () => subscribers.delete(subscriber);
     },
+    lifecycleActivity,
+    /** @param {(activity: ReturnType<typeof DesktopLifecycleActivitySchema.parse>) => void} subscriber */
+    subscribeLifecycleActivity(subscriber) {
+      lifecycleSubscribers.add(subscriber);
+      return () => lifecycleSubscribers.delete(subscriber);
+    },
     startPolling() {
       if (timer === null) timer = schedule(() => void refresh(), intervalMilliseconds);
     },
@@ -295,36 +340,31 @@ export function createStateCoordinator(options) {
           const finalSnapshot = await collect();
           const healthy = isHealthySupervised(finalSnapshot.lifecycle);
           const outcome = installAndStartOutcome(install, start, healthy);
+          const sourceError = start?.error ?? install.error;
+          const error =
+            sourceError !== null && sourceError !== undefined
+              ? safeLifecycleError(sourceError)
+              : healthy
+                ? null
+                : safeLifecycleError({
+                    code: 'supervised_health_verification_failed',
+                  });
           return DesktopLifecycleActionResultSchema.parse({
             schemaVersion: 1,
             action: 'install-and-start',
             outcome,
             changed: steps.some(({ changed }) => changed),
             message: lifecycleMessage('install-and-start', outcome),
-            errorCode:
-              start?.error?.code ??
-              install.error?.code ??
-              (healthy ? null : 'supervised_health_verification_failed'),
-            error:
-              start?.error !== null && start?.error !== undefined
-                ? safeError(start.error)
-                : install.error !== null && install.error !== undefined
-                  ? safeError(install.error)
-                  : healthy
-                    ? null
-                    : {
-                        code: 'supervised_health_verification_failed',
-                        message:
-                          'PortReeve was installed, but the supervised server did not report matching healthy evidence.',
-                      },
+            errorCode: error?.code ?? null,
+            error,
             steps,
-            failure: installAndStartFailure(install, start, healthy),
+            failure: installAndStartFailure(install, start, healthy, outcome),
             snapshot: finalSnapshot,
           });
         } catch (error) {
           return lifecycleFailure('install-and-start', error, await collect());
         }
-      });
+      }, 'install-and-start');
     },
     startService: () => oneStep('start', () => options.lifecycle.start()),
     stopService: () => oneStep('stop', () => options.lifecycle.stop()),
@@ -340,19 +380,56 @@ export function createStateCoordinator(options) {
     },
     executePurge() {
       return mutate(async () => {
-        const result = await options.lifecycle.executePurge();
-        const finalSnapshot = await collect();
-        return DesktopPurgeResultSchema.parse({
-          schemaVersion: 1,
-          outcome: result.outcome,
-          message: purgeMessage(result.outcome),
-          removed: result.removed,
-          retained: result.retained,
-          missing: result.missing,
-          refused: result.refused,
-          snapshot: finalSnapshot,
-        });
-      });
+        try {
+          const result = await options.lifecycle.executePurge();
+          const finalSnapshot = await collect();
+          const error =
+            result.error === null || result.error === undefined
+              ? null
+              : safeLifecycleError(result.error);
+          return DesktopPurgeResultSchema.parse({
+            schemaVersion: 1,
+            outcome: result.outcome,
+            message: purgeMessage(result.outcome),
+            removed: result.removed,
+            retained: result.retained,
+            missing: result.missing,
+            refused: result.refused,
+            errorCode: error?.code ?? null,
+            error,
+            failure:
+              error === null
+                ? null
+                : {
+                    operation: 'purge',
+                    layer: 'purge',
+                    outcome: result.outcome,
+                    ...error,
+                    timedOut: error.code === 'lifecycle_timeout',
+                    nativeExitCode: null,
+                    before: reduceLifecycleEvidence(result.before),
+                    after: reduceLifecycleEvidence(result.after),
+                    recovery: lifecycleRecovery(error.code, result.outcome),
+                  },
+            snapshot: finalSnapshot,
+          });
+        } catch (error) {
+          const reduced = safeLifecycleError(error);
+          return DesktopPurgeResultSchema.parse({
+            schemaVersion: 1,
+            outcome: 'failed',
+            message: purgeMessage('failed'),
+            removed: [],
+            retained: [],
+            missing: [],
+            refused: [],
+            errorCode: reduced.code,
+            error: reduced,
+            failure: lifecycleExceptionFailure('purge', error),
+            snapshot: await collect(),
+          });
+        }
+      }, 'purge');
     },
     applyStackDefinition() {
       return stackMutation('apply', async () => {
@@ -545,6 +622,18 @@ export function createStateCoordinator(options) {
     launcherCloseState() {
       return requireLaunchers(options).closeState();
     },
+    applicationCloseState() {
+      const launcherState =
+        options.launchers === undefined
+          ? { allowed: true, attached: [] }
+          : options.launchers.closeState();
+      return DesktopApplicationCloseStateSchema.parse({
+        schemaVersion: 1,
+        allowed: activeLifecycle === null && launcherState.allowed,
+        lifecycle: activeLifecycle,
+        attached: launcherState.attached,
+      });
+    },
     /** @param {(event: unknown) => void} callback */
     subscribeLauncherOutput(callback) {
       return requireLaunchers(options).subscribeOutput(callback);
@@ -564,15 +653,16 @@ export function createStateCoordinator(options) {
 
 /** @param {any} result */
 function reduceStep(result) {
+  const error =
+    result.error === null || result.error === undefined
+      ? null
+      : safeLifecycleError(result.error);
   return {
     operation: result.operation,
     outcome: result.outcome,
     changed: result.changed,
-    errorCode: result.error?.code ?? null,
-    error:
-      result.error === null || result.error === undefined
-        ? null
-        : safeError(result.error),
+    errorCode: error?.code ?? null,
+    error,
     startedAt: result.startedAt,
     completedAt: result.completedAt,
     before: reduceLifecycleEvidence(result.before),
@@ -582,7 +672,7 @@ function reduceStep(result) {
 
 /** @param {string} action @param {unknown} error @param {unknown} snapshot */
 function lifecycleFailure(action, error, snapshot) {
-  const reduced = safeError(error);
+  const reduced = safeLifecycleError(error);
   return DesktopLifecycleActionResultSchema.parse({
     schemaVersion: 1,
     action,
@@ -597,81 +687,73 @@ function lifecycleFailure(action, error, snapshot) {
   });
 }
 
-/** @param {any} result */
-function lifecycleResultFailure(result) {
+/** @param {string} operation @param {any} result */
+function lifecycleResultFailure(operation, result) {
   if (result.error === null || result.error === undefined) return null;
-  const error = safeError(result.error);
+  const error = safeLifecycleError(result.error);
   return {
-    step: result.operation,
+    operation,
+    layer: lifecycleLayer(operation, result),
+    outcome: result.outcome,
     ...error,
-    exitCode: null,
-    timedOut: false,
-    output: null,
+    timedOut: error.code === 'lifecycle_timeout',
+    nativeExitCode: null,
     before: reduceLifecycleEvidence(result.before),
     after: reduceLifecycleEvidence(result.after),
+    recovery: lifecycleRecovery(error.code, result.outcome),
   };
 }
 
-/** @param {any} install @param {any} start @param {boolean} healthy */
-function installAndStartFailure(install, start, healthy) {
+/** @param {any} install @param {any} start @param {boolean} healthy @param {string} outcome */
+function installAndStartFailure(install, start, healthy, outcome) {
   const failed =
     start?.error !== null && start?.error !== undefined
       ? start
       : install.error !== null && install.error !== undefined
         ? install
         : null;
-  if (failed !== null) return lifecycleResultFailure(failed);
+  if (failed !== null) {
+    const diagnostic = lifecycleResultFailure('install-and-start', failed);
+    return diagnostic === null ? null : { ...diagnostic, outcome };
+  }
   if (healthy) return null;
   return {
-    step: 'health-verification',
+    operation: 'install-and-start',
+    layer: 'health-verification',
+    outcome,
     code: 'supervised_health_verification_failed',
     message:
       'PortReeve was installed, but the supervised server did not report matching healthy evidence.',
-    exitCode: null,
     timedOut: false,
-    output: null,
+    nativeExitCode: null,
     before: reduceLifecycleEvidence(install.before),
     after:
       start === null
         ? reduceLifecycleEvidence(install.after)
         : reduceLifecycleEvidence(start.after),
+    recovery: lifecycleRecovery('supervised_health_verification_failed', outcome),
   };
 }
 
 /** @param {string} action @param {unknown} error */
 function lifecycleExceptionFailure(action, error) {
-  const reduced = safeError(error);
-  const candidate = typeof error === 'object' && error !== null ? error : {};
-  const output =
-    'output' in candidate && typeof candidate.output === 'string'
-      ? boundedFailureOutput(candidate.output)
-      : null;
+  const reduced = safeLifecycleError(error);
+  const candidate = /** @type {Record<string, unknown>} */ (
+    typeof error === 'object' && error !== null ? error : {}
+  );
   return {
-    step:
-      'step' in candidate && typeof candidate.step === 'string'
-        ? candidate.step
-        : action,
+    operation: action,
+    layer: lifecycleLayer(action, candidate),
+    outcome: 'failed',
     ...reduced,
-    exitCode:
-      'exitCode' in candidate && Number.isInteger(candidate.exitCode)
-        ? candidate.exitCode
-        : null,
     timedOut:
       'timedOut' in candidate && typeof candidate.timedOut === 'boolean'
         ? candidate.timedOut
         : reduced.code === 'lifecycle_timeout',
-    output,
+    nativeExitCode: nativeExitCode(candidate),
     before: null,
     after: null,
-  };
-}
-
-/** @param {string} value */
-function boundedFailureOutput(value) {
-  const limit = 65_536;
-  return {
-    text: value.length > limit ? value.slice(-limit) : value,
-    truncated: value.length > limit,
+    recovery: lifecycleRecovery(reduced.code, 'failed'),
   };
 }
 
@@ -725,6 +807,9 @@ function purgeMessage(outcome) {
   if (outcome === 'partial') {
     return 'PortReeve service data was only partially deleted.';
   }
+  if (outcome === 'failed') {
+    return 'PortReeve service data deletion failed without completing.';
+  }
   return 'PortReeve service data deletion was safely refused.';
 }
 
@@ -764,6 +849,124 @@ function safeError(error) {
         ? message
         : 'The operation failed without additional safe details.',
   };
+}
+
+const SAFE_LIFECYCLE_MESSAGES = Object.freeze({
+  lifecycle_busy: 'Another PortReeve lifecycle mutation is already in progress.',
+  lifecycle_timeout:
+    'The lifecycle operation reached its deadline; the resulting state may be partial.',
+  conflict: 'Fresh host evidence conflicts with the requested lifecycle operation.',
+  incompatible_protocol:
+    'The running PortReeve server uses an incompatible protocol version.',
+  not_found: 'The requested managed PortReeve installation was not found.',
+  unsupported_platform:
+    'PortReeve does not support native lifecycle management on this platform.',
+  controller_artifact_version_mismatch:
+    'The desktop lifecycle controller does not match the bundled PortReeve artifact.',
+  invalid_lifecycle_result:
+    'The lifecycle controller returned an unsupported mutation result.',
+  invalid_lifecycle_status:
+    'The lifecycle controller returned unsupported status evidence.',
+  invalid_purge_preview:
+    'The lifecycle controller returned an unsupported purge preview.',
+  invalid_purge_result:
+    'The lifecycle controller returned an unsupported purge result.',
+  purge_preview_required:
+    'A fresh purge preview is required before PortReeve data can be deleted.',
+  supervised_health_verification_failed:
+    'The supervised server did not report matching healthy process and socket evidence.',
+  unavailable:
+    'The lifecycle operation is currently unavailable; refresh host evidence before retrying.',
+  lifecycle_unavailable:
+    'The lifecycle operation is currently unavailable; refresh host evidence before retrying.',
+  internal: 'PortReeve could not complete the lifecycle operation safely.',
+});
+
+/** @param {unknown} error */
+function safeLifecycleError(error) {
+  const candidate = typeof error === 'object' && error !== null ? error : {};
+  const candidateCode =
+    'code' in candidate && typeof candidate.code === 'string' && candidate.code.trim()
+      ? candidate.code.trim()
+      : 'internal';
+  const code = Object.hasOwn(SAFE_LIFECYCLE_MESSAGES, candidateCode)
+    ? candidateCode
+    : 'internal';
+  return {
+    code,
+    message:
+      SAFE_LIFECYCLE_MESSAGES[
+        /** @type {keyof typeof SAFE_LIFECYCLE_MESSAGES} */ (code)
+      ] ?? 'PortReeve could not complete the lifecycle operation safely.',
+  };
+}
+
+/** @param {string} operation @param {Record<string, unknown>} candidate */
+function lifecycleLayer(operation, candidate) {
+  const allowed = new Set([
+    'install',
+    'start',
+    'stop',
+    'stop-manual',
+    'restart',
+    'uninstall',
+    'health-verification',
+    'purge',
+  ]);
+  for (const key of ['layer', 'step', 'operation']) {
+    const value = candidate[key];
+    if (typeof value === 'string' && allowed.has(value)) return value;
+  }
+  if (operation === 'upgrade') return 'install';
+  if (allowed.has(operation)) return operation;
+  return 'controller';
+}
+
+/** @param {Record<string, unknown>} candidate */
+function nativeExitCode(candidate) {
+  for (const key of ['nativeExitCode', 'exitCode']) {
+    const value = candidate[key];
+    if (Number.isInteger(value) && Number(value) >= 0 && Number(value) <= 255) {
+      return Number(value);
+    }
+  }
+  return null;
+}
+
+/** @param {string} code @param {string} outcome */
+function lifecycleRecovery(code, outcome) {
+  if (code === 'lifecycle_busy') {
+    return [
+      'Wait for the active lifecycle mutation to finish, refresh status, then retry.',
+    ];
+  }
+  if (code === 'controller_artifact_version_mismatch') {
+    return [
+      'Reinstall a PortReeve Desktop build whose bundled artifact matches its controller.',
+    ];
+  }
+  if (code === 'purge_preview_required') {
+    return [
+      'Run a new complete-reset preview, review it, then confirm deletion again.',
+    ];
+  }
+  if (code === 'incompatible_protocol') {
+    return [
+      'Refresh status, then upgrade or stop the incompatible PortReeve installation before retrying.',
+    ];
+  }
+  if (code === 'unsupported_platform') {
+    return ['Use the PortReeve CLI in manual mode on a supported local environment.'];
+  }
+  if (code === 'lifecycle_timeout' || outcome === 'partial') {
+    return [
+      'Refresh status and compare the before and after evidence before deciding whether to retry.',
+      'If the state remains uncertain, use PortReeve status from a terminal for fresh host evidence.',
+    ];
+  }
+  return [
+    'Refresh PortReeve status to gather fresh host evidence, then retry the operation.',
+  ];
 }
 
 /** @param {{stacks?: any}} options */

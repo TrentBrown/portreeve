@@ -125,6 +125,9 @@ export function createDesktopLifecycleController(artifact, dependencies = {}) {
         retained: parsed.data.retained,
         missing: parsed.data.missing,
         refused: parsed.data.refused,
+        error: parsed.data.error,
+        before: parsed.data.before,
+        after: parsed.data.after,
       };
     },
     clearPurgePreview() {
