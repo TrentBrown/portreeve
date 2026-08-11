@@ -49,12 +49,12 @@ resolution, confirmation, reconciliation, and safe recovery after custody loss.
 
 ## I-4 - Deliver consequential mutation receipts
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 4d
 - **Plan steps:** P4
 - **Rubric criteria:** R5, R6, R7
 - **Depends on:** I-1, I-2
-- **PR:** -
+- **PR:** [#46](https://github.com/TrentBrown/portreeve/pull/46)
 
 Build the generic preview/execute receipt service and apply it to port, claim,
 stack, settings, and canonical stack-document changes. Consolidate document

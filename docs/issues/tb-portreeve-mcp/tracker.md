@@ -10,12 +10,12 @@
 | # | Criterion (short) | Status | PR | Notes |
 | --- | --- | --- | --- | --- |
 | R1 | Transport and single authority | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44) | P2 delivers dual-era stdio through the official socket client with stdout framing; packaged proof remains P7. |
-| R2 | Complete typed tool surface | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44) | P2 registers the complete read-only subset with strict schemas and bounded pages; mutation and final completeness work remain P3-P5/P7. |
+| R2 | Complete typed tool surface | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44), [#46](https://github.com/TrentBrown/portreeve/pull/46) | The bridge now registers 45 strict tools, including all consequential families; six Docker snapshot and launcher tools remain P5, followed by the final P7 audit. |
 | R3 | Availability and explicit scope | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44) | P2 proves absence, incompatibility, live retry, filters, explicit identifiers, and diagnostic-only labels; setup remains P6/P7. |
 | R4 | Credential custody | NOT YET | [#45](https://github.com/TrentBrown/portreeve/pull/45) | P3 delivers process-local opaque handles, bounded renewal/extension, settlement erasure, bridge isolation, and lost-custody recovery; final cross-surface leakage and packaged proof remain P7. |
 | R5 | Lifecycle and idempotency | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#45](https://github.com/TrentBrown/portreeve/pull/45) | P3 delivers standalone and stack coordination with replay-safe ordinary mutations; documents, snapshots, launcher coordination, and final host proof remain P4-P5/P7. |
-| R6 | Consequential mutation safety | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43) | P1 supplies five-minute evidence-bound receipts; action-specific integration remains P4/P7. |
-| R7 | Safe documents and observability | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44) | P2 exposes bounded structured history and no raw logs/files; documents and snapshots remain P4/P5/P7. |
+| R6 | Consequential mutation safety | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#46](https://github.com/TrentBrown/portreeve/pull/46) | P4 routes all seven consequential families through five-minute evidence-bound receipts with stale refusal and replay; final real-host evidence-change proof remains P7. |
+| R7 | Safe documents and observability | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44), [#46](https://github.com/TrentBrown/portreeve/pull/46) | P4 provides canonical, structured, fingerprinted stack documents under shared Desktop policy; Docker snapshots and final host proof remain P5/P7. |
 | R8 | Setup and shipped compatibility | NOT YET | - | Planned across P6 and P7 / I-6 and I-7. |
 
 ## PR Log
@@ -61,3 +61,17 @@ Append PR boundary entries here.
   lifecycle proves cross-bridge isolation and recovery after bridge exit. All
   448 repository tests, the standalone build, typecheck, lint, and changed-file
   formatting pass. Judge: PASS. Code review: no remaining findings.
+
+### PR #46 - MCP consequential action receipts
+
+- **PR:** [#46](https://github.com/TrentBrown/portreeve/pull/46)
+- **Status:** in review
+- **Scope:** P4 / I-4: evidence-bound preview/execute receipts for port, claim,
+  stack, settings, and canonical stack-document changes, plus shared document
+  safety primitives.
+- **Evidence packet:** [pr-46](pr-46/)
+- **Result:** Slice verdict PASS. All seven consequential families reject stale
+  evidence and replay completed results; documents are structured, bounded,
+  fingerprinted, and atomically protected. All 453 repository tests, the
+  standalone build, typecheck, lint, and changed-file formatting pass. Judge:
+  PASS. Code review: no remaining findings.
