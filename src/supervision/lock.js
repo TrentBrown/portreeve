@@ -51,13 +51,17 @@ export class LifecycleMutationLock {
     });
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
+      /** @type {Set<import('node:net').Socket>} */
+      const sockets = new Set();
       const server = createServer((socket) => {
+        sockets.add(socket);
+        socket.once('close', () => sockets.delete(socket));
         socket.end(`${JSON.stringify(metadata)}\n`);
       });
       try {
         await listen(server, this.path);
         await chmod(this.path, 0o600);
-        return new LifecycleLockLease(server, metadata);
+        return new LifecycleLockLease(server, sockets, metadata);
       } catch (error) {
         await closeQuietly(server);
         if (!hasCode(error, 'EADDRINUSE')) throw error;
@@ -97,10 +101,12 @@ export class LifecycleMutationLock {
 class LifecycleLockLease {
   /**
    * @param {import('node:net').Server} server
+   * @param {Set<import('node:net').Socket>} sockets
    * @param {{operation: string, ownerToken: string}} metadata
    */
-  constructor(server, metadata) {
+  constructor(server, sockets, metadata) {
     this.server = server;
+    this.sockets = sockets;
     this.metadata = metadata;
     this.released = false;
   }
@@ -108,12 +114,14 @@ class LifecycleLockLease {
   async release() {
     if (this.released) return;
     this.released = true;
-    await new Promise((resolvePromise, reject) => {
+    const closing = new Promise((resolvePromise, reject) => {
       this.server.close((/** @type {Error | undefined} */ error) => {
         if (error) reject(error);
         else resolvePromise(undefined);
       });
     });
+    for (const socket of this.sockets) socket.destroy();
+    await closing;
   }
 }
 

@@ -105,7 +105,6 @@ export class LifecycleDeadline {
         reject(this.error(layer));
       };
       const timer = setTimeout(finish, duration);
-      timer.unref?.();
       this.signal.addEventListener('abort', onAbort, { once: true });
       Promise.resolve().then(() => {
         if (this.signal.aborted) onAbort();

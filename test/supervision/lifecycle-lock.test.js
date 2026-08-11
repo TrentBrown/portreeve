@@ -6,6 +6,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createConnection } from 'node:net';
 import {
   LifecycleBusyError,
   LifecycleMutationLock,
@@ -45,6 +46,21 @@ test('never replaces an unsafe non-socket lock path', async () => {
   const lock = new LifecycleMutationLock({ path });
   await expect(lock.acquire('restart')).rejects.toBeInstanceOf(LifecycleBusyError);
   expect(await readFile(path, 'utf8')).toBe('user-data');
+});
+
+test('releases without waiting for a connected peer', async () => {
+  const path = await lockPath();
+  const lease = await new LifecycleMutationLock({ path }).acquire('restart');
+  const socket = createConnection({ path, allowHalfOpen: true });
+  await new Promise((resolvePromise, reject) => {
+    socket.once('connect', resolvePromise);
+    socket.once('error', reject);
+  });
+  try {
+    await lease.release();
+  } finally {
+    socket.destroy();
+  }
 });
 
 test.skipIf(process.platform === 'win32')(
