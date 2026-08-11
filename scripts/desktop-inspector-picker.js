@@ -190,7 +190,7 @@ export function installDesktopInspectorPicker() {
     selected = element;
     const descriptor = describe(element);
     inspectorWindow.__portreeveInspectorSelection = descriptor;
-    status.textContent = `Selected · ${descriptor.selector}`;
+    status.textContent = `Selected · ${descriptor.selector} · Normal clicks are live`;
     positionHighlight();
     if (report) void inspectorWindow.__portreeveInspectorReport?.(descriptor);
     return descriptor;
