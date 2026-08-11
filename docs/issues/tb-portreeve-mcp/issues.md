@@ -49,7 +49,7 @@ resolution, confirmation, reconciliation, and safe recovery after custody loss.
 
 ## I-4 - Deliver consequential mutation receipts
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 4d
 - **Plan steps:** P4
 - **Rubric criteria:** R5, R6, R7
@@ -62,12 +62,12 @@ safety while retaining external-edit protection and excluding unsafe eviction.
 
 ## I-5 - Complete and audit the MCP tool catalog
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P5
 - **Rubric criteria:** R2, R5, R7
 - **Depends on:** I-2, I-3, I-4
-- **PR:** -
+- **PR:** [#47](https://github.com/TrentBrown/portreeve/pull/47)
 
 Complete Docker snapshots, launcher coordination, structured history, and
 remaining inspections. Prove catalog completeness, excluded-surface absence,

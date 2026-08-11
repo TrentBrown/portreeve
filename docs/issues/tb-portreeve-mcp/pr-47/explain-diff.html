@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #47 - Complete MCP coordination catalog</title>
+    <style>
+      :root { --ink:#102a36; --muted:#52656c; --paper:#f5f1e8; --card:#fffdf8; --line:#cbd5d1; --navy:#06345f; --green:#17684f; --gold:#d6a64b; --blue:#dcecf5; }
+      * { box-sizing:border-box; }
+      body { margin:0; color:var(--ink); background:var(--paper); font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+      main { width:min(1100px,calc(100% - 32px)); margin:auto; padding:48px 0 72px; }
+      header { border-left:8px solid var(--green); padding:4px 0 4px 22px; margin-bottom:38px; }
+      h1,h2,h3 { font-family:Georgia,serif; color:var(--navy); line-height:1.15; }
+      h1 { margin:0 0 10px; font-size:clamp(2rem,5vw,4rem); }
+      h2 { margin-top:44px; font-size:1.8rem; }
+      h3 { margin:0 0 8px; }
+      .lede { max-width:800px; color:var(--muted); font-size:1.18rem; }
+      .tag { display:inline-block; padding:4px 10px; border-radius:999px; background:#dbeae4; color:var(--green); font-weight:750; }
+      .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+      .card { padding:20px; border:1px solid var(--line); border-radius:14px; background:var(--card); box-shadow:0 7px 20px #183b4410; }
+      .number { font:700 2.4rem/1 Georgia,serif; color:var(--green); }
+      .sequence { display:grid; grid-template-columns:repeat(7,auto); align-items:center; gap:9px; }
+      .actor { min-height:105px; padding:14px; border:2px solid var(--line); border-radius:12px; background:var(--card); }
+      .actor.bridge { background:var(--blue); border-color:#94b9cc; }
+      .actor.daemon { background:#e6f3eb; border-color:#9fc9b8; }
+      .arrow { color:var(--green); font-size:1.8rem; font-weight:800; }
+      .callout { margin:18px 0; padding:18px 20px; border-left:5px solid var(--gold); background:#fff9e9; }
+      table { width:100%; border-collapse:collapse; background:var(--card); }
+      th,td { padding:12px; text-align:left; vertical-align:top; border:1px solid var(--line); }
+      th { background:#e7efec; color:var(--navy); }
+      code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+      pre { overflow:auto; padding:18px; border-radius:12px; color:#eaf3f0; background:#0b2533; white-space:pre; }
+      details { margin:12px 0; padding:12px 16px; border:1px solid var(--line); border-radius:10px; background:var(--card); }
+      summary { cursor:pointer; color:var(--navy); font-weight:750; }
+      .answer { margin-top:10px; color:var(--green); }
+      @media (max-width:780px) { .grid{grid-template-columns:1fr}.sequence{grid-template-columns:1fr}.arrow{transform:rotate(90deg);justify-self:center} }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="tag">PortReeve MCP · Slice I-5</span>
+        <h1>The promised catalog is now the discovered catalog</h1>
+        <p class="lede">PR #47 registers the last six operations: a redacted Docker-sandbox snapshot and five launcher-coordination tools. PortReeve coordinates the work while the developer's own launcher remains the only thing that runs project commands.</p>
+      </header>
+
+      <section>
+        <h2>What changed</h2>
+        <div class="grid">
+          <article class="card"><div class="number">51</div><h3>Exact tools</h3><p>Legacy and modern MCP discovery exactly match the frozen catalog—no missing names and no extras.</p></article>
+          <article class="card"><div class="number">1</div><h3>Snapshot tool</h3><p>Transforms activation addresses for a supplied sandbox gateway and returns structured data without writing a file.</p></article>
+          <article class="card"><div class="number">5</div><h3>Launcher tools</h3><p>Begin, renew, complete, get, and list coordinate lifecycle ownership without executing Start, Stop, Restart, or Status.</p></article>
+        </div>
+      </section>
+
+      <section>
+        <h2>Launcher coordination, not launcher execution</h2>
+        <div class="sequence" aria-label="Launcher coordination sequence">
+          <div class="actor"><strong>MCP host</strong><br />Names stack, action, caller operation, and exact launcher revision.</div>
+          <div class="arrow">→</div>
+          <div class="actor bridge"><strong>stdio bridge</strong><br />Calls the official client and hides the returned credential.</div>
+          <div class="arrow">→</div>
+          <div class="actor daemon"><strong>PortReeve daemon</strong><br />Admits and records one renewable operation.</div>
+          <div class="arrow">↔</div>
+          <div class="actor"><strong>Project launcher</strong><br />Independently runs the developer's actual command.</div>
+        </div>
+        <div class="callout"><strong>The security boundary:</strong> the bridge never receives a shell command from the model. The project launcher performs work through its existing integration; MCP only coordinates durable identity, deadlines, evidence summaries, and outcomes.</div>
+      </section>
+
+      <section>
+        <h2>The launcher credential stays backstage</h2>
+        <pre><code>daemon begin → raw launcher credential
+               ↓ process-local only
+bridge vault → random 43-character handle → MCP result
+               ↓ auto renew at min(TTL / 3, 10 seconds)
+complete / 10-minute expiry / bridge exit → erase credential</code></pre>
+        <p>An explicit renew can extend total custody, but never beyond sixty minutes from acquisition. Another bridge has a different vault and cannot use the handle. Safe begin and completion replay are stored separately from the credential, so retries do not justify retaining secret authority.</p>
+      </section>
+
+      <section>
+        <h2>Six focused contracts</h2>
+        <table>
+          <thead><tr><th>Tool</th><th>Authority</th><th>Bound</th></tr></thead>
+          <tbody>
+            <tr><td><code>portreeve_stack_snapshot</code></td><td>Read-only structured transformation</td><td>One activation and component; no file path</td></tr>
+            <tr><td><code>portreeve_launcher_operation_begin</code></td><td>Create coordination record; vault credential</td><td>Explicit stack, caller ID, action, revision</td></tr>
+            <tr><td><code>portreeve_launcher_operation_renew</code></td><td>Credential-proven heartbeat</td><td>Owning bridge and at most 60 minutes</td></tr>
+            <tr><td><code>portreeve_launcher_operation_complete</code></td><td>Credential-proven terminal outcome</td><td>Strict safe evidence and failure summaries</td></tr>
+            <tr><td><code>portreeve_launcher_operation_get</code></td><td>Read one durable record</td><td>Explicit operation ID</td></tr>
+            <tr><td><code>portreeve_launcher_operations_list</code></td><td>Read retained history</td><td>Twenty per stack plus opaque cursor page</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Catalog audit</h2>
+        <div class="grid">
+          <article class="card"><h3>Present</h3><p>Exactly 51 operation-specific names, strict typed schemas, bounded collections, safe errors, and accurate annotations.</p></article>
+          <article class="card"><h3>Absent</h3><p>Shell execution, MCP HTTP listeners, arbitrary files, raw logs/output, unsafe eviction, resources, prompts, and subscriptions.</p></article>
+          <article class="card"><h3>Verified</h3><p>457 tests, 2,269 assertions, typecheck, lint, standalone build, dual-era discovery, and real Unix-socket lifecycle calls.</p></article>
+        </div>
+      </section>
+
+      <section>
+        <h2>Check your understanding</h2>
+        <details><summary>1. Does launcher begin run npm run dev?</summary><div class="answer">No. It admits a coordination record and holds its credential. The developer's separate project launcher runs the command.</div></details>
+        <details><summary>2. Why return a credential handle?</summary><div class="answer">The model needs a reference for later renew or complete calls, but it never needs the raw secret. The random handle is meaningful only inside its originating bridge.</div></details>
+        <details><summary>3. Does the snapshot tool write PORTREEVE_ENDPOINTS_FILE?</summary><div class="answer">No. MCP receives a typed in-memory snapshot. A trusted launcher may decide how to inject or persist it outside this bridge.</div></details>
+        <details><summary>4. What makes begin and complete retries safe?</summary><div class="answer">Begin uses explicit caller identity plus bridge-local replay while custody is live. Completion stores only its achieved safe result after erasing the credential.</div></details>
+        <details><summary>5. What remains after this PR?</summary><div class="answer">I-6 adds CLI/Desktop setup generation. I-7 runs the final packaged host, platform, Docker, concurrency, leakage, and evidence-change matrix.</div></details>
+      </section>
+    </main>
+  </body>
+</html>

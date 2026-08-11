@@ -5,7 +5,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { PortreeveClient } from '../../packages/client/src/index.js';
-import { MCP_EXCLUDED_CAPABILITIES } from '../../src/mcp/catalog.js';
+import { MCP_EXCLUDED_CAPABILITIES, MCP_TOOL_NAMES } from '../../src/mcp/catalog.js';
 
 const MODERN_META = {
   'io.modelcontextprotocol/protocolVersion': '2026-07-28',
@@ -43,14 +43,30 @@ test('stdio bridge serves legacy MCP, keeps stdout framed, and diagnoses an abse
 
   expect(messages.map(({ id }) => id)).toEqual([1, 2, 3, 4]);
   const tools = messages[1]?.result.tools;
-  expect(tools).toHaveLength(45);
+  expect(tools).toHaveLength(51);
   expect(
     tools.filter((/** @type {any} */ tool) => tool.annotations.readOnlyHint === true),
-  ).toHaveLength(19);
+  ).toHaveLength(22);
   expect(
     tools.filter((/** @type {any} */ tool) => tool.annotations.readOnlyHint === false),
-  ).toHaveLength(26);
+  ).toHaveLength(29);
   const names = tools.map((/** @type {any} */ { name }) => name);
+  expect(names.sort()).toEqual([...MCP_TOOL_NAMES].sort());
+  const completedNames = new Set([
+    'portreeve_stack_snapshot',
+    'portreeve_launcher_operation_begin',
+    'portreeve_launcher_operation_renew',
+    'portreeve_launcher_operation_complete',
+    'portreeve_launcher_operation_get',
+    'portreeve_launcher_operations_list',
+  ]);
+  for (const tool of tools.filter((/** @type {any} */ { name }) =>
+    completedNames.has(name),
+  )) {
+    expect(tool.inputSchema.additionalProperties).toBe(false);
+    expect(tool.annotations.openWorldHint).toBe(false);
+    expect(tool.annotations.idempotentHint).toBe(true);
+  }
   for (const exclusion of MCP_EXCLUDED_CAPABILITIES) {
     expect(names.join(' ')).not.toContain(exclusion);
   }
@@ -80,7 +96,10 @@ test('stdio bridge accepts the 2026-07-28 stateless opening', async () => {
     },
   ]);
   expect(messages[0]?.result.supportedVersions).toContain('2026-07-28');
-  expect(messages[1]?.result.tools).toHaveLength(45);
+  expect(messages[1]?.result.tools).toHaveLength(51);
+  expect(messages[0]?.result.capabilities).toEqual({
+    tools: { listChanged: true },
+  });
   expect(messages[1]?.result._meta['io.modelcontextprotocol/serverInfo']).toEqual({
     name: 'portreeve',
     version: '0.1.0',
@@ -523,6 +542,23 @@ test('coordinates standalone and stack lifecycles without exposing credentials',
         })
       ).result.structuredContent,
     ).toMatchObject({ ok: true, data: { activationId, component: 'api' } });
+    const snapshot = (
+      await request('portreeve_stack_snapshot', {
+        activationId,
+        component: 'api',
+        gatewayHost: 'host.docker.internal',
+      })
+    ).result.structuredContent;
+    expect(snapshot).toMatchObject({
+      ok: true,
+      data: {
+        schemaVersion: 1,
+        activationId,
+        component: 'api',
+        own: { http: { address: { host: 'host.docker.internal' } } },
+      },
+    });
+    expect(JSON.stringify(snapshot)).not.toContain('leaseToken');
 
     const byEndpoint = new Map(
       begun.data.leases.map((/** @type {any} */ lease) => [lease.endpoint, lease]),
@@ -579,6 +615,114 @@ test('coordinates standalone and stack lifecycles without exposing credentials',
       ok: true,
       data: { changed: true, activation: { id: activationId, state: 'ended' } },
     });
+
+    const launcherInput = {
+      stackId: applied.stack.id,
+      operation: 'status',
+      launcherRevision: 'a'.repeat(64),
+      callerOperationId: crypto.randomUUID(),
+    };
+    const launcherBegun = (
+      await request('portreeve_launcher_operation_begin', launcherInput)
+    ).result.structuredContent;
+    expect(launcherBegun).toMatchObject({
+      ok: true,
+      data: {
+        changed: true,
+        operation: { stackId: applied.stack.id, operation: 'status' },
+        renewAfterMilliseconds: 10_000,
+      },
+    });
+    expect(JSON.stringify(launcherBegun)).not.toContain('"credential"');
+    const launcherHandle = launcherBegun.data.credentialHandle;
+    const operationId = launcherBegun.data.operation.id;
+    expect(
+      (await request('portreeve_launcher_operation_begin', launcherInput)).result
+        .structuredContent,
+    ).toMatchObject({
+      ok: true,
+      data: { changed: false, credentialHandle: launcherHandle },
+    });
+
+    const isolatedLauncher = await runBridge(
+      [
+        {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'initialize',
+          params: {
+            protocolVersion: '2025-11-25',
+            capabilities: {},
+            clientInfo: { name: 'isolated-launcher-test', version: '1' },
+          },
+        },
+        {
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'tools/call',
+          params: {
+            name: 'portreeve_launcher_operation_renew',
+            arguments: {
+              operationId,
+              credentialHandle: launcherHandle,
+            },
+          },
+        },
+      ],
+      socketPath,
+    );
+    expect(isolatedLauncher[1]?.result.structuredContent).toMatchObject({
+      ok: false,
+      error: { code: 'portreeve_credential_unavailable' },
+    });
+
+    expect(
+      (
+        await request('portreeve_launcher_operation_renew', {
+          operationId,
+          credentialHandle: launcherHandle,
+          custodyMinutes: 20,
+        })
+      ).result.structuredContent,
+    ).toMatchObject({
+      ok: true,
+      data: {
+        changed: true,
+        custodyChanged: true,
+        operation: { id: operationId, state: 'active' },
+      },
+    });
+    expect(
+      (await request('portreeve_launcher_operation_get', { operationId })).result
+        .structuredContent,
+    ).toMatchObject({ ok: true, data: { id: operationId, state: 'active' } });
+    expect(
+      (
+        await request('portreeve_launcher_operations_list', {
+          stackId: applied.stack.id,
+          limit: 5,
+        })
+      ).result.structuredContent,
+    ).toMatchObject({
+      ok: true,
+      data: { items: [{ id: operationId }], page: { nextCursor: null } },
+    });
+    const completionInput = {
+      operationId,
+      credentialHandle: launcherHandle,
+      completion: { outcome: 'succeeded', exitCode: 0 },
+    };
+    expect(
+      (await request('portreeve_launcher_operation_complete', completionInput)).result
+        .structuredContent,
+    ).toMatchObject({
+      ok: true,
+      data: { changed: true, operation: { id: operationId, state: 'terminal' } },
+    });
+    expect(
+      (await request('portreeve_launcher_operation_complete', completionInput)).result
+        .structuredContent,
+    ).toMatchObject({ ok: true, data: { changed: false } });
 
     const lostLease = (
       await request('portreeve_lease_acquire', {
