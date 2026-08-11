@@ -75,7 +75,7 @@ bounded results, and the lack of project shell execution.
 
 ## I-6 - Add CLI and Desktop MCP setup
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 3d
 - **Plan steps:** P6
 - **Rubric criteria:** R3, R8
@@ -88,7 +88,7 @@ copy actions, safe diagnostics, and no third-party configuration writes.
 
 ## I-7 - Complete packaged and real-host verification
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P7
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8

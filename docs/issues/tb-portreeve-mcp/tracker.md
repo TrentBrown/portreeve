@@ -93,7 +93,7 @@ Append PR boundary entries here.
 ### PR #48 - Add MCP host setup guidance
 
 - **PR:** [#48](https://github.com/TrentBrown/portreeve/pull/48)
-- **Status:** in-review
+- **Status:** merged
 - **Scope:** P6 / I-6: strict generic, Codex, and Claude Code setup generation,
   exact and portable executable variants, CLI output, and a bounded Desktop MCP
   tab with compatibility evidence and copy actions.
