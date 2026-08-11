@@ -59,6 +59,8 @@ test('ships static version-bound MCP and CLI guide surfaces', async () => {
   expect(view).toContain("count.setAttribute('aria-live', 'polite')");
   expect(view).toContain("details.className = 'client-reference-entry'");
   expect(view).toContain('target.focus({ preventScroll: true })');
+  expect(view).toContain('navigateAnchor(id)');
+  expect(renderer.match(/restoreSame: true/g)).toHaveLength(5);
   expect(model).toContain("'troubleshooting-and-safety'");
   expect(css).toContain('overflow-x: auto');
   expect(css).toContain('min-width: 420px');
@@ -82,14 +84,22 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(html).toContain('What is PortReeve?');
   expect(html).toContain('<h2 id="guide-title" tabindex="-1">');
   expect(html).not.toContain('Familiar ports:');
-  expect(html).toContain('a civic official');
-  expect(html).toContain('market town—not only a seaport');
-  expect(html).toContain('concurrent agentic development');
-  expect(html).toContain('different Git worktrees on one machine');
-  expect(html).toContain('collisions become frequent');
-  expect(html).toContain('PortReeve coordinates addresses.');
+  expect(html).toContain('Localhost port conflicts, solved.');
+  expect(html).toContain('Hostnames do not by themselves');
+  expect(html).toContain('Modern agentic development multiplies the pressure');
+  expect(html).toContain('several agents may run independent copies');
+  expect(html).toMatch(/different\s+Git worktrees/);
+  expect(html).toContain('A <em>reeve</em> was a person');
+  expect(html).toMatch(/shire reeve, borough reeve,\s+and portreeve/);
+  expect(html).toMatch(/<em>shire reeve<\/em> survives in contracted form/);
+  expect(html).toMatch(/modern word\s+<em>sheriff<\/em>/);
+  expect(html).toMatch(/market town, not only a\s+seaport/);
+  expect(html).toContain('One authority, several peer clients');
+  expect(html).toContain('One supervised PortReeve server');
+  expect(html).toContain('MCP integrations');
+  expect(html).toContain('peers of one another');
   expect(html).toMatch(
-    /Your project tools start, supervise, and evaluate the health of your\s+services\./,
+    /your\s+project tooling remains responsible for\s+starting, supervising,\s+and judging the health of your services\./,
   );
   for (const phrase of [
     'Good',
@@ -113,7 +123,7 @@ test('ships the Guide as static semantic architecture and integration guidance',
     'Confirm',
     'Ownership is not readiness',
     'Choose a client',
-    'Four peers, one PortReeve authority',
+    'Four peer clients, one PortReeve authority',
     'Open MCP guide',
     'Open CLI guide',
     'Complete API guidance:',
@@ -139,10 +149,27 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(html).toContain('Actors in these integration paths');
   expect(html).toContain('Colors identify the same actor wherever it appears.');
   expect(html.match(/class="guide-actor-pill guide-actor-/g)).toHaveLength(20);
+  expect(html.match(/aria-label="You or agent"/g)).toHaveLength(4);
+  expect(html.match(/<span>You or<\/span><span>agent<\/span>/g)).toHaveLength(4);
+  expect(html.match(/aria-label="PortReeve Desktop"/g)).toHaveLength(2);
+  expect(html.match(/<span>PortReeve<\/span><span>Desktop<\/span>/g)).toHaveLength(2);
+  expect(html.match(/aria-label="PortReeve Server"/g)).toHaveLength(4);
+  expect(html.match(/<span>PortReeve<\/span><span>Server<\/span>/g)).toHaveLength(4);
+  expect(html).not.toMatch(/>Developer<\/span>/);
   expect(html).toContain('The person or agent that initiates and observes');
   expect(html).toContain('npm run dev');
-  expect(html).toContain('Shell command');
-  expect(html).toContain('Project tooling');
+  expect(html.match(/Shell command/g)).toHaveLength(2);
+  expect(html.match(/aria-label="Generated launcher"/g)).toHaveLength(2);
+  expect(html.match(/<span>Generated<\/span><span>launcher<\/span>/g)).toHaveLength(2);
+  expect(html).toContain('<dd>Server plus generated launcher</dd>');
+  expect(html).toContain('<dt>Payoff</dt>');
+  expect(html).toContain('<dd>Reusable automation without Desktop</dd>');
+  expect(html.match(/aria-label="Your services"/g)).toHaveLength(4);
+  expect(html.match(/<span>Your<\/span><span>services<\/span>/g)).toHaveLength(4);
+  expect(html.match(/aria-label="Your project tooling"/g)).toHaveLength(2);
+  expect(html.match(/<span>Your project<\/span><span>tooling<\/span>/g)).toHaveLength(
+    2,
+  );
   expect(html).toContain('Inject env + invoke');
   expect(html).toContain('Inject env + start');
   expect(html).toContain('Request ports');
@@ -174,8 +201,18 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(html).not.toMatch(/<script[^>]+(?:mermaid|https?:)/i);
   expect(html).not.toMatch(/<(?:iframe|object|embed)\b/i);
   expect(renderer).not.toMatch(/fetch\(|WebSocket|EventSource/);
-  expect(renderer).toContain('void requestView(tab, view)');
-  expect(renderer).toContain("await requestView(guideTab, 'guide')");
+  expect(html).toContain('id="navigate-back"');
+  expect(html).toContain('id="navigate-forward"');
+  expect(html).toContain('aria-label="Navigation history"');
+  expect(renderer).toContain("from './navigation-history.js'");
+  expect(renderer).toContain('void navigateTo({ view, anchor: null, scrollY: 0 })');
+  expect(renderer).toContain("anchor: 'guide-project-integration'");
+  expect(renderer).toContain('void traverseNavigation(-1)');
+  expect(renderer).toContain('void traverseNavigation(1)');
+  expect(renderer).toContain("event.metaKey && !event.altKey && event.key === '['");
+  expect(renderer).toContain(
+    "event.altKey && !event.metaKey && event.key === 'ArrowLeft'",
+  );
   expect(renderer).toContain("querySelectorAll('[data-guide-view]')");
   expect(renderer).toContain("querySelectorAll('[data-guide-anchor]')");
   expect(renderer).toContain(

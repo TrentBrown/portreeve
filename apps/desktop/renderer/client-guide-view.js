@@ -7,7 +7,7 @@ import {
 } from './client-guide-model.js';
 
 /**
- * @param {{root: HTMLElement, guideId: 'mcp'|'cli', guide: any, copyText(text: string): Promise<unknown>}} options
+ * @param {{root: HTMLElement, guideId: 'mcp'|'cli', guide: any, copyText(text: string): Promise<unknown>, navigateAnchor?(anchor: string): void}} options
  */
 export function createClientGuideView(options) {
   const { root, guideId, guide } = options;
@@ -62,13 +62,24 @@ export function createClientGuideView(options) {
   safety.addEventListener('change', renderResults);
 
   root.replaceChildren(
-    renderSection(sections['start-here'] ?? [], guideId, options.copyText),
-    renderSection(sections['common-workflows'] ?? [], guideId, options.copyText),
+    renderSection(
+      sections['start-here'] ?? [],
+      guideId,
+      options.copyText,
+      options.navigateAnchor,
+    ),
+    renderSection(
+      sections['common-workflows'] ?? [],
+      guideId,
+      options.copyText,
+      options.navigateAnchor,
+    ),
     referenceSection,
     renderSection(
       sections['troubleshooting-and-safety'] ?? [],
       guideId,
       options.copyText,
+      options.navigateAnchor,
     ),
   );
   renderResults();
@@ -87,27 +98,29 @@ export function createClientGuideView(options) {
   });
 }
 
-/** @param {any[]} blocks @param {'mcp'|'cli'} guideId @param {(text: string) => Promise<unknown>} copyText */
-function renderSection(blocks, guideId, copyText) {
+/** @param {any[]} blocks @param {'mcp'|'cli'} guideId @param {(text: string) => Promise<unknown>} copyText @param {((anchor: string) => void)|undefined} navigateAnchor */
+function renderSection(blocks, guideId, copyText, navigateAnchor) {
   const section = document.createElement('section');
   section.className = 'client-guide-section';
-  section.append(...blocks.map((block) => renderBlock(block, guideId, copyText)));
+  section.append(
+    ...blocks.map((block) => renderBlock(block, guideId, copyText, navigateAnchor)),
+  );
   return section;
 }
 
-/** @param {any} block @param {'mcp'|'cli'} guideId @param {(text: string) => Promise<unknown>} copyText */
-function renderBlock(block, guideId, copyText) {
+/** @param {any} block @param {'mcp'|'cli'} guideId @param {(text: string) => Promise<unknown>} copyText @param {((anchor: string) => void)|undefined} navigateAnchor */
+function renderBlock(block, guideId, copyText, navigateAnchor) {
   if (block.type === 'heading') {
     const heading = document.createElement(`h${Math.min(6, block.level)}`);
     heading.id = desktopAnchor(guideId, block.id);
     if (block.level === 2) heading.tabIndex = -1;
-    appendInline(heading, block.inline, guideId);
+    appendInline(heading, block.inline, guideId, navigateAnchor);
     return heading;
   }
   if (block.type === 'paragraph' || block.type === 'callout') {
     const paragraph = document.createElement('p');
     if (block.type === 'callout') paragraph.className = 'client-guide-callout';
-    appendInline(paragraph, block.inline, guideId);
+    appendInline(paragraph, block.inline, guideId, navigateAnchor);
     return paragraph;
   }
   if (block.type === 'code') return codeBlock(block.text, block.language, copyText);
@@ -116,7 +129,7 @@ function renderBlock(block, guideId, copyText) {
     const list = document.createElement(block.ordered ? 'ol' : 'ul');
     for (const item of block.items) {
       const element = document.createElement('li');
-      appendInline(element, item, guideId);
+      appendInline(element, item, guideId, navigateAnchor);
       list.append(element);
     }
     return list;
@@ -129,7 +142,7 @@ function renderBlock(block, guideId, copyText) {
     const headRow = document.createElement('tr');
     for (const value of block.header) {
       const cell = document.createElement('th');
-      appendInline(cell, value, guideId);
+      appendInline(cell, value, guideId, navigateAnchor);
       headRow.append(cell);
     }
     head.append(headRow);
@@ -138,7 +151,7 @@ function renderBlock(block, guideId, copyText) {
       const row = document.createElement('tr');
       for (const value of values) {
         const cell = document.createElement('td');
-        appendInline(cell, value, guideId);
+        appendInline(cell, value, guideId, navigateAnchor);
         row.append(cell);
       }
       body.append(row);
@@ -150,8 +163,8 @@ function renderBlock(block, guideId, copyText) {
   throw new Error(`Unsupported compiled guide block ${block.type}.`);
 }
 
-/** @param {HTMLElement} parent @param {any[]} inline @param {'mcp'|'cli'} guideId */
-function appendInline(parent, inline, guideId) {
+/** @param {HTMLElement} parent @param {any[]} inline @param {'mcp'|'cli'} guideId @param {((anchor: string) => void)|undefined} navigateAnchor */
+function appendInline(parent, inline, guideId, navigateAnchor) {
   for (const node of inline) {
     if (node.type === 'text') parent.append(document.createTextNode(node.text));
     else if (node.type === 'code') {
@@ -177,6 +190,10 @@ function appendInline(parent, inline, guideId) {
       link.textContent = linkLabel(node.text);
       link.addEventListener('click', (event) => {
         event.preventDefault();
+        if (navigateAnchor !== undefined) {
+          navigateAnchor(id);
+          return;
+        }
         const target = document.getElementById(id);
         if (target instanceof HTMLDetailsElement) target.open = true;
         target?.scrollIntoView({ block: 'start' });

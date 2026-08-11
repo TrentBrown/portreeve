@@ -12,6 +12,10 @@ import { createStackEditorView } from './stack-editor-view.js';
 import { createLauncherView } from './launcher-view.js';
 import { createClientGuideView } from './client-guide-view.js';
 import { clientInstallationEvidence } from './client-guide-model.js';
+import {
+  createNavigationHistory,
+  sameNavigationDestination,
+} from './navigation-history.js';
 import clientGuides from './generated/client-guides.js';
 
 /** @type {any} */
@@ -25,6 +29,12 @@ let selectedStack = null;
 let renderedStacksSignature = null;
 let busy = false;
 let activeView = 'overview';
+let navigationBusy = false;
+const navigationHistory = createNavigationHistory({
+  view: 'overview',
+  anchor: null,
+  scrollY: 0,
+});
 /** @type {any|null} */
 let mcpSetup = null;
 const clientGuideBundle = /** @type {any} */ (clientGuides);
@@ -63,6 +73,12 @@ const launcherList = requiredElement('launcher-list');
 const launcherDetail = requiredElement('launcher-detail');
 const mcpGuideRoot = requiredElement('mcp-guide-content');
 const cliGuideRoot = requiredElement('cli-guide-content');
+const navigateBack = /** @type {HTMLButtonElement} */ (
+  requiredElement('navigate-back')
+);
+const navigateForward = /** @type {HTMLButtonElement} */ (
+  requiredElement('navigate-forward')
+);
 const filterInput = /** @type {HTMLInputElement} */ (requiredElement('port-filter'));
 const confirmationDialog = /** @type {HTMLDialogElement} */ (
   requiredElement('confirmation-dialog')
@@ -103,12 +119,24 @@ createClientGuideView({
   guideId: 'mcp',
   guide: clientGuideBundle.guides.mcp,
   copyText: (text) => window.portreeveDesktop.copyText(text),
+  navigateAnchor: (anchor) => {
+    void navigateTo(
+      { view: 'mcp', anchor, scrollY: 0 },
+      { focusAnchor: true, restoreSame: true },
+    );
+  },
 });
 createClientGuideView({
   root: cliGuideRoot,
   guideId: 'cli',
   guide: clientGuideBundle.guides.cli,
   copyText: (text) => window.portreeveDesktop.copyText(text),
+  navigateAnchor: (anchor) => {
+    void navigateTo(
+      { view: 'cli', anchor, scrollY: 0 },
+      { focusAnchor: true, restoreSame: true },
+    );
+  },
 });
 
 const stackEditor = createStackEditorView({
@@ -168,9 +196,13 @@ const launcherView = createLauncherView({
   },
   onOperation: showOperation,
   onOpenStack: (stackId) => {
-    selectedStack = stackId;
-    activateNamedTab('stacks');
-    void stackEditor.openKnown(stackId);
+    void navigateTo({ view: 'stacks', anchor: null, scrollY: 0 }).then(
+      async (navigated) => {
+        if (!navigated) return;
+        selectedStack = stackId;
+        await stackEditor.openKnown(stackId);
+      },
+    );
   },
 });
 
@@ -205,7 +237,8 @@ const actionDefinitions = Object.freeze({
 for (const tab of document.querySelectorAll('.tab')) {
   tab.addEventListener('click', () => {
     const view = /** @type {HTMLElement} */ (tab).dataset.view;
-    void requestView(tab, view);
+    if (view === undefined) return;
+    void navigateTo({ view, anchor: null, scrollY: 0 });
   });
 }
 
@@ -213,9 +246,7 @@ for (const link of document.querySelectorAll('[data-guide-view]')) {
   link.addEventListener('click', () => {
     const view = /** @type {HTMLElement} */ (link).dataset.guideView;
     if (view === undefined) return;
-    const tab = document.querySelector(`.tab[data-view="${view}"]`);
-    if (tab === null) throw new Error(`Missing ${view} tab.`);
-    void requestView(tab, view);
+    void navigateTo({ view, anchor: null, scrollY: 0 });
   });
 }
 
@@ -223,23 +254,52 @@ for (const link of document.querySelectorAll('[data-guide-anchor]')) {
   link.addEventListener('click', () => {
     const anchor = /** @type {HTMLElement} */ (link).dataset.guideAnchor;
     if (anchor === undefined) return;
-    requiredElement(anchor).scrollIntoView({ block: 'start' });
+    void navigateTo({ view: 'guide', anchor, scrollY: 0 }, { restoreSame: true });
   });
 }
 
 requiredElement('open-guide').addEventListener('click', async () => {
-  const guideTab = document.querySelector('.tab[data-view="guide"]');
-  if (guideTab === null) throw new Error('Missing guide tab.');
-  if (!(await requestView(guideTab, 'guide'))) return;
+  if (
+    !(await navigateTo(
+      { view: 'guide', anchor: null, scrollY: 0 },
+      { restoreSame: true },
+    ))
+  ) {
+    return;
+  }
   requiredElement('guide-title').focus({ preventScroll: true });
-  window.scrollTo({ top: 0, left: 0 });
 });
 
 requiredElement('open-guide-integration').addEventListener('click', async () => {
-  const guideTab = document.querySelector('.tab[data-view="guide"]');
-  if (guideTab === null) throw new Error('Missing guide tab.');
-  if (!(await requestView(guideTab, 'guide'))) return;
-  requiredElement('guide-project-integration').scrollIntoView({ block: 'start' });
+  await navigateTo(
+    {
+      view: 'guide',
+      anchor: 'guide-project-integration',
+      scrollY: 0,
+    },
+    { restoreSame: true },
+  );
+});
+
+navigateBack.addEventListener('click', () => void traverseNavigation(-1));
+navigateForward.addEventListener('click', () => void traverseNavigation(1));
+window.addEventListener('keydown', (event) => {
+  if (event.defaultPrevented || document.querySelector('dialog[open]') !== null) return;
+  const target = event.target;
+  const editing =
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    (target instanceof HTMLElement && target.isContentEditable);
+  const commandBack = event.metaKey && !event.altKey && event.key === '[';
+  const commandForward = event.metaKey && !event.altKey && event.key === ']';
+  const altBack =
+    !editing && event.altKey && !event.metaKey && event.key === 'ArrowLeft';
+  const altForward =
+    !editing && event.altKey && !event.metaKey && event.key === 'ArrowRight';
+  if (!commandBack && !commandForward && !altBack && !altForward) return;
+  event.preventDefault();
+  void traverseNavigation(commandBack || altBack ? -1 : 1);
 });
 
 requiredElement('mcp-setup-form').addEventListener('input', () => {
@@ -1075,14 +1135,104 @@ function activateTab(tab, view) {
 }
 
 /** @param {string} view */
-function activateNamedTab(view) {
+function tabForView(view) {
   const tab = document.querySelector(`.tab[data-view="${view}"]`);
   if (tab === null) throw new Error(`Missing ${view} tab.`);
-  activateTab(tab, view);
+  return tab;
 }
 
-/** @param {Element} tab @param {string|undefined} view */
-async function requestView(tab, view) {
+/**
+ * @param {{view: string, anchor: string|null, scrollY: number}} destination
+ * @param {{focusAnchor?: boolean, launcherStackId?: string|null, restoreSame?: boolean}} [options]
+ */
+async function navigateTo(destination, options = {}) {
+  if (navigationBusy) return false;
+  const current = navigationHistory.current();
+  navigationHistory.replaceCurrent({ ...current, scrollY: window.scrollY });
+  if (sameNavigationDestination(current, destination)) {
+    if (options.restoreSame === true) {
+      await restoreNavigationLocation(destination, options.focusAnchor === true);
+      navigationHistory.replaceCurrent({
+        ...destination,
+        scrollY: window.scrollY,
+      });
+    }
+    return true;
+  }
+
+  navigationBusy = true;
+  updateNavigationControls();
+  try {
+    if (
+      destination.view !== activeView &&
+      !(await requestView(tabForView(destination.view), destination.view, options))
+    ) {
+      return false;
+    }
+    await restoreNavigationLocation(destination, options.focusAnchor === true);
+    navigationHistory.push({ ...destination, scrollY: window.scrollY });
+    return true;
+  } finally {
+    navigationBusy = false;
+    updateNavigationControls();
+  }
+}
+
+/** @param {-1|1} delta */
+async function traverseNavigation(delta) {
+  if (navigationBusy) return false;
+  const current = navigationHistory.current();
+  navigationHistory.replaceCurrent({ ...current, scrollY: window.scrollY });
+  const target = navigationHistory.target(delta);
+  if (target === null) {
+    updateNavigationControls();
+    return false;
+  }
+
+  navigationBusy = true;
+  updateNavigationControls();
+  try {
+    if (
+      target.view !== activeView &&
+      !(await requestView(tabForView(target.view), target.view))
+    ) {
+      return false;
+    }
+    navigationHistory.move(delta);
+    await restoreNavigationLocation(target, false);
+    return true;
+  } finally {
+    navigationBusy = false;
+    updateNavigationControls();
+  }
+}
+
+/** @param {{view: string, anchor: string|null, scrollY: number}} location @param {boolean} focusAnchor */
+async function restoreNavigationLocation(location, focusAnchor) {
+  await new Promise((resolve) => window.requestAnimationFrame(resolve));
+  if (location.anchor === null) {
+    window.scrollTo({ top: location.scrollY, left: 0 });
+    return;
+  }
+  const target = document.getElementById(location.anchor);
+  if (target === null) {
+    window.scrollTo({ top: location.scrollY, left: 0 });
+    return;
+  }
+  if (target instanceof HTMLDetailsElement) target.open = true;
+  target.scrollIntoView({ block: 'start' });
+  if (focusAnchor && target.hasAttribute('tabindex')) {
+    target.focus({ preventScroll: true });
+  }
+}
+
+function updateNavigationControls() {
+  navigateBack.disabled = navigationBusy || busy || !navigationHistory.canMove(-1);
+  navigateForward.disabled = navigationBusy || busy || !navigationHistory.canMove(1);
+}
+
+/** @param {Element} tab @param {string|undefined} view @param {{launcherStackId?: string|null}} [options] */
+async function requestView(tab, view, options = {}) {
   if (view !== 'stacks' && stackEditor.isOpen()) {
     if (!(await stackEditor.requestClose())) return false;
   }
@@ -1090,7 +1240,7 @@ async function requestView(tab, view) {
     if (!(await launcherView.requestClose())) return false;
   }
   activateTab(tab, view);
-  if (view === 'launcher') await launcherView.open();
+  if (view === 'launcher') await launcherView.open(options.launcherStackId ?? null);
   if (view === 'mcp') await renderMcpSetup();
   return true;
 }
@@ -1196,9 +1346,11 @@ async function copyMcpText(value, success) {
 }
 
 /** @param {string} stackId */
-function openLauncherFromStack(stackId) {
-  activateNamedTab('launcher');
-  void launcherView.open(stackId);
+async function openLauncherFromStack(stackId) {
+  await navigateTo(
+    { view: 'launcher', anchor: null, scrollY: 0 },
+    { launcherStackId: stackId },
+  );
 }
 
 /** @param {string} reason */
@@ -1257,6 +1409,7 @@ function setControlsDisabled(disabled) {
     if (control.closest('dialog')) continue;
     /** @type {HTMLButtonElement|HTMLInputElement} */ (control).disabled = disabled;
   }
+  if (!disabled) updateNavigationControls();
 }
 
 /** @param {string} message @param {string[]} details @param {any} [diagnostic] */

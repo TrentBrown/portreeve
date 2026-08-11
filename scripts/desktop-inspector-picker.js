@@ -6,6 +6,12 @@
  * function must remain self-contained because Playwright serializes it into the page.
  */
 export function installDesktopInspectorPicker() {
+  if (document.documentElement === null) {
+    document.addEventListener('DOMContentLoaded', installDesktopInspectorPicker, {
+      once: true,
+    });
+    return;
+  }
   const inspectorWindow = /** @type {Window & {
     __portreeveInspectorInstalled?: boolean,
     __portreeveInspectorSelection?: unknown,

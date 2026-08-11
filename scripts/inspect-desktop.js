@@ -176,6 +176,8 @@ async function runCommand(line) {
       return;
     case 'reload':
       await page.reload();
+      await page.evaluate(installDesktopInspectorPicker);
+      await rm(selectionPath, { force: true });
       console.log(`Reloaded ${page.url()}`);
       return;
     case 'help':
