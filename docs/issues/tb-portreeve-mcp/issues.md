@@ -9,12 +9,12 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Establish MCP protocol and client foundations
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 3d
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R2, R3, R5, R6, R7
 - **Depends on:** none
-- **PR:** -
+- **PR:** [#43](https://github.com/TrentBrown/portreeve/pull/43)
 
 Freeze the operation-specific tool catalog and implement the protocol, storage,
 receipt, cursor, attribution, idempotency, and official-client foundations that

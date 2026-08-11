@@ -3,3 +3,54 @@
 **Feature start:** 2026-08-10
 
 Permanent record of decisions promoted from `scratchpad.md`.
+
+---
+
+## Pin the official MCP TypeScript SDK v2
+
+**Confidence:** HIGH
+
+**Blast Radius:** runtime dependency, packaged executable, MCP bridge implementation
+
+Add @modelcontextprotocol/server at exact version 2.0.0 as a direct runtime dependency. Isolate SDK usage beneath src/mcp and use its stdio server support so PortReeve implements the modern stateless core while retaining the SDK's maintained legacy stdio compatibility. The existing PortReeve HTTP/JSON socket remains the only daemon API used by the bridge.
+
+**Triggered by:** dependency change and public integration boundary
+
+**Alternatives considered:**
+Implement MCP framing and compatibility ourselves; use an older SDK generation; defer the dependency until bridge registration.
+
+**Promoted:** 2026-08-10. PR: #43 https://github.com/TrentBrown/portreeve/pull/43.
+
+---
+
+## Keep consequential action receipts daemon-authoritative
+
+**Confidence:** HIGH
+
+**Blast Radius:** SQLite schema, public protocol, mutation replay and safety semantics
+
+Persist generic action receipts and completed outcomes in the PortReeve daemon registry. Preview binds a receipt to a canonical action, explicit target, evidence fingerprint, and short expiry; execute performs fresh validation and records a replayable terminal outcome. The MCP bridge carries receipt identifiers but does not become the authority for evidence freshness or lost-response recovery.
+
+**Triggered by:** schema change and safety-critical public protocol
+
+**Alternatives considered:**
+Keep receipts in each stdio bridge process; expose raw preview evidence and let clients resubmit it; rely only on MCP request IDs.
+
+**Promoted:** 2026-08-10. PR: #43 https://github.com/TrentBrown/portreeve/pull/43.
+
+---
+
+## Use opaque cursor pages and diagnostic operation origins
+
+**Confidence:** HIGH
+
+**Blast Radius:** public protocol schemas, JavaScript client, history storage and future MCP collections
+
+Introduce a reusable versioned opaque base64url cursor format whose payload contains only a stable ordering key and identifier; cursors are continuation markers, never authority. Add optional structured operation origin metadata to client compatibility envelopes and persisted history. Origin identifies MCP, CLI, desktop, or library callers for diagnostics only and never grants permission or affects target selection.
+
+**Triggered by:** public protocol and persistence schema change
+
+**Alternatives considered:**
+Return unbounded arrays; use numeric offsets; infer caller identity from process details; place origin only inside bridge-local logs.
+
+**Promoted:** 2026-08-10. PR: #43 https://github.com/TrentBrown/portreeve/pull/43.

@@ -8,7 +8,7 @@ entries are appended to `decisions.md`.
 
 ## [1] Pin the official MCP TypeScript SDK v2
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -23,7 +23,7 @@ Implement MCP framing and compatibility ourselves; use an older SDK generation; 
 
 ## [2] Keep consequential action receipts daemon-authoritative
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -38,7 +38,7 @@ Keep receipts in each stdio bridge process; expose raw preview evidence and let 
 
 ## [3] Use opaque cursor pages and diagnostic operation origins
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
