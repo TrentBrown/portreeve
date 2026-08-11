@@ -3,7 +3,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from 'bun:test';
 
-test('presents the five primary views with plural collection naming', async () => {
+test('presents the six primary views with plural collection naming', async () => {
   const [html, renderer] = await Promise.all([
     readFile('apps/desktop/renderer/index.html', 'utf8'),
     readFile('apps/desktop/renderer/renderer.js', 'utf8'),
@@ -14,6 +14,7 @@ test('presents the five primary views with plural collection naming', async () =
     ['ports', 'Ports'],
     ['stacks', 'Stacks'],
     ['launcher', 'Launchers'],
+    ['mcp', 'MCP'],
     ['guide', 'Guide'],
   ];
   let previousIndex = -1;
@@ -27,6 +28,7 @@ test('presents the five primary views with plural collection naming', async () =
   expect(html).toContain('<h3>Launcher details</h3>');
   expect(renderer).toContain("actionButton('Open in Launchers'");
   expect(renderer).toContain("requiredElement('guide').hidden = view !== 'guide'");
+  expect(renderer).toContain("requiredElement('mcp').hidden = view !== 'mcp'");
   expect(renderer).toContain("runtimeStatus.hidden = view === 'guide'");
   expect(
     renderer.match(/if \(view !== 'stacks' && stackEditor\.isOpen\(\)\)/g),

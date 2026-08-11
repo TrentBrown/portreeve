@@ -22,6 +22,7 @@ import { createDesktopLifecycleController } from './lifecycle-controller.js';
 import { createStateCoordinator } from './coordinator.js';
 import { createInventoryAdapter } from './inventory-adapter.js';
 import { createLauncherAdapter } from './launcher-adapter.js';
+import { createMcpSetupAdapter } from './mcp-setup-adapter.js';
 import { createStackAdapter } from './stack-adapter.js';
 import { createStackDocumentService } from './stack-document.js';
 import { registerDesktopIpc } from './ipc.js';
@@ -29,6 +30,7 @@ import { registerRendererProtocol } from './protocol.js';
 import { createUpdateAdapter } from './update.js';
 import { desktopUpdateStatePath, desktopUserDataPath } from './user-data.js';
 import { createLauncherRuntime } from '../../../src/launcher/runtime.js';
+import { resolveRuntimePaths } from '../../../src/platform/paths.js';
 import { IPC_CHANNELS } from '../shared/schemas.js';
 import {
   bindApplicationCloseGuard,
@@ -176,6 +178,9 @@ async function startDesktop() {
     coordinator,
     windows: () => BrowserWindow.getAllWindows(),
     writeClipboard: (text) => clipboard.writeText(text),
+    mcpSetup: createMcpSetupAdapter({
+      exactExecutablePath: resolveRuntimePaths().managedExecutablePath,
+    }),
   });
 
   const window = new BrowserWindow(

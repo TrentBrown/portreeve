@@ -53,7 +53,7 @@ describe('PortReeve CLI', () => {
       'logs',
     ]);
     const mcp = program.commands.find((command) => command.name() === 'mcp');
-    expect(mcp?.commands.map((command) => command.name())).toEqual(['serve']);
+    expect(mcp?.commands.map((command) => command.name())).toEqual(['serve', 'setup']);
     const claims = program.commands.find((command) => command.name() === 'claims');
     expect(claims?.commands.map((command) => command.name())).toEqual([
       'list',

@@ -62,7 +62,7 @@ safety while retaining external-edit protection and excluding unsafe eviction.
 
 ## I-5 - Complete and audit the MCP tool catalog
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P5
 - **Rubric criteria:** R2, R5, R7
@@ -75,12 +75,12 @@ bounded results, and the lack of project shell execution.
 
 ## I-6 - Add CLI and Desktop MCP setup
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 3d
 - **Plan steps:** P6
 - **Rubric criteria:** R3, R8
 - **Depends on:** I-2, I-5
-- **PR:** -
+- **PR:** [#48](https://github.com/TrentBrown/portreeve/pull/48)
 
 Generate generic, Codex, and Claude Code setup from the CLI and add the Desktop
 MCP tab with strict trusted boundaries, exact/portable executable variants,

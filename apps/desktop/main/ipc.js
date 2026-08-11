@@ -19,6 +19,8 @@ import {
   DesktopLauncherSnapshotSchema,
   DesktopLauncherStackRequestSchema,
   DesktopLauncherTerminationResultSchema,
+  DesktopMcpSetupRequestSchema,
+  DesktopMcpSetupResultSchema,
   DesktopOpenDownloadResultSchema,
   DesktopPurgeExecutionRequestSchema,
   DesktopPurgePreviewSchema,
@@ -76,6 +78,7 @@ export function isTrustedRenderer(event) {
  *   },
  *   windows: () => Electron.BrowserWindow[]
  *   writeClipboard?: (text: string) => void
+ *   mcpSetup?: {generate(request: unknown): unknown}
  * }} options
  */
 export function registerDesktopIpc(options) {
@@ -178,6 +181,14 @@ export function registerDesktopIpc(options) {
     }
     options.writeClipboard(text);
     return DesktopCopyTextResultSchema.parse({ schemaVersion: 1, copied: true });
+  });
+  options.ipcMain.handle(IPC_CHANNELS.generateMcpSetup, async (event, request) => {
+    requireTrusted(event);
+    const input = DesktopMcpSetupRequestSchema.parse(request);
+    if (options.mcpSetup === undefined) {
+      throw new Error('MCP setup generation is unavailable in this Desktop build.');
+    }
+    return DesktopMcpSetupResultSchema.parse(options.mcpSetup.generate(input));
   });
   options.ipcMain.handle(
     IPC_CHANNELS.applyStackDefinition,

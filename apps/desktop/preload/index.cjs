@@ -41,7 +41,44 @@ const channels = Object.freeze({
   lifecycleActivityChanged: 'portreeve:desktop:lifecycle-activity-changed',
   applicationCloseBlocked: 'portreeve:desktop:application-close-blocked',
   copyText: 'portreeve:desktop:copy-text',
+  generateMcpSetup: 'portreeve:desktop:generate-mcp-setup',
 });
+
+function requireMcpSetup(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !hasExactKeys(value, [
+      'schemaVersion',
+      'host',
+      'hostLabel',
+      'executableMode',
+      'command',
+      'args',
+      'clientLabel',
+      'configurationLanguage',
+      'configuration',
+      'setupCommand',
+      'notes',
+    ]) ||
+    value.schemaVersion !== 1 ||
+    !['generic', 'codex', 'claude-code'].includes(value.host) ||
+    typeof value.hostLabel !== 'string' ||
+    !['exact', 'portable'].includes(value.executableMode) ||
+    typeof value.command !== 'string' ||
+    !Array.isArray(value.args) ||
+    !value.args.every((entry) => typeof entry === 'string') ||
+    typeof value.clientLabel !== 'string' ||
+    !['json', 'toml'].includes(value.configurationLanguage) ||
+    typeof value.configuration !== 'string' ||
+    !(value.setupCommand === null || typeof value.setupCommand === 'string') ||
+    !Array.isArray(value.notes) ||
+    !value.notes.every((entry) => typeof entry === 'string')
+  ) {
+    throw new Error('The main process returned invalid MCP setup.');
+  }
+  return value;
+}
 
 function requireSnapshot(value) {
   if (
@@ -633,6 +670,14 @@ contextBridge.exposeInMainWorld(
       ),
     copyText: async (text) =>
       requireCopyTextResult(await ipcRenderer.invoke(channels.copyText, { text })),
+    generateMcpSetup: async (host, portable, label) =>
+      requireMcpSetup(
+        await ipcRenderer.invoke(channels.generateMcpSetup, {
+          host,
+          portable,
+          ...(label === '' ? {} : { label }),
+        }),
+      ),
     subscribe(callback) {
       if (typeof callback !== 'function') {
         throw new TypeError('Snapshot subscriber must be a function.');

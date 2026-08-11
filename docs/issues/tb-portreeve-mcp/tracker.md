@@ -11,12 +11,12 @@
 | --- | --- | --- | --- | --- |
 | R1 | Transport and single authority | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44) | P2 delivers dual-era stdio through the official socket client with stdout framing; packaged proof remains P7. |
 | R2 | Complete typed tool surface | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44), [#46](https://github.com/TrentBrown/portreeve/pull/46), [#47](https://github.com/TrentBrown/portreeve/pull/47) | P5 completes all 51 strict tools and proves excluded authority absent in source and live discovery; final packaged P7 audit remains. |
-| R3 | Availability and explicit scope | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44) | P2 proves absence, incompatibility, live retry, filters, explicit identifiers, and diagnostic-only labels; setup remains P6/P7. |
+| R3 | Availability and explicit scope | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44), [#48](https://github.com/TrentBrown/portreeve/pull/48) | P6 adds explicit setup scope, diagnostic-only labels, and daemon compatibility guidance; final packaged and real-host proof remains P7. |
 | R4 | Credential custody | NOT YET | [#45](https://github.com/TrentBrown/portreeve/pull/45), [#47](https://github.com/TrentBrown/portreeve/pull/47) | Lease and launcher credentials now have process-local opaque handles, bounded renewal/extension, settlement erasure, and bridge isolation; final cross-surface leakage and packaged proof remain P7. |
 | R5 | Lifecycle and idempotency | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#45](https://github.com/TrentBrown/portreeve/pull/45), [#47](https://github.com/TrentBrown/portreeve/pull/47) | P5 completes source lifecycle coverage with Docker snapshots and launcher begin/renew/complete/inspection/replay; final concurrent packaged host proof remains P7. |
 | R6 | Consequential mutation safety | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#46](https://github.com/TrentBrown/portreeve/pull/46) | P4 routes all seven consequential families through five-minute evidence-bound receipts with stale refusal and replay; final real-host evidence-change proof remains P7. |
 | R7 | Safe documents and observability | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44), [#46](https://github.com/TrentBrown/portreeve/pull/46), [#47](https://github.com/TrentBrown/portreeve/pull/47) | Canonical documents, cursored history, redacted snapshots, and bounded launcher history now pass; final packaged host proof remains P7. |
-| R8 | Setup and shipped compatibility | NOT YET | - | Planned across P6 and P7 / I-6 and I-7. |
+| R8 | Setup and shipped compatibility | NOT YET | [#48](https://github.com/TrentBrown/portreeve/pull/48) | P6 generates strict generic, Codex, and Claude Code setup through CLI and Desktop without third-party writes; shipped compatibility remains P7. |
 
 ## PR Log
 
@@ -79,7 +79,7 @@ Append PR boundary entries here.
 ### PR #47 - Complete the MCP coordination catalog
 
 - **PR:** [#47](https://github.com/TrentBrown/portreeve/pull/47)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P5 / I-5: redacted Docker-sandbox snapshots, launcher-operation
   begin/renew/complete/get/list with bridge-local custody, and complete catalog
   and excluded-authority auditing.
@@ -89,3 +89,18 @@ Append PR boundary entries here.
   filesystem writes, or project command execution. All 457 repository tests, the
   standalone build, typecheck, lint, and changed-file formatting pass. Judge:
   PASS. Code review: no remaining findings.
+
+### PR #48 - Add MCP host setup guidance
+
+- **PR:** [#48](https://github.com/TrentBrown/portreeve/pull/48)
+- **Status:** in-review
+- **Scope:** P6 / I-6: strict generic, Codex, and Claude Code setup generation,
+  exact and portable executable variants, CLI output, and a bounded Desktop MCP
+  tab with compatibility evidence and copy actions.
+- **Evidence packet:** [pr-48](pr-48/)
+- **Result:** Slice verdict PASS. CLI and Desktop generate strict generic,
+  Codex, and Claude Code setup with exact and portable variants, diagnostic
+  labels, daemon compatibility, copy actions, and no host-setting writes. The
+  full repository test suite, standalone build, typecheck, lint, and
+  changed-file formatting pass. Judge: PASS. Code review: no remaining
+  findings.

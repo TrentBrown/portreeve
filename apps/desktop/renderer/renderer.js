@@ -22,6 +22,8 @@ let selectedStack = null;
 let renderedStacksSignature = null;
 let busy = false;
 let activeView = 'overview';
+/** @type {any|null} */
+let mcpSetup = null;
 
 const notice = requiredElement('notice');
 const activeLifecycleOperation = requiredElement('active-lifecycle-operation');
@@ -196,6 +198,25 @@ requiredElement('open-guide').addEventListener('click', async () => {
   window.scrollTo({ top: 0, left: 0 });
 });
 
+requiredElement('open-guide-integration').addEventListener('click', async () => {
+  const guideTab = document.querySelector('.tab[data-view="guide"]');
+  if (guideTab === null) throw new Error('Missing guide tab.');
+  if (!(await requestView(guideTab, 'guide'))) return;
+  requiredElement('guide-project-integration').scrollIntoView({ block: 'start' });
+});
+
+requiredElement('mcp-setup-form').addEventListener('input', () => {
+  void renderMcpSetup();
+});
+requiredElement('copy-mcp-config').addEventListener('click', async () => {
+  if (mcpSetup === null) return;
+  await copyMcpText(mcpSetup.configuration, 'Configuration copied.');
+});
+requiredElement('copy-mcp-command').addEventListener('click', async () => {
+  if (mcpSetup?.setupCommand === null || mcpSetup === null) return;
+  await copyMcpText(mcpSetup.setupCommand, 'Registration command copied.');
+});
+
 let closeAfterDiscard = false;
 let closePromptOpen = false;
 window.addEventListener('beforeunload', (event) => {
@@ -352,6 +373,7 @@ function render(next) {
   renderPorts();
   renderStacks();
   launcherView.setStacks(next.stacks);
+  renderMcpCompatibility(next);
   if (busy) setControlsDisabled(true);
 }
 
@@ -1004,6 +1026,7 @@ function activateTab(tab, view) {
   requiredElement('ports').hidden = view !== 'ports';
   requiredElement('stacks').hidden = view !== 'stacks';
   requiredElement('launcher').hidden = view !== 'launcher';
+  requiredElement('mcp').hidden = view !== 'mcp';
   requiredElement('guide').hidden = view !== 'guide';
   runtimeStatus.hidden = view === 'guide';
 }
@@ -1025,7 +1048,81 @@ async function requestView(tab, view) {
   }
   activateTab(tab, view);
   if (view === 'launcher') await launcherView.open();
+  if (view === 'mcp') await renderMcpSetup();
   return true;
+}
+
+/** @param {any} next */
+function renderMcpCompatibility(next) {
+  const socket = next.lifecycle?.socket;
+  const state = socket?.state ?? 'unavailable';
+  requiredElement('mcp-daemon-status').textContent =
+    state === 'healthy' ? 'Compatible' : state;
+  requiredElement('mcp-daemon-detail').textContent =
+    state === 'healthy'
+      ? `Server ${socket.serverVersion ?? 'version unknown'} is reachable.`
+      : state === 'incompatible'
+        ? `Server ${socket.serverVersion ?? 'version unknown'} uses an incompatible PortReeve protocol.`
+        : 'The setup is still copyable; start or repair the daemon before calling tools.';
+}
+
+async function renderMcpSetup() {
+  const host = /** @type {HTMLSelectElement} */ (requiredElement('mcp-host')).value;
+  const label = /** @type {HTMLInputElement} */ (
+    requiredElement('mcp-client-label')
+  ).value.trim();
+  const selected = /** @type {HTMLInputElement|null} */ (
+    document.querySelector('input[name="executable"]:checked')
+  );
+  const portable = selected?.value === 'portable';
+  const summary = requiredElement('mcp-preview-summary');
+  const failure = /** @type {HTMLDetailsElement} */ (requiredElement('mcp-failure'));
+  const copyConfiguration = /** @type {HTMLButtonElement} */ (
+    requiredElement('copy-mcp-config')
+  );
+  summary.textContent = 'Generating setup…';
+  copyConfiguration.disabled = true;
+  try {
+    const result = await window.portreeveDesktop.generateMcpSetup(
+      /** @type {'generic'|'codex'|'claude-code'} */ (host),
+      portable,
+      label,
+    );
+    mcpSetup = result;
+    requiredElement('mcp-configuration').textContent = result.configuration;
+    requiredElement('mcp-setup-command').textContent = result.setupCommand ?? '';
+    requiredElement('mcp-command-block').hidden = result.setupCommand === null;
+    requiredElement('mcp-notes').replaceChildren(
+      ...result.notes.map((/** @type {string} */ note) => {
+        const item = document.createElement('li');
+        item.textContent = note;
+        return item;
+      }),
+    );
+    summary.textContent = `${result.hostLabel}; ${result.executableMode} executable; label ${result.clientLabel}.`;
+    failure.hidden = true;
+    copyConfiguration.disabled = false;
+  } catch (error) {
+    mcpSetup = null;
+    requiredElement('mcp-configuration').textContent = '';
+    requiredElement('mcp-command-block').hidden = true;
+    requiredElement('mcp-notes').replaceChildren();
+    summary.textContent = 'MCP setup could not be generated.';
+    requiredElement('mcp-failure-detail').textContent = safeErrorMessage(error);
+    failure.hidden = false;
+  }
+}
+
+/** @param {string} value @param {string} success */
+async function copyMcpText(value, success) {
+  try {
+    await window.portreeveDesktop.copyText(value);
+    requiredElement('mcp-preview-summary').textContent = success;
+  } catch (error) {
+    requiredElement('mcp-preview-summary').textContent = 'Clipboard copy failed.';
+    requiredElement('mcp-failure-detail').textContent = safeErrorMessage(error);
+    requiredElement('mcp-failure').hidden = false;
+  }
 }
 
 /** @param {string} stackId */
@@ -1180,4 +1277,11 @@ function requiredElement(id) {
   const element = document.getElementById(id);
   if (element === null) throw new Error(`Missing renderer element ${id}.`);
   return element;
+}
+
+/** @param {unknown} error */
+function safeErrorMessage(error) {
+  return error instanceof Error && error.message.trim() !== ''
+    ? error.message
+    : String(error);
 }

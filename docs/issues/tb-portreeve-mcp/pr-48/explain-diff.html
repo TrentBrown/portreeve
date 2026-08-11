@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #48 — MCP host setup</title>
+    <style>
+      :root { color-scheme: light; --ink:#163044; --muted:#60717c; --paper:#f7f3eb; --card:#fffdf8; --line:#ccd5d1; --green:#dcece3; --blue:#dce8f3; --gold:#f3e7c6; --accent:#176147; }
+      * { box-sizing: border-box; }
+      body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.6 system-ui,sans-serif; }
+      header,main { max-width:1050px; margin:auto; padding:28px; }
+      header { padding-top:58px; }
+      h1,h2,h3 { line-height:1.15; font-family:Georgia,serif; }
+      h1 { font-size:clamp(2.3rem,6vw,4.6rem); margin:.2rem 0 1rem; }
+      h2 { margin-top:3rem; font-size:2rem; }
+      .eyebrow { color:var(--accent); text-transform:uppercase; letter-spacing:.13em; font-weight:750; }
+      .lede { max-width:760px; font-size:1.18rem; }
+      nav,.callout,.card,.quiz { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; box-shadow:0 10px 28px #16304410; }
+      nav a { margin-right:18px; color:var(--accent); }
+      code,pre { font-family:ui-monospace,SFMono-Regular,monospace; }
+      pre { white-space:pre-wrap; overflow-wrap:anywhere; background:#102b3a; color:#f6f1e7; padding:16px; border-radius:12px; }
+      .flow { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:22px 0; }
+      .node { border:1px solid var(--line); border-radius:14px; padding:16px; text-align:center; position:relative; }
+      .node:not(:last-child)::after { content:"→"; position:absolute; right:-19px; top:40%; font-size:1.5rem; z-index:2; }
+      .host { background:var(--gold); } .bridge { background:var(--blue); } .daemon { background:var(--green); } .project { background:#eadff0; }
+      .split { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+      .mock { border:1px solid var(--line); border-radius:16px; overflow:hidden; background:var(--card); }
+      .mock-nav { padding:12px 18px; border-bottom:1px solid var(--line); word-spacing:16px; }
+      .mock-body { display:grid; grid-template-columns:1fr 2fr; gap:14px; padding:18px; }
+      .mock-box { min-height:150px; padding:14px; border:1px solid var(--line); border-radius:12px; }
+      .tag { display:inline-block; background:var(--green); border-radius:999px; padding:2px 9px; font-size:.86rem; }
+      button { display:block; width:100%; text-align:left; margin:8px 0; padding:11px; border:1px solid var(--line); border-radius:9px; background:white; cursor:pointer; }
+      button:hover { border-color:var(--accent); }
+      .feedback { min-height:1.6em; font-weight:700; }
+      @media(max-width:720px){ .flow,.split,.mock-body{grid-template-columns:1fr}.node::after{display:none} }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="eyebrow">PortReeve · PR #48</p>
+      <h1>From “MCP exists” to “my agent can find it”</h1>
+      <p class="lede">This slice adds the missing setup experience: one strict generator produces copyable Generic, Codex, and Claude Code configuration, and the Desktop presents it without gaining authority over anyone else’s settings.</p>
+      <p><span class="tag">Pinned diff</span> <code>a9fc44d9…f25f3683</code></p>
+      <nav><a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#quiz">Quiz</a></nav>
+    </header>
+    <main>
+      <section id="background">
+        <h2>Background</h2>
+        <p>PortReeve has one durable daemon per operating-system user. An MCP host does not connect to that Unix-socket HTTP API directly. Instead, the host starts a small stdio bridge from the existing PortReeve executable. The bridge translates MCP tool calls into official JavaScript-client calls against the daemon.</p>
+        <div class="flow" aria-label="PortReeve MCP topology">
+          <div class="node host"><strong>Agent host</strong><br />Codex or Claude</div>
+          <div class="node bridge"><strong>stdio bridge</strong><br /><code>mcp serve</code></div>
+          <div class="node daemon"><strong>one daemon</strong><br />port authority</div>
+          <div class="node project"><strong>project stack</strong><br />project-owned lifecycle</div>
+        </div>
+        <p>Before this PR, the bridge and all 51 tools existed, but the user still had to know each host’s configuration syntax and discover a reliable executable path. GUI hosts make the latter surprisingly important: they often do not inherit the same <code>PATH</code> as an interactive shell.</p>
+        <div class="callout"><strong>The governing safety constraint:</strong> setup should explain and generate. It must not edit Codex, Claude, or generic host settings, launch an agent host, or turn the renderer into a filesystem or executable-path authority.</div>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <p>All host formats describe the same process. Only the envelope changes.</p>
+        <pre>command: /Users/alex/Library/Application Support/Portreeve/bin/portreeve
+args:    mcp serve --label codex</pre>
+        <div class="split">
+          <article class="card"><h3>Exact mode</h3><p>Uses the stable managed installation. It is machine-specific but reliable even when a GUI host has a restricted PATH. This is the default.</p></article>
+          <article class="card"><h3>Portable mode</h3><p>Uses bare <code>portreeve</code>. The snippet travels more easily, but the host environment must arrange PATH correctly. This choice is explicit.</p></article>
+        </div>
+        <p>The optional label is equally modest. It helps logs distinguish, for example, <code>codex-worktree-4</code> from <code>claude-local</code>. It cannot select a worktree, claim a port, identify a stack, or grant permission.</p>
+        <h3>The Desktop experience</h3>
+        <div class="mock" aria-label="Simplified MCP tab">
+          <div class="mock-nav">Overview Ports Stacks Launchers <strong>MCP</strong> Guide</div>
+          <div class="mock-body">
+            <div class="mock-box"><strong>Choose a host</strong><p>Codex CLI and desktop</p><p>Client label</p><p>◉ Exact managed path<br />○ Bare portreeve</p></div>
+            <div class="mock-box"><strong>Configuration preview</strong><pre>[mcp_servers.portreeve]
+command = "…/bin/portreeve"
+args = ["mcp", "serve", "--label", "codex"]</pre><p>Copy configuration · Copy command</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <h3>1. One pure setup generator</h3>
+        <p><code>src/mcp/setup.js</code> validates a closed request consisting of host, portable mode, and optional label. A trusted caller separately supplies the exact path. The module returns a strict result containing the canonical command vector, rendered configuration, optional registration command, and explanatory notes.</p>
+        <p>Generic hosts receive a stdio JSON descriptor. Codex receives TOML plus <code>codex mcp add</code>. Claude Code receives an <code>mcpServers</code> JSON object plus <code>claude mcp add --scope user</code>. JSON and TOML strings use native escaping; terminal instructions quote the path as one POSIX shell word.</p>
+        <h3>2. A local CLI generation command</h3>
+        <pre>portreeve mcp setup --host codex
+portreeve mcp setup --host claude-code --portable
+portreeve mcp setup --host generic --label my-agent --json</pre>
+        <p>The command resolves the managed path with PortReeve’s existing platform-path policy, invokes the pure generator, and renders either copyable text or the standard versioned JSON envelope. It does not construct a daemon client.</p>
+        <h3>3. Main-process authority, narrow IPC</h3>
+        <p>The Electron main process constructs a setup adapter with the managed path. IPC accepts only the three renderer choices, parses the generated result, and returns safe data. The preload independently checks every output field before exposing it to the page. The renderer never sends a path.</p>
+        <div class="flow" aria-label="Desktop setup trust flow">
+          <div class="node host"><strong>Renderer</strong><br />host + mode + label</div>
+          <div class="node bridge"><strong>Strict IPC</strong><br />closed schemas</div>
+          <div class="node daemon"><strong>Main adapter</strong><br />trusted exact path</div>
+          <div class="node project"><strong>Preview</strong><br />display + copy only</div>
+        </div>
+        <h3>4. Documentation and tests</h3>
+        <p>The public MCP and CLI guides now explain both variants and the per-host-bridge/single-daemon topology. Tests cover all formats, CLI output, compiled inclusion, unknown-field rejection, path injection refusal, strict IPC/preload shape, Desktop controls, Guide linking, and the absence of third-party writes.</p>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="1"><h3>1. Why is exact mode the default?</h3><button>It lets each bridge install a separate daemon.</button><button>It remains reliable when GUI hosts inherit a restricted PATH.</button><button>It grants the bridge permission to discover worktrees.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="2"><h3>2. What may the Desktop renderer send?</h3><button>A host settings path and executable path.</button><button>A complete command array to execute.</button><button>Host format, portable choice, and optional bounded label.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="0"><h3>3. What changes among Generic, Codex, and Claude output?</h3><button>The configuration envelope; the underlying stdio command vector remains equivalent.</button><button>The daemon selected for the agent host.</button><button>The set of MCP tools the bridge registers.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="1"><h3>4. What authority does a client label grant?</h3><button>It chooses the nearest registered stack.</button><button>None; it is diagnostic attribution only.</button><button>It permits mutation tools without receipts.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="2"><h3>5. Which operation does this PR intentionally perform?</h3><button>Write the selected host configuration file.</button><button>Launch Codex or Claude with the new server.</button><button>Generate and copy a validated preview.</button><p class="feedback"></p></div>
+      </section>
+    </main>
+    <script>
+      for (const quiz of document.querySelectorAll('.quiz')) {
+        quiz.querySelectorAll('button').forEach((button, index) => button.addEventListener('click', () => {
+          const correct = index === Number(quiz.dataset.answer);
+          quiz.querySelector('.feedback').textContent = correct ? 'Correct — that is the boundary this slice preserves.' : 'Not quite. Revisit the trust flow and exact/portable distinction above.';
+          quiz.querySelector('.feedback').style.color = correct ? '#176147' : '#9a3e2f';
+        }));
+      }
+    </script>
+  </body>
+</html>

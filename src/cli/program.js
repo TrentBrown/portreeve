@@ -12,7 +12,7 @@ import {
 } from './commands/claims.js';
 import { getConfigCommand, setConfigCommand } from './commands/config.js';
 import { historyCommand, logsCommand } from './commands/observability.js';
-import { mcpServeCommand } from './commands/mcp.js';
+import { mcpServeCommand, mcpSetupCommand } from './commands/mcp.js';
 import {
   installCommand,
   lifecycleStatusCommand,
@@ -91,6 +91,18 @@ export function createProgram() {
     .option('--socket <path>', 'override the PortReeve Unix socket path')
     .option('--label <label>', 'attach a diagnostic label to this bridge run')
     .action(mcpServeCommand);
+
+  mcp
+    .command('setup')
+    .description('Generate MCP host configuration without changing host settings')
+    .requiredOption(
+      '--host <host>',
+      'configuration format: generic, codex, or claude-code',
+    )
+    .option('--portable', 'use bare portreeve and require it on PATH')
+    .option('--label <label>', 'attach a diagnostic label to bridge runs')
+    .option('--json', 'emit versioned JSON output')
+    .action(mcpSetupCommand);
 
   program
     .command('status')

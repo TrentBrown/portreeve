@@ -62,5 +62,39 @@ reconciliation to recover durable state.
 PortReeve does not expose MCP resources, prompts, subscriptions, HTTP transport,
 server lifecycle administration, unsafe any-owner eviction, arbitrary shell or
 filesystem access, or raw logs and project-command output. The registered tool names
-exactly match the frozen 51-tool catalog. Configuration snippets and Desktop setup
-guidance are delivered in the next feature slice.
+exactly match the frozen 51-tool catalog.
+
+## Configure an MCP host
+
+Generate a setup preview for Codex, Claude Code, or a generic stdio host:
+
+```sh
+portreeve mcp setup --host codex
+portreeve mcp setup --host claude-code
+portreeve mcp setup --host generic
+```
+
+The default preview uses PortReeve's exact managed executable path. This is the most
+reliable choice for GUI applications, which may inherit a restricted `PATH`, and that
+managed location remains stable when PortReeve upgrades its executable. Use
+`--portable` only when the host environment can find bare `portreeve` on its `PATH`:
+
+```sh
+portreeve mcp setup --host codex --portable
+```
+
+Add `--label NAME` for a diagnostic bridge label or `--json` for a versioned
+machine-readable result. The label identifies a bridge in diagnostics; it grants no
+authority and does not choose a stack, worktree, claim, or activation.
+
+For Codex, the generated TOML uses the supported `[mcp_servers.portreeve]` shape and
+also includes an equivalent `codex mcp add` command. For Claude Code, the generated
+JSON uses a stdio entry under `mcpServers` and includes an equivalent
+`claude mcp add --scope user` command. The generic form is the canonical stdio server
+descriptor with `type`, `command`, and `args`.
+
+PortReeve only prints these snippets and commands. It never reads or writes Codex,
+Claude Code, or another host's settings. The Desktop **MCP** tab provides the same
+formats, exact/portable selection, optional labels, daemon compatibility evidence,
+copy actions, and visible setup errors through its restricted main-process boundary.
+It does not launch an agent host or execute project commands.

@@ -120,3 +120,29 @@ Store each launcher-operation credential only in a dedicated process-local vault
 Return launcher credentials to the MCP host; persist them in PortReeve; reuse lease-shaped records by fabricating lease identifiers; require the model to heartbeat manually without automatic bounded custody; omit the approved renew tool.
 
 **Promoted:** 2026-08-11. PR: #47 https://github.com/TrentBrown/portreeve/pull/47.
+
+---
+
+## Generate setup previews without third-party writes
+
+**Confidence:** HIGH
+
+**Date:** 2026-08-11
+
+**Scope:** I-6 CLI and Desktop MCP setup
+
+**Triggered by:** public CLI contract and Desktop trust-boundary changes
+
+**Blast Radius:** CLI command tree, shared MCP setup schema, Electron main/IPC/preload/renderer boundary
+
+Generate generic stdio JSON, Codex TOML, and Claude Code JSON from one strict pure module. Trusted callers supply the exact managed executable path; renderers cannot select paths. Default to the stable managed installation and offer bare `portreeve` only behind an explicit portable option. Print or copy previews and registration instructions, but never inspect or edit third-party host settings.
+
+**Alternatives considered:** write host settings automatically; resolve PATH in the renderer; use the bundled release-candidate path; omit a portable mode.
+
+**Feature start:** 2026-08-10
+
+Working record of decisions made during this feature's lifetime. Append entries
+across delivery branches and sessions. Triage at each PR boundary; promoted
+entries are appended to `decisions.md`.
+
+**Promoted:** 2026-08-11. PR: 48.

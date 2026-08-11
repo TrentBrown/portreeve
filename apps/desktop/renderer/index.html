@@ -30,6 +30,7 @@
       <button class="tab" type="button" data-view="ports">Ports</button>
       <button class="tab" type="button" data-view="stacks">Stacks</button>
       <button class="tab" type="button" data-view="launcher">Launchers</button>
+      <button class="tab" type="button" data-view="mcp">MCP</button>
       <button class="tab" type="button" data-view="guide">Guide</button>
     </nav>
     <main>
@@ -214,6 +215,103 @@
         </div>
         <div id="launcher-editor" class="launcher-editor" hidden></div>
       </section>
+      <section id="mcp" class="mcp-setup" aria-labelledby="mcp-title" hidden>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Agent integration</p>
+            <h2 id="mcp-title">Connect an MCP host</h2>
+            <p>
+              Each agent host starts a lightweight <code>portreeve mcp serve</code>
+              bridge over stdio. Every bridge delegates to the one PortReeve daemon for
+              your operating-system user, so there is still only one port authority and
+              one installation.
+            </p>
+          </div>
+        </div>
+        <div class="mcp-status-grid cards" aria-label="MCP compatibility">
+          <article class="status-card">
+            <h3>Daemon</h3>
+            <p id="mcp-daemon-status">Unavailable</p>
+            <small id="mcp-daemon-detail" class="muted">Refresh to check.</small>
+          </article>
+          <article class="status-card">
+            <h3>MCP protocol</h3>
+            <p>Ready</p>
+            <small class="muted">2026-07-28 and maintained legacy stdio</small>
+          </article>
+        </div>
+        <div class="mcp-setup-grid">
+          <form id="mcp-setup-form" class="panel mcp-setup-form">
+            <h3>Choose a host</h3>
+            <label>
+              Host format
+              <select id="mcp-host" name="host">
+                <option value="generic">Generic stdio</option>
+                <option value="codex" selected>Codex CLI and desktop</option>
+                <option value="claude-code">Claude Code</option>
+              </select>
+            </label>
+            <label>
+              Client label <span class="muted">(optional)</span>
+              <input
+                id="mcp-client-label"
+                name="label"
+                type="text"
+                maxlength="64"
+                pattern="[A-Za-z0-9][A-Za-z0-9._-]*"
+                placeholder="Use the host default"
+              />
+            </label>
+            <fieldset>
+              <legend>Executable</legend>
+              <label class="choice-row">
+                <input type="radio" name="executable" value="exact" checked />
+                <span
+                  ><strong>Exact managed path</strong
+                  ><small
+                    >Recommended for GUI hosts with a restricted PATH.</small
+                  ></span
+                >
+              </label>
+              <label class="choice-row">
+                <input type="radio" name="executable" value="portable" />
+                <span
+                  ><strong>Bare portreeve</strong
+                  ><small>Portable, but the host must find it on PATH.</small></span
+                >
+              </label>
+            </fieldset>
+          </form>
+          <article class="panel mcp-setup-preview" aria-live="polite">
+            <div class="section-heading compact">
+              <div>
+                <h3>Configuration preview</h3>
+                <p id="mcp-preview-summary" class="muted">Generating setup…</p>
+              </div>
+              <button id="copy-mcp-config" type="button" disabled>
+                Copy configuration
+              </button>
+            </div>
+            <pre id="mcp-configuration" class="snapshot-content"></pre>
+            <div id="mcp-command-block" hidden>
+              <h4>Terminal registration command</h4>
+              <pre id="mcp-setup-command" class="snapshot-content"></pre>
+              <button id="copy-mcp-command" type="button">Copy command</button>
+            </div>
+            <ul id="mcp-notes" class="mcp-notes"></ul>
+            <details id="mcp-failure" class="mcp-failure" hidden>
+              <summary>Setup failure details</summary>
+              <pre id="mcp-failure-detail" class="snapshot-content"></pre>
+            </details>
+          </article>
+        </div>
+        <p class="mcp-guide-link">
+          Want the strongest integration? See
+          <button id="open-guide-integration" class="text-button" type="button">
+            project-owned integration in the Guide</button
+          >.
+        </p>
+      </section>
       <section id="guide" class="guide" aria-labelledby="guide-title" hidden>
         <header class="guide-hero">
           <figure class="guide-identity-mark">
@@ -387,7 +485,7 @@
                 </div>
               </dl>
             </article>
-            <article class="guide-path">
+            <article id="guide-project-integration" class="guide-path">
               <p class="guide-path-rank">Best</p>
               <h4>Project integration</h4>
               <p>

@@ -117,6 +117,66 @@ test('exposes only a bounded text clipboard capability to the trusted renderer',
   expect(copied).toHaveLength(1);
 });
 
+test('validates bounded MCP setup choices before main-process generation', async () => {
+  /** @type {Map<string, (event: any, ...arguments_: any[]) => Promise<any>>} */
+  const handlers = new Map();
+  /** @type {unknown[]} */
+  const requests = [];
+  registerDesktopIpc({
+    ipcMain: /** @type {any} */ ({
+      /** @param {string} channel @param {(event: any, ...arguments_: any[]) => Promise<any>} handler */
+      handle(channel, handler) {
+        handlers.set(channel, handler);
+      },
+    }),
+    coordinator: /** @type {any} */ ({
+      subscribe() {
+        return () => true;
+      },
+    }),
+    mcpSetup: {
+      /** @param {unknown} request */
+      generate(request) {
+        requests.push(request);
+        return {
+          schemaVersion: 1,
+          host: 'codex',
+          hostLabel: 'Codex CLI and desktop',
+          executableMode: 'exact',
+          command: '/managed/bin/portreeve',
+          args: ['mcp', 'serve', '--label', 'codex-local'],
+          clientLabel: 'codex-local',
+          configurationLanguage: 'toml',
+          configuration: '[mcp_servers.portreeve]',
+          setupCommand: 'codex mcp add portreeve -- /managed/bin/portreeve',
+          notes: ['No settings changed.'],
+        };
+      },
+    },
+    windows: () => [],
+  });
+  const mainFrame = { url: RENDERER_URL };
+  const event = { sender: { mainFrame }, senderFrame: mainFrame };
+  const handler = handlers.get(IPC_CHANNELS.generateMcpSetup);
+  expect(
+    await handler?.(event, {
+      host: 'codex',
+      portable: false,
+      label: 'codex-local',
+    }),
+  ).toMatchObject({ host: 'codex', command: '/managed/bin/portreeve' });
+  expect(requests).toEqual([{ host: 'codex', portable: false, label: 'codex-local' }]);
+  await expect(
+    handler?.(event, {
+      host: 'codex',
+      portable: false,
+      executablePath: '/tmp/injected',
+    }),
+  ).rejects.toThrow();
+  await expect(handler?.(event, { host: 'other', portable: false })).rejects.toThrow();
+  expect(requests).toHaveLength(1);
+});
+
 test('validates opaque stack-document capabilities without accepting filesystem paths', async () => {
   /** @type {Map<string, (event: any, ...arguments_: any[]) => Promise<any>>} */
   const handlers = new Map();

@@ -17,6 +17,12 @@ preview-confirm stale-stack pruning. It never starts or stops project processes,
 Docker Compose, stops containers, or handles lease credentials; those responsibilities
 remain with each trusted project launcher.
 
+The MCP tab generates generic stdio, Codex, and Claude Code setup previews through a
+strict main-process adapter. It defaults to the stable managed executable path, offers
+an explicit PATH-dependent portable form, reports daemon compatibility, and copies
+configuration or registration commands. The renderer cannot supply executable paths,
+write third-party settings, launch agent hosts, or execute project commands.
+
 Update discovery is separately notification-only. The main process checks the strict
 fixed manifest documented in [`docs/desktop-updates.md`](../../docs/desktop-updates.md)
 at most once per 24 hours, persists only the reduced check result under the desktop
