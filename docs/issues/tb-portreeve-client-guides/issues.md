@@ -48,7 +48,7 @@ evidence without invoking the CLI.
 
 ## I-4 - Redesign README and integrate Guide
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1.5d
 - **Plan steps:** P4
 - **Rubric criteria:** R5, R6, R7
@@ -61,12 +61,12 @@ Sandbox boundaries consistent.
 
 ## I-5 - Complete packaged and feature-final verification
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 1.5d
 - **Plan steps:** P5
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
 - **Depends on:** I-1, I-2, I-3, I-4
-- **PR:** -
+- **PR:** [#54](https://github.com/TrentBrown/portreeve/pull/54)
 
 Run and retain deterministic, packaged, offline, accessibility, visual,
 security, regression, rubric, judge, review, and feature-final evidence. Keep

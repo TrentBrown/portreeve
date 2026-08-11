@@ -87,3 +87,39 @@ test('keeps bundled, managed, running, compatibility, freshness, and mismatch di
     compatibility: 'compatible',
   });
 });
+
+test('keeps static guidance usable when lifecycle evidence is absent or incompatible', () => {
+  const absent = clientInstallationEvidence({
+    stale: false,
+    artifact: { version: '0.2.0', bundledLocation: '/bundle/portreeve' },
+    lifecycle: null,
+  });
+  expect(absent).toMatchObject({
+    evidence: 'fresh',
+    bundledVersion: '0.2.0',
+    managedVersion: null,
+    runningVersion: null,
+    mode: 'none',
+    socket: 'unavailable',
+    compatibility: 'unavailable',
+    versionMismatch: false,
+  });
+
+  const incompatible = clientInstallationEvidence({
+    stale: true,
+    artifact: { version: '0.2.0', bundledLocation: '/bundle/portreeve' },
+    lifecycle: {
+      mode: 'manual',
+      installation: { managedLocation: null },
+      socket: { state: 'incompatible' },
+      versions: { managed: null, running: '0.1.0' },
+    },
+  });
+  expect(incompatible).toMatchObject({
+    evidence: 'stale',
+    runningVersion: '0.1.0',
+    socket: 'incompatible',
+    compatibility: 'incompatible',
+    versionMismatch: true,
+  });
+});

@@ -16,7 +16,7 @@
 | R5 | Safe recipes and troubleshooting | PASS | [#51](https://github.com/TrentBrown/portreeve/pull/51), [#53](https://github.com/TrentBrown/portreeve/pull/53) | Complete client recipes retain evidence and approval boundaries; product framing directs readers to the safe client-specific guides |
 | R6 | Product README and bounded Guide integration | PASS | [#53](https://github.com/TrentBrown/portreeve/pull/53) | README is the approved product landing page and Guide adds only a compact four-client bridge with accurate in-app destinations |
 | R7 | Accurate platform and Docker boundaries | PASS | [#50](https://github.com/TrentBrown/portreeve/pull/50), [#51](https://github.com/TrentBrown/portreeve/pull/51), [#53](https://github.com/TrentBrown/portreeve/pull/53) | User-facing surfaces state the approved support matrix and describe endpoint snapshots generically without claiming Docker Sandbox integration |
-| R8 | Secure offline packaged behavior | NOT YET | [#52](https://github.com/TrentBrown/portreeve/pull/52) | P3 package, smoke, security, and real-app interaction checks pass; feature-final offline and minimum-width evidence remains P5 |
+| R8 | Secure offline packaged behavior | PASS | [#52](https://github.com/TrentBrown/portreeve/pull/52), [#54](https://github.com/TrentBrown/portreeve/pull/54) | Static version-bound guides are present in the ASAR, prohibited runtime paths are absent, package smoke passes, and the real app is operable at ordinary and minimum widths |
 
 ## PR Log
 
@@ -61,7 +61,7 @@
 ### PR #53 - Product README and Guide client bridge
 
 - **PR:** [#53](https://github.com/TrentBrown/portreeve/pull/53)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P4 / I-4: product landing README, compact architecture and client
   choice, truthful source setup, bounded Guide bridge, and consistent Docker
   Sandbox non-support language.
@@ -69,3 +69,18 @@
 - **Result:** Slice verdict PASS. All 476 repository tests, build, typecheck,
   lint, documentation freshness, package smoke, link validation, and rendered
   Guide interaction pass. R5, R6, and R7 are complete.
+
+### PR #54 - Feature-final client-guide verification
+
+- **PR:** [#54](https://github.com/TrentBrown/portreeve/pull/54)
+- **Status:** in review
+- **Scope:** P5 / I-5: complete-feature regression, package-content and offline
+  safety attestation, lifecycle evidence edge cases, public-document boundary
+  checks, independent evaluation, and retained completion evidence.
+- **Evidence packet:** [pr-54](pr-54/)
+- **Result:** Feature verdict PASS. All eight rubric criteria pass. The final
+  source SHA passes 478 repository tests, standalone and packaged builds,
+  documentation freshness, typecheck, lint, release verification, MCP runtime
+  verification, Desktop runtime verification, and the real Docker/process stack
+  exercise. The feature record is fully tracked. PR #54 remains open for the
+  user's final approval.
