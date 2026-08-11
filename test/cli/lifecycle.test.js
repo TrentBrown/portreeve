@@ -87,6 +87,43 @@ test('purge requires exactly one preview or evidence-bound execution mode', asyn
   ).rejects.toThrow('64-character lowercase hexadecimal token');
 });
 
+test('maps a timed-out purge result onto the existing internal exit band', async () => {
+  const status = snapshot();
+  const result = {
+    operation: 'purge',
+    outcome: 'failed',
+    confirmationToken: 'a'.repeat(64),
+    startedAt: timestamp,
+    completedAt: timestamp,
+    before: status,
+    after: status,
+    removed: [],
+    retained: [],
+    missing: [],
+    refused: [],
+    error: {
+      code: 'lifecycle_timeout',
+      message: 'The purge deadline expired.',
+    },
+  };
+  const output = await captureOutput(() =>
+    purgeCommand({
+      json: true,
+      confirm: result.confirmationToken,
+      service: /** @type {any} */ ({ purge: async () => result }),
+    }),
+  );
+
+  expect(output.exitCode).toBe(70);
+  expect(parseRenderedJson(output.lines)).toMatchObject({
+    result: {
+      operation: 'purge',
+      outcome: 'failed',
+      error: { code: 'lifecycle_timeout' },
+    },
+  });
+});
+
 /**
  * @param {string[]} calls
  * @param {Record<string, ReturnType<typeof mutationResult>>} [overrides]

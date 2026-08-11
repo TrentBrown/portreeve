@@ -30,6 +30,7 @@ test('maps stable CLI exit-code bands', () => {
   expect(exitCodeForError(new CliUsageError('invalid'))).toBe(50);
   expect(exitCodeForError(new Error('unexpected'))).toBe(70);
   expect(exitCodeForErrorCode('conflict')).toBe(20);
+  expect(exitCodeForErrorCode('lifecycle_busy')).toBe(20);
   expect(exitCodeForErrorCode('unavailable')).toBe(30);
   expect(exitCodeForErrorCode('incompatible_protocol')).toBe(40);
   expect(exitCodeForErrorCode('invalid_input')).toBe(50);

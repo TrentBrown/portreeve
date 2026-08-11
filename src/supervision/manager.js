@@ -9,6 +9,7 @@ import { PORTREEVE_VERSION } from '../version.js';
 import { prepareRuntimeDirectories } from '../platform/paths.js';
 import { HealthResponseSchema } from '../protocol/schemas.js';
 import { runCommand, assertCommandSucceeded } from './command.js';
+import { LifecycleTimeoutError } from './deadline.js';
 import { promoteExecutable, readOptionalFile, restoreExecutable } from './files.js';
 import {
   executePurge as executePurgeOperation,
@@ -39,7 +40,8 @@ export class LifecycleManager {
    *     managedExecutablePath: string,
    *     rollbackExecutablePath: string,
    *     supervisorStandardOutputPath: string,
-   *     supervisorStandardErrorPath: string
+   *     supervisorStandardErrorPath: string,
+   *     lifecycleLockPath?: string
    *   },
    *   sourceExecutable: string,
    *   client?: PortreeveClient,
@@ -61,12 +63,15 @@ export class LifecycleManager {
     this.healthTimeoutMilliseconds = options.healthTimeoutMilliseconds ?? 10_000;
   }
 
-  async status() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async status(context) {
+    context?.assertActive('status');
     const [installation, supervisor, socket] = await Promise.all([
-      this.observeInstallation(),
-      this.observeSupervisor(),
-      this.observeSocket(),
+      this.observeInstallation(context),
+      this.observeSupervisor(context),
+      this.observeSocket(context),
     ]);
+    context?.assertActive('status');
     const mode = effectiveMode(supervisor, socket);
     const limitations = [];
     if (installation.error !== null) {
@@ -100,7 +105,8 @@ export class LifecycleManager {
     });
   }
 
-  async observeInstallation() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async observeInstallation(context) {
     let information;
     try {
       information = await lstat(this.paths.managedExecutablePath);
@@ -139,10 +145,15 @@ export class LifecycleManager {
       return {
         state: /** @type {'installed'} */ ('installed'),
         managedExecutablePath: this.paths.managedExecutablePath,
-        version: await executableVersion(this.paths.managedExecutablePath, this.runner),
+        version: await executableVersion(
+          this.paths.managedExecutablePath,
+          this.runner,
+          context,
+        ),
         error: null,
       };
     } catch (error) {
+      context?.assertActive('installation-evidence');
       return {
         state: /** @type {'invalid'} */ ('invalid'),
         managedExecutablePath: this.paths.managedExecutablePath,
@@ -152,9 +163,10 @@ export class LifecycleManager {
     }
   }
 
-  async observeSupervisor() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async observeSupervisor(context) {
     try {
-      const native = await this.supervisor.state();
+      const native = await this.supervisor.state(context);
       if (native.kind.startsWith('unsupported:')) {
         return {
           kind: native.kind,
@@ -183,6 +195,7 @@ export class LifecycleManager {
         error: null,
       };
     } catch (error) {
+      context?.assertActive('supervisor-evidence');
       return {
         kind: this.supervisor.kind,
         state: /** @type {'failed'} */ ('failed'),
@@ -192,15 +205,21 @@ export class LifecycleManager {
     }
   }
 
-  async observeSocket() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async observeSocket(context) {
     try {
       return {
         path: this.paths.socketPath,
         state: /** @type {'healthy'} */ ('healthy'),
-        server: HealthResponseSchema.parse(await this.client.health()),
+        server: HealthResponseSchema.parse(
+          await this.client.health(
+            context === undefined ? undefined : { signal: context.signal },
+          ),
+        ),
         error: null,
       };
     } catch (error) {
+      context?.assertActive('socket-evidence');
       const evidence = lifecycleError(error);
       if (error instanceof PortreeveClientError) {
         if (error.code === 'unavailable') {
@@ -229,9 +248,10 @@ export class LifecycleManager {
     }
   }
 
-  async install() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async install(context) {
     this.assertPerUser();
-    const priorStatus = await this.status();
+    const priorStatus = await this.status(context);
     this.assertMutationCompatible(priorStatus);
     if (priorStatus.mode === 'manual' || priorStatus.mode === 'ambiguous') {
       throw new LifecycleConflictError(
@@ -240,9 +260,10 @@ export class LifecycleManager {
     }
 
     await prepareRuntimeDirectories(this.paths);
+    context?.assertActive('install-files');
     const source = await validateSourceExecutable(this.sourceExecutable);
     await validateManagedExecutable(this.paths.managedExecutablePath, this.uid);
-    const version = await executableVersion(source, this.runner);
+    const version = await executableVersion(source, this.runner, context);
     const comparisonVersions = [
       priorStatus.versions.managed,
       priorStatus.versions.running,
@@ -263,19 +284,21 @@ export class LifecycleManager {
 
     try {
       if (priorActive) {
-        await this.supervisor.stop();
-        await this.waitUntilUnavailable();
+        await this.supervisor.stop(context);
+        await this.waitUntilUnavailable(context);
       }
+      context?.assertActive('install-files');
       promotion = await promoteExecutable(
         source,
         this.paths.managedExecutablePath,
         this.paths.rollbackExecutablePath,
       );
+      context?.assertActive('install-files');
       const definition = this.supervisor.renderDefinition(this.definition());
-      await this.supervisor.installDefinition(definition);
+      await this.supervisor.installDefinition(definition, context);
       if (priorActive) {
-        await this.supervisor.start();
-        await this.waitUntilHealthy(version);
+        await this.supervisor.start(context);
+        await this.waitUntilHealthy(version, context);
       }
       return {
         installed: true,
@@ -303,18 +326,27 @@ export class LifecycleManager {
         await this.supervisor.start();
         await this.waitUntilHealthy().catch(() => {});
       }
-      throw new Error(
+      const wrapped = new Error(
         `PortReeve upgrade activation failed and the prior installation was restored: ${
           error instanceof Error ? error.message : String(error)
         }`,
         { cause: error },
       );
+      const errorCode =
+        error instanceof Error && 'code' in error
+          ? /** @type {{code?: unknown}} */ (error).code
+          : null;
+      if (typeof errorCode === 'string') {
+        Object.assign(wrapped, { code: errorCode });
+      }
+      throw wrapped;
     }
   }
 
-  async uninstall() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async uninstall(context) {
     this.assertPerUser();
-    const status = await this.status();
+    const status = await this.status(context);
     this.assertMutationCompatible(status);
     if (status.mode === 'manual' || status.mode === 'ambiguous') {
       throw new LifecycleConflictError(
@@ -325,14 +357,16 @@ export class LifecycleManager {
       status.supervisor.state === 'active' ||
       status.supervisor.state === 'starting'
     ) {
-      await this.supervisor.stop();
+      await this.supervisor.stop(context);
       if (status.mode === 'supervised') {
-        await this.waitUntilUnavailable();
+        await this.waitUntilUnavailable(context);
       }
     }
-    await this.supervisor.uninstall();
+    await this.supervisor.uninstall(context);
+    context?.assertActive('uninstall-files');
     await unlink(this.paths.managedExecutablePath).catch(ignoreMissing);
     await unlink(this.paths.rollbackExecutablePath).catch(ignoreMissing);
+    context?.assertActive('uninstall-files');
     return {
       installed: false,
       active: false,
@@ -341,9 +375,10 @@ export class LifecycleManager {
     };
   }
 
-  async start() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async start(context) {
     this.assertPerUser();
-    const status = await this.status();
+    const status = await this.status(context);
     this.assertMutationCompatible(status);
     if (status.installation.state !== 'installed') {
       throw new LifecycleConflictError(
@@ -356,14 +391,15 @@ export class LifecycleManager {
       );
     }
     if (status.supervisor.state !== 'active') {
-      await this.supervisor.start();
+      await this.supervisor.start(context);
     }
-    return this.waitUntilHealthy();
+    return this.waitUntilHealthy(undefined, context);
   }
 
-  async restart() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async restart(context) {
     this.assertPerUser();
-    const status = await this.status();
+    const status = await this.status(context);
     this.assertMutationCompatible(status);
     if (status.installation.state !== 'installed') {
       throw new LifecycleConflictError(
@@ -379,16 +415,17 @@ export class LifecycleManager {
       status.supervisor.state === 'active' ||
       status.supervisor.state === 'starting'
     ) {
-      await this.supervisor.stop();
-      await this.waitUntilUnavailable();
+      await this.supervisor.stop(context);
+      await this.waitUntilUnavailable(context);
     }
-    await this.supervisor.start();
-    return this.waitUntilHealthy();
+    await this.supervisor.start(context);
+    return this.waitUntilHealthy(undefined, context);
   }
 
-  async stop() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async stop(context) {
     this.assertPerUser();
-    const status = await this.status();
+    const status = await this.status(context);
     this.assertMutationCompatible(status);
     const supervisorActive =
       status.supervisor.state === 'active' || status.supervisor.state === 'starting';
@@ -404,18 +441,19 @@ export class LifecycleManager {
       return { changed: false, mode: null };
     }
     if (supervisorActive) {
-      await this.supervisor.stop();
+      await this.supervisor.stop(context);
       if (status.mode === 'supervised') {
-        await this.waitUntilUnavailable();
+        await this.waitUntilUnavailable(context);
       }
       return { changed: true, mode: 'supervised' };
     }
     return { changed: false, mode: null };
   }
 
-  async stopManual() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async stopManual(context) {
     this.assertPerUser();
-    const status = await this.status();
+    const status = await this.status(context);
     this.assertMutationCompatible(status);
     if (status.mode !== 'manual') {
       throw new LifecycleConflictError(
@@ -424,20 +462,24 @@ export class LifecycleManager {
           : 'PortReeve will not stop an ambiguous or supervised server through the manual-server operation.',
       );
     }
-    await this.client.stopServer();
-    await this.waitUntilUnavailable();
+    await this.client.stopServer(
+      context === undefined ? undefined : { signal: context.signal },
+    );
+    context?.assertActive('manual-stop-request');
+    await this.waitUntilUnavailable(context);
     return { changed: true, mode: 'manual' };
   }
 
-  async previewPurge() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async previewPurge(context) {
     this.assertPerUser();
-    return previewPurgeOperation(this);
+    return previewPurgeOperation(this, context);
   }
 
-  /** @param {string} confirmationToken */
-  async purge(confirmationToken) {
+  /** @param {string} confirmationToken @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async purge(confirmationToken, context) {
     this.assertPerUser();
-    return executePurgeOperation(this, confirmationToken);
+    return executePurgeOperation(this, confirmationToken, context);
   }
 
   definition() {
@@ -480,13 +522,15 @@ export class LifecycleManager {
     }
   }
 
-  /** @param {string} [expectedVersion] */
-  async waitUntilHealthy(expectedVersion) {
-    const deadline = Date.now() + this.healthTimeoutMilliseconds;
-    let lastError;
+  /** @param {string} [expectedVersion] @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async waitUntilHealthy(expectedVersion, context) {
+    const deadline = Math.min(
+      Date.now() + this.healthTimeoutMilliseconds,
+      context?.expiresAtMilliseconds ?? Number.POSITIVE_INFINITY,
+    );
     while (Date.now() <= deadline) {
       try {
-        const status = await this.status();
+        const status = await this.status(context);
         if (
           status.socket.state === 'healthy' &&
           status.mode === 'supervised' &&
@@ -494,37 +538,35 @@ export class LifecycleManager {
         ) {
           return status;
         }
-        lastError = new Error(
-          status.socket.state === 'healthy'
-            ? 'the responding server did not match the supervised process and expected version'
-            : 'the server socket was not reachable',
-        );
-      } catch (error) {
-        lastError = error;
+      } catch {
+        context?.assertActive('health-wait');
       }
-      await delay(100);
+      await delay(100, context, 'health-wait');
     }
-    throw new Error(
-      `PortReeve did not become healthy: ${
-        lastError instanceof Error ? lastError.message : String(lastError)
-      }`,
-    );
+    throw new LifecycleTimeoutError('health-wait', this.healthTimeoutMilliseconds);
   }
 
-  async waitUntilUnavailable() {
-    const deadline = Date.now() + this.healthTimeoutMilliseconds;
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async waitUntilUnavailable(context) {
+    const deadline = Math.min(
+      Date.now() + this.healthTimeoutMilliseconds,
+      context?.expiresAtMilliseconds ?? Number.POSITIVE_INFINITY,
+    );
     while (Date.now() <= deadline) {
       try {
-        await this.client.health();
+        await this.client.health(
+          context === undefined ? undefined : { signal: context.signal },
+        );
       } catch (error) {
+        context?.assertActive('unavailable-wait');
         if (error instanceof PortreeveClientError && error.code === 'unavailable') {
           return;
         }
         throw error;
       }
-      await delay(100);
+      await delay(100, context, 'unavailable-wait');
     }
-    throw new Error('PortReeve did not stop before the lifecycle timeout.');
+    throw new LifecycleTimeoutError('unavailable-wait', this.healthTimeoutMilliseconds);
   }
 }
 
@@ -616,9 +658,14 @@ async function validateManagedExecutable(path, uid) {
 /**
  * @param {string} executable
  * @param {typeof runCommand} runner
+ * @param {import('./deadline.js').LifecycleDeadline} [context]
  */
-async function executableVersion(executable, runner) {
-  const result = await runner(executable, ['--version']);
+async function executableVersion(executable, runner, context) {
+  const result = await runner(
+    executable,
+    ['--version'],
+    context?.commandOptions('executable-version'),
+  );
   assertCommandSucceeded(result, 'PortReeve executable validation');
   try {
     return SemanticVersionSchema.parse(result.stdout.trim());
@@ -640,9 +687,11 @@ function isMissingFile(error) {
   );
 }
 
-/** @param {number} milliseconds */
-function delay(milliseconds) {
-  return new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
+/** @param {number} milliseconds @param {import('./deadline.js').LifecycleDeadline} [context] @param {string} [layer] */
+function delay(milliseconds, context, layer = 'wait') {
+  return context === undefined
+    ? new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds))
+    : context.wait(milliseconds, layer);
 }
 
 /** @param {unknown} error */

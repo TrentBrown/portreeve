@@ -59,7 +59,7 @@ export const PurgePreviewSchema = z
 export const PurgeResultSchema = z
   .object({
     operation: z.literal('purge'),
-    outcome: z.enum(['succeeded', 'refused', 'partial']),
+    outcome: z.enum(['succeeded', 'refused', 'partial', 'failed']),
     confirmationToken: PurgeConfirmationTokenSchema,
     startedAt: TimestampSchema,
     completedAt: TimestampSchema,
@@ -75,15 +75,17 @@ export const PurgeResultSchema = z
 
 /**
  * @param {{
- *   status(): Promise<import('zod').infer<typeof LifecycleStatusSchema>>,
+ *   status(context?: import('./deadline.js').LifecycleDeadline): Promise<import('zod').infer<typeof LifecycleStatusSchema>>,
  *   paths: {applicationDirectory: string},
  *   supervisor: import('./types.js').Supervisor,
  *   uid: number | undefined,
- *   waitUntilUnavailable(): Promise<void>
+ *   waitUntilUnavailable(context?: import('./deadline.js').LifecycleDeadline): Promise<void>
  * }} manager
+ * @param {import('./deadline.js').LifecycleDeadline} [context]
  */
-export async function previewPurge(manager) {
-  const status = await manager.status();
+export async function previewPurge(manager, context) {
+  context?.assertActive('purge-preview');
+  const status = await manager.status(context);
   let ownership;
   /** @type {PurgeRefusal[]} */
   const markerRefusals = [];
@@ -105,11 +107,13 @@ export async function previewPurge(manager) {
     });
   }
   const paths = await inspectTree(ownership.canonicalApplicationDirectory);
+  context?.assertActive('purge-preview');
   const refused = [
     ...markerRefusals,
     ...refusalEvidence(status, paths, ownership.ownerUid),
   ];
   const definition = await inspectOptionalPath(manager.supervisor.definitionPath);
+  context?.assertActive('purge-preview');
   if (definition !== null) {
     paths.push(definition);
     if (definition.type === 'symlink') {
@@ -169,17 +173,18 @@ export async function previewPurge(manager) {
 
 /**
  * @param {{
- *   status(): Promise<import('zod').infer<typeof LifecycleStatusSchema>>,
+ *   status(context?: import('./deadline.js').LifecycleDeadline): Promise<import('zod').infer<typeof LifecycleStatusSchema>>,
  *   paths: {applicationDirectory: string},
  *   supervisor: import('./types.js').Supervisor,
  *   uid: number | undefined,
- *   waitUntilUnavailable(): Promise<void>
+ *   waitUntilUnavailable(context?: import('./deadline.js').LifecycleDeadline): Promise<void>
  * }} manager
  * @param {string} confirmationToken
+ * @param {import('./deadline.js').LifecycleDeadline} [context]
  */
-export async function executePurge(manager, confirmationToken) {
+export async function executePurge(manager, confirmationToken, context) {
   const startedAt = new Date().toISOString();
-  const preview = await previewPurge(manager);
+  const preview = await previewPurge(manager, context);
   if (!preview.allowed || preview.confirmationToken !== confirmationToken) {
     return PurgeResultSchema.parse({
       operation: 'purge',
@@ -188,7 +193,7 @@ export async function executePurge(manager, confirmationToken) {
       startedAt,
       completedAt: new Date().toISOString(),
       before: preview.status,
-      after: await manager.status(),
+      after: await manager.status(context),
       removed: [],
       retained: preview.paths.map(({ path }) => path),
       missing: [],
@@ -217,16 +222,16 @@ export async function executePurge(manager, confirmationToken) {
       preview.status.supervisor.state === 'active' ||
       preview.status.supervisor.state === 'starting'
     ) {
-      await manager.supervisor.stop();
+      await manager.supervisor.stop(context);
       if (preview.status.mode === 'supervised') {
-        await manager.waitUntilUnavailable();
+        await manager.waitUntilUnavailable(context);
       }
     }
     if (preview.status.supervisor.state !== 'unavailable') {
-      await manager.supervisor.uninstall();
+      await manager.supervisor.uninstall(context);
     }
 
-    const deletionPreview = await previewPurge(manager);
+    const deletionPreview = await previewPurge(manager, context);
     if (!deletionPreview.allowed) {
       refused.push(...deletionPreview.refused);
       retained.push(...deletionPreview.paths.map(({ path }) => path));
@@ -257,7 +262,9 @@ export async function executePurge(manager, confirmationToken) {
         );
         retained.push(...deletionPreview.paths.map(({ path }) => path));
       } else {
+        context?.assertActive('purge-delete');
         await deletePreviewedTree(deletionPreview, removed, retained, missing, refused);
+        context?.assertActive('purge-delete');
       }
     }
   } catch (caught) {
@@ -268,7 +275,7 @@ export async function executePurge(manager, confirmationToken) {
       ),
     );
   }
-  const after = await manager.status();
+  const after = await manager.status(context);
   const rootRemoved = await isMissing(preview.root);
   const lifecycleChanged =
     JSON.stringify(statusFingerprint(preview.status)) !==

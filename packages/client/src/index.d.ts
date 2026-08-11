@@ -441,8 +441,8 @@ export declare class PortreeveClientError extends Error {
 export declare class PortreeveClient {
   constructor(options?: { socketPath?: string });
   readonly socketPath: string;
-  health(): Promise<HealthResult>;
-  stopServer(): Promise<MutationAcknowledgement>;
+  health(options?: { signal?: AbortSignal }): Promise<HealthResult>;
+  stopServer(options?: { signal?: AbortSignal }): Promise<MutationAcknowledgement>;
   listPorts(filters?: {
     classification?: InventoryEntry['classification'];
     claimed?: boolean;

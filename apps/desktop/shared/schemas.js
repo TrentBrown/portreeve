@@ -889,7 +889,7 @@ export const DesktopPurgeExecutionRequestSchema = z
 export const DesktopPurgeResultSchema = z
   .object({
     schemaVersion: z.literal(1),
-    outcome: z.enum(['succeeded', 'refused', 'partial']),
+    outcome: z.enum(['succeeded', 'refused', 'partial', 'failed']),
     message: z.string().min(1),
     removed: z.array(z.string().min(1)),
     retained: z.array(z.string().min(1)),

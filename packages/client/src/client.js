@@ -48,16 +48,19 @@ export class PortreeveClient {
     this.socketPath = options.socketPath ?? defaultSocketPath();
   }
 
-  async health() {
-    return requestJson(this.socketPath, 'GET', '/v1/health');
+  /** @param {{signal?: AbortSignal}} [options] */
+  async health(options = {}) {
+    return requestJson(this.socketPath, 'GET', '/v1/health', undefined, options);
   }
 
-  async stopServer() {
+  /** @param {{signal?: AbortSignal}} [options] */
+  async stopServer(options = {}) {
     return requestJson(
       this.socketPath,
       'POST',
       '/v1/server/stop',
       withClient({}, ['lifecycle-control-v1']),
+      options,
     );
   }
 
@@ -732,8 +735,9 @@ function withClient(
  * @param {'GET' | 'POST'} method
  * @param {string} path
  * @param {Record<string, unknown>} [body]
+ * @param {{signal?: AbortSignal}} [options]
  */
-function requestJson(socketPath, method, path, body) {
+function requestJson(socketPath, method, path, body, options = {}) {
   return new Promise((resolvePromise, reject) => {
     const serialized = body === undefined ? null : JSON.stringify(body);
     const requestId = randomUUID();
@@ -834,6 +838,14 @@ function requestJson(socketPath, method, path, body) {
     );
 
     request.on('error', (error) => {
+      if (options.signal?.aborted) {
+        reject(
+          new PortreeveClientError('PortReeve request was aborted.', {
+            code: 'request_aborted',
+          }),
+        );
+        return;
+      }
       reject(
         new PortreeveClientError(
           `PortReeve is unavailable at ${socketPath}: ${error.message}. Start it with "portreeve serve" or "portreeve start".`,
@@ -844,6 +856,21 @@ function requestJson(socketPath, method, path, body) {
         ),
       );
     });
+    if (options.signal !== undefined) {
+      const abortRequest = () => {
+        reject(
+          new PortreeveClientError('PortReeve request was aborted.', {
+            code: 'request_aborted',
+          }),
+        );
+        request.destroy();
+      };
+      options.signal.addEventListener('abort', abortRequest, { once: true });
+      request.once('close', () => {
+        options.signal?.removeEventListener('abort', abortRequest);
+      });
+      if (options.signal.aborted) abortRequest();
+    }
     if (serialized !== null) {
       request.write(serialized);
     }

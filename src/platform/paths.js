@@ -1,8 +1,8 @@
 // @ts-check
 
 import { chmod, lstat, mkdir, open } from 'node:fs/promises';
-import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { homedir, tmpdir } from 'node:os';
+import { dirname, join, resolve, sep } from 'node:path';
 import { OWNERSHIP_MARKER_FILENAME, ensureOwnershipMarker } from './ownership.js';
 
 /**
@@ -19,6 +19,26 @@ export function resolveRuntimePaths(environment = process.env) {
           )),
   );
 
+  const uid = typeof process.getuid === 'function' ? process.getuid() : 'unknown';
+  const lifecycleRuntimeDirectory = resolve(
+    environment.PORTREEVE_LIFECYCLE_RUNTIME_DIRECTORY ??
+      (environment.XDG_RUNTIME_DIR
+        ? join(environment.XDG_RUNTIME_DIR, 'portreeve')
+        : join(tmpdir(), `portreeve-${String(uid)}`)),
+  );
+  const lifecycleLockPath = resolve(
+    environment.PORTREEVE_LIFECYCLE_LOCK_PATH ??
+      join(lifecycleRuntimeDirectory, 'lifecycle-mutation.sock'),
+  );
+  if (
+    lifecycleLockPath === applicationDirectory ||
+    lifecycleLockPath.startsWith(`${applicationDirectory}${sep}`)
+  ) {
+    throw new Error(
+      'PortReeve lifecycle lock must be outside the purge-owned application home.',
+    );
+  }
+
   return Object.freeze({
     applicationDirectory,
     ownershipMarkerPath: join(applicationDirectory, OWNERSHIP_MARKER_FILENAME),
@@ -30,6 +50,7 @@ export function resolveRuntimePaths(environment = process.env) {
     diagnosticLogPath: join(applicationDirectory, 'portreeve.log'),
     supervisorStandardOutputPath: join(applicationDirectory, 'supervisor.stdout.log'),
     supervisorStandardErrorPath: join(applicationDirectory, 'supervisor.stderr.log'),
+    lifecycleLockPath,
     socketPath: resolve(
       environment.PORTREEVE_SOCKET ?? join(applicationDirectory, 'portreeve.sock'),
     ),
@@ -94,7 +115,7 @@ export async function validateExistingDatabase(databasePath) {
 /**
  * @param {string} directory
  */
-async function ensurePrivateDirectory(directory) {
+export async function ensurePrivateDirectory(directory) {
   let existed = true;
   let information;
   try {
