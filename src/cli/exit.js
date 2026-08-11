@@ -36,24 +36,20 @@ export function exitCodeForError(error) {
     return EXIT_CODES.invalidInput;
   }
   if (error instanceof PortreeveClientError) {
-    if (error.code === 'unavailable') {
-      return EXIT_CODES.unavailable;
-    }
-    if (error.code === 'incompatible_protocol') {
-      return EXIT_CODES.incompatible;
-    }
-    if (error.code === 'invalid_input' || error.status === 400) {
-      return EXIT_CODES.invalidInput;
-    }
-    if (
-      error.code === 'conflict' ||
-      error.code === 'not_found' ||
-      error.status === 404 ||
-      error.status === 409
-    ) {
-      return EXIT_CODES.conflict;
-    }
+    const code = exitCodeForErrorCode(error.code);
+    if (code !== EXIT_CODES.internal) return code;
+    if (error.status === 400) return EXIT_CODES.invalidInput;
+    if (error.status === 404 || error.status === 409) return EXIT_CODES.conflict;
   }
+  return EXIT_CODES.internal;
+}
+
+/** @param {string} code */
+export function exitCodeForErrorCode(code) {
+  if (code === 'unavailable') return EXIT_CODES.unavailable;
+  if (code === 'incompatible_protocol') return EXIT_CODES.incompatible;
+  if (code === 'invalid_input') return EXIT_CODES.invalidInput;
+  if (code === 'conflict' || code === 'not_found') return EXIT_CODES.conflict;
   return EXIT_CODES.internal;
 }
 
