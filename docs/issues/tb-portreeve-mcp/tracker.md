@@ -65,7 +65,7 @@ Append PR boundary entries here.
 ### PR #46 - MCP consequential action receipts
 
 - **PR:** [#46](https://github.com/TrentBrown/portreeve/pull/46)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P4 / I-4: evidence-bound preview/execute receipts for port, claim,
   stack, settings, and canonical stack-document changes, plus shared document
   safety primitives.

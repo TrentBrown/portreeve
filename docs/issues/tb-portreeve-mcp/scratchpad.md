@@ -95,3 +95,18 @@ Add focused preview and execute endpoints for normal reclaim, claim administrati
 
 **Alternatives considered:**
 Let the bridge resubmit evidence; keep consequential actions as direct or dry-run requests; duplicate filesystem rules in Desktop and daemon; make the MCP bridge a filesystem authority.
+
+## [7] Keep launcher operation credentials in dedicated bridge-local custody
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** MCP credential security, launcher operation lifecycle, renewal scheduling, bridge shutdown
+
+Store each launcher-operation credential only in a dedicated process-local vault behind a random opaque handle. The vault automatically renews the daemon's thirty-second launcher heartbeat by the earlier of one-third remaining TTL or ten seconds, while enforcing the common ten-minute default and sixty-minute maximum custody bounds. The explicit MCP renew tool refreshes an operation already held by that bridge; completion erases the credential immediately, and bridge exit or custody expiry stops renewal. Safe begin and completion results remain separately replayable without retaining a settled credential.
+
+**Triggered by:** I-5 adds security-sensitive launcher-operation tools whose existing public contract returns a raw renewable credential
+
+**Alternatives considered:**
+Return launcher credentials to the MCP host; persist them in PortReeve; reuse lease-shaped records by fabricating lease identifiers; require the model to heartbeat manually without automatic bounded custody; omit the approved renew tool.

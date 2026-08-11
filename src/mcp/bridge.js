@@ -32,6 +32,8 @@ import {
   TimestampSchema,
 } from '../protocol/schemas.js';
 import { CredentialCustody, CredentialCustodyError } from './credential-custody.js';
+import { LauncherCredentialCustody } from './launcher-credential-custody.js';
+import { registerCatalogCompletionTools } from './catalog-completion-tools.js';
 import { registerConsequentialTools } from './consequential-tools.js';
 import { MCP_MAX_PAGE_SIZE, pageMcpValues } from './pagination.js';
 
@@ -226,6 +228,10 @@ export function createPortreeveMcpServer(options = {}) {
     renewLease: (credential) => client.renewLease(credential),
     renewActivation: (activationId, credentials) =>
       client.renewStackActivation(activationId, credentials),
+  });
+  const launcherCustody = new LauncherCredentialCustody({
+    renewOperation: (operationId, credential) =>
+      client.renewLauncherOperation(operationId, credential),
   });
   /** @type {Map<string, unknown>} */
   const mutationResults = new Map();
@@ -450,10 +456,18 @@ export function createPortreeveMcpServer(options = {}) {
     registerTool: (definition) => register(server, definition),
     daemonOperation: (operation) => daemonRead(client, operation),
   });
+  registerCatalogCompletionTools({
+    client,
+    custody: launcherCustody,
+    mutationResults,
+    registerTool: (definition) => register(server, definition),
+    daemonOperation: (operation) => daemonRead(client, operation),
+  });
 
   const closeServer = server.close.bind(server);
   server.close = async () => {
     custody.close();
+    launcherCustody.close();
     await closeServer();
   };
 
