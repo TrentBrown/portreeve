@@ -87,6 +87,20 @@ test('README documentation links resolve to repository files', async () => {
   }
 });
 
+test('README is a truthful product landing page for the four peer clients', async () => {
+  const readme = await readFile(resolve('README.md'), 'utf8');
+  expect(readme).toContain('portreeve-lockup.svg');
+  expect(readme).toContain('One PortReeve daemon');
+  for (const client of ['Desktop', 'MCP', 'CLI', 'JavaScript client']) {
+    expect(readme).toContain(client);
+  }
+  expect(readme).toContain('bun install --frozen-lockfile');
+  expect(readme).toContain('./dist/portreeve status --json');
+  expect(readme).toContain('has not published its first npm package');
+  expect(readme).toContain('does not currently provide Docker Sandbox');
+  expect(readme).not.toContain('npm install portreeve');
+});
+
 test('release documentation distinguishes build from native execution', async () => {
   const installation = await readFile(resolve('docs', 'installation.md'), 'utf8');
   expect(installation).toMatch(/Cross-compilation alone\s+is not/u);

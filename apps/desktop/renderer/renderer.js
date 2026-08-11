@@ -209,6 +209,24 @@ for (const tab of document.querySelectorAll('.tab')) {
   });
 }
 
+for (const link of document.querySelectorAll('[data-guide-view]')) {
+  link.addEventListener('click', () => {
+    const view = /** @type {HTMLElement} */ (link).dataset.guideView;
+    if (view === undefined) return;
+    const tab = document.querySelector(`.tab[data-view="${view}"]`);
+    if (tab === null) throw new Error(`Missing ${view} tab.`);
+    void requestView(tab, view);
+  });
+}
+
+for (const link of document.querySelectorAll('[data-guide-anchor]')) {
+  link.addEventListener('click', () => {
+    const anchor = /** @type {HTMLElement} */ (link).dataset.guideAnchor;
+    if (anchor === undefined) return;
+    requiredElement(anchor).scrollIntoView({ block: 'start' });
+  });
+}
+
 requiredElement('open-guide').addEventListener('click', async () => {
   const guideTab = document.querySelector('.tab[data-view="guide"]');
   if (guideTab === null) throw new Error('Missing guide tab.');

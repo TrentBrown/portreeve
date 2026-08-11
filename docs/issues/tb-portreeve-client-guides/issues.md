@@ -35,7 +35,7 @@ the stable repository paths, then regenerate shared artifacts.
 
 ## I-3 - Deliver Desktop client-guide experiences
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 3d
 - **Plan steps:** P3
 - **Rubric criteria:** R3, R4, R8
@@ -48,12 +48,12 @@ evidence without invoking the CLI.
 
 ## I-4 - Redesign README and integrate Guide
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 1.5d
 - **Plan steps:** P4
 - **Rubric criteria:** R5, R6, R7
 - **Depends on:** I-2, I-3
-- **PR:** -
+- **PR:** [#53](https://github.com/TrentBrown/portreeve/pull/53)
 
 Create the product landing README and durable architecture diagram, add the
 bounded Guide bridge, validate links, and make supported platform and Docker

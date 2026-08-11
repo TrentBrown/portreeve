@@ -224,14 +224,14 @@ and library callers. Failures
 reject with `PortreeveClientError`, whose stable fields are `code`, optional HTTP
 `status`, `requestId`, `retryable`, and `details`.
 
-## Dependency and sandbox discovery
+## Dependency and endpoint snapshot discovery
 
 `resolveStackEndpoints(activationId, component)` returns only that component's own
 published endpoints and declared dependency aliases. Host publication and optional
 Docker-network facts remain separate, and all facts come from the activation's one
 immutable generation.
 
-The trusted launcher can request a redacted sandbox document, then replace a private
+The trusted launcher can request a redacted endpoint document, then replace a private
 runtime file atomically:
 
 ```js
@@ -244,7 +244,7 @@ const snapshot = await client.createStackEndpointSnapshot(activation.id, {
 await writeEndpointSnapshot('/private/runtime/endpoints.json', snapshot);
 ```
 
-Sandbox consumers import `readEndpointSnapshot`. It reads an explicit path or
+Snapshot consumers import `readEndpointSnapshot`. It reads an explicit path or
 `PORTREEVE_ENDPOINTS_FILE`, rejects unknown fields and documents larger than 1 MiB, and
 can compare expected revision, generation, activation, or component identity:
 
@@ -257,9 +257,10 @@ const endpoints = await readEndpointSnapshot(undefined, {
 });
 ```
 
-The snapshot contains no PortReeve socket or mutation credential. Mount it read-only in
-the sandbox; the host launcher remains responsible for selecting the correct gateway and
-replacing the document when activation identity changes.
+The snapshot contains no PortReeve socket or mutation credential. Distribute it
+read-only when a consumer cannot use the ordinary loopback address; the trusted launcher
+remains responsible for selecting the correct gateway and replacing the document when
+activation identity changes. This generic artifact is not Docker Sandbox integration.
 
 Migrated services should fail loudly on `code === "unavailable"`. They must not fall
 back to legacy probing or silently start/install PortReeve.

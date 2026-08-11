@@ -166,7 +166,7 @@ policy.
 | `POST /v1/stack-activations/{id}/reconcile` | Reconcile launcher loss using fresh process, listener, and Docker provider evidence                                                  |
 | `POST /v1/stack-activations/{id}/end`      | End only after fresh evidence shows every confirmed process or Docker provider has stopped                                           |
 | `POST /v1/stack-activations/{id}/resolve`  | Resolve one consumer's own endpoints and declared dependencies from its activation generation; requires `stack-discovery-v1`         |
-| `POST /v1/stack-activations/{id}/snapshot` | Render one redacted sandbox discovery document using a launcher-supplied gateway; requires `stack-discovery-v1`                      |
+| `POST /v1/stack-activations/{id}/snapshot` | Render one redacted endpoint document using a launcher-supplied gateway; requires `stack-discovery-v1`                              |
 | `POST /v1/launcher-operations/begin`       | Begin one renewable per-stack launcher coordination session; returns a one-time credential                                        |
 | `GET /v1/launcher-operations/{id}`         | Inspect one active or retained terminal launcher operation without returning its credential                                        |
 | `POST /v1/launcher-operations/{id}/renew`  | Renew an active launcher operation using its credential                                                                               |

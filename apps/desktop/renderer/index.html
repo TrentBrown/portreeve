@@ -407,6 +407,46 @@
           </div>
         </header>
 
+        <section
+          class="guide-section guide-client-bridge"
+          aria-labelledby="guide-clients-title"
+        >
+          <div class="guide-section-heading">
+            <p class="eyebrow">Choose a client</p>
+            <h3 id="guide-clients-title">Four peers, one PortReeve authority</h3>
+            <p>
+              Choose the surface that belongs in your workflow. Every client uses the
+              same per-user daemon and durable port state; none creates a second
+              PortReeve authority.
+            </p>
+          </div>
+          <div class="guide-client-options">
+            <article>
+              <h4>Desktop</h4>
+              <p>Visual inspection, stack editing, and low-friction launchers.</p>
+              <button type="button" data-guide-view="overview">Open Overview</button>
+            </article>
+            <article>
+              <h4>MCP</h4>
+              <p>Strict agent tools for inspection and evidence-bound coordination.</p>
+              <button type="button" data-guide-view="mcp">Open MCP guide</button>
+            </article>
+            <article>
+              <h4>CLI</h4>
+              <p>Terminal automation and complete local service administration.</p>
+              <button type="button" data-guide-view="cli">Open CLI guide</button>
+            </article>
+            <article>
+              <h4>JavaScript</h4>
+              <p>Project-owned allocation, startup, confirmation, and cleanup.</p>
+              <button type="button" data-guide-anchor="guide-project-integration">
+                See project integration
+              </button>
+              <small>Complete API guidance: <code>docs/client.md</code></small>
+            </article>
+          </div>
+        </section>
+
         <section class="guide-section" aria-labelledby="guide-paths-title">
           <div class="guide-section-heading">
             <p class="eyebrow">Choose your integration</p>
@@ -846,80 +886,6 @@
               healthy or ready to serve requests.
             </p>
           </aside>
-          <section class="guide-sandbox" aria-labelledby="guide-sandbox-value-title">
-            <div class="guide-section-heading">
-              <p class="eyebrow">Sandbox boundary</p>
-              <h4 id="guide-sandbox-value-title">
-                Sandboxes move the conflict boundary—not the need for PortReeve
-              </h4>
-              <p>
-                Dr. Sandbox and similar environments can reuse internal ports. Their
-                browser-visible and host-testable publications still compete in one
-                shared host-port namespace, so one host PortReeve authority coordinates
-                stable loopback addresses for every worktree stack.
-              </p>
-            </div>
-            <figure class="guide-sandbox-sequence guide-sequence-five">
-              <div class="guide-sequence-scroll">
-                <div class="guide-trust-bands" aria-hidden="true">
-                  <span>Trusted host</span><span>Isolation boundary</span>
-                </div>
-                <div class="guide-sequence-canvas">
-                  <div class="guide-sequence-lifelines" aria-hidden="true">
-                    <i></i><i></i><i></i><i></i><i></i>
-                  </div>
-                  <div class="guide-sequence-actors">
-                    <span>Host launcher</span><span>Host PortReeve</span
-                    ><span>Developer browser</span><span>Docker / sandbox</span
-                    ><span>Sandbox consumer</span>
-                  </div>
-                  <ol aria-label="Sandbox publication and discovery sequence">
-                    <li class="guide-message flow-1-2">
-                      <span>Prepare + begin</span>
-                    </li>
-                    <li class="guide-message flow-1-2 reverse">
-                      <span>Host ports + leases</span>
-                    </li>
-                    <li class="guide-message flow-1-4">
-                      <span>Start + publish loopback ports</span>
-                    </li>
-                    <li class="guide-message flow-1-2">
-                      <span>Confirm Docker endpoint</span>
-                    </li>
-                    <li class="guide-message flow-2-4">
-                      <span>Fresh inspect + publication evidence</span>
-                    </li>
-                    <li class="guide-message flow-2-4 reverse">
-                      <span>Verified container mapping</span>
-                    </li>
-                    <li class="guide-message flow-1-2">
-                      <span>Request component snapshot</span>
-                    </li>
-                    <li class="guide-message flow-1-2 reverse">
-                      <span>Reduced endpoint document</span>
-                    </li>
-                    <li class="guide-message flow-1-5">
-                      <span>Mount read-only snapshot</span>
-                    </li>
-                    <li class="guide-sequence-note note-sandbox">
-                      <span
-                        ><strong>Isolation preserved</strong> Addresses enter the
-                        sandbox; the control socket and lease credentials do not.</span
-                      >
-                    </li>
-                    <li class="guide-message flow-3-4">
-                      <span>Open 127.0.0.1:host-port</span>
-                    </li>
-                  </ol>
-                </div>
-              </div>
-              <figcaption>
-                Fixed internal ports remain isolated. PortReeve coordinates only the
-                shared host publications and the safe discovery document used by the
-                sandbox.
-              </figcaption>
-            </figure>
-          </section>
         </section>
 
         <section
@@ -972,19 +938,6 @@
             </div>
           </details>
           <details>
-            <summary>Sandbox discovery and trust boundaries</summary>
-            <div>
-              <p>
-                Sandboxed code never receives the control socket. PortReeve runs on the
-                host because separate authorities inside isolated sandboxes cannot
-                coordinate their shared host publications. A trusted launcher may write
-                an activation-scoped, read-only endpoint snapshot containing only the
-                addresses that consumer needs—not tokens, host paths, process IDs,
-                container IDs, database access, or mutation authority.
-              </p>
-            </div>
-          </details>
-          <details>
             <summary>Desktop, CLI, client, and server</summary>
             <div>
               <p>
@@ -1001,7 +954,9 @@
               <p>
                 PortReeve is not a general project-process supervisor, Docker Compose
                 replacement, startup-order engine, secret manager, application health
-                system, reverse proxy, DNS server, or sandbox control plane.
+                system, reverse proxy, DNS server, or sandbox control plane. It can
+                verify ordinary Docker-backed endpoints, but it does not currently
+                provide Docker Sandbox orchestration or integration.
               </p>
             </div>
           </details>
