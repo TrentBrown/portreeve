@@ -25,6 +25,8 @@ export function assertDesktopModuleGraph(inputs) {
   for (const required of [
     '/apps/desktop/main/artifact.js',
     '/apps/desktop/main/lifecycle-controller.js',
+    '/apps/desktop/main/mcp-setup-adapter.js',
+    '/src/mcp/setup.js',
     '/src/supervision/service.js',
   ]) {
     if (!normalized.some((input) => `/${input}`.endsWith(required))) {
@@ -41,7 +43,7 @@ export function assertDesktopModuleGraph(inputs) {
 }
 
 /**
- * @param {{packageDocument: string, verificationDocument: string, mainBundle: string, controllerVersion: string, artifactVersion: string}} options
+ * @param {{packageDocument: string, verificationDocument: string, mainBundle: string, preloadBundle: string, rendererDocument: string, controllerVersion: string, artifactVersion: string}} options
  */
 export function assertPackagedDesktopContents(options) {
   const metadata = JSON.parse(options.packageDocument);
@@ -54,17 +56,38 @@ export function assertPackagedDesktopContents(options) {
     verification.artifactVersion !== options.artifactVersion ||
     verification.moduleGraph?.directLifecycleController !== true ||
     verification.moduleGraph?.verifiedArtifactResolver !== true ||
+    verification.moduleGraph?.mcpSetupGenerator !== true ||
     verification.moduleGraph?.lifecycleCliAdapter !== false
   ) {
     throw new Error('Packaged Desktop identity attestation is invalid.');
   }
   for (const marker of [
     'controller_artifact_version_mismatch',
+    'generateMcpSetup',
+    'portreeve:desktop:generate-mcp-setup',
     'sourceExecutable',
     SMOKE_PREFIX.trim(),
   ]) {
     if (!options.mainBundle.includes(marker)) {
       throw new Error(`Packaged Desktop main bundle is missing ${marker}.`);
+    }
+  }
+  for (const marker of [
+    'portreeve:desktop:generate-mcp-setup',
+    'generateMcpSetup',
+    'requireMcpSetup',
+  ]) {
+    if (!options.preloadBundle.includes(marker)) {
+      throw new Error(`Packaged Desktop preload is missing ${marker}.`);
+    }
+  }
+  for (const marker of [
+    'data-view="mcp"',
+    'id="mcp-setup-form"',
+    'id="mcp-configuration"',
+  ]) {
+    if (!options.rendererDocument.includes(marker)) {
+      throw new Error(`Packaged Desktop renderer is missing ${marker}.`);
     }
   }
   for (const retiredMarker of [
@@ -98,6 +121,8 @@ export async function verifyPackagedDesktop(options) {
     '/package.json',
     '/desktop-verification.json',
     '/main/index.js',
+    '/preload/index.cjs',
+    '/renderer/index.html',
   ]) {
     if (!entries.includes(required)) {
       throw new Error(`Packaged Desktop ASAR is missing ${required}.`);
@@ -109,6 +134,8 @@ export async function verifyPackagedDesktop(options) {
       'utf8',
     ),
     mainBundle: extractFile(asarPath, 'main/index.js').toString('utf8'),
+    preloadBundle: extractFile(asarPath, 'preload/index.cjs').toString('utf8'),
+    rendererDocument: extractFile(asarPath, 'renderer/index.html').toString('utf8'),
     controllerVersion: options.controllerVersion,
     artifactVersion: artifact.version,
   });

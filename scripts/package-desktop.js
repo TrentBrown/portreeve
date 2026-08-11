@@ -103,6 +103,7 @@ await writeFile(
       moduleGraph: {
         directLifecycleController: true,
         verifiedArtifactResolver: true,
+        mcpSetupGenerator: true,
         lifecycleCliAdapter: false,
       },
     },
@@ -148,6 +149,6 @@ for (const packageDirectory of paths) {
 }
 
 console.log(
-  `Verified packaged PortReeve ${PORTREEVE_VERSION} controller, artifact, module graph, and read-only startup.`,
+  `Verified packaged PortReeve ${PORTREEVE_VERSION} controller, artifact, MCP setup surface, module graph, and read-only startup.`,
 );
 console.log(paths.join('\n'));

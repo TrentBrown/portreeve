@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PortReeve PR #49 - MCP shipped compatibility</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #102a43;
+        --muted: #52616b;
+        --paper: #f7f3ea;
+        --panel: #fffdf8;
+        --line: #ccd7d4;
+        --green: #176b56;
+        --blue: #0b3a67;
+        --gold: #d7a84b;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--paper);
+        font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif;
+      }
+      main {
+        width: min(1120px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 44px 0 72px;
+      }
+      h1,
+      h2 {
+        font-family: Georgia, serif;
+      }
+      h1 {
+        margin: 0.15rem 0 0.5rem;
+        font-size: clamp(2rem, 5vw, 4rem);
+        line-height: 1.05;
+      }
+      h2 {
+        margin-top: 2.4rem;
+        font-size: 1.6rem;
+      }
+      .eyebrow {
+        color: var(--green);
+        font-weight: 750;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .lede {
+        max-width: 800px;
+        color: var(--muted);
+        font-size: 1.15rem;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
+        gap: 16px;
+      }
+      .card,
+      .flow {
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--panel);
+        box-shadow: 0 8px 25px rgb(16 42 67 / 7%);
+      }
+      .card strong {
+        display: block;
+        margin-bottom: 0.35rem;
+        color: var(--blue);
+        font-size: 1.08rem;
+      }
+      .flow {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 28px 16px;
+      }
+      .node {
+        padding: 9px 13px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: white;
+        font-weight: 700;
+      }
+      .node.authority {
+        border-color: var(--green);
+        background: #dcefe7;
+      }
+      .arrow {
+        color: var(--green);
+        font-size: 1.25rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--panel);
+      }
+      th,
+      td {
+        padding: 11px 12px;
+        border: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: #e8efed;
+      }
+      .pass {
+        color: var(--green);
+        font-weight: 800;
+      }
+      code {
+        padding: 0.1rem 0.3rem;
+        border-radius: 4px;
+        background: #e9edeb;
+      }
+      footer {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 3px solid var(--gold);
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">Pull request #49 · final MCP slice</div>
+      <h1>Prove the product that actually ships</h1>
+      <p class="lede">
+        The MCP implementation was already complete in source. This final change
+        makes compatibility proof durable: it runs the compiled standalone
+        products, inspects the packaged Desktop application, calls PortReeve from
+        real agent hosts, and closes every remaining feature rubric row.
+      </p>
+
+      <h2>The runtime path under test</h2>
+      <div class="flow" aria-label="MCP runtime flow">
+        <span class="node">Codex / Claude / MCP host</span>
+        <span class="arrow">→</span>
+        <span class="node">compiled stdio bridge</span>
+        <span class="arrow">→</span>
+        <span class="node">official JS client</span>
+        <span class="arrow">→</span>
+        <span class="node authority">one PortReeve daemon</span>
+      </div>
+
+      <h2>What changed</h2>
+      <div class="cards">
+        <article class="card">
+          <strong>Release verifier</strong>
+          <code>scripts/verify-mcp-release.js</code> exercises host setup,
+          modern and legacy MCP, absent/incompatible daemons, concurrent bridges,
+          Linux containers, and opt-in real Codex/Claude calls.
+        </article>
+        <article class="card">
+          <strong>Desktop attestation</strong>
+          Packaging now fails unless the MCP generator is in the main bundle, the
+          strict preload API and renderer tab are in the ASAR, and the embedded CLI
+          exactly matches the Desktop version.
+        </article>
+        <article class="card">
+          <strong>Deterministic Linux proof</strong>
+          Both ARM64 and x64 standalone artifacts run both MCP eras in matching
+          containers. The gate uses <code>--pull never</code> to avoid hidden
+          registry and credential behavior.
+        </article>
+        <article class="card">
+          <strong>Feature completion</strong>
+          The final report reconciles all seven delivery PRs and marks all eight
+          acceptance criteria and rubric rows PASS without a waiver.
+        </article>
+      </div>
+
+      <h2>Compatibility matrix</h2>
+      <table>
+        <thead>
+          <tr><th>Dimension</th><th>Evidence</th><th>Result</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>MCP eras</td><td>2025-11-25 initialization and 2026-07-28 stateless discovery</td><td class="pass">PASS</td></tr>
+          <tr><td>Platforms</td><td>macOS ARM64, Linux ARM64, Linux x64</td><td class="pass">PASS</td></tr>
+          <tr><td>Agent hosts</td><td>Real Codex and Claude Code diagnostics calls</td><td class="pass">PASS</td></tr>
+          <tr><td>Authority states</td><td>Healthy, absent, incompatible, concurrent bridges</td><td class="pass">PASS</td></tr>
+          <tr><td>Desktop</td><td>ASAR contents, embedded artifact, real Electron smoke</td><td class="pass">PASS</td></tr>
+          <tr><td>Docker stack</td><td>Real mixed activation through confirmation, loss, end, and prune</td><td class="pass">PASS</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Why the change is low-risk</h2>
+      <p>
+        Production coordination semantics do not change in this slice. The new
+        executable is a verification harness, while Desktop changes only strengthen
+        package assertions. Existing runtime behavior remains covered by all 465
+        repository tests, and the packaged app still performs a read-only smoke
+        before creating mutable application authority.
+      </p>
+
+      <footer>
+        Pinned slice: cde5e6c…df50f06 · Final merge remains subject to human approval.
+      </footer>
+    </main>
+  </body>
+</html>

@@ -27,6 +27,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
+    "mcp:release-verify": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/verify-mcp-release.js",
     "release:build": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/release.js",
     "release:verify": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/verify-release.js",
     "runtime:spike": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" test test/runtime/compiled-runtime.test.js",

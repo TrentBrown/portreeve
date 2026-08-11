@@ -19,6 +19,8 @@ test('requires the direct lifecycle module graph and excludes the retired CLI ad
   const inputs = [
     'apps/desktop/main/artifact.js',
     'apps/desktop/main/lifecycle-controller.js',
+    'apps/desktop/main/mcp-setup-adapter.js',
+    'src/mcp/setup.js',
     'src/supervision/service.js',
   ];
   expect(() => assertDesktopModuleGraph(inputs)).not.toThrow();
@@ -37,11 +39,16 @@ test('inspects packaged identity, direct-controller markers, and retired adapter
       moduleGraph: {
         directLifecycleController: true,
         verifiedArtifactResolver: true,
+        mcpSetupGenerator: true,
         lifecycleCliAdapter: false,
       },
     }),
     mainBundle:
-      'controller_artifact_version_mismatch sourceExecutable PORTREEVE_DESKTOP_SMOKE',
+      'controller_artifact_version_mismatch generateMcpSetup portreeve:desktop:generate-mcp-setup sourceExecutable PORTREEVE_DESKTOP_SMOKE',
+    preloadBundle:
+      'portreeve:desktop:generate-mcp-setup generateMcpSetup requireMcpSetup',
+    rendererDocument:
+      '<button data-view="mcp">MCP</button><form id="mcp-setup-form"><pre id="mcp-configuration"></pre></form>',
     controllerVersion: '0.1.0',
     artifactVersion: '0.1.0',
   };
