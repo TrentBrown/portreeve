@@ -437,6 +437,39 @@ export interface ReclamationResult {
   }>;
 }
 
+export interface ConsequentialPreview {
+  receiptId: string;
+  action: string;
+  target: { type: string; id: string };
+  proposal: Record<string, unknown>;
+  observed: Record<string, unknown>;
+  expiresAt: string;
+}
+
+export interface ConsequentialExecution {
+  changed: boolean;
+  replayed: boolean;
+  result: Record<string, unknown>;
+}
+
+export interface StackDocumentInspection {
+  stackRoot: string;
+  stackRootName: string;
+  path: string;
+  kind: 'missing' | 'regular' | 'non-regular' | 'oversized';
+  fingerprint: string | null;
+  definition: StackDefinition | null;
+  revision: string | null;
+  issues: Array<{ code: string; message: string; path: string[] }>;
+}
+
+export interface StackDefinitionValidation {
+  valid: boolean;
+  definition: StackDefinition | null;
+  revision: string | null;
+  issues: Array<{ code: string; message: string; path: string[] }>;
+}
+
 export declare class PortreeveClientError extends Error {
   constructor(
     message: string,
@@ -482,6 +515,17 @@ export declare class PortreeveClient {
     stackRoot: string;
     definition: StackDefinition;
   }): Promise<StackApplyResult>;
+  getStackDocument(stackRoot: string): Promise<StackDocumentInspection>;
+  validateStackDefinition(definition: unknown): Promise<StackDefinitionValidation>;
+  previewStackApply(request: {
+    stackRoot: string;
+    definition: StackDefinition;
+    idempotencyKey?: string;
+  }): Promise<ConsequentialPreview>;
+  executeStackApply(request: {
+    stackRoot: string;
+    receiptId: string;
+  }): Promise<ConsequentialExecution>;
   listStacks(filters?: {
     project?: string;
     stackRoot?: string;
@@ -555,6 +599,11 @@ export declare class PortreeveClient {
     olderThanMilliseconds: number;
     dryRun: boolean;
   }): Promise<StackPruneResult>;
+  previewStacksPrune(options: {
+    olderThanMilliseconds: number;
+    idempotencyKey?: string;
+  }): Promise<ConsequentialPreview>;
+  executeStacksPrune(receiptId: string): Promise<ConsequentialExecution>;
   resolveStackEndpoints(
     activationId: string,
     component: string,
@@ -595,13 +644,39 @@ export declare class PortreeveClient {
     claimId: string,
     options?: { preferredPort?: number; exactPort?: number },
   ): Promise<ClaimRecord>;
+  previewClaimReassign(
+    claimId: string,
+    options?: { preferredPort?: number; exactPort?: number; idempotencyKey?: string },
+  ): Promise<ConsequentialPreview>;
+  executeClaimReassign(
+    claimId: string,
+    receiptId: string,
+  ): Promise<ConsequentialExecution>;
   deleteClaim(claimId: string): Promise<MutationAcknowledgement>;
+  previewClaimDelete(
+    claimId: string,
+    options?: { idempotencyKey?: string },
+  ): Promise<ConsequentialPreview>;
+  executeClaimDelete(
+    claimId: string,
+    receiptId: string,
+  ): Promise<ConsequentialExecution>;
   pruneClaims(options: {
     olderThanMilliseconds: number;
     dryRun: boolean;
   }): Promise<ClaimPruneResult>;
+  previewClaimsPrune(options: {
+    olderThanMilliseconds: number;
+    idempotencyKey?: string;
+  }): Promise<ConsequentialPreview>;
+  executeClaimsPrune(receiptId: string): Promise<ConsequentialExecution>;
   getConfig(): Promise<Record<string, unknown>>;
   setConfig(updates: Record<string, unknown>): Promise<Record<string, unknown>>;
+  previewConfigUpdate(
+    updates: Record<string, unknown>,
+    options?: { idempotencyKey?: string },
+  ): Promise<ConsequentialPreview>;
+  executeConfigUpdate(receiptId: string): Promise<ConsequentialExecution>;
   history(filters?: {
     limit?: number;
     eventType?: string;
@@ -626,6 +701,14 @@ export declare class PortreeveClient {
       dryRun?: boolean;
     },
   ): Promise<ReclamationResult>;
+  previewPortReclaim(
+    port: number,
+    options: {
+      policy: 'never' | 'graceful' | 'force-after-grace';
+      idempotencyKey?: string;
+    },
+  ): Promise<ConsequentialPreview>;
+  executePortReclaim(port: number, receiptId: string): Promise<ConsequentialExecution>;
   unsafeEvictPort(
     port: number,
     options: {

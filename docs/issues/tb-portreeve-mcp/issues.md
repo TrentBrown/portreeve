@@ -36,7 +36,7 @@ bounded global inspection surface.
 
 ## I-3 - Deliver credential custody and coordination lifecycle
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 3d
 - **Plan steps:** P3
 - **Rubric criteria:** R4, R5
@@ -49,7 +49,7 @@ resolution, confirmation, reconciliation, and safe recovery after custody loss.
 
 ## I-4 - Deliver consequential mutation receipts
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 4d
 - **Plan steps:** P4
 - **Rubric criteria:** R5, R6, R7

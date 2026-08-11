@@ -183,4 +183,40 @@ describe('action receipts', () => {
     ).toMatchObject({ changed: true, replayed: false });
     registry.close();
   });
+
+  test('awaits asynchronous effects and replays the durable result before evidence checks', async () => {
+    const registry = openRegistry();
+    const service = new ActionReceiptService({ registry });
+    const now = new Date('2026-08-10T12:00:00.000Z');
+    const input = {
+      action: 'stack.apply',
+      targetType: 'stack-root',
+      targetId: '/tmp/project',
+      evidence: { fingerprint: 'before' },
+    };
+    const receipt = service.preview(input, now);
+    let executions = 0;
+    const first = await service.executeAsync(
+      { receiptId: receipt.id, ...input },
+      async () => {
+        executions += 1;
+        await Bun.sleep(1);
+        return { saved: true, stackId: '11111111-1111-4111-8111-111111111111' };
+      },
+      now,
+    );
+    const replay = await service.executeAsync(
+      { receiptId: receipt.id, ...input, evidence: { fingerprint: 'changed' } },
+      async () => {
+        executions += 1;
+        return { saved: false };
+      },
+      new Date('2026-08-10T12:10:00.000Z'),
+    );
+
+    expect(first).toMatchObject({ changed: true, replayed: false });
+    expect(replay).toEqual({ changed: false, replayed: true, result: first.result });
+    expect(executions).toBe(1);
+    registry.close();
+  });
 });

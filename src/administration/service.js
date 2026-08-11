@@ -58,64 +58,63 @@ export class AdministrationService {
    * @param {unknown} input
    */
   async reassignClaim(claimId, input) {
+    const preview = await this.previewReassignClaim(claimId, input);
+    const now = this.now();
+    await this.#assertIdle(preview.claim, now);
+    if ((await this.inventoryService.inspect(preview.port)).listeners.length > 0) {
+      throw new RegistryError(
+        'conflict',
+        `Reassignment port ${preview.port} changed before mutation.`,
+        { port: preview.port, reason: 'live_listener' },
+      );
+    }
+    return this.registry.reassignClaim(
+      {
+        claimId: preview.claim.id,
+        port: preview.port,
+        preferredPort: preview.preferredPort,
+        exactPort: preview.exactPort,
+      },
+      now,
+    );
+  }
+
+  /** @param {string} claimId @param {unknown} input */
+  async previewReassignClaim(claimId, input) {
     const id = IdentifierSchema.parse(claimId);
     const request = ClaimReassignRequestSchema.parse(input);
     assertCompatible(request.client);
     const now = this.now();
     const claim = this.getClaim(id);
     await this.#assertIdle(claim, now);
-
     const settings = this.registry.getSettings();
     const ephemeralRange = await this.detectEphemeralRange();
     const reserved = new Set(this.registry.listReservedPorts(now));
-    if (claim.assignedPort !== null) {
-      reserved.delete(claim.assignedPort);
-    }
-    const candidates = reassignmentCandidates(request, settings, ephemeralRange);
-
-    for (const port of candidates) {
+    if (claim.assignedPort !== null) reserved.delete(claim.assignedPort);
+    for (const port of reassignmentCandidates(request, settings, ephemeralRange)) {
       if (port === claim.assignedPort || reserved.has(port)) {
         if (request.exactPort === port) {
-          throw new RegistryError(
-            'conflict',
-            `Exact reassignment port ${port} is unavailable.`,
-            { port, reason: port === claim.assignedPort ? 'unchanged' : 'reserved' },
+          throw unavailableReassignment(
+            port,
+            port === claim.assignedPort ? 'unchanged' : 'reserved',
           );
         }
         continue;
       }
-      if ((await this.inventoryService.inspect(port)).listeners.length > 0) {
-        if (request.exactPort === port) {
-          throw new RegistryError(
-            'conflict',
-            `Exact reassignment port ${port} has a live listener.`,
-            { port, reason: 'live_listener' },
-          );
-        }
+      const inventory = await this.inventoryService.inspect(port);
+      if (inventory.listeners.length > 0) {
+        if (request.exactPort === port)
+          throw unavailableReassignment(port, 'live_listener');
         continue;
       }
-      await this.#assertIdle(claim, now);
-      if ((await this.inventoryService.inspect(port)).listeners.length > 0) {
-        if (request.exactPort === port) {
-          throw new RegistryError(
-            'conflict',
-            `Exact reassignment port ${port} changed before mutation.`,
-            { port, reason: 'live_listener' },
-          );
-        }
-        continue;
-      }
-      return this.registry.reassignClaim(
-        {
-          claimId: id,
-          port,
-          preferredPort: request.preferredPort ?? null,
-          exactPort: request.exactPort ?? null,
-        },
-        now,
-      );
+      return {
+        claim,
+        port,
+        preferredPort: request.preferredPort ?? null,
+        exactPort: request.exactPort ?? null,
+        inventory,
+      };
     }
-
     throw new RegistryError(
       'conflict',
       request.exactPort === undefined
@@ -129,13 +128,26 @@ export class AdministrationService {
    * @param {unknown} input
    */
   async deleteClaim(claimId, input) {
+    const preview = await this.previewDeleteClaim(claimId, input);
+    const now = this.now();
+    await this.#assertIdle(preview.claim, now);
+    return this.registry.deleteClaim(preview.claim.id, 'deleted', now);
+  }
+
+  /** @param {string} claimId @param {unknown} input */
+  async previewDeleteClaim(claimId, input) {
     const id = IdentifierSchema.parse(claimId);
     const request = ClaimDeleteRequestSchema.parse(input);
     assertCompatible(request.client);
-    const now = this.now();
     const claim = this.getClaim(id);
-    await this.#assertIdle(claim, now);
-    return this.registry.deleteClaim(id, 'deleted', now);
+    await this.#assertIdle(claim, this.now());
+    return {
+      claim,
+      inventory:
+        claim.assignedPort === null
+          ? null
+          : await this.inventoryService.inspect(claim.assignedPort),
+    };
   }
 
   /**
@@ -288,6 +300,15 @@ function reassignmentCandidates(request, settings, ephemeralRange) {
     }
   }
   return candidates;
+}
+
+/** @param {number} port @param {string} reason */
+function unavailableReassignment(port, reason) {
+  return new RegistryError(
+    'conflict',
+    `Exact reassignment port ${port} is unavailable.`,
+    { port, reason },
+  );
 }
 
 /**

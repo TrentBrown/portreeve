@@ -68,6 +68,50 @@ export class ReclamationService {
   }
 
   /**
+   * Observe the exact listener and ownership evidence used by a normal reclaim
+   * without auditing, releasing a run, or signaling a process.
+   *
+   * @param {number} requestedPort
+   * @param {unknown} input
+   */
+  async previewReclaim(requestedPort, input) {
+    const port = PortSchema.parse(requestedPort);
+    const request = ReclaimRequestSchema.parse(input);
+    assertCompatible(request.client);
+    const snapshot = await this.#snapshot(port, true);
+    const containerIds = snapshot.entry.docker?.containers.map(({ id }) => id) ?? [];
+    const completion =
+      snapshot.entry.listeners.length === 0
+        ? { outcome: 'already-free', reason: null, launcherAction: null }
+        : !snapshot.valid
+          ? {
+              outcome:
+                snapshot.reason === 'docker-managed-listener'
+                  ? 'launcher-action-required'
+                  : 'refused',
+              reason: snapshot.reason,
+              launcherAction:
+                containerIds.length === 0
+                  ? null
+                  : { kind: 'docker', action: 'stop-container', containerIds },
+            }
+          : request.policy === 'never'
+            ? {
+                outcome: 'refused',
+                reason: 'replacement-policy-never',
+                launcherAction: null,
+              }
+            : { outcome: 'would-terminate', reason: null, launcherAction: null };
+    return {
+      port,
+      policy: request.policy,
+      ...completion,
+      targets: snapshot.entry.listeners,
+      inventory: snapshot.entry,
+    };
+  }
+
+  /**
    * Evict any observable listener on one exact port. Explicit unsafe intent
    * bypasses claim ownership only; it never bypasses process-instance binding.
    *

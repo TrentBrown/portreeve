@@ -43,13 +43,13 @@ test('stdio bridge serves legacy MCP, keeps stdout framed, and diagnoses an abse
 
   expect(messages.map(({ id }) => id)).toEqual([1, 2, 3, 4]);
   const tools = messages[1]?.result.tools;
-  expect(tools).toHaveLength(29);
+  expect(tools).toHaveLength(45);
   expect(
     tools.filter((/** @type {any} */ tool) => tool.annotations.readOnlyHint === true),
-  ).toHaveLength(17);
+  ).toHaveLength(19);
   expect(
     tools.filter((/** @type {any} */ tool) => tool.annotations.readOnlyHint === false),
-  ).toHaveLength(12);
+  ).toHaveLength(26);
   const names = tools.map((/** @type {any} */ { name }) => name);
   for (const exclusion of MCP_EXCLUDED_CAPABILITIES) {
     expect(names.join(' ')).not.toContain(exclusion);
@@ -80,7 +80,7 @@ test('stdio bridge accepts the 2026-07-28 stateless opening', async () => {
     },
   ]);
   expect(messages[0]?.result.supportedVersions).toContain('2026-07-28');
-  expect(messages[1]?.result.tools).toHaveLength(29);
+  expect(messages[1]?.result.tools).toHaveLength(45);
   expect(messages[1]?.result._meta['io.modelcontextprotocol/serverInfo']).toEqual({
     name: 'portreeve',
     version: '0.1.0',
@@ -250,6 +250,100 @@ test('one bridge retries the daemon after it becomes available', async () => {
       daemon.kill('SIGTERM');
       await daemon.exited;
     }
+    await rm(home, { force: true, recursive: true });
+  }
+});
+
+test('previews and executes a daemon-authoritative settings receipt over stdio', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'portreeve-mcp-receipt-'));
+  const socketPath = join(home, 'portreeve.sock');
+  const daemon = Bun.spawn(
+    [process.execPath, resolve('src/cli/main.js'), 'serve', '--home', home],
+    { stdout: 'pipe', stderr: 'pipe' },
+  );
+  const client = new PortreeveClient({ socketPath });
+  /** @type {Bun.Subprocess<'pipe', 'pipe', 'pipe'> | undefined} */
+  let bridge;
+  try {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      try {
+        await client.health();
+        break;
+      } catch {
+        await Bun.sleep(20);
+      }
+    }
+    bridge = Bun.spawn(
+      [
+        process.execPath,
+        resolve('src/cli/main.js'),
+        'mcp',
+        'serve',
+        '--socket',
+        socketPath,
+      ],
+      { stdin: 'pipe', stdout: 'pipe', stderr: 'pipe' },
+    );
+    const activeBridge = bridge;
+    const lines = lineReader(activeBridge.stdout);
+    activeBridge.stdin.write(
+      `${JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2025-11-25',
+          capabilities: {},
+          clientInfo: { name: 'receipt-test', version: '1' },
+        },
+      })}\n`,
+    );
+    await lines.next();
+    activeBridge.stdin.write(
+      `${JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: {
+          name: 'portreeve_settings_update_preview',
+          arguments: { updates: { gracefulShutdownMilliseconds: 850 } },
+        },
+      })}\n`,
+    );
+    const preview = (await lines.next()).result.structuredContent;
+    expect(preview).toMatchObject({
+      ok: true,
+      data: { action: 'settings.update', target: { id: 'global' } },
+    });
+    const receiptId = preview.data.receiptId;
+    for (const id of [3, 4]) {
+      activeBridge.stdin.write(
+        `${JSON.stringify({
+          jsonrpc: '2.0',
+          id,
+          method: 'tools/call',
+          params: {
+            name: 'portreeve_settings_update_execute',
+            arguments: { receiptId },
+          },
+        })}\n`,
+      );
+    }
+    expect((await lines.next()).result.structuredContent).toMatchObject({
+      ok: true,
+      data: { changed: true, replayed: false },
+    });
+    expect((await lines.next()).result.structuredContent).toMatchObject({
+      ok: true,
+      data: { changed: false, replayed: true },
+    });
+  } finally {
+    if (bridge !== undefined) {
+      bridge.stdin.end();
+      await bridge.exited;
+    }
+    daemon.kill('SIGTERM');
+    await daemon.exited;
     await rm(home, { force: true, recursive: true });
   }
 });

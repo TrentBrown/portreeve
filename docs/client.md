@@ -198,6 +198,12 @@ command output and environment values are not accepted by any launcher-operation
 The `PortreeveClient` exposes `health`, `acquire`, `confirm`, `abandon`, `release`,
 `listPorts`, `inspectPort`, `reclaimPort`, `unsafeEvictPort`, `listClaims`, `getClaim`,
 `reassignClaim`, `deleteClaim`, `pruneClaims`, `applyStack`, `listStacks`, `getStack`,
+`previewPortReclaim`, `executePortReclaim`, `previewClaimReassign`,
+`executeClaimReassign`, `previewClaimDelete`, `executeClaimDelete`,
+`previewClaimsPrune`, `executeClaimsPrune`, `getStackDocument`,
+`validateStackDefinition`, `previewStackApply`, `executeStackApply`,
+`previewStacksPrune`, `executeStacksPrune`, `previewConfigUpdate`, and
+`executeConfigUpdate`,
 `getStackStatus`,
 `prepareStack`, `beginStackActivation`, `getStackActivation`,
 `listStackActivations`, `renewLease`, `renewStackActivation`,

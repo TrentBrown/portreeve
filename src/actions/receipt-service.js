@@ -129,4 +129,99 @@ export class ActionReceiptService {
       throw error;
     }
   }
+
+  /**
+   * Execute an evidence-bound action whose implementation is asynchronous.
+   * Completed receipts replay before fresh evidence is considered, so a
+   * caller can safely retry after losing the original response.
+   *
+   * @template {Record<string, unknown>} T
+   * @param {{
+   *   receiptId: string,
+   *   action: string,
+   *   targetType: string,
+   *   targetId: string,
+   *   evidence: Record<string, unknown>
+   * }} input
+   * @param {() => Promise<T>} execute
+   * @param {Date} [now]
+   * @returns {Promise<{changed: boolean, replayed: boolean, result: T}>}
+   */
+  async executeAsync(input, execute, now = new Date()) {
+    const receipt = this.#requireExecutableReceipt(input, now);
+    if (receipt.state === 'completed') {
+      return replayResult(receipt);
+    }
+    this.#assertEvidence(receipt, input.evidence);
+    const claimed = this.registry.claimActionReceiptExecution(receipt.id, now);
+    if (claimed.state === 'completed') {
+      return replayResult(claimed);
+    }
+    try {
+      const result = await execute();
+      const completed = this.registry.completeActionReceipt(receipt.id, result, now);
+      return {
+        changed: true,
+        replayed: false,
+        result: /** @type {T} */ (completed.result),
+      };
+    } catch (error) {
+      this.registry.resetActionReceiptExecution(receipt.id);
+      throw error;
+    }
+  }
+
+  /**
+   * @param {{receiptId: string, action: string, targetType: string, targetId: string}} input
+   * @param {Date} now
+   */
+  #requireExecutableReceipt(input, now) {
+    const receipt = this.registry.getActionReceipt(input.receiptId);
+    if (receipt === null) {
+      throw new ActionReceiptError('not_found', 'Action receipt was not found.', {
+        receiptId: input.receiptId,
+      });
+    }
+    if (
+      receipt.action !== input.action ||
+      receipt.targetType !== input.targetType ||
+      receipt.targetId !== input.targetId
+    ) {
+      throw new ActionReceiptError(
+        'receipt_mismatch',
+        'Action receipt does not match the requested action and target.',
+        { receiptId: receipt.id },
+      );
+    }
+    if (receipt.state !== 'completed' && receipt.expiresAt <= now.toISOString()) {
+      throw new ActionReceiptError('receipt_expired', 'Action receipt has expired.', {
+        receiptId: receipt.id,
+        expiresAt: receipt.expiresAt,
+      });
+    }
+    return receipt;
+  }
+
+  /** @param {ReturnType<import('../storage/registry.js').Registry['getActionReceipt']> & {}} receipt @param {Record<string, unknown>} evidence */
+  #assertEvidence(receipt, evidence) {
+    const evidenceHash = createHash('sha256')
+      .update(canonicalJson(evidence))
+      .digest('hex');
+    if (receipt.evidenceHash !== evidenceHash) {
+      throw new ActionReceiptError(
+        'receipt_mismatch',
+        'Action receipt evidence is stale or does not match.',
+        { receiptId: receipt.id },
+      );
+    }
+  }
+}
+
+/** @template {Record<string, unknown>} T @param {{result: Record<string, unknown>|null}} receipt */
+function replayResult(receipt) {
+  return {
+    changed: false,
+    replayed: true,
+    result: /** @type {T} */ (receipt.result),
+  };
 }

@@ -1,7 +1,15 @@
 // @ts-check
 
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtemp, realpath, rm, stat, symlink } from 'node:fs/promises';
+import {
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:net';
@@ -1112,5 +1120,167 @@ test('administers claims, settings, pruning, and history through the public API'
   expect(history[0]).toMatchObject({
     eventType: 'claim.pruned',
     entityId: missingClaim.id,
+  });
+});
+
+test('binds settings changes to five-minute receipts and durably replays completion', async () => {
+  const { socketPath } = await startFixture();
+  const client = new PortreeveClient({ socketPath });
+  const stale = await client.previewConfigUpdate({
+    gracefulShutdownMilliseconds: 750,
+  });
+  await client.setConfig({ gracefulShutdownMilliseconds: 800 });
+  await expect(client.executeConfigUpdate(stale.receiptId)).rejects.toMatchObject({
+    code: 'conflict',
+    details: { receiptCode: 'receipt_mismatch' },
+  });
+
+  const preview = await client.previewConfigUpdate({
+    gracefulShutdownMilliseconds: 900,
+  });
+  const first = await client.executeConfigUpdate(preview.receiptId);
+  expect(first).toMatchObject({
+    changed: true,
+    replayed: false,
+    result: { settings: { gracefulShutdownMilliseconds: 900 } },
+  });
+  await client.setConfig({ gracefulShutdownMilliseconds: 1_000 });
+  expect(await client.executeConfigUpdate(preview.receiptId)).toEqual({
+    changed: false,
+    replayed: true,
+    result: first.result,
+  });
+});
+
+test('owns only the canonical stack document and rejects external edits after preview', async () => {
+  const { socketPath } = await startFixture();
+  const client = new PortreeveClient({ socketPath });
+  const stackRoot = await mkdtemp(join(tmpdir(), 'portreeve-action-stack-'));
+  cleanups.push(() => rm(stackRoot, { force: true, recursive: true }));
+  const definition = {
+    version: /** @type {const} */ (1),
+    project: 'receipt-stack',
+    components: {
+      api: { endpoints: { default: { required: true } } },
+    },
+  };
+
+  expect(await client.validateStackDefinition(definition)).toMatchObject({
+    valid: true,
+    definition: { project: 'receipt-stack' },
+  });
+  expect(await client.validateStackDefinition({ version: 1 })).toMatchObject({
+    valid: false,
+  });
+  const missing = await client.getStackDocument(stackRoot);
+  expect(missing).toMatchObject({ kind: 'missing', fingerprint: null });
+  expect(missing).not.toHaveProperty('content');
+
+  const stale = await client.previewStackApply({ stackRoot, definition });
+  await writeFile(missing.path, '{"external":true}\n', 'utf8');
+  await expect(
+    client.executeStackApply({ stackRoot, receiptId: stale.receiptId }),
+  ).rejects.toMatchObject({
+    code: 'conflict',
+    details: { receiptCode: 'receipt_mismatch' },
+  });
+
+  const preview = await client.previewStackApply({ stackRoot, definition });
+  const executed = await client.executeStackApply({
+    stackRoot,
+    receiptId: preview.receiptId,
+  });
+  expect(executed).toMatchObject({
+    changed: true,
+    replayed: false,
+    result: {
+      saved: true,
+      applied: true,
+      stack: { project: 'receipt-stack' },
+    },
+  });
+  const appliedStack = /** @type {any} */ (executed.result.stack);
+  expect(JSON.parse(await readFile(missing.path, 'utf8'))).toEqual(
+    appliedStack.definition,
+  );
+  expect(
+    await client.executeStackApply({ stackRoot, receiptId: preview.receiptId }),
+  ).toEqual({ changed: false, replayed: true, result: executed.result });
+});
+
+test('routes port, claim, and prune mutations through evidence receipts', async () => {
+  const { socketPath, registry } = await startFixture();
+  const client = new PortreeveClient({ socketPath });
+
+  const freePort = await idlePort();
+  const reclaim = await client.previewPortReclaim(freePort, {
+    policy: 'graceful',
+  });
+  const reclaimed = await client.executePortReclaim(freePort, reclaim.receiptId);
+  expect(reclaimed).toMatchObject({
+    changed: true,
+    replayed: false,
+    result: { outcome: 'already-free', port: freePort },
+  });
+  expect(await client.executePortReclaim(freePort, reclaim.receiptId)).toEqual({
+    changed: false,
+    replayed: true,
+    result: reclaimed.result,
+  });
+
+  const firstPort = await idlePort();
+  const secondPort = await idlePort();
+  const lease = await client.acquire({
+    claim: claim('receipt-admin'),
+    allocation: { exactPort: firstPort },
+  });
+  await client.abandon(lease, 'client-cancelled');
+  const managed = (await client.listClaims({ component: 'receipt-admin' }))[0];
+  if (managed === undefined) throw new Error('Receipt test claim was not created.');
+  const reassign = await client.previewClaimReassign(managed.id, {
+    exactPort: secondPort,
+  });
+  expect(
+    await client.executeClaimReassign(managed.id, reassign.receiptId),
+  ).toMatchObject({ result: { assignedPort: secondPort } });
+  const deletion = await client.previewClaimDelete(managed.id);
+  expect(await client.executeClaimDelete(managed.id, deletion.receiptId)).toMatchObject(
+    {
+      result: { deleted: true, claimId: managed.id },
+    },
+  );
+
+  const missingClaim = registry.insertClaim(
+    {
+      identity: claim(
+        'receipt-prune',
+        join(tmpdir(), `portreeve-missing-${crypto.randomUUID()}`),
+      ),
+      mode: 'sticky',
+    },
+    new Date('2026-01-01T00:00:00.000Z'),
+  );
+  const claimPrune = await client.previewClaimsPrune({
+    olderThanMilliseconds: 1,
+  });
+  expect(await client.executeClaimsPrune(claimPrune.receiptId)).toMatchObject({
+    result: { deletedClaimIds: expect.arrayContaining([missingClaim.id]) },
+  });
+
+  const removedRoot = await mkdtemp(join(tmpdir(), 'portreeve-prune-stack-'));
+  await client.applyStack({
+    stackRoot: removedRoot,
+    definition: {
+      version: 1,
+      project: 'receipt-prune-stack',
+      components: { api: { endpoints: { default: {} } } },
+    },
+  });
+  await rm(removedRoot, { recursive: true });
+  const stackPrune = await client.previewStacksPrune({
+    olderThanMilliseconds: 0,
+  });
+  expect(await client.executeStacksPrune(stackPrune.receiptId)).toMatchObject({
+    result: { deletedStackIds: expect.any(Array) },
   });
 });

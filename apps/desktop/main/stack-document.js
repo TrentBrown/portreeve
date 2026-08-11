@@ -1,18 +1,25 @@
 // @ts-check
 
-import { createHash, randomUUID } from 'node:crypto';
-import { link, lstat, open, readFile, rename, unlink } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { lstat } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
-import { canonicalStackRoot } from 'portreeve';
 import {
   StackApplyResponseSchema,
-  StackDefinitionSchema,
   StackListSchema,
   StackRecordSchema,
 } from '../../../src/protocol/schemas.js';
+import {
+  MAX_STACK_DEFINITION_BYTES,
+  STACK_DEFINITION_FILENAME,
+  StackDocumentError,
+  canonicalStackDocumentRoot,
+  fingerprintStackDocument,
+  inspectStackDocument,
+  parseStackDocument,
+  writeStackDocument,
+} from '../../../src/stacks/document.js';
 
-export const STACK_DEFINITION_FILENAME = 'portreeve.stack.json';
-export const MAX_STACK_DEFINITION_BYTES = 1_048_576;
+export { MAX_STACK_DEFINITION_BYTES, STACK_DEFINITION_FILENAME };
 
 /**
  * Own the fixed stack-definition path and every filesystem mutation in the
@@ -142,24 +149,24 @@ export function createStackDocumentService(client, options) {
       return conflictResult(session, current.evidence, conflictReason);
     }
 
+    let written;
     try {
-      if (current.kind === 'missing') {
-        await exclusiveWrite(session.filename, content);
-      } else {
-        await atomicReplace(
-          session.filename,
-          content,
-          current.mode ?? 0o644,
-          current.evidence,
-          maxBytes,
-        );
-      }
+      const result = await writeStackDocument({
+        stackRoot: session.stackRoot,
+        content,
+        expectedFingerprint: current.evidence,
+        maxBytes,
+      });
+      written = observedFromShared(result);
     } catch (error) {
       if (isCode(error, 'EEXIST')) {
         current = await inspectDefinition(session.filename, maxBytes);
         return conflictResult(session, current.evidence, 'appeared-after-open');
       }
-      if (isCode(error, 'stack_definition_changed_during_save')) {
+      if (
+        error instanceof StackDocumentError &&
+        error.code === 'stack_definition_changed'
+      ) {
         current = await inspectDefinition(session.filename, maxBytes);
         return current.kind === 'non-regular' || current.kind === 'oversized'
           ? unsupportedTargetResult(session, current.kind)
@@ -181,8 +188,6 @@ export function createStackDocumentService(client, options) {
         },
       });
     }
-
-    const written = await inspectDefinition(session.filename, maxBytes);
     if (written.kind !== 'regular' || written.evidence !== fingerprint(content)) {
       return mutationResult(session, {
         outcome: 'failed',
@@ -370,32 +375,8 @@ function mutationResult(session, value) {
 
 /** @param {string} content @param {number} maxBytes */
 function parseCandidate(content, maxBytes) {
-  if (Buffer.byteLength(content, 'utf8') > maxBytes) {
-    return {
-      definition: null,
-      issues: [issue('definition_too_large', 'The stack definition is too large.')],
-    };
-  }
-  let value;
-  try {
-    value = JSON.parse(content);
-  } catch {
-    return {
-      definition: null,
-      issues: [issue('invalid_json', 'The stack definition is not valid JSON.')],
-    };
-  }
-  const parsed = StackDefinitionSchema.safeParse(value);
-  return parsed.success
-    ? { definition: parsed.data, issues: [] }
-    : {
-        definition: null,
-        issues: parsed.error.issues.map((entry) => ({
-          code: 'invalid_definition',
-          message: entry.message,
-          path: entry.path,
-        })),
-      };
+  const parsed = parseStackDocument(content, maxBytes);
+  return { definition: parsed.definition, issues: parsed.issues };
 }
 
 /** @param {Awaited<ReturnType<typeof inspectDefinition>>} observed */
@@ -431,100 +412,27 @@ function parseObservedDefinition(observed) {
 
 /** @param {string} filename @param {number} maxBytes */
 async function inspectDefinition(filename, maxBytes) {
-  let entry;
   try {
-    entry = await lstat(filename);
+    return observedFromShared(await inspectStackDocument(dirname(filename), maxBytes));
   } catch (error) {
-    if (isCode(error, 'ENOENT')) {
-      return { kind: /** @type {const} */ ('missing'), evidence: null, mode: null };
+    if (error instanceof StackDocumentError) {
+      throw documentError(error.code, error.message);
     }
     throw documentError(
       'stack_definition_read_failed',
       'The stack definition could not be inspected.',
     );
   }
-  if (!entry.isFile()) {
-    return {
-      kind: /** @type {const} */ ('non-regular'),
-      evidence: metadataFingerprint(entry),
-      mode: entry.mode & 0o777,
-    };
-  }
-  if (entry.size > maxBytes) {
-    return {
-      kind: /** @type {const} */ ('oversized'),
-      evidence: metadataFingerprint(entry),
-      mode: entry.mode & 0o777,
-    };
-  }
-  let content;
-  try {
-    content = await readFile(filename, 'utf8');
-  } catch {
-    throw documentError(
-      'stack_definition_read_failed',
-      'The stack definition could not be read.',
-    );
-  }
-  if (Buffer.byteLength(content, 'utf8') > maxBytes) {
-    return {
-      kind: /** @type {const} */ ('oversized'),
-      evidence: fingerprint(content),
-      mode: entry.mode & 0o777,
-    };
-  }
+}
+
+/** @param {Awaited<ReturnType<typeof inspectStackDocument>>} document */
+function observedFromShared(document) {
   return {
-    kind: /** @type {const} */ ('regular'),
-    evidence: fingerprint(content),
-    mode: entry.mode & 0o777,
-    content,
+    kind: document.kind,
+    evidence: document.fingerprint,
+    mode: document.mode,
+    ...('content' in document ? { content: document.content } : {}),
   };
-}
-
-/** @param {string} filename @param {string} content */
-async function exclusiveWrite(filename, content) {
-  const temporary = join(dirname(filename), `.${randomUUID()}.tmp`);
-  try {
-    await writeSynced(temporary, content, 0o644);
-    await link(temporary, filename);
-  } finally {
-    await unlink(temporary).catch(() => {});
-  }
-}
-
-/**
- * @param {string} filename
- * @param {string} content
- * @param {number} mode
- * @param {string|null} expectedEvidence
- * @param {number} maxBytes
- */
-async function atomicReplace(filename, content, mode, expectedEvidence, maxBytes) {
-  const temporary = join(dirname(filename), `.${randomUUID()}.tmp`);
-  try {
-    await writeSynced(temporary, content, mode);
-    const current = await inspectDefinition(filename, maxBytes);
-    if (current.evidence !== expectedEvidence) {
-      throw documentError(
-        'stack_definition_changed_during_save',
-        'The stack definition changed while it was being saved.',
-      );
-    }
-    await rename(temporary, filename);
-  } finally {
-    await unlink(temporary).catch(() => {});
-  }
-}
-
-/** @param {string} filename @param {string} content @param {number} mode */
-async function writeSynced(filename, content, mode) {
-  const handle = await open(filename, 'wx', mode);
-  try {
-    await handle.writeFile(content, 'utf8');
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
 }
 
 /** @param {string} startRoot */
@@ -582,7 +490,7 @@ function containsPath(root, candidate) {
 /** @param {string} path */
 async function canonicalRoot(path) {
   try {
-    return await canonicalStackRoot(path);
+    return await canonicalStackDocumentRoot(path);
   } catch {
     throw documentError(
       'invalid_stack_root',
@@ -605,12 +513,7 @@ function requireSession(sessions, documentId) {
 
 /** @param {string} content */
 function fingerprint(content) {
-  return createHash('sha256').update(content, 'utf8').digest('hex');
-}
-
-/** @param {{dev: number|bigint, ino: number|bigint, mode: number, size: number|bigint, mtimeMs: number}} entry */
-function metadataFingerprint(entry) {
-  return `metadata:${String(entry.dev)}:${String(entry.ino)}:${String(entry.mode)}:${String(entry.size)}:${String(entry.mtimeMs)}`;
+  return fingerprintStackDocument(content);
 }
 
 /** @param {string} code @param {string} message */

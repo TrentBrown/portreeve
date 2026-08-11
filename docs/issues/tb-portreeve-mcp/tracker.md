@@ -51,7 +51,7 @@ Append PR boundary entries here.
 ### PR #45 - MCP credential custody and coordination
 
 - **PR:** [#45](https://github.com/TrentBrown/portreeve/pull/45)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P3 / I-3: process-local opaque credential custody, bounded lease
   renewal and activation extension, standalone allocation coordination, and the
   stack prepare/begin/resolve/settle/reconcile/end lifecycle.

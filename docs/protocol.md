@@ -173,6 +173,29 @@ policy.
 | `POST /v1/launcher-operations/{id}/complete` | Idempotently complete an operation with strict safe outcome metadata                                                                |
 | `GET /v1/stacks/{stackId}/launcher-operations` | Read up to the latest twenty retained launcher operations for one stack                                                          |
 
+### Consequential action receipts
+
+The public protocol also offers evidence-bound preview and execute pairs for actions
+that can terminate a process or change durable state. A preview records the explicit
+target, proposal, and caller-visible evidence in the daemon and returns a receipt that
+expires after five minutes. Execute accepts the receipt and explicit target, recomputes
+the evidence in the daemon, rejects a mismatch, and durably records its result. Retrying
+a completed receipt returns that recorded result without repeating the effect.
+
+| Preview and execute paths | Protected action |
+| --- | --- |
+| `POST /v1/actions/ports/{port}/reclaim/preview` and `POST /v1/actions/ports/{port}/reclaim/execute` | Normal owner-verified reclaim; unsafe any-owner eviction has no receipt API |
+| `POST /v1/actions/claims/{claimId}/reassign/preview` and `POST /v1/actions/claims/{claimId}/reassign/execute` | Idle claim reassignment to the selected preferred or exact port |
+| `POST /v1/actions/claims/{claimId}/delete/preview` and `POST /v1/actions/claims/{claimId}/delete/execute` | Idle, listener-free claim deletion |
+| `POST /v1/actions/claims/prune/preview` and `POST /v1/actions/claims/prune/execute` | Missing-worktree claim pruning |
+| `POST /v1/actions/stacks/apply/preview` and `POST /v1/actions/stacks/apply/execute` | Canonical document creation or replacement plus durable stack apply |
+| `POST /v1/actions/stacks/prune/preview` and `POST /v1/actions/stacks/prune/execute` | Missing-root stack pruning with process, Docker, launcher, and filesystem evidence |
+| `POST /v1/actions/settings/preview` and `POST /v1/actions/settings/execute` | Validated public runtime-setting updates |
+
+Execute bodies contain `client` and `receiptId`; target-specific execute paths also
+carry the port, claim ID, or canonical stack root. The proposal comes from the daemon's
+stored receipt rather than from the execute caller.
+
 Inventory classifications are `available`, `verified`, `idle`, `pending`, `unclaimed`,
 `conflicting`, `mixed`, and `docker-managed`. A live PID alone never establishes
 ownership; PortReeve compares fresh listener and binding-appropriate process or Docker
@@ -216,10 +239,14 @@ refused while an activation is `starting`, `confirmed`, or `degraded`; otherwise
 updates the stack's current revision without changing an existing port assignment. See
 [Stack definitions](stacks.md).
 
-The protocol has no project-file operation: callers supply the parsed definition and
-canonical root. File discovery, exact-byte conflict handling, and atomic replacement
-belong to the CLI or trusted desktop boundary. Apply does not prepare a generation or
-start providers.
+`GET /v1/stack-document?stackRoot=...` reads only the fixed
+`portreeve.stack.json` beneath an explicit canonical root and returns its structured
+definition, validation issues, and fingerprint without raw file contents.
+`POST /v1/actions/stack-definition/validate` validates a structured definition without
+filesystem access. Receipt-bound stack apply owns fixed-path creation or replacement,
+exact-byte conflict handling, and atomic writes. These operations are not general file
+discovery or arbitrary-path APIs. Apply does not prepare a generation or start
+providers.
 
 ## Stack generations and activations
 
