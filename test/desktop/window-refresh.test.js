@@ -7,6 +7,8 @@ import {
   bindWindowCloseGuard,
   bindWindowRefresh,
 } from '../../apps/desktop/main/window.js';
+import { createStateCoordinator } from '../../apps/desktop/main/coordinator.js';
+import { lifecycleSnapshot, provisionalArtifact, timestamp } from './fixtures.js';
 
 test('refreshes on focus and pauses polling while hidden or minimized', async () => {
   const events = new EventEmitter();
@@ -128,4 +130,81 @@ test('blocks application quit while a lifecycle mutation is active', () => {
   expect(prevented).toBe(1);
   unbind();
   expect(events.listenerCount('before-quit')).toBe(0);
+});
+
+test('binds both close guards to a real pending coordinator lifecycle mutation', async () => {
+  /** @type {(value?: void) => void} */
+  let releaseStart = () => {};
+  const startGate = new Promise((resolvePromise) => {
+    releaseStart = resolvePromise;
+  });
+  const coordinator = createStateCoordinator({
+    artifact: provisionalArtifact(),
+    lifecycle: {
+      clearPurgePreview() {},
+      async start() {
+        await startGate;
+        const status = lifecycleSnapshot();
+        return {
+          operation: 'start',
+          outcome: 'succeeded',
+          changed: true,
+          startedAt: timestamp,
+          completedAt: timestamp,
+          before: status,
+          after: status,
+          error: null,
+        };
+      },
+      status: async () => lifecycleSnapshot(),
+    },
+    inventory: { listPorts: async () => [] },
+    now: () => new Date(timestamp),
+  });
+  const windowEvents = new EventEmitter();
+  const applicationEvents = new EventEmitter();
+  /** @type {unknown[]} */
+  const blocked = [];
+  bindWindowCloseGuard(/** @type {any} */ (windowEvents), coordinator, (state) =>
+    blocked.push(state),
+  );
+  const unbindApplication = bindApplicationCloseGuard(
+    /** @type {any} */ (applicationEvents),
+    coordinator,
+    (state) => blocked.push(state),
+  );
+  let prevented = 0;
+  const event = {
+    preventDefault() {
+      prevented += 1;
+    },
+  };
+
+  const mutation = coordinator.startService();
+  await Bun.sleep(0);
+  windowEvents.emit('close', event);
+  applicationEvents.emit('before-quit', event);
+  expect(prevented).toBe(2);
+  expect(blocked).toHaveLength(2);
+  expect(blocked).toEqual([
+    {
+      schemaVersion: 1,
+      allowed: false,
+      lifecycle: { operation: 'start', startedAt: timestamp },
+      attached: [],
+    },
+    {
+      schemaVersion: 1,
+      allowed: false,
+      lifecycle: { operation: 'start', startedAt: timestamp },
+      attached: [],
+    },
+  ]);
+
+  releaseStart();
+  await mutation;
+  windowEvents.emit('close', event);
+  applicationEvents.emit('before-quit', event);
+  expect(prevented).toBe(2);
+  unbindApplication();
 });

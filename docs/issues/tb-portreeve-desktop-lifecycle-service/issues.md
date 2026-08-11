@@ -61,7 +61,7 @@ copyable renderer-safe failures.
 
 ## I-5 - Verify packaging and both JavaScript runtimes
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P6
 - **Rubric criteria:** R1, R3, R8
@@ -74,7 +74,7 @@ packaged smoke behavior.
 
 ## I-6 - Complete native lifecycle and interruption verification
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1.5d
 - **Plan steps:** P7
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8

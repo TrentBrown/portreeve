@@ -60,7 +60,7 @@
 ### PR #41 - Desktop packaging and runtime parity
 
 - **Scope:** I-5; P6; advances R1, R3, and R8.
-- **Status:** In review; feature-level rubric criteria remain `NOT YET` until
+- **Status:** Merged; feature-level rubric criteria remain `NOT YET` until
   final native lifecycle and interruption verification completes.
 - **Evidence:** [PR 41 boundary packet](pr-41/boundary.json)
 - **Decision:** Fail packaging on controller/artifact drift, inspect the final
