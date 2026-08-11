@@ -22,7 +22,7 @@ fixtures before another caller adopts the service.
 
 ## I-2 - Add deadlines, uncertain recovery, and mutation locking
 
-- **Status:** done
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R4, R5, R8
