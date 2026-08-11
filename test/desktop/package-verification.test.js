@@ -53,7 +53,7 @@ test('inspects packaged identity, direct-controller markers, and retired adapter
       "import guides from './generated/client-guides.js'; createClientGuideView(guides); clientInstallationEvidence(snapshot);",
     guideViewBundle: 'document.createElement("section");',
     guideBundleDocument:
-      'export const CLIENT_GUIDES_ATTESTATION = Object.freeze({ schemaVersion: 1, generatedForVersion: "0.1.0", cliCommands: 49, mcpTools: 51 }); export default {};',
+      "export const CLIENT_GUIDES_ATTESTATION = Object.freeze({ schemaVersion: 1, generatedForVersion: '0.1.0', cliCommands: 49, mcpTools: 51 }); export default {};",
     controllerVersion: '0.1.0',
     artifactVersion: '0.1.0',
   };
@@ -74,7 +74,7 @@ test('inspects packaged identity, direct-controller markers, and retired adapter
     assertPackagedDesktopContents({
       ...valid,
       guideBundleDocument:
-        'export const CLIENT_GUIDES_ATTESTATION = Object.freeze({ schemaVersion: 1, generatedForVersion: "0.0.9", cliCommands: 0, mcpTools: 0 }); export default {};',
+        "export const CLIENT_GUIDES_ATTESTATION = Object.freeze({ schemaVersion: 1, generatedForVersion: '0.0.9', cliCommands: 0, mcpTools: 0 }); export default {};",
     }),
   ).toThrow('client guide bundle is invalid or stale');
   expect(() =>

@@ -64,7 +64,7 @@ export function assertPackagedDesktopContents(options) {
   if (
     !options.guideBundleDocument.startsWith('export const CLIENT_GUIDES_ATTESTATION') ||
     !options.guideBundleDocument.includes(
-      `generatedForVersion: "${options.controllerVersion}"`,
+      `generatedForVersion: '${options.controllerVersion}'`,
     ) ||
     !options.guideBundleDocument.includes('cliCommands: 49') ||
     !options.guideBundleDocument.includes('mcpTools: 51')
