@@ -28,10 +28,7 @@
     "specEvaluation": { "disposition": "passed", "reason": null },
     "judge": { "disposition": "passed", "reason": null },
     "codeReview": { "disposition": "passed", "reason": null },
-    "patternReview": {
-      "disposition": "passed",
-      "reason": "PASS_WITH_WARNINGS: initialized scope has no active rules"
-    },
+    "patternReview": { "disposition": "passed", "reason": null },
     "explainDiff": { "disposition": "passed", "reason": null }
   }
 }
