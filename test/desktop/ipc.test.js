@@ -317,6 +317,59 @@ test('validates launcher capabilities and forwards only reduced session events',
   expect(JSON.stringify(sent)).not.toMatch(/path|processGroupId|credential/);
 });
 
+test('forwards only strict lifecycle activity events to renderer windows', () => {
+  const activitySubscription = {
+    callback: /** @type {((event: unknown) => void)|null} */ (null),
+  };
+  /** @type {unknown[]} */
+  const sent = [];
+  registerDesktopIpc({
+    ipcMain: /** @type {any} */ ({ handle() {} }),
+    coordinator: /** @type {any} */ ({
+      subscribe() {
+        return () => true;
+      },
+      /** @param {(event: unknown) => void} callback */
+      subscribeLifecycleActivity(callback) {
+        activitySubscription.callback = callback;
+        return () => true;
+      },
+    }),
+    windows: () => [
+      /** @type {any} */ ({
+        isDestroyed: () => false,
+        webContents: {
+          /** @param {string} channel @param {unknown} value */
+          send: (channel, value) => sent.push({ channel, value }),
+        },
+      }),
+    ],
+  });
+  activitySubscription.callback?.({
+    schemaVersion: 1,
+    active: { operation: 'restart', startedAt: timestamp },
+  });
+  expect(sent).toEqual([
+    {
+      channel: IPC_CHANNELS.lifecycleActivityChanged,
+      value: {
+        schemaVersion: 1,
+        active: { operation: 'restart', startedAt: timestamp },
+      },
+    },
+  ]);
+  expect(() =>
+    activitySubscription.callback?.({
+      schemaVersion: 1,
+      active: {
+        operation: 'restart',
+        startedAt: timestamp,
+        path: '/private/controller',
+      },
+    }),
+  ).toThrow();
+});
+
 /** @param {string} documentId @param {unknown} snapshot */
 function documentMutation(documentId, snapshot) {
   return {

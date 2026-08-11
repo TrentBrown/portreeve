@@ -3,6 +3,7 @@
 import {
   DesktopCopyTextRequestSchema,
   DesktopCopyTextResultSchema,
+  DesktopLifecycleActivitySchema,
   DesktopLifecycleActionResultSchema,
   DesktopLauncherActionRequestSchema,
   DesktopLauncherDocumentMutationResultSchema,
@@ -70,7 +71,8 @@ export function isTrustedRenderer(event) {
  *     terminateLauncherAttached(stackId: string): Promise<unknown>, launcherOutput(sessionId: string): Promise<unknown>|unknown,
  *     saveLauncherOutput(sessionId: string): Promise<unknown>,
  *     subscribeLauncherOutput?(callback: (event: unknown) => void): () => boolean,
- *     subscribeLauncherSessions?(callback: (event: unknown) => void): () => boolean
+ *     subscribeLauncherSessions?(callback: (event: unknown) => void): () => boolean,
+ *     subscribeLifecycleActivity?(callback: (event: unknown) => void): () => boolean
  *   },
  *   windows: () => Electron.BrowserWindow[]
  *   writeClipboard?: (text: string) => void
@@ -324,6 +326,14 @@ export function registerDesktopIpc(options) {
       options.coordinator.subscribeLauncherSessions((event) => {
         const parsed = DesktopLauncherSessionEventSchema.parse(event);
         sendToWindows(options.windows(), IPC_CHANNELS.launcherSessionChanged, parsed);
+      }),
+    );
+  }
+  if (options.coordinator.subscribeLifecycleActivity !== undefined) {
+    unsubscribers.push(
+      options.coordinator.subscribeLifecycleActivity((event) => {
+        const parsed = DesktopLifecycleActivitySchema.parse(event);
+        sendToWindows(options.windows(), IPC_CHANNELS.lifecycleActivityChanged, parsed);
       }),
     );
   }

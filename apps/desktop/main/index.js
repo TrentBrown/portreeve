@@ -31,6 +31,7 @@ import { desktopUpdateStatePath, desktopUserDataPath } from './user-data.js';
 import { createLauncherRuntime } from '../../../src/launcher/runtime.js';
 import { IPC_CHANNELS } from '../shared/schemas.js';
 import {
+  bindApplicationCloseGuard,
   bindWindowCloseGuard,
   bindWindowRefresh,
   browserWindowOptions,
@@ -161,9 +162,12 @@ async function startDesktop() {
   diagnose('window-created');
   secureWindowNavigation(window);
   bindWindowRefresh(window, coordinator);
-  bindWindowCloseGuard(window, coordinator, (state) => {
+  /** @param {unknown} state */
+  const reportBlockedClose = (state) => {
     window.webContents.send(IPC_CHANNELS.applicationCloseBlocked, state);
-  });
+  };
+  bindWindowCloseGuard(window, coordinator, reportBlockedClose);
+  bindApplicationCloseGuard(app, coordinator, reportBlockedClose);
   window.once('ready-to-show', () => window.show());
   await window.loadURL(RENDERER_URL);
   diagnose('renderer-loaded');

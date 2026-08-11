@@ -24,6 +24,7 @@ let busy = false;
 let activeView = 'overview';
 
 const notice = requiredElement('notice');
+const activeLifecycleOperation = requiredElement('active-lifecycle-operation');
 const errors = requiredElement('errors');
 const statusCards = requiredElement('status-cards');
 const versions = requiredElement('versions');
@@ -38,6 +39,13 @@ const portDetail = requiredElement('port-detail');
 const operationResult = requiredElement('operation-result');
 const operationMessage = requiredElement('operation-message');
 const operationDetails = requiredElement('operation-details');
+const lifecycleDiagnostic = /** @type {HTMLDetailsElement} */ (
+  requiredElement('lifecycle-diagnostic')
+);
+const lifecycleDiagnosticContent = requiredElement('lifecycle-diagnostic-content');
+const copyLifecycleDiagnostic = /** @type {HTMLButtonElement} */ (
+  requiredElement('copy-lifecycle-diagnostic')
+);
 const runtimeStatus = requiredElement('runtime-status');
 const stackList = requiredElement('stack-list');
 const stackDetail = requiredElement('stack-detail');
@@ -75,6 +83,8 @@ const attachedCloseDialog = /** @type {HTMLDialogElement} */ (
   requiredElement('attached-close-dialog')
 );
 const attachedCloseList = requiredElement('attached-close-list');
+const attachedCloseTitle = requiredElement('attached-close-title');
+const applicationCloseMessage = requiredElement('application-close-message');
 const terminateAttachedButton = /** @type {HTMLButtonElement} */ (
   requiredElement('terminate-attached')
 );
@@ -256,7 +266,16 @@ requiredElement('copy-snapshot').addEventListener('click', async () => {
 });
 
 window.portreeveDesktop.subscribe(render);
+window.portreeveDesktop.subscribeLifecycleActivity(renderLifecycleActivity);
 window.portreeveDesktop.subscribeApplicationCloseBlocked((state) => {
+  renderLifecycleActivity({ active: state.lifecycle });
+  const lifecycleBlocked = state.lifecycle !== null;
+  attachedCloseTitle.textContent = lifecycleBlocked
+    ? `${lifecycleOperationLabel(state.lifecycle.operation)} is still in progress`
+    : 'Attached launcher is still running';
+  applicationCloseMessage.textContent = lifecycleBlocked
+    ? 'PortReeve must keep this application open until the lifecycle mutation returns a terminal result or reaches its deadline. The operation cannot be cancelled safely.'
+    : 'PortReeve keeps attached launcher commands tied to this application. Stop or terminate them before closing, or keep the application open.';
   attachedCloseList.replaceChildren(
     ...state.attached.map((/** @type {any} */ entry) => {
       const item = document.createElement('li');
@@ -264,6 +283,8 @@ window.portreeveDesktop.subscribeApplicationCloseBlocked((state) => {
       return item;
     }),
   );
+  attachedCloseList.hidden = lifecycleBlocked || state.attached.length === 0;
+  terminateAttachedButton.hidden = lifecycleBlocked || state.attached.length === 0;
   terminateAttachedButton.textContent =
     state.attached.length === 1
       ? 'Terminate attached command'
@@ -371,15 +392,19 @@ async function invokeLifecycle(name) {
   await runBusy(async () => {
     const result = await /** @type {any} */ (window.portreeveDesktop)[name]();
     render(result.snapshot);
-    showOperation(result.message, [
-      `Outcome: ${result.outcome}`,
-      ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
-      ...lifecycleFailureDetails(result.failure),
-      ...result.steps.map(
-        (/** @type {any} */ step) =>
-          `${step.operation}: ${step.outcome}${step.error ? ` — ${step.error.code}: ${step.error.message}` : ''} (${lifecycleEvidenceText(step.after)})`,
-      ),
-    ]);
+    showOperation(
+      result.message,
+      [
+        `Outcome: ${result.outcome}`,
+        ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
+        ...lifecycleFailureDetails(result.failure),
+        ...result.steps.map(
+          (/** @type {any} */ step) =>
+            `${step.operation}: ${step.outcome}${step.error ? ` — ${step.error.code}: ${step.error.message}` : ''} (${lifecycleEvidenceText(step.after)})`,
+        ),
+      ],
+      result.failure,
+    );
   });
 }
 
@@ -387,8 +412,10 @@ async function invokeLifecycle(name) {
 function lifecycleFailureDetails(failure) {
   if (failure === null || failure === undefined) return [];
   return [
-    `Failed step: ${failure.step}`,
-    ...(failure.exitCode === null ? [] : [`Exit code: ${failure.exitCode}`]),
+    `Failure layer: ${failure.layer}`,
+    ...(failure.nativeExitCode === null
+      ? []
+      : [`Native exit code: ${failure.nativeExitCode}`]),
     ...(failure.timedOut ? ['The operation timed out.'] : []),
     ...(failure.before === null
       ? []
@@ -396,11 +423,7 @@ function lifecycleFailureDetails(failure) {
     ...(failure.after === null
       ? []
       : [`After: ${lifecycleEvidenceText(failure.after)}`]),
-    ...(failure.output === null
-      ? []
-      : [
-          `${failure.output.truncated ? 'Trailing output' : 'Output'}: ${failure.output.text}`,
-        ]),
+    ...failure.recovery.map((/** @type {string} */ entry) => `Recovery: ${entry}`),
   ];
 }
 
@@ -452,17 +475,39 @@ async function previewPurge() {
     if (accepted !== 'confirm') return;
     const result = await window.portreeveDesktop.executePurge(purgeConfirmation.value);
     render(result.snapshot);
-    showOperation(result.message, [
-      `Outcome: ${result.outcome}`,
-      `Removed: ${result.removed.length}`,
-      `Retained: ${result.retained.length}`,
-      `Already missing: ${result.missing.length}`,
-      ...result.refused.map(
-        (/** @type {any} */ entry) =>
-          `Refused ${entry.path ?? 'lifecycle'}: ${entry.reason}`,
-      ),
-    ]);
+    showOperation(
+      result.message,
+      [
+        `Outcome: ${result.outcome}`,
+        `Removed: ${result.removed.length}`,
+        `Retained: ${result.retained.length}`,
+        `Already missing: ${result.missing.length}`,
+        ...result.refused.map(
+          (/** @type {any} */ entry) =>
+            `Refused ${entry.path ?? 'lifecycle'}: ${entry.reason}`,
+        ),
+      ],
+      result.failure,
+    );
   });
+}
+
+/** @param {{active: null|{operation: string, startedAt: string}}} activity */
+function renderLifecycleActivity(activity) {
+  if (activity.active === null) {
+    activeLifecycleOperation.hidden = true;
+    activeLifecycleOperation.textContent = '';
+    return;
+  }
+  activeLifecycleOperation.textContent = `${lifecycleOperationLabel(activity.active.operation)} is in progress. PortReeve will remain open until it finishes or reaches its deadline.`;
+  activeLifecycleOperation.hidden = false;
+}
+
+/** @param {string} operation */
+function lifecycleOperationLabel(operation) {
+  if (operation === 'install-and-start') return 'Install and start';
+  if (operation === 'stop-manual') return 'Manual server stop';
+  return `${operation.charAt(0).toUpperCase()}${operation.slice(1)}`;
 }
 
 function renderPorts() {
@@ -1047,8 +1092,8 @@ function setControlsDisabled(disabled) {
   }
 }
 
-/** @param {string} message @param {string[]} details */
-function showOperation(message, details) {
+/** @param {string} message @param {string[]} details @param {any} [diagnostic] */
+function showOperation(message, details, diagnostic = null) {
   operationMessage.textContent = message;
   operationDetails.replaceChildren(
     ...details.map((detail) => {
@@ -1057,6 +1102,16 @@ function showOperation(message, details) {
       return item;
     }),
   );
+  lifecycleDiagnostic.open = false;
+  lifecycleDiagnostic.hidden = diagnostic === null || diagnostic === undefined;
+  lifecycleDiagnosticContent.textContent =
+    diagnostic === null || diagnostic === undefined
+      ? ''
+      : JSON.stringify(diagnostic, null, 2);
+  copyLifecycleDiagnostic.onclick =
+    diagnostic === null || diagnostic === undefined
+      ? null
+      : () => copyText(JSON.stringify(diagnostic, null, 2));
   operationResult.hidden = false;
 }
 

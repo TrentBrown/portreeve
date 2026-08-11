@@ -461,7 +461,7 @@ export const DesktopLauncherSaveOutputResultSchema = z
   })
   .strict();
 
-export const DesktopApplicationCloseStateSchema = z
+export const DesktopLauncherCloseStateSchema = z
   .object({
     schemaVersion: z.literal(1),
     allowed: z.boolean(),
@@ -475,6 +475,34 @@ export const DesktopApplicationCloseStateSchema = z
         })
         .strict(),
     ),
+  })
+  .strict();
+
+const DesktopActiveLifecycleSchema = z
+  .object({
+    operation: z.enum([
+      'install-and-start',
+      'start',
+      'stop',
+      'stop-manual',
+      'restart',
+      'upgrade',
+      'uninstall',
+      'purge',
+    ]),
+    startedAt: TimestampSchema,
+  })
+  .strict();
+
+export const DesktopApplicationCloseStateSchema =
+  DesktopLauncherCloseStateSchema.extend({
+    lifecycle: DesktopActiveLifecycleSchema.nullable(),
+  }).strict();
+
+export const DesktopLifecycleActivitySchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    active: DesktopActiveLifecycleSchema.nullable(),
   })
   .strict();
 
@@ -699,19 +727,63 @@ const DesktopLifecycleEvidenceSchema = z
   })
   .strict();
 
+const DesktopLifecycleErrorCodeSchema = z.enum([
+  'lifecycle_busy',
+  'lifecycle_timeout',
+  'conflict',
+  'incompatible_protocol',
+  'not_found',
+  'unsupported_platform',
+  'controller_artifact_version_mismatch',
+  'invalid_lifecycle_result',
+  'invalid_lifecycle_status',
+  'invalid_purge_preview',
+  'invalid_purge_result',
+  'purge_preview_required',
+  'supervised_health_verification_failed',
+  'unavailable',
+  'lifecycle_unavailable',
+  'internal',
+]);
+
+const DesktopLifecycleSafeErrorSchema = z
+  .object({
+    code: DesktopLifecycleErrorCodeSchema,
+    message: z.string().min(1).max(512),
+  })
+  .strict();
+
 const DesktopLifecycleFailureSchema = z
   .object({
-    step: z.string().min(1),
-    code: z.string().min(1),
+    operation: z.enum([
+      'install-and-start',
+      'start',
+      'stop',
+      'stop-manual',
+      'restart',
+      'upgrade',
+      'uninstall',
+      'purge',
+    ]),
+    layer: z.enum([
+      'controller',
+      'install',
+      'start',
+      'stop',
+      'stop-manual',
+      'restart',
+      'uninstall',
+      'health-verification',
+      'purge',
+    ]),
+    outcome: z.enum(['refused', 'partial', 'failed']),
+    code: DesktopLifecycleErrorCodeSchema,
     message: z.string().min(1),
-    exitCode: z.number().int().min(0).max(255).nullable(),
     timedOut: z.boolean(),
-    output: z
-      .object({ text: z.string().max(65_536), truncated: z.boolean() })
-      .strict()
-      .nullable(),
+    nativeExitCode: z.number().int().min(0).max(255).nullable(),
     before: DesktopLifecycleEvidenceSchema.nullable(),
     after: DesktopLifecycleEvidenceSchema.nullable(),
+    recovery: z.array(z.string().min(1).max(512)).min(1).max(4),
   })
   .strict();
 
@@ -722,8 +794,8 @@ export const DesktopLifecycleActionResultSchema = z
     outcome: DesktopMutationOutcomeSchema,
     changed: z.boolean(),
     message: z.string().min(1),
-    errorCode: z.string().min(1).nullable(),
-    error: SafeErrorSchema.nullable(),
+    errorCode: DesktopLifecycleErrorCodeSchema.nullable(),
+    error: DesktopLifecycleSafeErrorSchema.nullable(),
     failure: DesktopLifecycleFailureSchema.nullable(),
     steps: z.array(
       z
@@ -738,8 +810,8 @@ export const DesktopLifecycleActionResultSchema = z
           ]),
           outcome: DesktopMutationOutcomeSchema,
           changed: z.boolean(),
-          errorCode: z.string().min(1).nullable(),
-          error: SafeErrorSchema.nullable(),
+          errorCode: DesktopLifecycleErrorCodeSchema.nullable(),
+          error: DesktopLifecycleSafeErrorSchema.nullable(),
           startedAt: TimestampSchema,
           completedAt: TimestampSchema,
           before: DesktopLifecycleEvidenceSchema,
@@ -906,6 +978,9 @@ export const DesktopPurgeResultSchema = z
     retained: z.array(z.string().min(1)),
     missing: z.array(z.string().min(1)),
     refused: z.array(DesktopPurgeRefusalSchema),
+    errorCode: DesktopLifecycleErrorCodeSchema.nullable(),
+    error: DesktopLifecycleSafeErrorSchema.nullable(),
+    failure: DesktopLifecycleFailureSchema.nullable(),
     snapshot: DesktopSnapshotSchema,
   })
   .strict();
@@ -946,6 +1021,7 @@ export const IPC_CHANNELS = Object.freeze({
   saveLauncherOutput: 'portreeve:desktop:save-launcher-output',
   launcherOutput: 'portreeve:desktop:launcher-output',
   launcherSessionChanged: 'portreeve:desktop:launcher-session-changed',
+  lifecycleActivityChanged: 'portreeve:desktop:lifecycle-activity-changed',
   applicationCloseBlocked: 'portreeve:desktop:application-close-blocked',
   copyText: 'portreeve:desktop:copy-text',
 });

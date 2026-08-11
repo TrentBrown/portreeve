@@ -35,7 +35,7 @@ decision before implementation.
 
 ## I-3 - Replace the desktop CLI lifecycle adapter
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1.5d
 - **Plan steps:** P4
 - **Rubric criteria:** R1, R3, R8
@@ -48,7 +48,7 @@ while retaining the verified artifact as the installation payload.
 
 ## I-4 - Add desktop close protection and safe diagnostics
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1.5d
 - **Plan steps:** P5
 - **Rubric criteria:** R2, R3, R6, R7

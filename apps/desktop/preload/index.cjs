@@ -38,6 +38,7 @@ const channels = Object.freeze({
   saveLauncherOutput: 'portreeve:desktop:save-launcher-output',
   launcherOutput: 'portreeve:desktop:launcher-output',
   launcherSessionChanged: 'portreeve:desktop:launcher-session-changed',
+  lifecycleActivityChanged: 'portreeve:desktop:lifecycle-activity-changed',
   applicationCloseBlocked: 'portreeve:desktop:application-close-blocked',
   copyText: 'portreeve:desktop:copy-text',
 });
@@ -68,6 +69,86 @@ function requireMutationResult(value) {
   return value;
 }
 
+function requireLifecycleMutationResult(value) {
+  const result = requireMutationResult(value);
+  if (!Array.isArray(result.steps) || !isLifecycleDiagnostic(result.failure)) {
+    throw new Error('The main process returned an invalid lifecycle result.');
+  }
+  return result;
+}
+
+function isLifecycleOperation(value) {
+  return [
+    'install-and-start',
+    'start',
+    'stop',
+    'stop-manual',
+    'restart',
+    'upgrade',
+    'uninstall',
+    'purge',
+  ].includes(value);
+}
+
+function isLifecycleDiagnostic(value) {
+  if (value === null) return true;
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    isLifecycleOperation(value.operation) &&
+    typeof value.layer === 'string' &&
+    ['refused', 'partial', 'failed'].includes(value.outcome) &&
+    isLifecycleErrorCode(value.code) &&
+    typeof value.message === 'string' &&
+    typeof value.timedOut === 'boolean' &&
+    (value.nativeExitCode === null || Number.isInteger(value.nativeExitCode)) &&
+    Array.isArray(value.recovery) &&
+    value.recovery.every((entry) => typeof entry === 'string') &&
+    !('output' in value) &&
+    !('stack' in value) &&
+    !('arguments' in value)
+  );
+}
+
+function isLifecycleErrorCode(value) {
+  return [
+    'lifecycle_busy',
+    'lifecycle_timeout',
+    'conflict',
+    'incompatible_protocol',
+    'not_found',
+    'unsupported_platform',
+    'controller_artifact_version_mismatch',
+    'invalid_lifecycle_result',
+    'invalid_lifecycle_status',
+    'invalid_purge_preview',
+    'invalid_purge_result',
+    'purge_preview_required',
+    'supervised_health_verification_failed',
+    'unavailable',
+    'lifecycle_unavailable',
+    'internal',
+  ].includes(value);
+}
+
+function requireLifecycleActivity(value) {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 1 ||
+    !(
+      value.active === null ||
+      (typeof value.active === 'object' &&
+        value.active !== null &&
+        isLifecycleOperation(value.active.operation) &&
+        typeof value.active.startedAt === 'string')
+    )
+  ) {
+    throw new Error('The main process returned invalid lifecycle activity.');
+  }
+  return value;
+}
+
 function requirePurgePreview(value) {
   if (
     typeof value !== 'object' ||
@@ -79,6 +160,20 @@ function requirePurgePreview(value) {
     throw new Error('The main process returned an invalid purge preview.');
   }
   return value;
+}
+
+function requirePurgeResult(value) {
+  const result = requireMutationResult(value);
+  if (
+    !Array.isArray(result.removed) ||
+    !Array.isArray(result.retained) ||
+    !Array.isArray(result.missing) ||
+    !Array.isArray(result.refused) ||
+    !isLifecycleDiagnostic(result.failure)
+  ) {
+    throw new Error('The main process returned an invalid purge result.');
+  }
+  return result;
 }
 
 function requireOpenDownloadResult(value) {
@@ -252,12 +347,26 @@ function requireLauncherSaveOutput(value) {
 }
 
 function requireApplicationCloseState(value) {
+  const lifecycle = requireLifecycleActivity({
+    schemaVersion: 1,
+    active: value?.lifecycle,
+  });
   if (
     typeof value !== 'object' ||
     value === null ||
     value.schemaVersion !== 1 ||
     typeof value.allowed !== 'boolean' ||
-    !Array.isArray(value.attached)
+    !Array.isArray(value.attached) ||
+    lifecycle.active !== value.lifecycle ||
+    !value.attached.every(
+      (entry) =>
+        typeof entry === 'object' &&
+        entry !== null &&
+        typeof entry.stackId === 'string' &&
+        typeof entry.project === 'string' &&
+        typeof entry.stackRootName === 'string' &&
+        typeof entry.startedAt === 'string',
+    )
   ) {
     throw new Error('The main process returned an invalid application-close state.');
   }
@@ -271,21 +380,25 @@ contextBridge.exposeInMainWorld(
       requireSnapshot(await ipcRenderer.invoke(channels.getSnapshot)),
     refresh: async () => requireSnapshot(await ipcRenderer.invoke(channels.refresh)),
     installAndStart: async () =>
-      requireMutationResult(await ipcRenderer.invoke(channels.installAndStart)),
-    start: async () => requireMutationResult(await ipcRenderer.invoke(channels.start)),
-    stop: async () => requireMutationResult(await ipcRenderer.invoke(channels.stop)),
+      requireLifecycleMutationResult(
+        await ipcRenderer.invoke(channels.installAndStart),
+      ),
+    start: async () =>
+      requireLifecycleMutationResult(await ipcRenderer.invoke(channels.start)),
+    stop: async () =>
+      requireLifecycleMutationResult(await ipcRenderer.invoke(channels.stop)),
     stopManual: async () =>
-      requireMutationResult(await ipcRenderer.invoke(channels.stopManual)),
+      requireLifecycleMutationResult(await ipcRenderer.invoke(channels.stopManual)),
     restart: async () =>
-      requireMutationResult(await ipcRenderer.invoke(channels.restart)),
+      requireLifecycleMutationResult(await ipcRenderer.invoke(channels.restart)),
     upgrade: async () =>
-      requireMutationResult(await ipcRenderer.invoke(channels.upgrade)),
+      requireLifecycleMutationResult(await ipcRenderer.invoke(channels.upgrade)),
     uninstall: async () =>
-      requireMutationResult(await ipcRenderer.invoke(channels.uninstall)),
+      requireLifecycleMutationResult(await ipcRenderer.invoke(channels.uninstall)),
     previewPurge: async () =>
       requirePurgePreview(await ipcRenderer.invoke(channels.previewPurge)),
     executePurge: async (confirmation) =>
-      requireMutationResult(
+      requirePurgeResult(
         await ipcRenderer.invoke(channels.executePurge, { confirmation }),
       ),
     openDownloadPage: async () =>
@@ -412,6 +525,15 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.on(channels.launcherSessionChanged, listener);
       return () =>
         ipcRenderer.removeListener(channels.launcherSessionChanged, listener);
+    },
+    subscribeLifecycleActivity(callback) {
+      if (typeof callback !== 'function') {
+        throw new TypeError('Lifecycle activity subscriber must be a function.');
+      }
+      const listener = (_event, value) => callback(requireLifecycleActivity(value));
+      ipcRenderer.on(channels.lifecycleActivityChanged, listener);
+      return () =>
+        ipcRenderer.removeListener(channels.lifecycleActivityChanged, listener);
     },
     subscribeApplicationCloseBlocked(callback) {
       if (typeof callback !== 'function') {

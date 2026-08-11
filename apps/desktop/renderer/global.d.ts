@@ -55,5 +55,6 @@ interface Window {
     subscribeLauncherOutput(callback: (event: any) => void): () => void;
     subscribeLauncherSessions(callback: (session: any) => void): () => void;
     subscribeApplicationCloseBlocked(callback: (state: any) => void): () => void;
+    subscribeLifecycleActivity(callback: (activity: any) => void): () => void;
   };
 }

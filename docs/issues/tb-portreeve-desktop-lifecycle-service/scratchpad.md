@@ -80,3 +80,18 @@ Construct the fixed controller in Electron main from the checksum-verified artif
 
 **Alternatives considered:**
 Abort Desktop startup on mismatch - rejected because compatible read-only daemon features must remain usable. Hide the mismatch until a mutation is attempted - rejected because the packaging defect must be visible. Put privileged controller inputs into the snapshot or IPC - rejected because the renderer must not control or receive paths, environment, supervisor, socket, or native arguments.
+
+## [6] Separate close authority from renderer-safe lifecycle diagnostics
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Desktop coordinator, application and window close handling, preload IPC, renderer status, and lifecycle failure schemas
+
+Keep the active lifecycle mutation as main-process coordinator state and combine it with application-owned attached launcher evidence only when deciding whether a normal close is allowed. Publish a separate strict activity event so the renderer can identify the operation without becoming close authority. Reduce lifecycle failures to an allowlisted packet containing requested operation, trusted layer, outcome, stable code, fixed safe message, timeout state, nullable native exit code, reduced before and after evidence, and fixed recovery guidance. Arbitrary exception messages, output, stacks, arguments, credentials, and paths are discarded before strict main-process schema validation and again rejected by preload validation.
+
+**Triggered by:** I-4 adds normal-close protection and complete copyable diagnostics across the Electron trust boundary
+
+**Alternatives considered:**
+Use renderer-local busy state as close authority - rejected because renderer state can be stale and does not cover Command-Q. Put activity into periodic snapshots only - rejected because mutation start must be visible immediately. Preserve bounded stdout or stderr in diagnostics - rejected because even bounded privileged output can contain credentials, arguments, and unvalidated filesystem paths.

@@ -65,22 +65,42 @@ export function bindWindowRefresh(window, coordinator) {
 }
 
 /**
- * Attached launcher commands are application-owned. Prevent the BrowserWindow from
- * disappearing while those groups are live so the renderer can offer Stop or cancel
- * the exit attempt. No renderer response can bypass this fresh main-process check.
+ * Prevent the BrowserWindow from disappearing during a lifecycle mutation or while
+ * application-owned attached launcher groups are live. No renderer response can
+ * bypass this fresh main-process check.
  *
  * @param {Pick<import('electron').BrowserWindow, 'on'|'once'|'removeListener'>} window
- * @param {{launcherCloseState(): {allowed: boolean, attached: unknown[]}}} coordinator
+ * @param {{applicationCloseState(): {allowed: boolean, lifecycle: unknown, attached: unknown[]}}} coordinator
  * @param {(state: unknown) => void} onBlocked
  */
 export function bindWindowCloseGuard(window, coordinator, onBlocked) {
   /** @param {{preventDefault(): void}} event */
   const guard = (event) => {
-    const state = coordinator.launcherCloseState();
+    const state = coordinator.applicationCloseState();
     if (state.allowed) return;
     event.preventDefault();
     onBlocked(state);
   };
   window.on('close', guard);
   window.once('closed', () => window.removeListener('close', guard));
+}
+
+/**
+ * Command-Q and other normal application quit paths do not necessarily begin with a
+ * BrowserWindow close event. Guard them from the same main-process evidence.
+ *
+ * @param {Pick<import('electron').App, 'on'|'removeListener'>} app
+ * @param {{applicationCloseState(): {allowed: boolean, lifecycle: unknown, attached: unknown[]}}} coordinator
+ * @param {(state: unknown) => void} onBlocked
+ */
+export function bindApplicationCloseGuard(app, coordinator, onBlocked) {
+  /** @param {{preventDefault(): void}} event */
+  const guard = (event) => {
+    const state = coordinator.applicationCloseState();
+    if (state.allowed) return;
+    event.preventDefault();
+    onBlocked(state);
+  };
+  app.on('before-quit', guard);
+  return () => app.removeListener('before-quit', guard);
 }

@@ -26,7 +26,7 @@ import {
   LAUNCHER_OUTPUT_LIMIT_BYTES,
 } from '../../../src/launcher/command-session.js';
 import {
-  DesktopApplicationCloseStateSchema,
+  DesktopLauncherCloseStateSchema,
   DesktopLauncherDocumentMutationResultSchema,
   DesktopLauncherDocumentSchema,
   DesktopLauncherOutputEventSchema,
@@ -451,7 +451,7 @@ export function createLauncherAdapter(options) {
         startedAt: session.startedAt,
       });
     }
-    return DesktopApplicationCloseStateSchema.parse({
+    return DesktopLauncherCloseStateSchema.parse({
       schemaVersion: 1,
       allowed: attached.length === 0,
       attached,
