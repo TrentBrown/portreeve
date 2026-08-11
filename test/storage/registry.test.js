@@ -40,7 +40,7 @@ describe('SQLite registry', () => {
     const createdAt = new Date('2026-07-30T12:00:00.000Z');
     const first = openRegistry(filename);
 
-    expect(first.schemaVersion()).toBe(7);
+    expect(first.schemaVersion()).toBe(8);
     const claim = first.insertClaim(
       {
         identity: identity(),
@@ -52,7 +52,7 @@ describe('SQLite registry', () => {
     first.close();
 
     const second = openRegistry(filename);
-    expect(second.schemaVersion()).toBe(7);
+    expect(second.schemaVersion()).toBe(8);
     expect(second.findClaim(identity())).toEqual(claim);
     expect(second.listHistory().map(({ eventType }) => eventType)).toEqual([
       'claim.created',
@@ -118,7 +118,7 @@ describe('SQLite registry', () => {
     database.close();
 
     const registry = openRegistry(filename);
-    expect(registry.schemaVersion()).toBe(7);
+    expect(registry.schemaVersion()).toBe(8);
     expect(registry.getClaim('11111111-1111-4111-8111-111111111111')).toMatchObject({
       identity: {
         service: 'website',
@@ -196,7 +196,7 @@ describe('SQLite registry', () => {
     database.close();
 
     const registry = openRegistry(filename);
-    expect(registry.schemaVersion()).toBe(7);
+    expect(registry.schemaVersion()).toBe(8);
     expect(
       registry.getStackActivation('33333333-3333-4333-8333-333333333333')?.state,
     ).toBe('confirmed');
@@ -491,6 +491,44 @@ describe('SQLite registry', () => {
     expect(events[0]?.entityId).toBe('event-50');
     expect(events.at(-1)?.entityId).toBe('event-149');
     expect(registry.listHistory({ limit: 3 })).toHaveLength(3);
+    registry.close();
+  });
+
+  test('pages structured history newest-first without gaps or overlap', () => {
+    const registry = openRegistry();
+    for (let index = 0; index < 5; index += 1) {
+      registry.appendHistoryEvent(
+        {
+          eventType: 'test.page',
+          entityType: 'test',
+          entityId: `event-${String(index)}`,
+          payload: { index },
+        },
+        new Date(1_800_000_000_000 + index),
+      );
+    }
+
+    const first = registry.pageHistory({ eventType: 'test.page', limit: 2 });
+    if (first.page.nextCursor === null) throw new Error('expected a second page');
+    const second = registry.pageHistory({
+      eventType: 'test.page',
+      limit: 2,
+      afterCursor: first.page.nextCursor,
+    });
+    if (second.page.nextCursor === null) throw new Error('expected a third page');
+    const third = registry.pageHistory({
+      eventType: 'test.page',
+      limit: 2,
+      afterCursor: second.page.nextCursor,
+    });
+
+    expect(first.items.map(({ entityId }) => entityId)).toEqual(['event-4', 'event-3']);
+    expect(second.items.map(({ entityId }) => entityId)).toEqual([
+      'event-2',
+      'event-1',
+    ]);
+    expect(third.items.map(({ entityId }) => entityId)).toEqual(['event-0']);
+    expect(third.page.nextCursor).toBeNull();
     registry.close();
   });
 

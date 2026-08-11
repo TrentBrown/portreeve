@@ -382,7 +382,19 @@ export interface HistoryEvent {
   entityType: string;
   entityId: string;
   payload: Record<string, unknown>;
+  origin: OperationOrigin | null;
   occurredAt: string;
+}
+
+export interface OperationOrigin {
+  kind: 'library' | 'cli' | 'desktop' | 'mcp';
+  runId?: string;
+  label?: string;
+}
+
+export interface CursorPage<T> {
+  items: T[];
+  page: { nextCursor: string | null };
 }
 
 export interface DiagnosticLogEntry {
@@ -439,7 +451,7 @@ export declare class PortreeveClientError extends Error {
 }
 
 export declare class PortreeveClient {
-  constructor(options?: { socketPath?: string });
+  constructor(options?: { socketPath?: string; origin?: OperationOrigin });
   readonly socketPath: string;
   health(options?: { signal?: AbortSignal }): Promise<HealthResult>;
   stopServer(options?: { signal?: AbortSignal }): Promise<MutationAcknowledgement>;
@@ -577,7 +589,16 @@ export declare class PortreeveClient {
     entityType?: string;
     entityId?: string;
     since?: string;
+    afterCursor?: string;
   }): Promise<HistoryEvent[]>;
+  historyPage(filters?: {
+    limit?: number;
+    afterCursor?: string;
+    eventType?: string;
+    entityType?: string;
+    entityId?: string;
+    since?: string;
+  }): Promise<CursorPage<HistoryEvent>>;
   logs(options?: { limit?: number }): Promise<DiagnosticLogEntry[]>;
   reclaimPort(
     port: number,

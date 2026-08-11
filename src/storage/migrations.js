@@ -382,6 +382,40 @@ export const MIGRATIONS = Object.freeze([
         WHERE state = 'active';
     `,
   }),
+  Object.freeze({
+    version: 8,
+    name: 'mcp-protocol-foundations',
+    sql: `
+      ALTER TABLE history_events ADD COLUMN origin_json TEXT;
+
+      CREATE INDEX history_events_stable_order
+        ON history_events (occurred_at DESC, id DESC);
+
+      CREATE TABLE action_receipts (
+        id TEXT PRIMARY KEY,
+        action TEXT NOT NULL,
+        target_type TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        evidence_json TEXT NOT NULL,
+        evidence_hash TEXT NOT NULL CHECK (length(evidence_hash) = 64),
+        idempotency_key TEXT NOT NULL UNIQUE,
+        state TEXT NOT NULL CHECK (state IN ('pending', 'completed')),
+        result_json TEXT,
+        expires_at TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        completed_at TEXT,
+        CHECK (
+          (state = 'pending' AND result_json IS NULL AND completed_at IS NULL)
+          OR
+          (state = 'completed' AND result_json IS NOT NULL AND completed_at IS NOT NULL)
+        )
+      );
+
+      CREATE INDEX action_receipts_expiry
+        ON action_receipts (expires_at)
+        WHERE state = 'pending';
+    `,
+  }),
 ]);
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.at(-1)?.version ?? 0;

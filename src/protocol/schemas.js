@@ -27,10 +27,19 @@ export const ProtocolRangeSchema = z
     message: 'minimum protocol version must not exceed maximum',
   });
 
+export const OperationOriginSchema = z
+  .object({
+    kind: z.enum(['library', 'cli', 'desktop', 'mcp']),
+    runId: IdentifierSchema.optional(),
+    label: z.string().trim().min(1).max(128).optional(),
+  })
+  .strict();
+
 export const ClientCompatibilitySchema = z.object({
   softwareVersion: z.string().min(1),
   protocol: ProtocolRangeSchema,
   requiredCapabilities: z.array(z.string().min(1)).default([]),
+  origin: OperationOriginSchema.optional(),
 });
 
 const IdentityNameSchema = z.string().trim().min(1).max(128);
@@ -976,10 +985,43 @@ export const HistoryEventResponseSchema = z.object({
   entityType: z.string().min(1),
   entityId: z.string().min(1),
   payload: z.record(z.string(), z.unknown()),
+  origin: OperationOriginSchema.nullable(),
   occurredAt: TimestampSchema,
 });
 
 export const HistoryListSchema = z.array(HistoryEventResponseSchema);
+
+export const PageInfoSchema = z
+  .object({
+    nextCursor: z.string().min(1).nullable(),
+  })
+  .strict();
+
+export const HistoryPageSchema = z
+  .object({
+    items: HistoryListSchema,
+    page: PageInfoSchema,
+  })
+  .strict();
+
+export const ActionReceiptStateSchema = z.enum(['pending', 'completed']);
+
+export const ActionReceiptSchema = z
+  .object({
+    id: IdentifierSchema,
+    action: z.string().min(1).max(128),
+    targetType: z.string().min(1).max(64),
+    targetId: z.string().min(1).max(1_024),
+    evidence: z.record(z.string(), z.unknown()),
+    evidenceHash: z.string().regex(/^[a-f0-9]{64}$/u),
+    idempotencyKey: z.string().min(1).max(256),
+    state: ActionReceiptStateSchema,
+    result: z.record(z.string(), z.unknown()).nullable(),
+    expiresAt: TimestampSchema,
+    createdAt: TimestampSchema,
+    completedAt: TimestampSchema.nullable(),
+  })
+  .strict();
 
 export const DiagnosticLogEntrySchema = z.object({
   timestamp: TimestampSchema,

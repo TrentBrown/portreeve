@@ -5,6 +5,7 @@ import {
   ClaimIdentitySchema,
   ClaimModeSchema,
   IdentifierSchema,
+  OperationOriginSchema,
   PortSchema,
   TimestampSchema,
 } from '../protocol/schemas.js';
@@ -80,5 +81,6 @@ export const HistoryEventSchema = z.object({
   entityType: z.string().min(1).max(64),
   entityId: z.string().min(1),
   payload: z.record(z.string(), z.unknown()),
+  origin: OperationOriginSchema.nullable().default(null),
   occurredAt: TimestampSchema,
 });

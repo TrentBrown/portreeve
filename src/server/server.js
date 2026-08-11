@@ -17,12 +17,13 @@ import {
   ClaimReassignRequestSchema,
   ClaimRecordResponseSchema,
   ClaimsListSchema,
+  ClientCompatibilitySchema,
   ConfigSetRequestSchema,
   ConfirmRequestSchema,
   ConfirmResponseSchema,
   DiagnosticLogListSchema,
   ErrorEnvelopeSchema,
-  HistoryListSchema,
+  HistoryPageSchema,
   IdentifierSchema,
   InventoryClassificationSchema,
   InventoryEntrySchema,
@@ -73,6 +74,8 @@ import {
   negotiateCompatibility,
   successEnvelopeSchema,
 } from '../protocol/schemas.js';
+import { runWithOperationOrigin } from '../protocol/operation-origin.js';
+import { CursorError } from '../protocol/cursor.js';
 import { InventoryService } from '../reconciliation/inventory.js';
 import { ReclamationService } from '../reclamation/service.js';
 import { RegistryError } from '../storage/registry.js';
@@ -387,8 +390,8 @@ async function handleRequest(
     if (request.method === 'GET' && pathname === '/v1/history') {
       return success(
         requestId,
-        HistoryListSchema.parse(
-          allocationService.registry.listHistory(historyFilters(url)),
+        HistoryPageSchema.parse(
+          allocationService.registry.pageHistory(historyFilters(url)),
         ),
       );
     }
@@ -417,344 +420,352 @@ async function handleRequest(
     }
 
     const body = await request.json();
-    if (pathname === '/v1/server/stop') {
-      const requestBody = z
-        .object({ client: z.record(z.string(), z.unknown()) })
-        .passthrough()
-        .parse(body);
-      assertCompatible(
-        /** @type {{protocol: {minimum: number, maximum: number}, requiredCapabilities: string[]}} */ (
-          requestBody.client
-        ),
-      );
-      requestStop();
-      return success(
-        requestId,
-        MutationAcknowledgementSchema.parse({
-          changed: true,
-          at: new Date().toISOString(),
-        }),
-      );
-    }
-    if (pathname === '/v1/claims/prune') {
-      const result = await administrationService.pruneClaims(
-        ClaimPruneRequestSchema.parse(body),
-      );
-      return success(requestId, ClaimPruneResultSchema.parse(result));
-    }
-    if (pathname === '/v1/stacks/apply') {
-      const requestBody = StackApplyRequestSchema.parse(body);
-      return success(
-        requestId,
-        StackApplyResponseSchema.parse(
-          stackDefinitionService.apply({
-            ...requestBody,
-            stackRoot: await canonicalStackRootForRequest(requestBody.stackRoot),
+    const compatibility = z
+      .object({ client: ClientCompatibilitySchema })
+      .passthrough()
+      .parse(body).client;
+    return await runWithOperationOrigin(compatibility.origin, async () => {
+      if (pathname === '/v1/server/stop') {
+        const requestBody = z
+          .object({ client: z.record(z.string(), z.unknown()) })
+          .passthrough()
+          .parse(body);
+        assertCompatible(
+          /** @type {{protocol: {minimum: number, maximum: number}, requiredCapabilities: string[]}} */ (
+            requestBody.client
+          ),
+        );
+        requestStop();
+        return success(
+          requestId,
+          MutationAcknowledgementSchema.parse({
+            changed: true,
+            at: new Date().toISOString(),
           }),
-        ),
-      );
-    }
-    if (pathname === '/v1/stacks/prune') {
-      return success(
-        requestId,
-        StackPruneResultSchema.parse(
-          await stackAdministrationService.prune(StackPruneRequestSchema.parse(body)),
-        ),
-      );
-    }
-    if (pathname === '/v1/launcher-operations/begin') {
-      return success(
-        requestId,
-        LauncherOperationBeginResponseSchema.parse(
-          launcherOperationService.begin(
-            LauncherOperationBeginRequestSchema.parse(body),
-          ),
-        ),
-      );
-    }
-    const launcherOperationMutation = pathname.match(
-      /^\/v1\/launcher-operations\/([0-9a-f-]+)\/(renew|complete)$/,
-    );
-    if (launcherOperationMutation !== null) {
-      const operationId = IdentifierSchema.parse(launcherOperationMutation[1]);
-      switch (launcherOperationMutation[2]) {
-        case 'renew':
-          return success(
-            requestId,
-            LauncherOperationRenewResponseSchema.parse(
-              launcherOperationService.renew(
-                operationId,
-                LauncherOperationRenewRequestSchema.parse(body),
-              ),
-            ),
-          );
-        case 'complete':
-          return success(
-            requestId,
-            LauncherOperationCompleteResponseSchema.parse(
-              launcherOperationService.complete(
-                operationId,
-                LauncherOperationCompleteRequestSchema.parse(body),
-              ),
-            ),
-          );
+        );
       }
-    }
-    const stackStatus = pathname.match(/^\/v1\/stacks\/([0-9a-f-]+)\/status$/);
-    if (stackStatus !== null) {
-      return success(
-        requestId,
-        StackStatusSchema.parse(
-          await stackCoordinationService.status(
-            IdentifierSchema.parse(stackStatus[1]),
-            StackStatusRequestSchema.parse(body),
-          ),
-        ),
-      );
-    }
-    const prepareStack = pathname.match(/^\/v1\/stacks\/([0-9a-f-]+)\/prepare$/);
-    if (prepareStack !== null) {
-      const stackId = IdentifierSchema.parse(prepareStack[1]);
-      const requestBody = StackPrepareRequestSchema.parse({
-        ...z.record(z.string(), z.unknown()).parse(body),
-        stackId,
-      });
-      return success(
-        requestId,
-        StackPrepareResponseSchema.parse(
-          await stackCoordinationService.prepare(requestBody),
-        ),
-      );
-    }
-    if (pathname === '/v1/stack-activations/begin') {
-      return success(
-        requestId,
-        StackBeginActivationResponseSchema.parse(
-          await stackCoordinationService.begin(
-            StackBeginActivationRequestSchema.parse(body),
-          ),
-        ),
-      );
-    }
-    const activationDiscovery = pathname.match(
-      /^\/v1\/stack-activations\/([0-9a-f-]+)\/(resolve|snapshot)$/,
-    );
-    if (activationDiscovery !== null) {
-      const activationId = IdentifierSchema.parse(activationDiscovery[1]);
-      switch (activationDiscovery[2]) {
-        case 'resolve':
-          return success(
-            requestId,
-            StackResolutionSchema.parse(
-              stackDiscoveryService.resolve(
-                activationId,
-                StackResolveRequestSchema.parse(body),
-              ),
-            ),
-          );
-        case 'snapshot':
-          return success(
-            requestId,
-            StackEndpointSnapshotSchema.parse(
-              stackDiscoveryService.snapshot(
-                activationId,
-                StackSnapshotRequestSchema.parse(body),
-              ),
-            ),
-          );
+      if (pathname === '/v1/claims/prune') {
+        const result = await administrationService.pruneClaims(
+          ClaimPruneRequestSchema.parse(body),
+        );
+        return success(requestId, ClaimPruneResultSchema.parse(result));
       }
-    }
-    const activationMutation = pathname.match(
-      /^\/v1\/stack-activations\/([0-9a-f-]+)\/(renew|confirm|abandon|skip|reconcile|end)$/,
-    );
-    if (activationMutation !== null) {
-      const activationId = IdentifierSchema.parse(activationMutation[1]);
-      switch (activationMutation[2]) {
-        case 'renew':
-          return success(
-            requestId,
-            StackRenewActivationResponseSchema.parse(
-              stackCoordinationService.renew(
-                activationId,
-                StackRenewActivationRequestSchema.parse(body),
-              ),
-            ),
-          );
-        case 'confirm':
-          return success(
-            requestId,
-            StackActivationSchema.parse(
-              await stackCoordinationService.confirm(
-                activationId,
-                StackConfirmEndpointRequestSchema.parse(body),
-              ),
-            ),
-          );
-        case 'abandon':
-          return success(
-            requestId,
-            StackActivationSchema.parse(
-              stackCoordinationService.abandon(
-                activationId,
-                StackAbandonEndpointRequestSchema.parse(body),
-              ),
-            ),
-          );
-        case 'skip':
-          return success(
-            requestId,
-            StackActivationSchema.parse(
-              stackCoordinationService.skip(
-                activationId,
-                StackSkipEndpointRequestSchema.parse(body),
-              ),
-            ),
-          );
-        case 'end':
-          return success(
-            requestId,
-            StackEndActivationResponseSchema.parse(
-              await stackCoordinationService.end(
-                activationId,
-                StackEndActivationRequestSchema.parse(body),
-              ),
-            ),
-          );
-        case 'reconcile':
-          return success(
-            requestId,
-            StackReconcileActivationResponseSchema.parse(
-              await stackCoordinationService.reconcile(
-                activationId,
-                StackReconcileActivationRequestSchema.parse(body),
-              ),
-            ),
-          );
+      if (pathname === '/v1/stacks/apply') {
+        const requestBody = StackApplyRequestSchema.parse(body);
+        return success(
+          requestId,
+          StackApplyResponseSchema.parse(
+            stackDefinitionService.apply({
+              ...requestBody,
+              stackRoot: await canonicalStackRootForRequest(requestBody.stackRoot),
+            }),
+          ),
+        );
       }
-    }
-    const reassignClaim = pathname.match(/^\/v1\/claims\/([0-9a-f-]+)\/reassign$/);
-    if (reassignClaim !== null) {
-      const result = await administrationService.reassignClaim(
-        IdentifierSchema.parse(reassignClaim[1]),
-        ClaimReassignRequestSchema.parse(body),
+      if (pathname === '/v1/stacks/prune') {
+        return success(
+          requestId,
+          StackPruneResultSchema.parse(
+            await stackAdministrationService.prune(StackPruneRequestSchema.parse(body)),
+          ),
+        );
+      }
+      if (pathname === '/v1/launcher-operations/begin') {
+        return success(
+          requestId,
+          LauncherOperationBeginResponseSchema.parse(
+            launcherOperationService.begin(
+              LauncherOperationBeginRequestSchema.parse(body),
+            ),
+          ),
+        );
+      }
+      const launcherOperationMutation = pathname.match(
+        /^\/v1\/launcher-operations\/([0-9a-f-]+)\/(renew|complete)$/,
       );
-      return success(requestId, ClaimRecordResponseSchema.parse(result));
-    }
-    const deleteClaim = pathname.match(/^\/v1\/claims\/([0-9a-f-]+)\/delete$/);
-    if (deleteClaim !== null) {
-      const claimId = IdentifierSchema.parse(deleteClaim[1]);
-      const changed = await administrationService.deleteClaim(
-        claimId,
-        ClaimDeleteRequestSchema.parse(body),
-      );
-      return success(
-        requestId,
-        MutationAcknowledgementSchema.parse({
-          changed,
-          at: new Date().toISOString(),
-        }),
-      );
-    }
-    if (pathname === '/v1/config') {
-      const requestBody = ConfigSetRequestSchema.parse(body);
-      assertCompatible(requestBody.client);
-      const registry = allocationService.registry;
-      const current = registry.getSettings();
-      for (const key of Object.keys(requestBody.updates)) {
-        if (!(key in current)) {
-          throw new RegistryError(
-            'invalid_input',
-            `Unknown PortReeve setting: ${key}.`,
-            { key },
-          );
+      if (launcherOperationMutation !== null) {
+        const operationId = IdentifierSchema.parse(launcherOperationMutation[1]);
+        switch (launcherOperationMutation[2]) {
+          case 'renew':
+            return success(
+              requestId,
+              LauncherOperationRenewResponseSchema.parse(
+                launcherOperationService.renew(
+                  operationId,
+                  LauncherOperationRenewRequestSchema.parse(body),
+                ),
+              ),
+            );
+          case 'complete':
+            return success(
+              requestId,
+              LauncherOperationCompleteResponseSchema.parse(
+                launcherOperationService.complete(
+                  operationId,
+                  LauncherOperationCompleteRequestSchema.parse(body),
+                ),
+              ),
+            );
         }
       }
-      const settings = registry.setSettings(
-        ServerSettingsSchema.parse({
-          ...current,
-          ...requestBody.updates,
-        }),
+      const stackStatus = pathname.match(/^\/v1\/stacks\/([0-9a-f-]+)\/status$/);
+      if (stackStatus !== null) {
+        return success(
+          requestId,
+          StackStatusSchema.parse(
+            await stackCoordinationService.status(
+              IdentifierSchema.parse(stackStatus[1]),
+              StackStatusRequestSchema.parse(body),
+            ),
+          ),
+        );
+      }
+      const prepareStack = pathname.match(/^\/v1\/stacks\/([0-9a-f-]+)\/prepare$/);
+      if (prepareStack !== null) {
+        const stackId = IdentifierSchema.parse(prepareStack[1]);
+        const requestBody = StackPrepareRequestSchema.parse({
+          ...z.record(z.string(), z.unknown()).parse(body),
+          stackId,
+        });
+        return success(
+          requestId,
+          StackPrepareResponseSchema.parse(
+            await stackCoordinationService.prepare(requestBody),
+          ),
+        );
+      }
+      if (pathname === '/v1/stack-activations/begin') {
+        return success(
+          requestId,
+          StackBeginActivationResponseSchema.parse(
+            await stackCoordinationService.begin(
+              StackBeginActivationRequestSchema.parse(body),
+            ),
+          ),
+        );
+      }
+      const activationDiscovery = pathname.match(
+        /^\/v1\/stack-activations\/([0-9a-f-]+)\/(resolve|snapshot)$/,
       );
-      writeDiagnostic(diagnosticLog, 'info', 'config', 'Server settings updated.', {
-        keys: Object.keys(requestBody.updates),
+      if (activationDiscovery !== null) {
+        const activationId = IdentifierSchema.parse(activationDiscovery[1]);
+        switch (activationDiscovery[2]) {
+          case 'resolve':
+            return success(
+              requestId,
+              StackResolutionSchema.parse(
+                stackDiscoveryService.resolve(
+                  activationId,
+                  StackResolveRequestSchema.parse(body),
+                ),
+              ),
+            );
+          case 'snapshot':
+            return success(
+              requestId,
+              StackEndpointSnapshotSchema.parse(
+                stackDiscoveryService.snapshot(
+                  activationId,
+                  StackSnapshotRequestSchema.parse(body),
+                ),
+              ),
+            );
+        }
+      }
+      const activationMutation = pathname.match(
+        /^\/v1\/stack-activations\/([0-9a-f-]+)\/(renew|confirm|abandon|skip|reconcile|end)$/,
+      );
+      if (activationMutation !== null) {
+        const activationId = IdentifierSchema.parse(activationMutation[1]);
+        switch (activationMutation[2]) {
+          case 'renew':
+            return success(
+              requestId,
+              StackRenewActivationResponseSchema.parse(
+                stackCoordinationService.renew(
+                  activationId,
+                  StackRenewActivationRequestSchema.parse(body),
+                ),
+              ),
+            );
+          case 'confirm':
+            return success(
+              requestId,
+              StackActivationSchema.parse(
+                await stackCoordinationService.confirm(
+                  activationId,
+                  StackConfirmEndpointRequestSchema.parse(body),
+                ),
+              ),
+            );
+          case 'abandon':
+            return success(
+              requestId,
+              StackActivationSchema.parse(
+                stackCoordinationService.abandon(
+                  activationId,
+                  StackAbandonEndpointRequestSchema.parse(body),
+                ),
+              ),
+            );
+          case 'skip':
+            return success(
+              requestId,
+              StackActivationSchema.parse(
+                stackCoordinationService.skip(
+                  activationId,
+                  StackSkipEndpointRequestSchema.parse(body),
+                ),
+              ),
+            );
+          case 'end':
+            return success(
+              requestId,
+              StackEndActivationResponseSchema.parse(
+                await stackCoordinationService.end(
+                  activationId,
+                  StackEndActivationRequestSchema.parse(body),
+                ),
+              ),
+            );
+          case 'reconcile':
+            return success(
+              requestId,
+              StackReconcileActivationResponseSchema.parse(
+                await stackCoordinationService.reconcile(
+                  activationId,
+                  StackReconcileActivationRequestSchema.parse(body),
+                ),
+              ),
+            );
+        }
+      }
+      const reassignClaim = pathname.match(/^\/v1\/claims\/([0-9a-f-]+)\/reassign$/);
+      if (reassignClaim !== null) {
+        const result = await administrationService.reassignClaim(
+          IdentifierSchema.parse(reassignClaim[1]),
+          ClaimReassignRequestSchema.parse(body),
+        );
+        return success(requestId, ClaimRecordResponseSchema.parse(result));
+      }
+      const deleteClaim = pathname.match(/^\/v1\/claims\/([0-9a-f-]+)\/delete$/);
+      if (deleteClaim !== null) {
+        const claimId = IdentifierSchema.parse(deleteClaim[1]);
+        const changed = await administrationService.deleteClaim(
+          claimId,
+          ClaimDeleteRequestSchema.parse(body),
+        );
+        return success(
+          requestId,
+          MutationAcknowledgementSchema.parse({
+            changed,
+            at: new Date().toISOString(),
+          }),
+        );
+      }
+      if (pathname === '/v1/config') {
+        const requestBody = ConfigSetRequestSchema.parse(body);
+        assertCompatible(requestBody.client);
+        const registry = allocationService.registry;
+        const current = registry.getSettings();
+        for (const key of Object.keys(requestBody.updates)) {
+          if (!(key in current)) {
+            throw new RegistryError(
+              'invalid_input',
+              `Unknown PortReeve setting: ${key}.`,
+              { key },
+            );
+          }
+        }
+        const settings = registry.setSettings(
+          ServerSettingsSchema.parse({
+            ...current,
+            ...requestBody.updates,
+          }),
+        );
+        writeDiagnostic(diagnosticLog, 'info', 'config', 'Server settings updated.', {
+          keys: Object.keys(requestBody.updates),
+        });
+        return success(requestId, ServerSettingsResponseSchema.parse(settings));
+      }
+      const reclaim = pathname.match(/^\/v1\/ports\/(\d+)\/reclaim$/);
+      if (reclaim !== null) {
+        const port = PortSchema.parse(Number.parseInt(reclaim[1] ?? '', 10));
+        const result = await reclamationService.reclaim(
+          port,
+          ReclaimRequestSchema.parse(body),
+        );
+        return success(requestId, ReclamationResultSchema.parse(result));
+      }
+
+      const unsafeEviction = pathname.match(/^\/v1\/ports\/(\d+)\/unsafe-evict$/);
+      if (unsafeEviction !== null) {
+        const port = PortSchema.parse(Number.parseInt(unsafeEviction[1] ?? '', 10));
+        const result = await reclamationService.unsafeEvict(
+          port,
+          UnsafeEvictionRequestSchema.parse(body),
+        );
+        return success(requestId, ReclamationResultSchema.parse(result));
+      }
+
+      if (pathname === '/v1/leases/acquire') {
+        const result = await allocationService.acquire(
+          AcquireRequestSchema.parse(body),
+        );
+        return success(requestId, AcquireResponseSchema.parse(result));
+      }
+
+      const confirm = pathname.match(/^\/v1\/leases\/([0-9a-f-]+)\/confirm$/);
+      if (confirm !== null) {
+        const leaseId = IdentifierSchema.parse(confirm[1]);
+        const input = ConfirmRequestSchema.parse({ ...objectBody(body), leaseId });
+        const run = await allocationService.confirm(input);
+        return success(
+          requestId,
+          ConfirmResponseSchema.parse({
+            claimId: run.claimId,
+            leaseId: run.leaseId,
+            runId: run.id,
+            port: run.port,
+            confirmedAt: run.confirmedAt,
+          }),
+        );
+      }
+
+      const abandon = pathname.match(/^\/v1\/leases\/([0-9a-f-]+)\/abandon$/);
+      if (abandon !== null) {
+        const leaseId = IdentifierSchema.parse(abandon[1]);
+        const input = AbandonRequestSchema.parse({ ...objectBody(body), leaseId });
+        const lease = allocationService.abandon(input);
+        return success(
+          requestId,
+          MutationAcknowledgementSchema.parse({
+            changed: lease?.state === 'abandoned' || lease?.state === 'collision',
+            at: lease?.updatedAt ?? new Date().toISOString(),
+          }),
+        );
+      }
+
+      const release = pathname.match(/^\/v1\/runs\/([0-9a-f-]+)\/release$/);
+      if (release !== null) {
+        const runId = IdentifierSchema.parse(release[1]);
+        const input = ReleaseRequestSchema.parse({ ...objectBody(body), runId });
+        const changed = allocationService.release(input);
+        return success(
+          requestId,
+          MutationAcknowledgementSchema.parse({
+            changed,
+            at: new Date().toISOString(),
+          }),
+        );
+      }
+
+      return failure(requestId, 404, {
+        code: 'not_found',
+        message: `No PortReeve endpoint matches POST ${pathname}.`,
+        retryable: false,
+        details: {},
       });
-      return success(requestId, ServerSettingsResponseSchema.parse(settings));
-    }
-    const reclaim = pathname.match(/^\/v1\/ports\/(\d+)\/reclaim$/);
-    if (reclaim !== null) {
-      const port = PortSchema.parse(Number.parseInt(reclaim[1] ?? '', 10));
-      const result = await reclamationService.reclaim(
-        port,
-        ReclaimRequestSchema.parse(body),
-      );
-      return success(requestId, ReclamationResultSchema.parse(result));
-    }
-
-    const unsafeEviction = pathname.match(/^\/v1\/ports\/(\d+)\/unsafe-evict$/);
-    if (unsafeEviction !== null) {
-      const port = PortSchema.parse(Number.parseInt(unsafeEviction[1] ?? '', 10));
-      const result = await reclamationService.unsafeEvict(
-        port,
-        UnsafeEvictionRequestSchema.parse(body),
-      );
-      return success(requestId, ReclamationResultSchema.parse(result));
-    }
-
-    if (pathname === '/v1/leases/acquire') {
-      const result = await allocationService.acquire(AcquireRequestSchema.parse(body));
-      return success(requestId, AcquireResponseSchema.parse(result));
-    }
-
-    const confirm = pathname.match(/^\/v1\/leases\/([0-9a-f-]+)\/confirm$/);
-    if (confirm !== null) {
-      const leaseId = IdentifierSchema.parse(confirm[1]);
-      const input = ConfirmRequestSchema.parse({ ...objectBody(body), leaseId });
-      const run = await allocationService.confirm(input);
-      return success(
-        requestId,
-        ConfirmResponseSchema.parse({
-          claimId: run.claimId,
-          leaseId: run.leaseId,
-          runId: run.id,
-          port: run.port,
-          confirmedAt: run.confirmedAt,
-        }),
-      );
-    }
-
-    const abandon = pathname.match(/^\/v1\/leases\/([0-9a-f-]+)\/abandon$/);
-    if (abandon !== null) {
-      const leaseId = IdentifierSchema.parse(abandon[1]);
-      const input = AbandonRequestSchema.parse({ ...objectBody(body), leaseId });
-      const lease = allocationService.abandon(input);
-      return success(
-        requestId,
-        MutationAcknowledgementSchema.parse({
-          changed: lease?.state === 'abandoned' || lease?.state === 'collision',
-          at: lease?.updatedAt ?? new Date().toISOString(),
-        }),
-      );
-    }
-
-    const release = pathname.match(/^\/v1\/runs\/([0-9a-f-]+)\/release$/);
-    if (release !== null) {
-      const runId = IdentifierSchema.parse(release[1]);
-      const input = ReleaseRequestSchema.parse({ ...objectBody(body), runId });
-      const changed = allocationService.release(input);
-      return success(
-        requestId,
-        MutationAcknowledgementSchema.parse({
-          changed,
-          at: new Date().toISOString(),
-        }),
-      );
-    }
-
-    return failure(requestId, 404, {
-      code: 'not_found',
-      message: `No PortReeve endpoint matches POST ${pathname}.`,
-      retryable: false,
-      details: {},
     });
   } catch (error) {
     writeDiagnostic(diagnosticLog, 'error', 'protocol', 'Request failed.', {
@@ -786,6 +797,14 @@ function success(requestId, data) {
  * @param {unknown} error
  */
 function errorResponse(requestId, error) {
+  if (error instanceof CursorError) {
+    return failure(requestId, 400, {
+      code: 'invalid_input',
+      message: error.message,
+      retryable: false,
+      details: { field: 'afterCursor' },
+    });
+  }
   if (error instanceof z.ZodError) {
     return failure(requestId, 400, {
       code: 'invalid_input',
@@ -934,12 +953,14 @@ function historyFilters(url) {
   const entityType = url.searchParams.get('entityType');
   const entityId = url.searchParams.get('entityId');
   const since = url.searchParams.get('since');
+  const afterCursor = url.searchParams.get('afterCursor');
   return {
-    limit: queryLimit(url, 100),
+    limit: queryLimit(url, 50, 200),
     ...(eventType === null ? {} : { eventType }),
     ...(entityType === null ? {} : { entityType }),
     ...(entityId === null ? {} : { entityId }),
     ...(since === null ? {} : { since }),
+    ...(afterCursor === null ? {} : { afterCursor }),
   };
 }
 
@@ -947,11 +968,11 @@ function historyFilters(url) {
  * @param {URL} url
  * @param {number} fallback
  */
-function queryLimit(url, fallback) {
+function queryLimit(url, fallback, maximum = 10_000) {
   const value = url.searchParams.get('limit');
   return value === null
     ? fallback
-    : z.number().int().min(1).max(10_000).parse(Number(value));
+    : z.number().int().min(1).max(maximum).parse(Number(value));
 }
 
 /**

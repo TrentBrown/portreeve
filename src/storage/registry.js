@@ -19,6 +19,7 @@ import {
   LAUNCHER_OPERATION_TTL_MILLISECONDS,
 } from '../protocol/constants.js';
 import {
+  ActionReceiptSchema,
   ClaimIdentitySchema,
   ClaimModeSchema,
   IdentifierSchema,
@@ -34,6 +35,8 @@ import {
   StackRecordSchema,
   TimestampSchema,
 } from '../protocol/schemas.js';
+import { decodeCursor, encodeCursor } from '../protocol/cursor.js';
+import { currentOperationOrigin } from '../protocol/operation-origin.js';
 import { applyMigrations } from './migrations.js';
 
 /** @typedef {import('zod').infer<typeof LeaseRecordSchema>} LeaseRecord */
@@ -109,6 +112,21 @@ const LauncherOperationRowSchema = z.object({
   renewed_at: TimestampSchema,
   completed_at: TimestampSchema.nullable(),
   completion_json: z.string().nullable(),
+});
+
+const ActionReceiptRowSchema = z.object({
+  id: IdentifierSchema,
+  action: z.string(),
+  target_type: z.string(),
+  target_id: z.string(),
+  evidence_json: z.string(),
+  evidence_hash: z.string(),
+  idempotency_key: z.string(),
+  state: z.enum(['pending', 'completed']),
+  result_json: z.string().nullable(),
+  expires_at: TimestampSchema,
+  created_at: TimestampSchema,
+  completed_at: TimestampSchema.nullable(),
 });
 
 export class RegistryError extends Error {
@@ -3034,26 +3052,7 @@ export class Registry {
     const events = this.database
       .query('SELECT * FROM history_events ORDER BY occurred_at, rowid')
       .all()
-      .map((row) => {
-        const parsed = z
-          .object({
-            id: IdentifierSchema,
-            event_type: z.string(),
-            entity_type: z.string(),
-            entity_id: z.string(),
-            payload_json: z.string(),
-            occurred_at: TimestampSchema,
-          })
-          .parse(row);
-        return HistoryEventSchema.parse({
-          id: parsed.id,
-          eventType: parsed.event_type,
-          entityType: parsed.entity_type,
-          entityId: parsed.entity_id,
-          payload: parseJsonObject(parsed.payload_json),
-          occurredAt: parsed.occurred_at,
-        });
-      });
+      .map(historyEventFromRow);
     const filtered = events.filter(
       (event) =>
         (filters.eventType === undefined || event.eventType === filters.eventType) &&
@@ -3062,6 +3061,177 @@ export class Registry {
         (since === undefined || event.occurredAt >= since),
     );
     return limit === undefined ? filtered : filtered.slice(-limit);
+  }
+
+  /**
+   * Return newest-first history with a stable opaque continuation cursor.
+   *
+   * @param {{
+   *   limit?: number,
+   *   afterCursor?: string,
+   *   eventType?: string,
+   *   entityType?: string,
+   *   entityId?: string,
+   *   since?: string
+   * }} [filters]
+   */
+  pageHistory(filters = {}) {
+    const limit = z
+      .number()
+      .int()
+      .min(1)
+      .max(200)
+      .parse(filters.limit ?? 50);
+    const cursor =
+      filters.afterCursor === undefined ? null : decodeCursor(filters.afterCursor);
+    const since =
+      filters.since === undefined ? null : TimestampSchema.parse(filters.since);
+    const rows = this.database
+      .query(
+        `SELECT * FROM history_events
+         WHERE ($eventType IS NULL OR event_type = $eventType)
+           AND ($entityType IS NULL OR entity_type = $entityType)
+           AND ($entityId IS NULL OR entity_id = $entityId)
+           AND ($since IS NULL OR occurred_at >= $since)
+           AND (
+             $cursorSort IS NULL
+             OR occurred_at < $cursorSort
+             OR (occurred_at = $cursorSort AND id < $cursorId)
+           )
+         ORDER BY occurred_at DESC, id DESC
+         LIMIT $fetchLimit`,
+      )
+      .all({
+        eventType: filters.eventType ?? null,
+        entityType: filters.entityType ?? null,
+        entityId: filters.entityId ?? null,
+        since,
+        cursorSort: cursor?.sortKey ?? null,
+        cursorId: cursor?.id ?? null,
+        fetchLimit: limit + 1,
+      });
+    const hasMore = rows.length > limit;
+    const items = rows.slice(0, limit).map(historyEventFromRow);
+    const last = items.at(-1);
+    return {
+      items,
+      page: {
+        nextCursor:
+          hasMore && last !== undefined
+            ? encodeCursor({ sortKey: last.occurredAt, id: last.id })
+            : null,
+      },
+    };
+  }
+
+  /**
+   * @param {{
+   *   id: string,
+   *   action: string,
+   *   targetType: string,
+   *   targetId: string,
+   *   evidence: Record<string, unknown>,
+   *   evidenceHash: string,
+   *   idempotencyKey: string,
+   *   expiresAt: string
+   * }} input
+   * @param {Date} [now]
+   */
+  createActionReceipt(input, now = new Date()) {
+    const candidate = ActionReceiptSchema.omit({
+      state: true,
+      result: true,
+      createdAt: true,
+      completedAt: true,
+    }).parse(input);
+    const existingRow = this.database
+      .query('SELECT * FROM action_receipts WHERE idempotency_key = $idempotencyKey')
+      .get({ idempotencyKey: candidate.idempotencyKey });
+    if (existingRow !== null) {
+      const existing = actionReceiptFromRow(existingRow);
+      if (
+        existing.action !== candidate.action ||
+        existing.targetType !== candidate.targetType ||
+        existing.targetId !== candidate.targetId ||
+        existing.evidenceHash !== candidate.evidenceHash
+      ) {
+        throw new RegistryError(
+          'idempotency_conflict',
+          'The idempotency key is already bound to another action receipt.',
+          { idempotencyKey: candidate.idempotencyKey, receiptId: existing.id },
+        );
+      }
+      return existing;
+    }
+    const createdAt = toTimestamp(now);
+    this.database
+      .query(
+        `INSERT INTO action_receipts (
+           id, action, target_type, target_id, evidence_json, evidence_hash,
+           idempotency_key, state, result_json, expires_at, created_at, completed_at
+         ) VALUES (
+           $id, $action, $targetType, $targetId, $evidence, $evidenceHash,
+           $idempotencyKey, 'pending', NULL, $expiresAt, $createdAt, NULL
+         )`,
+      )
+      .run({
+        ...candidate,
+        evidence: JSON.stringify(candidate.evidence),
+        createdAt,
+      });
+    const receipt = this.getActionReceipt(candidate.id);
+    if (receipt === null) {
+      throw new RegistryError('internal', 'Action receipt disappeared after creation.');
+    }
+    return receipt;
+  }
+
+  /** @param {string} id */
+  getActionReceipt(id) {
+    const parsedId = IdentifierSchema.parse(id);
+    const row = this.database
+      .query('SELECT * FROM action_receipts WHERE id = $id')
+      .get({ id: parsedId });
+    return row === null ? null : actionReceiptFromRow(row);
+  }
+
+  /**
+   * @param {string} id
+   * @param {Record<string, unknown>} result
+   * @param {Date} [now]
+   */
+  completeActionReceipt(id, result, now = new Date()) {
+    const parsedId = IdentifierSchema.parse(id);
+    const parsedResult = z.record(z.string(), z.unknown()).parse(result);
+    const completedAt = toTimestamp(now);
+    const complete = this.database.transaction(() => {
+      const existing = this.getActionReceipt(parsedId);
+      if (existing === null) {
+        throw new RegistryError(
+          'not_found',
+          `Action receipt ${parsedId} was not found.`,
+        );
+      }
+      if (existing.state === 'completed') {
+        return existing;
+      }
+      this.database
+        .query(
+          `UPDATE action_receipts
+           SET state = 'completed', result_json = $result, completed_at = $completedAt
+           WHERE id = $id AND state = 'pending'`,
+        )
+        .run({ id: parsedId, result: JSON.stringify(parsedResult), completedAt });
+      const completed = this.getActionReceipt(parsedId);
+      if (completed === null) {
+        throw new RegistryError(
+          'internal',
+          'Action receipt disappeared after completion.',
+        );
+      }
+      return completed;
+    });
+    return complete.immediate();
   }
 
   /**
@@ -3319,12 +3489,14 @@ export class Registry {
    * @param {string} occurredAt
    */
   #appendHistory(eventType, entityType, entityId, payload, occurredAt) {
+    const origin = currentOperationOrigin();
     this.database
       .query(
         `INSERT INTO history_events (
-           id, event_type, entity_type, entity_id, payload_json, occurred_at
+           id, event_type, entity_type, entity_id, payload_json, origin_json,
+           occurred_at
          ) VALUES (
-           $id, $eventType, $entityType, $entityId, $payload, $occurredAt
+           $id, $eventType, $entityType, $entityId, $payload, $origin, $occurredAt
          )`,
       )
       .run({
@@ -3333,6 +3505,7 @@ export class Registry {
         entityType: entityType,
         entityId: entityId,
         payload: JSON.stringify(payload),
+        origin: origin === null ? null : JSON.stringify(origin),
         occurredAt: occurredAt,
       });
     const maximumEvents = this.getSettings().historyMaximumEvents;
@@ -3364,6 +3537,49 @@ export function openRegistry(filename = ':memory:') {
   }
   applyMigrations(database);
   return new Registry(database);
+}
+
+/** @param {unknown} row */
+function historyEventFromRow(row) {
+  const parsed = z
+    .object({
+      id: IdentifierSchema,
+      event_type: z.string(),
+      entity_type: z.string(),
+      entity_id: z.string(),
+      payload_json: z.string(),
+      origin_json: z.string().nullable(),
+      occurred_at: TimestampSchema,
+    })
+    .parse(row);
+  return HistoryEventSchema.parse({
+    id: parsed.id,
+    eventType: parsed.event_type,
+    entityType: parsed.entity_type,
+    entityId: parsed.entity_id,
+    payload: parseJsonObject(parsed.payload_json),
+    origin: parsed.origin_json === null ? null : JSON.parse(parsed.origin_json),
+    occurredAt: parsed.occurred_at,
+  });
+}
+
+/** @param {unknown} row */
+function actionReceiptFromRow(row) {
+  const parsed = ActionReceiptRowSchema.parse(row);
+  return ActionReceiptSchema.parse({
+    id: parsed.id,
+    action: parsed.action,
+    targetType: parsed.target_type,
+    targetId: parsed.target_id,
+    evidence: parseJsonObject(parsed.evidence_json),
+    evidenceHash: parsed.evidence_hash,
+    idempotencyKey: parsed.idempotency_key,
+    state: parsed.state,
+    result: parsed.result_json === null ? null : parseJsonObject(parsed.result_json),
+    expiresAt: parsed.expires_at,
+    createdAt: parsed.created_at,
+    completedAt: parsed.completed_at,
+  });
 }
 
 /**

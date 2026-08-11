@@ -9,7 +9,7 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Establish MCP protocol and client foundations
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 3d
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R2, R3, R5, R6, R7
