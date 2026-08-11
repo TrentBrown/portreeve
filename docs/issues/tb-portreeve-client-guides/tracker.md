@@ -23,7 +23,7 @@
 ### PR #50 - Client-guide generation foundation
 
 - **PR:** [#50](https://github.com/TrentBrown/portreeve/pull/50)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P1 / I-1: complete CLI and MCP contract metadata, deterministic
   marked generation, safe static compilation, and freshness enforcement.
 - **Evidence packet:** [pr-50](pr-50/)

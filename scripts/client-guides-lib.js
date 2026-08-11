@@ -54,8 +54,8 @@ export async function generateClientGuides({ root, write = false }) {
       workspaceRoot,
       referenceAnchors:
         guideId === 'mcp'
-          ? mcpReference.map(({ id }) => id)
-          : cliReference.map(({ id }) => id),
+          ? ['searchable-complete-reference', ...mcpReference.map(({ id }) => id)]
+          : ['searchable-complete-reference', ...cliReference.map(({ id }) => id)],
     });
     guides[guideId] = {
       sourcePath: source.sourcePath,
@@ -145,7 +145,7 @@ function validateCatalogs(cli, mcp) {
 /** @param {ReturnType<typeof cliDocumentationCatalog>} commands */
 function renderCliReference(commands) {
   const lines = [
-    '## Complete command reference',
+    '## Searchable complete reference',
     '',
     '> Generated from the Commander command tree and required documentation metadata. Do not edit this region directly.',
     '',
@@ -209,7 +209,7 @@ function renderCliReference(commands) {
 /** @param {Awaited<ReturnType<typeof mcpDocumentationCatalog>>} tools */
 function renderMcpReference(tools) {
   const lines = [
-    '## Complete tool reference',
+    '## Searchable complete reference',
     '',
     '> Generated from the exact tool catalog registered with the pinned MCP SDK. Do not edit this region directly.',
     '',

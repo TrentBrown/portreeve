@@ -9,7 +9,7 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Build documentation generation and contract metadata
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2.5d
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R2, R7
@@ -22,7 +22,7 @@ and deterministic freshness and coverage gates.
 
 ## I-2 - Author the shared MCP and CLI guides
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R1, R2, R5, R7

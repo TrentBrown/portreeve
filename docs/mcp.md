@@ -1,4 +1,6 @@
-# MCP bridge
+# PortReeve MCP guide
+
+## Start here
 
 PortReeve exposes a local tools-only MCP bridge through the standalone executable:
 
@@ -31,10 +33,11 @@ Docker confirmation, optional skip, failure abandonment, reconciliation, and end
 Equivalent retries return the existing or already-achieved result instead of repeating
 the effect.
 
-The final coordination family adds one structured stack snapshot tool and five
-launcher-operation tools. `portreeve_stack_snapshot` returns an in-memory, redacted
-Docker-sandbox address document for an explicit activation, component, and gateway
-host; it never writes a file. Launcher begin, renew, complete, get, and bounded list
+The final coordination family adds one structured endpoint snapshot tool and five
+launcher-operation tools. `portreeve_stack_snapshot` returns an in-memory, redacted,
+gateway-rewritten address document for an explicit activation and component; it never
+writes a file or implies that PortReeve orchestrates the consumer environment. Launcher
+begin, renew, complete, get, and bounded list
 coordinate lifecycle ownership only. They never execute the project's start, stop,
 restart, or status command. Begin requires a caller operation ID for retry identity and
 the exact launcher revision that the external launcher is using.
@@ -64,7 +67,7 @@ server lifecycle administration, unsafe any-owner eviction, arbitrary shell or
 filesystem access, or raw logs and project-command output. The registered tool names
 exactly match the frozen 51-tool catalog.
 
-## Configure an MCP host
+### Configure an MCP host
 
 Generate a setup preview for Codex, Claude Code, or a generic stdio host:
 
@@ -99,8 +102,177 @@ formats, exact/portable selection, optional labels, daemon compatibility evidenc
 copy actions, and visible setup errors through its restricted main-process boundary.
 It does not launch an agent host or execute project commands.
 
+### Choose the right client
+
+Desktop, MCP, CLI, and the JavaScript client are peer clients of the same per-user
+daemon. MCP is the best fit when an agent should inspect or coordinate PortReeve with
+strict typed tools. It intentionally cannot install, start, stop, or upgrade the daemon
+and cannot perform unsafe any-owner eviction. Use the CLI for service administration
+or trusted launcher commands; use the JavaScript client when project tooling should
+request and confirm bindings directly.
+
+| Client | Typical role | Important authority boundary |
+| --- | --- | --- |
+| Desktop | Human inspection, stack editing, guided launchers | Uses direct application services and explicit UI confirmation |
+| MCP | Agent inspection and evidence-bound coordination | No daemon lifecycle, shell execution, raw credentials, or unsafe eviction |
+| CLI | Terminal automation and complete local administration | Launcher commands may execute project-trusted shell commands |
+| JavaScript | Native project-tool integration | The project owns process startup and confirms only after binding succeeds |
+
+PortReeve Desktop is supported on macOS. The standalone CLI and its stdio MCP bridge
+are supported on macOS and Linux. The JavaScript client supports its documented
+Node.js and Bun runtimes when it can reach the local Unix socket. Windows is not
+supported. PortReeve can record ordinary Docker-backed endpoint evidence, but it does
+not currently provide Docker Sandbox orchestration or integration.
+
+## Common workflows
+
+The examples below are prompts for an MCP-capable agent. Each prompt is followed by
+the expected PortReeve tool sequence so the operation remains inspectable. Exact input
+and output schemas are in the [complete tool reference](#searchable-complete-reference).
+
+### Configure a host and verify compatibility
+
+Copy this prompt after adding PortReeve to your host:
+
+```text
+Verify that the local PortReeve MCP bridge can reach a compatible daemon. Report the
+bridge version, daemon version, protocol range, missing capabilities, and any safe
+setup or service diagnostic I should run. Do not mutate anything.
+```
+
+Expected sequence:
+
+1. [`portreeve_diagnostics`](#mcp-tool-portreeve-diagnostics) to distinguish bridge,
+   socket, and daemon failures.
+2. [`portreeve_compatibility`](#mcp-tool-portreeve-compatibility) to compare the
+   bridge contract with the running daemon.
+3. [`portreeve_health`](#mcp-tool-portreeve-health) when compatibility succeeds.
+
+Success evidence names both versions, a compatible protocol/capability result, and a
+healthy socket. If the host cannot start the bridge, regenerate configuration with
+`portreeve mcp setup --host codex`, `--host claude-code`, or `--host generic` in a
+terminal; MCP cannot repair its own host registration or daemon lifecycle.
+
+### Inspect ports, claims, and one stack
+
+```text
+Inspect PortReeve for workspace /absolute/worktree. Show current ports and durable
+claims for that exact workspace. If it belongs to stack STACK_ID, also summarize its
+latest generation, activation, and provider evidence. Do not mutate anything.
+```
+
+Expected sequence:
+
+1. [`portreeve_ports_list`](#mcp-tool-portreeve-ports-list) with
+   `{ "workspace": "/absolute/worktree", "limit": 50 }`.
+2. [`portreeve_claims_list`](#mcp-tool-portreeve-claims-list) with
+   `{ "workspaceRoot": "/absolute/worktree", "limit": 50 }`.
+3. [`portreeve_stack_status`](#mcp-tool-portreeve-stack-status) with
+   `{ "stackId": "STACK_ID" }` when the explicit stack is relevant.
+
+The agent should separate durable claims from fresh listener/provider evidence and
+call out conflicting, mixed, unavailable, or stale observations rather than inferring
+ownership from a stored process identifier.
+
+### Acquire, use, and confirm one endpoint
+
+```text
+Acquire a sticky PortReeve lease for project PROJECT in workspace /absolute/worktree,
+component api, endpoint http, preferring port 8080. Return the chosen port and opaque
+credential handle. I will start the listener and give you its root PID; confirm only
+after I say the listener successfully bound.
+```
+
+Expected sequence:
+
+1. [`portreeve_lease_acquire`](#mcp-tool-portreeve-lease-acquire) with the explicit
+   claim and `{ "mode": "sticky", "preferredPort": 8080,
+   "replacementPolicy": "never" }`.
+2. The project starts its service using the returned port. Native project integration
+   can request this binding directly; shell-driven launchers commonly inject it as an
+   environment variable.
+3. Only after successful bind, [`portreeve_lease_confirm`](#mcp-tool-portreeve-lease-confirm)
+   receives the bridge-local credential handle and the actual root PID.
+
+If startup fails, use [`portreeve_lease_abandon`](#mcp-tool-portreeve-lease-abandon)
+instead of confirming. The raw lease token never crosses MCP, and a credential handle
+from one bridge process does not work in another.
+
+### Prepare and activate an intercommunicating stack
+
+```text
+For stack STACK_ID, prepare one generation and begin a process-backed activation.
+Resolve addresses separately for components api and web so I can inject each
+component's own endpoints and declared dependencies. After I start each service, I
+will provide its root PID. Confirm each endpoint only after its listener binds, then
+report the final activation and provider evidence.
+```
+
+Expected sequence:
+
+1. [`portreeve_stack_prepare`](#mcp-tool-portreeve-stack-prepare) returns or reuses one
+   immutable generation.
+2. [`portreeve_activation_begin`](#mcp-tool-portreeve-activation-begin) leases the
+   selected endpoints and retains credentials inside this bridge.
+3. [`portreeve_activation_resolve`](#mcp-tool-portreeve-activation-resolve) runs once
+   per consumer component before its service starts.
+4. The project launcher injects those resolved addresses and starts services in
+   dependency order.
+5. [`portreeve_activation_confirm_endpoint`](#mcp-tool-portreeve-activation-confirm-endpoint)
+   confirms each binding only after fresh process or ordinary Docker evidence exists.
+6. [`portreeve_stack_status`](#mcp-tool-portreeve-stack-status) reports the resulting
+   generation, activation, and providers.
+
+MCP launcher-operation tools can coordinate lifecycle ownership and evidence, but they
+do not execute the project's start, stop, restart, or status commands.
+
+### Preview reclaim or pruning, then stop
+
+```text
+Preview a graceful reclaim of port 8080. Summarize the current owner, listeners,
+proposed signals, receipt scope, and expiry. Stop after preview and wait for my
+explicit approval of that specific preview. Do not execute based only on host-level
+automatic tool approval.
+```
+
+Use [`portreeve_port_reclaim_preview`](#mcp-tool-portreeve-port-reclaim-preview) with
+`{ "port": 8080, "policy": "graceful" }`. The agent must report the fresh evidence
+and receipt, then pause. Only after the human explicitly approves that exact preview
+may it call [`portreeve_port_reclaim_execute`](#mcp-tool-portreeve-port-reclaim-execute).
+
+Claims and stack pruning follow the same boundary: preview with
+[`portreeve_claims_prune_preview`](#mcp-tool-portreeve-claims-prune-preview) or
+[`portreeve_stacks_prune_preview`](#mcp-tool-portreeve-stacks-prune-preview), summarize
+eligible targets and blockers, stop, and call the corresponding execute tool only
+after specific approval. A fresh, technically valid receipt protects execution from
+evidence drift; it does not prove current human intent.
+
+## Troubleshooting and safety
+
+Start with [`portreeve_diagnostics`](#mcp-tool-portreeve-diagnostics). It remains
+available when the daemon is absent or incompatible and separates host/bridge startup
+from socket and protocol failures.
+
+| Symptom | Safest first response |
+| --- | --- |
+| Host cannot start PortReeve | Run `portreeve mcp setup --host HOST` in a terminal and verify the configured absolute executable path; keep stdout reserved for MCP frames |
+| Daemon absent or unreachable | Inspect diagnostics, then use Desktop or CLI lifecycle controls; MCP cannot install or start the daemon |
+| Incompatible daemon | Report bridge and daemon versions plus missing capability evidence; upgrade through Desktop or CLI rather than retrying mutations |
+| Port appears occupied or ownership is ambiguous | Inspect the port and claims, retain fresh listener evidence, and preview normal reclaim; never begin with destructive override |
+| Credential handle is missing or expired | Reacquire or begin a new activation in the current bridge; handles are intentionally process-local and bounded |
+| Confirmation fails | Verify that the service really bound the assigned port and provide the actual root PID or Docker container evidence; abandon on failed startup |
+| Activation is interrupted | Inspect activation and provider evidence, then reconcile; do not infer liveness from a stored PID |
+| Stack definition or worktree does not match | Read and validate the canonical stack document at the explicit root before previewing any replacement |
+| Preview receipt expired or is rejected | Preview again, compare the new evidence, summarize it, and request approval again |
+| Protocol output is contaminated | Ensure the bridge writes diagnostics only to stderr and that wrappers print nothing to stdout |
+
+MCP excludes unsafe any-owner eviction, daemon lifecycle administration, arbitrary
+shell and filesystem access, raw logs, and project-command output. Consequential
+execute tools are evidence-bound but still require explicit human intent after the
+corresponding preview.
+
 <!-- PORTREEVE:GENERATED MCP-TOOLS START -->
-## Complete tool reference
+## Searchable complete reference
 
 > Generated from the exact tool catalog registered with the pinned MCP SDK. Do not edit this region directly.
 
@@ -14519,7 +14691,7 @@ Every result uses either `{ "ok": true, "data": ... }` or the stable failure env
 
 ### MCP tool: `portreeve_stack_snapshot`
 
-Return one structured redacted Docker-sandbox endpoint snapshot without writing a file.
+Return one structured redacted gateway-rewritten endpoint snapshot without writing a file or orchestrating its consumer.
 
 - **Title:** Create a stack endpoint snapshot
 - **Family:** stacks

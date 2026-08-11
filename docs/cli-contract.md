@@ -1,4 +1,162 @@
-# PortReeve CLI contract
+# PortReeve CLI guide
+
+## Start here
+
+The PortReeve CLI is the complete terminal client for the single per-user daemon. It
+can install and supervise that daemon, inspect global port evidence, coordinate stack
+bindings, run trusted project launchers, and perform explicitly confirmed maintenance.
+For a first local installation on macOS or Linux:
+
+```sh
+portreeve install
+portreeve start
+portreeve status --json
+```
+
+Start with [`portreeve status`](#cli-command-portreeve-status) whenever you are unsure
+which executable, supervisor, socket, or server version is active. Use `--json` and
+exit status for automation rather than parsing human output.
+
+Desktop, MCP, CLI, and the JavaScript client are peer clients of the same daemon. The
+CLI is the right fit for shell automation, service administration, and trusted project
+launcher commands. MCP gives agents strict inspection and coordination tools but no
+daemon lifecycle or unsafe eviction authority. The JavaScript client is the cleanest
+fit when a project's own tooling should request a binding, start the service, and
+confirm only after the bind succeeds.
+
+| Client | Typical role | Important authority boundary |
+| --- | --- | --- |
+| Desktop | Human inspection, stack editing, guided launchers | Uses direct application services and explicit UI confirmation |
+| MCP | Agent inspection and evidence-bound coordination | Does not administer the daemon or execute project shell commands |
+| CLI | Terminal automation and complete local administration | Launcher commands may execute project-trusted shell commands |
+| JavaScript | Native project-tool integration | Project code owns startup and confirmation timing |
+
+PortReeve Desktop is supported on macOS. Standalone CLI and MCP artifacts are
+supported on macOS and Linux. The JavaScript client supports its documented Node.js
+and Bun runtimes when it can reach the local Unix socket. Windows is not supported.
+Ordinary Docker-backed endpoint evidence is supported, but PortReeve does not currently
+provide Docker Sandbox orchestration or integration.
+
+## Common workflows
+
+Commands use explicit placeholder variables so examples can be copied into a shell
+after the values are filled in. See the
+[complete command reference](#searchable-complete-reference) for every option and exit
+behavior.
+
+### Install, start, and diagnose the service
+
+```sh
+portreeve install
+portreeve start
+portreeve status --json
+portreeve logs --json
+```
+
+[`portreeve install`](#cli-command-portreeve-install) installs per-user launchd
+supervision on macOS or systemd user supervision on Linux; it never requires root.
+[`portreeve start`](#cli-command-portreeve-start) activates that installed service.
+The status result should show the managed executable, native supervisor, healthy
+socket, running version, and effective mode as separate evidence layers. Logs are a
+bounded diagnostic view, not a substitute for status evidence.
+
+### Inspect ports and ownership evidence
+
+```sh
+portreeve ports list --workspace "/absolute/worktree" --json
+portreeve ports inspect 8080 --json
+portreeve claims list --json
+```
+
+[`portreeve ports list`](#cli-command-portreeve-ports-list) combines durable claims
+with fresh listener evidence. [`portreeve ports inspect`](#cli-command-portreeve-ports-inspect)
+shows one port in detail, while [`portreeve claims list`](#cli-command-portreeve-claims-list)
+shows all durable identities independently so the exact workspace can be located in
+the result. Treat conflicting, mixed, Docker-managed, and
+unavailable evidence as distinct states; a stored PID is never proof of a current
+listener.
+
+### Apply, prepare, and activate a local stack
+
+First apply the version-controlled topology at the exact root:
+
+```sh
+STACK_ROOT="/absolute/worktree"
+portreeve stacks apply --stack-root "$STACK_ROOT" --json
+portreeve stacks status --stack-root "$STACK_ROOT" --json
+```
+
+Take the returned stack ID through allocation and activation:
+
+```sh
+STACK_ID="00000000-0000-0000-0000-000000000000"
+portreeve stacks prepare "$STACK_ID" --json
+GENERATION_ID="00000000-0000-0000-0000-000000000000"
+portreeve stacks begin "$GENERATION_ID" --json
+ACTIVATION_ID="00000000-0000-0000-0000-000000000000"
+portreeve stacks resolve "$ACTIVATION_ID" --component api --json
+portreeve stacks resolve "$ACTIVATION_ID" --component web --json
+```
+
+[`stacks apply`](#cli-command-portreeve-stacks-apply) records topology and claims but
+does not allocate or start anything. [`stacks prepare`](#cli-command-portreeve-stacks-prepare)
+creates an immutable generation. [`stacks begin`](#cli-command-portreeve-stacks-begin)
+leases its endpoints and prints private credentials only in JSON mode. Resolve each
+component separately, inject the assigned ports and dependency addresses into the
+service environment, and start services in dependency order.
+
+For each process endpoint, write only its `{ "leaseId", "leaseToken" }` to a private
+mode-0600 file, then confirm after the service actually binds:
+
+```sh
+LEASE_FILE="/private/path/api-http-lease.json"
+ROOT_PID="12345"
+portreeve stacks confirm "$ACTIVATION_ID" --lease-file "$LEASE_FILE" --root-pid "$ROOT_PID" --json
+```
+
+[`stacks confirm`](#cli-command-portreeve-stacks-confirm) uses fresh listener lineage
+evidence. On failed startup, use [`stacks abandon`](#cli-command-portreeve-stacks-abandon)
+with the same credential instead. Remove credential files after settlement. A trusted
+launcher should automate this two-phase acquire, bind, and confirm sequence so the
+race-sensitive details remain outside ordinary service code.
+
+### Initialize, trust, and run a project launcher
+
+```sh
+STACK_ROOT="/absolute/worktree"
+portreeve launcher init --stack-root "$STACK_ROOT"
+portreeve launcher validate --stack-root "$STACK_ROOT" --json
+portreeve launcher trust --stack-root "$STACK_ROOT"
+portreeve launcher start --stack-root "$STACK_ROOT"
+portreeve launcher status --stack-root "$STACK_ROOT" --json
+```
+
+[`launcher init`](#cli-command-portreeve-launcher-init) creates an explicit
+`portreeve.launcher.json` only after showing its suggestions. Validate before trust.
+[`launcher trust`](#cli-command-portreeve-launcher-trust) is interactive and binds
+approval to the exact launcher revision, shell, working directory, and commands.
+[`launcher start`](#cli-command-portreeve-launcher-start) may run developer-authored
+commands such as `npm run dev`; it injects resolved bindings through the shell
+environment and confirms only from the evidence policy selected by the launcher.
+
+### Preview and execute reclaim or pruning safely
+
+Always inspect the nonmutating form first:
+
+```sh
+portreeve ports reclaim 8080 --policy graceful --dry-run --json
+portreeve claims prune --older-than 7d --dry-run --json
+portreeve stacks prune --older-than 7d --dry-run --json
+```
+
+Review owners, listeners, eligible targets, blockers, and proposed signals. Then run
+the corresponding command without `--dry-run`; an interactive terminal asks for
+confirmation. Use `--yes` for noninteractive claims or stack prune execution only
+after an external approval step. [`ports unsafe-evict`](#cli-command-portreeve-ports-unsafe-evict)
+is an explicit any-owner escape hatch, not the normal recovery path; inspect fresh
+ownership evidence and prefer normal reclaim first.
+
+### Output contract
 
 PortReeve defaults to concise human-readable output. Operational commands accept
 `--json` and emit one JSON document with `"version": 1`. Successful documents and
@@ -20,7 +178,7 @@ are written to standard error:
 Automation should use the JSON document and exit status rather than parsing human
 output.
 
-## Exit statuses
+#### Exit statuses
 
 | Status | Meaning                                                                                                   |
 | -----: | --------------------------------------------------------------------------------------------------------- |
@@ -32,7 +190,7 @@ output.
 |   `50` | Invalid command, option, JSON value, or request input                                                     |
 |   `70` | Unexpected internal failure                                                                               |
 
-## Operational JSON keys
+#### Operational JSON keys
 
 | Command                                            | Success document                                                            |
 | -------------------------------------------------- | --------------------------------------------------------------------------- |
@@ -78,7 +236,7 @@ label, configuration text, any equivalent host registration command, and explana
 notes. It defaults to the managed executable path; `--portable` selects bare
 `portreeve` and therefore depends on the host's `PATH`.
 
-## Stack definitions
+### Stack definitions
 
 `stacks apply` walks upward from the current real directory to the nearest
 `portreeve.stack.json`, without stopping at child Git repository boundaries.
@@ -135,13 +293,13 @@ published endpoints and declared dependency aliases. Host-publication and option
 Docker-network address facts are separate; neither represents application health.
 
 `stacks snapshot <activation-id> --component NAME --gateway-host HOST --file PATH`
-requests a redacted activation-scoped sandbox document and atomically replaces `PATH`
-with mode `0600`. The gateway is supplied by the trusted launcher—for example,
-`host.docker.internal` on macOS Docker Desktop or a launcher-discovered bridge address
-on Linux. PortReeve does not infer or verify sandbox topology. Mount the resulting
-document read-only and never mount the PortReeve control socket into the sandbox.
+requests a redacted activation-scoped endpoint discovery document and atomically
+replaces `PATH` with mode `0600`. The gateway is supplied by the trusted launcher.
+PortReeve validates the document contract but does not infer, verify, or orchestrate
+the consumer environment. This generic snapshot capability is not Docker Sandbox
+integration.
 
-## Project launchers
+### Project launchers
 
 `launcher init`, `validate`, `trust`, `start`, `stop`, `restart`, and `status` share
 the same definition, exact-revision trust, environment resolution, lifecycle policy,
@@ -165,7 +323,7 @@ only to the exact process group that invocation created.
 See [Project launchers](launchers.md) for the checked-in schema and complete behavioral
 contract.
 
-## Prune consent
+### Prune consent
 
 `claims prune --dry-run` reports eligible missing-workspace claims without mutation.
 `stacks prune --dry-run` reports both eligible missing-stack-root stacks and evidence
@@ -175,13 +333,13 @@ naked interactive invocation displays the plan and prompts before execution.
 Noninteractive execution requires `--yes`; `--json` is output selection, not consent.
 `--dry-run` and `--yes` cannot be combined.
 
-## Server lifecycle
+### Server lifecycle
 
 `portreeve serve` is always a foreground, blocking server. Running it with the shell's
 backgrounding features does not turn it into a supervised service. The server reports
 its PID and its asserted execution mode over the private Unix socket.
 
-### Layered status
+#### Layered status
 
 `portreeve status --json` returns one runtime-validated snapshot even when an ordinary
 layer is absent, stopped, failed, unhealthy, or incompatible:
@@ -236,7 +394,7 @@ currently observed native supervisor. A healthy manual server is an ordinary suc
 status. An unavailable/unhealthy socket or ambiguous mode exits `10`. Failure to
 construct the command or validate its invocation remains a top-level error.
 
-### Mutation results
+#### Mutation results
 
 Every lifecycle mutation returns the same result shape:
 
@@ -285,7 +443,7 @@ through the protected socket; it refuses supervised, ambiguous, or absent state.
 `uninstall` refuses live manual or ambiguous state, removes the native definition and
 managed executables, and preserves the registry, settings, history, and diagnostic data.
 
-### Complete reset
+#### Complete reset
 
 Every initialized application home contains a private `.portreeve-owner.json` marker
 binding the PortReeve product, schema, canonical root, and user ID. PortReeve creates it
@@ -313,8 +471,36 @@ data. The result reports `removed`, `retained`, `missing`, and `refused` paths a
 `succeeded`, `refused`, or `partial` without claiming complete reset after partial
 failure.
 
+## Troubleshooting and safety
+
+Start with [`portreeve status --json`](#cli-command-portreeve-status). Its layered
+evidence distinguishes installation, native supervisor, socket health, running server,
+version compatibility, and effective mode without treating any stored PID as current
+authority.
+
+| Symptom | Safest first response |
+| --- | --- |
+| Command is not found | Use the bundled or managed executable path shown by Desktop; do not assume GUI applications inherit your shell `PATH` |
+| Service is absent or stopped | Inspect status, then run `portreeve install` or `portreeve start` as the current user; never use root |
+| Socket is unreachable or incompatible | Read the status limitations and versions before restarting or upgrading; keep manual and supervised modes distinct |
+| A port is occupied or ownership is ambiguous | Run `ports inspect PORT --json`, inspect claims, and preview normal reclaim; unsafe eviction is not first-line advice |
+| A lease expires or confirmation fails | Verify the assigned listener and root PID, then begin a fresh activation or abandon the failed lease rather than reusing credentials |
+| An activation is interrupted | Inspect `stacks activation ID --json`, then reconcile provider evidence; end refuses live or unobservable providers |
+| Stack definition or worktree is wrong | Use an explicit `--stack-root`, validate the nearest canonical file, and compare its registered revision before applying |
+| Launcher is untrusted | Run launcher validate, inspect the exact shell and commands, then trust the current revision interactively |
+| Start blocks in the terminal | The launcher may be configured for attached mode; cancellation is forwarded only to the process group started by that invocation |
+| A command times out | Inspect status and launcher evidence before retrying; do not assume the project process stopped when the CLI deadline elapsed |
+| JSON automation behaves unexpectedly | Check the documented exit band and top-level success key; `--json` selects output and never supplies prune consent |
+| A preview or confirmation becomes stale | Generate a fresh preview, compare the changed evidence, and obtain approval again |
+
+Normal reclaim is limited by current ownership evidence. `force-after-grace` escalates
+only within the verified normal policy. `ports unsafe-evict` deliberately ignores
+ownership and can terminate an unrelated process; it requires separate, explicit use
+and should follow fresh `lsof`-backed inspection. PortReeve never signals Docker
+Desktop, the Docker daemon, or Docker port-forwarding processes.
+
 <!-- PORTREEVE:GENERATED CLI-COMMANDS START -->
-## Complete command reference
+## Searchable complete reference
 
 > Generated from the Commander command tree and required documentation metadata. Do not edit this region directly.
 
@@ -1419,7 +1605,7 @@ Uses concise human output by default when supported and versioned JSON with `--j
 
 ### CLI command: `portreeve stacks snapshot`
 
-Write one redacted sandbox endpoint discovery document atomically
+Write one redacted gateway-rewritten endpoint document atomically
 
 - **Family:** stacks
 - **Safety:** Read-only or local generation
@@ -1435,8 +1621,8 @@ Write one redacted sandbox endpoint discovery document atomically
 
 | Flags | Required | Default | Choices | Description |
 |---|---:|---|---|---|
-| `--component <name>` | yes | — | — | sandbox consumer component name |
-| `--gateway-host <host>` | yes | — | — | launcher-rendered sandbox gateway host |
+| `--component <name>` | yes | — | — | endpoint consumer component name |
+| `--gateway-host <host>` | yes | — | — | launcher-supplied snapshot gateway host |
 | `--file <path>` | yes | — | — | destination JSON document |
 | `--socket <path>` | no | — | — | override the Unix socket path |
 | `--json` | no | — | — | emit versioned JSON output |
