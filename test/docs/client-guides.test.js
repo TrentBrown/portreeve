@@ -96,7 +96,7 @@ describe('client guide contract generation', () => {
     });
     await expect(
       compileMarkdown({
-        markdown: '# Guide\n\n<script>alert(1)</script>\n',
+        markdown: '# Guide\n\nText before <script>alert(1)</script>.\n',
         sourcePath: 'docs/example.md',
         workspaceRoot: root,
       }),

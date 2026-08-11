@@ -331,7 +331,7 @@ export async function compileMarkdown({
       index += 1;
       continue;
     }
-    if (/^\s*</u.test(line)) {
+    if (containsRawHtml(line)) {
       throw markdownError(sourcePath, lineNumber, 'Raw HTML is not supported.');
     }
     const fence = line.match(/^```([A-Za-z0-9_-]*)\s*$/u);
@@ -621,6 +621,12 @@ function isGeneratedStartMarker(line) {
 /** @param {string} line */
 function isGeneratedEndMarker(line) {
   return /^<!-- PORTREEVE:GENERATED [A-Z0-9-]+ END -->$/u.test(line.trim());
+}
+
+/** @param {string} line */
+function containsRawHtml(line) {
+  const withoutInlineCode = line.replace(/`[^`]*`/gu, '');
+  return /<\/?[A-Za-z][^>]*>|<!--/u.test(withoutInlineCode);
 }
 
 /** @param {string} markdown @param {string} needle */
