@@ -3,7 +3,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from 'bun:test';
 
-test('presents the six primary views with plural collection naming', async () => {
+test('presents the seven primary views with peer MCP and CLI destinations', async () => {
   const [html, renderer] = await Promise.all([
     readFile('apps/desktop/renderer/index.html', 'utf8'),
     readFile('apps/desktop/renderer/renderer.js', 'utf8'),
@@ -15,6 +15,7 @@ test('presents the six primary views with plural collection naming', async () =>
     ['stacks', 'Stacks'],
     ['launcher', 'Launchers'],
     ['mcp', 'MCP'],
+    ['cli', 'CLI'],
     ['guide', 'Guide'],
   ];
   let previousIndex = -1;
@@ -29,6 +30,7 @@ test('presents the six primary views with plural collection naming', async () =>
   expect(renderer).toContain("actionButton('Open in Launchers'");
   expect(renderer).toContain("requiredElement('guide').hidden = view !== 'guide'");
   expect(renderer).toContain("requiredElement('mcp').hidden = view !== 'mcp'");
+  expect(renderer).toContain("requiredElement('cli').hidden = view !== 'cli'");
   expect(renderer).toContain("runtimeStatus.hidden = view === 'guide'");
   expect(
     renderer.match(/if \(view !== 'stacks' && stackEditor\.isOpen\(\)\)/g),
@@ -36,6 +38,34 @@ test('presents the six primary views with plural collection naming', async () =>
   expect(
     renderer.match(/if \(view !== 'launcher' && launcherView\.isOpen\(\)\)/g),
   ).toHaveLength(1);
+});
+
+test('ships static version-bound MCP and CLI guide surfaces', async () => {
+  const [html, renderer, view, model, css] = await Promise.all([
+    readFile('apps/desktop/renderer/index.html', 'utf8'),
+    readFile('apps/desktop/renderer/renderer.js', 'utf8'),
+    readFile('apps/desktop/renderer/client-guide-view.js', 'utf8'),
+    readFile('apps/desktop/renderer/client-guide-model.js', 'utf8'),
+    readFile('apps/desktop/renderer/styles.css', 'utf8'),
+  ]);
+  expect(html).toContain('id="mcp-guide-content"');
+  expect(html).toContain('id="cli-guide-content"');
+  expect(html).toContain('id="cli-installation-title">This installation</h3>');
+  expect(html).toContain('id="copy-cli-diagnostic"');
+  expect(renderer).toContain("from './generated/client-guides.js'");
+  expect(renderer).toContain('clientGuideBundle.generatedForVersion');
+  expect(renderer).toContain('clientInstallationEvidence(next)');
+  expect(view).toContain("search.setAttribute('aria-label', search.placeholder)");
+  expect(view).toContain("count.setAttribute('aria-live', 'polite')");
+  expect(view).toContain("details.className = 'client-reference-entry'");
+  expect(view).toContain('target.focus({ preventScroll: true })');
+  expect(model).toContain("'troubleshooting-and-safety'");
+  expect(css).toContain('overflow-x: auto');
+  expect(css).toContain('min-width: 420px');
+  expect(css).toContain('.client-reference-controls');
+  expect(`${renderer}\n${view}`).not.toMatch(
+    /fetch\(|innerHTML|DOMParser|marked|markdown-it/,
+  );
 });
 
 test('ships the Guide as static semantic architecture and integration guidance', async () => {

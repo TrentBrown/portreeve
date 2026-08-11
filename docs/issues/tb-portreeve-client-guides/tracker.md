@@ -35,7 +35,7 @@
 ### PR #51 - Complete authored client guides
 
 - **PR:** [#51](https://github.com/TrentBrown/portreeve/pull/51)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P2 / I-2: the common four-part MCP and CLI guides, approved
   workflows, client comparison, safety boundaries, platform contract, and
   symptom-first troubleshooting.

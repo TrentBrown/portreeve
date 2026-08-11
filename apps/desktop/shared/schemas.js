@@ -573,6 +573,7 @@ export const DesktopSnapshotSchema = z
         desktopVersion: SemanticVersionSchema,
         version: SemanticVersionSchema,
         filename: z.string().min(1),
+        bundledLocation: z.string().min(1),
         sha256: z.string().regex(/^[a-f0-9]{64}$/),
         controller: z
           .object({

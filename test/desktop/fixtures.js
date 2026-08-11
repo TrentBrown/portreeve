@@ -43,6 +43,7 @@ export function provisionalArtifact() {
     desktopVersion: '0.1.0',
     version: '0.1.0',
     filename: 'portreeve-v0.1.0-macos-x64',
+    executablePath: '/verified/bundled/portreeve',
     sha256: 'a'.repeat(64),
     controller: {
       version: '0.1.0',

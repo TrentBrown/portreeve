@@ -22,7 +22,7 @@ and deterministic freshness and coverage gates.
 
 ## I-2 - Author the shared MCP and CLI guides
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R1, R2, R5, R7
@@ -35,7 +35,7 @@ the stable repository paths, then regenerate shared artifacts.
 
 ## I-3 - Deliver Desktop client-guide experiences
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 3d
 - **Plan steps:** P3
 - **Rubric criteria:** R3, R4, R8

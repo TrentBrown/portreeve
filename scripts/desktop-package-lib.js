@@ -43,7 +43,7 @@ export function assertDesktopModuleGraph(inputs) {
 }
 
 /**
- * @param {{packageDocument: string, verificationDocument: string, mainBundle: string, preloadBundle: string, rendererDocument: string, controllerVersion: string, artifactVersion: string}} options
+ * @param {{packageDocument: string, verificationDocument: string, mainBundle: string, preloadBundle: string, rendererDocument: string, guideBundleDocument: string, controllerVersion: string, artifactVersion: string}} options
  */
 export function assertPackagedDesktopContents(options) {
   const metadata = JSON.parse(options.packageDocument);
@@ -60,6 +60,16 @@ export function assertPackagedDesktopContents(options) {
     verification.moduleGraph?.lifecycleCliAdapter !== false
   ) {
     throw new Error('Packaged Desktop identity attestation is invalid.');
+  }
+  if (
+    !options.guideBundleDocument.startsWith('export const CLIENT_GUIDES_ATTESTATION') ||
+    !options.guideBundleDocument.includes(
+      `generatedForVersion: "${options.controllerVersion}"`,
+    ) ||
+    !options.guideBundleDocument.includes('cliCommands: 49') ||
+    !options.guideBundleDocument.includes('mcpTools: 51')
+  ) {
+    throw new Error('Packaged Desktop client guide bundle is invalid or stale.');
   }
   for (const marker of [
     'controller_artifact_version_mismatch',
@@ -83,8 +93,11 @@ export function assertPackagedDesktopContents(options) {
   }
   for (const marker of [
     'data-view="mcp"',
+    'data-view="cli"',
     'id="mcp-setup-form"',
     'id="mcp-configuration"',
+    'id="mcp-guide-content"',
+    'id="cli-guide-content"',
   ]) {
     if (!options.rendererDocument.includes(marker)) {
       throw new Error(`Packaged Desktop renderer is missing ${marker}.`);
@@ -123,6 +136,9 @@ export async function verifyPackagedDesktop(options) {
     '/main/index.js',
     '/preload/index.cjs',
     '/renderer/index.html',
+    '/renderer/client-guide-model.js',
+    '/renderer/client-guide-view.js',
+    '/renderer/generated/client-guides.js',
   ]) {
     if (!entries.includes(required)) {
       throw new Error(`Packaged Desktop ASAR is missing ${required}.`);
@@ -136,6 +152,10 @@ export async function verifyPackagedDesktop(options) {
     mainBundle: extractFile(asarPath, 'main/index.js').toString('utf8'),
     preloadBundle: extractFile(asarPath, 'preload/index.cjs').toString('utf8'),
     rendererDocument: extractFile(asarPath, 'renderer/index.html').toString('utf8'),
+    guideBundleDocument: extractFile(
+      asarPath,
+      'renderer/generated/client-guides.js',
+    ).toString('utf8'),
     controllerVersion: options.controllerVersion,
     artifactVersion: artifact.version,
   });

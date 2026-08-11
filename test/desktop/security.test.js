@@ -59,6 +59,8 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
     'apps/desktop/main/update.js',
     'apps/desktop/preload/index.cjs',
     'apps/desktop/renderer/renderer.js',
+    'apps/desktop/renderer/client-guide-model.js',
+    'apps/desktop/renderer/client-guide-view.js',
     'apps/desktop/renderer/stack-editor-model.js',
     'apps/desktop/renderer/stack-editor-view.js',
   ];
@@ -74,6 +76,8 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
   expect(source).not.toContain('openDownloadPage: async (url) =>');
   expect(source.match(/clipboard\.writeText/g)).toHaveLength(1);
   expect(source).not.toContain('navigator.clipboard');
+  expect(source).not.toMatch(/fetch\(|XMLHttpRequest|WebSocket|EventSource/);
+  expect(source).not.toMatch(/innerHTML|DOMParser|marked|markdown-it/);
   expect(source).not.toMatch(/\.codex\/config\.toml|\.claude\.json|mcpServers.*write/i);
 });
 

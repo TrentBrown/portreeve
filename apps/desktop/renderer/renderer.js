@@ -10,6 +10,9 @@ import {
 } from './state.js';
 import { createStackEditorView } from './stack-editor-view.js';
 import { createLauncherView } from './launcher-view.js';
+import { createClientGuideView } from './client-guide-view.js';
+import { clientInstallationEvidence } from './client-guide-model.js';
+import clientGuides from './generated/client-guides.js';
 
 /** @type {any} */
 let snapshot = null;
@@ -24,6 +27,7 @@ let busy = false;
 let activeView = 'overview';
 /** @type {any|null} */
 let mcpSetup = null;
+const clientGuideBundle = /** @type {any} */ (clientGuides);
 
 const notice = requiredElement('notice');
 const activeLifecycleOperation = requiredElement('active-lifecycle-operation');
@@ -57,6 +61,8 @@ const launcherBrowser = requiredElement('launcher-browser');
 const launcherEditorRoot = requiredElement('launcher-editor');
 const launcherList = requiredElement('launcher-list');
 const launcherDetail = requiredElement('launcher-detail');
+const mcpGuideRoot = requiredElement('mcp-guide-content');
+const cliGuideRoot = requiredElement('cli-guide-content');
 const filterInput = /** @type {HTMLInputElement} */ (requiredElement('port-filter'));
 const confirmationDialog = /** @type {HTMLDialogElement} */ (
   requiredElement('confirmation-dialog')
@@ -91,6 +97,19 @@ const terminateAttachedButton = /** @type {HTMLButtonElement} */ (
   requiredElement('terminate-attached')
 );
 let snapshotJson = '';
+
+createClientGuideView({
+  root: mcpGuideRoot,
+  guideId: 'mcp',
+  guide: clientGuideBundle.guides.mcp,
+  copyText: (text) => window.portreeveDesktop.copyText(text),
+});
+createClientGuideView({
+  root: cliGuideRoot,
+  guideId: 'cli',
+  guide: clientGuideBundle.guides.cli,
+  copyText: (text) => window.portreeveDesktop.copyText(text),
+});
 
 const stackEditor = createStackEditorView({
   root: stackEditorRoot,
@@ -215,6 +234,10 @@ requiredElement('copy-mcp-config').addEventListener('click', async () => {
 requiredElement('copy-mcp-command').addEventListener('click', async () => {
   if (mcpSetup?.setupCommand === null || mcpSetup === null) return;
   await copyMcpText(mcpSetup.setupCommand, 'Registration command copied.');
+});
+requiredElement('copy-cli-diagnostic').addEventListener('click', async () => {
+  await window.portreeveDesktop.copyText('portreeve status --json');
+  requiredElement('cli-evidence-state').textContent = 'Diagnostic command copied.';
 });
 
 let closeAfterDiscard = false;
@@ -374,6 +397,7 @@ function render(next) {
   renderStacks();
   launcherView.setStacks(next.stacks);
   renderMcpCompatibility(next);
+  renderCliInstallation(next);
   if (busy) setControlsDisabled(true);
 }
 
@@ -1027,6 +1051,7 @@ function activateTab(tab, view) {
   requiredElement('stacks').hidden = view !== 'stacks';
   requiredElement('launcher').hidden = view !== 'launcher';
   requiredElement('mcp').hidden = view !== 'mcp';
+  requiredElement('cli').hidden = view !== 'cli';
   requiredElement('guide').hidden = view !== 'guide';
   runtimeStatus.hidden = view === 'guide';
 }
@@ -1054,16 +1079,43 @@ async function requestView(tab, view) {
 
 /** @param {any} next */
 function renderMcpCompatibility(next) {
+  const evidence = clientInstallationEvidence(next);
+  requiredElement('mcp-bundled-version').textContent =
+    clientGuideBundle.generatedForVersion;
+  requiredElement('mcp-bundled-detail').textContent =
+    `Bundled serve command: ${next.artifact.bundledLocation} mcp serve`;
   const socket = next.lifecycle?.socket;
   const state = socket?.state ?? 'unavailable';
   requiredElement('mcp-daemon-status').textContent =
-    state === 'healthy' ? 'Compatible' : state;
+    state === 'healthy'
+      ? evidence.versionMismatch
+        ? 'Compatible; version differs'
+        : 'Compatible'
+      : state;
   requiredElement('mcp-daemon-detail').textContent =
     state === 'healthy'
-      ? `Server ${socket.serverVersion ?? 'version unknown'} is reachable.`
+      ? `${next.stale ? 'Evidence is stale. ' : ''}Server ${socket.serverVersion ?? 'version unknown'} is reachable; this guide describes bundled ${evidence.bundledVersion}.`
       : state === 'incompatible'
-        ? `Server ${socket.serverVersion ?? 'version unknown'} uses an incompatible PortReeve protocol.`
-        : 'The setup is still copyable; start or repair the daemon before calling tools.';
+        ? `${next.stale ? 'Evidence is stale. ' : ''}Server ${socket.serverVersion ?? 'version unknown'} uses an incompatible PortReeve protocol.`
+        : `${next.stale ? 'Evidence is stale. ' : ''}The setup is still copyable; start or repair the daemon before calling tools.`;
+}
+
+/** @param {any} next */
+function renderCliInstallation(next) {
+  const evidence = clientInstallationEvidence(next);
+  requiredElement('cli-evidence-state').textContent = evidence.versionMismatch
+    ? `${evidence.evidence === 'stale' ? 'Stale' : 'Current'} evidence shows a version mismatch. This guide remains bound to bundled ${evidence.bundledVersion}.`
+    : `${evidence.evidence === 'stale' ? 'Stale' : 'Current'} lifecycle evidence. This guide describes bundled ${evidence.bundledVersion}.`;
+  requiredElement('cli-bundled-version').textContent = evidence.bundledVersion;
+  requiredElement('cli-bundled-location').textContent = evidence.bundledLocation;
+  requiredElement('cli-managed-version').textContent =
+    evidence.managedVersion ?? 'Not installed';
+  requiredElement('cli-managed-location').textContent =
+    evidence.managedLocation ?? 'Managed location unavailable';
+  requiredElement('cli-running-version').textContent =
+    evidence.runningVersion ?? 'Not running';
+  requiredElement('cli-running-detail').textContent =
+    `Mode ${evidence.mode}; socket ${evidence.socket}; compatibility ${evidence.compatibility}.`;
 }
 
 async function renderMcpSetup() {
