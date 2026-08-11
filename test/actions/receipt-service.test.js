@@ -144,4 +144,43 @@ describe('action receipts', () => {
     ).toThrow(RegistryError);
     registry.close();
   });
+
+  test('admits only one executor and resets a failed execution for retry', () => {
+    const registry = openRegistry();
+    const service = new ActionReceiptService({ registry });
+    const now = new Date('2026-08-10T12:00:00.000Z');
+    const input = {
+      action: 'settings.update',
+      targetType: 'settings',
+      targetId: 'server',
+      evidence: { revision: 'before' },
+    };
+    const receipt = service.preview(input, now);
+
+    expect(() =>
+      service.execute(
+        { receiptId: receipt.id, ...input },
+        () => {
+          expect(() =>
+            service.execute(
+              { receiptId: receipt.id, ...input },
+              () => ({ changed: true }),
+              now,
+            ),
+          ).toThrow('already in progress');
+          throw new Error('effect failed');
+        },
+        now,
+      ),
+    ).toThrow('effect failed');
+    expect(registry.getActionReceipt(receipt.id)?.state).toBe('pending');
+    expect(
+      service.execute(
+        { receiptId: receipt.id, ...input },
+        () => ({ changed: true }),
+        now,
+      ),
+    ).toMatchObject({ changed: true, replayed: false });
+    registry.close();
+  });
 });

@@ -1004,7 +1004,7 @@ export const HistoryPageSchema = z
   })
   .strict();
 
-export const ActionReceiptStateSchema = z.enum(['pending', 'completed']);
+export const ActionReceiptStateSchema = z.enum(['pending', 'executing', 'completed']);
 
 export const ActionReceiptSchema = z
   .object({
@@ -1019,6 +1019,7 @@ export const ActionReceiptSchema = z
     result: z.record(z.string(), z.unknown()).nullable(),
     expiresAt: TimestampSchema,
     createdAt: TimestampSchema,
+    executionStartedAt: TimestampSchema.nullable(),
     completedAt: TimestampSchema.nullable(),
   })
   .strict();

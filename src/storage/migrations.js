@@ -399,15 +399,21 @@ export const MIGRATIONS = Object.freeze([
         evidence_json TEXT NOT NULL,
         evidence_hash TEXT NOT NULL CHECK (length(evidence_hash) = 64),
         idempotency_key TEXT NOT NULL UNIQUE,
-        state TEXT NOT NULL CHECK (state IN ('pending', 'completed')),
+        state TEXT NOT NULL CHECK (state IN ('pending', 'executing', 'completed')),
         result_json TEXT,
         expires_at TEXT NOT NULL,
         created_at TEXT NOT NULL,
+        execution_started_at TEXT,
         completed_at TEXT,
         CHECK (
-          (state = 'pending' AND result_json IS NULL AND completed_at IS NULL)
+          (state = 'pending' AND result_json IS NULL
+            AND execution_started_at IS NULL AND completed_at IS NULL)
           OR
-          (state = 'completed' AND result_json IS NOT NULL AND completed_at IS NOT NULL)
+          (state = 'executing' AND result_json IS NULL
+            AND execution_started_at IS NOT NULL AND completed_at IS NULL)
+          OR
+          (state = 'completed' AND result_json IS NOT NULL
+            AND execution_started_at IS NOT NULL AND completed_at IS NOT NULL)
         )
       );
 

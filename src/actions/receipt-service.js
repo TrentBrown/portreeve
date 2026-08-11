@@ -108,12 +108,25 @@ export class ActionReceiptService {
         { receiptId: receipt.id },
       );
     }
-    const result = execute();
-    const completed = this.registry.completeActionReceipt(receipt.id, result, now);
-    return {
-      changed: true,
-      replayed: false,
-      result: /** @type {T} */ (completed.result),
-    };
+    const claimed = this.registry.claimActionReceiptExecution(receipt.id, now);
+    if (claimed.state === 'completed') {
+      return {
+        changed: false,
+        replayed: true,
+        result: /** @type {T} */ (claimed.result),
+      };
+    }
+    try {
+      const result = execute();
+      const completed = this.registry.completeActionReceipt(receipt.id, result, now);
+      return {
+        changed: true,
+        replayed: false,
+        result: /** @type {T} */ (completed.result),
+      };
+    } catch (error) {
+      this.registry.resetActionReceiptExecution(receipt.id);
+      throw error;
+    }
   }
 }

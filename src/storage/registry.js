@@ -122,10 +122,11 @@ const ActionReceiptRowSchema = z.object({
   evidence_json: z.string(),
   evidence_hash: z.string(),
   idempotency_key: z.string(),
-  state: z.enum(['pending', 'completed']),
+  state: z.enum(['pending', 'executing', 'completed']),
   result_json: z.string().nullable(),
   expires_at: TimestampSchema,
   created_at: TimestampSchema,
+  execution_started_at: TimestampSchema.nullable(),
   completed_at: TimestampSchema.nullable(),
 });
 
@@ -3142,6 +3143,7 @@ export class Registry {
       state: true,
       result: true,
       createdAt: true,
+      executionStartedAt: true,
       completedAt: true,
     }).parse(input);
     const existingRow = this.database
@@ -3166,12 +3168,13 @@ export class Registry {
     const createdAt = toTimestamp(now);
     this.database
       .query(
-        `INSERT INTO action_receipts (
+        `INSERT OR IGNORE INTO action_receipts (
            id, action, target_type, target_id, evidence_json, evidence_hash,
-           idempotency_key, state, result_json, expires_at, created_at, completed_at
+           idempotency_key, state, result_json, expires_at, created_at,
+           execution_started_at, completed_at
          ) VALUES (
            $id, $action, $targetType, $targetId, $evidence, $evidenceHash,
-           $idempotencyKey, 'pending', NULL, $expiresAt, $createdAt, NULL
+           $idempotencyKey, 'pending', NULL, $expiresAt, $createdAt, NULL, NULL
          )`,
       )
       .run({
@@ -3179,9 +3182,24 @@ export class Registry {
         evidence: JSON.stringify(candidate.evidence),
         createdAt,
       });
-    const receipt = this.getActionReceipt(candidate.id);
-    if (receipt === null) {
+    const receiptRow = this.database
+      .query('SELECT * FROM action_receipts WHERE idempotency_key = $idempotencyKey')
+      .get({ idempotencyKey: candidate.idempotencyKey });
+    if (receiptRow === null) {
       throw new RegistryError('internal', 'Action receipt disappeared after creation.');
+    }
+    const receipt = actionReceiptFromRow(receiptRow);
+    if (
+      receipt.action !== candidate.action ||
+      receipt.targetType !== candidate.targetType ||
+      receipt.targetId !== candidate.targetId ||
+      receipt.evidenceHash !== candidate.evidenceHash
+    ) {
+      throw new RegistryError(
+        'idempotency_conflict',
+        'The idempotency key is already bound to another action receipt.',
+        { idempotencyKey: candidate.idempotencyKey, receiptId: receipt.id },
+      );
     }
     return receipt;
   }
@@ -3193,6 +3211,58 @@ export class Registry {
       .query('SELECT * FROM action_receipts WHERE id = $id')
       .get({ id: parsedId });
     return row === null ? null : actionReceiptFromRow(row);
+  }
+
+  /** @param {string} id @param {Date} [now] */
+  claimActionReceiptExecution(id, now = new Date()) {
+    const parsedId = IdentifierSchema.parse(id);
+    const executionStartedAt = toTimestamp(now);
+    const claim = this.database.transaction(() => {
+      const existing = this.getActionReceipt(parsedId);
+      if (existing === null) {
+        throw new RegistryError(
+          'not_found',
+          `Action receipt ${parsedId} was not found.`,
+        );
+      }
+      if (existing.state === 'completed') {
+        return existing;
+      }
+      if (existing.state === 'executing') {
+        throw new RegistryError(
+          'receipt_in_progress',
+          'Action receipt execution is already in progress.',
+          { receiptId: parsedId },
+        );
+      }
+      this.database
+        .query(
+          `UPDATE action_receipts
+           SET state = 'executing', execution_started_at = $executionStartedAt
+           WHERE id = $id AND state = 'pending'`,
+        )
+        .run({ id: parsedId, executionStartedAt });
+      const claimed = this.getActionReceipt(parsedId);
+      if (claimed === null) {
+        throw new RegistryError(
+          'internal',
+          'Action receipt disappeared while claiming.',
+        );
+      }
+      return claimed;
+    });
+    return claim.immediate();
+  }
+
+  /** @param {string} id */
+  resetActionReceiptExecution(id) {
+    this.database
+      .query(
+        `UPDATE action_receipts
+         SET state = 'pending', execution_started_at = NULL
+         WHERE id = $id AND state = 'executing'`,
+      )
+      .run({ id: IdentifierSchema.parse(id) });
   }
 
   /**
@@ -3219,7 +3289,7 @@ export class Registry {
         .query(
           `UPDATE action_receipts
            SET state = 'completed', result_json = $result, completed_at = $completedAt
-           WHERE id = $id AND state = 'pending'`,
+           WHERE id = $id AND state = 'executing'`,
         )
         .run({ id: parsedId, result: JSON.stringify(parsedResult), completedAt });
       const completed = this.getActionReceipt(parsedId);
@@ -3578,6 +3648,7 @@ function actionReceiptFromRow(row) {
     result: parsed.result_json === null ? null : parseJsonObject(parsed.result_json),
     expiresAt: parsed.expires_at,
     createdAt: parsed.created_at,
+    executionStartedAt: parsed.execution_started_at,
     completedAt: parsed.completed_at,
   });
 }
