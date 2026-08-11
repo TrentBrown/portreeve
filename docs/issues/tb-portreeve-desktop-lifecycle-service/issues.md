@@ -61,12 +61,12 @@ copyable renderer-safe failures.
 
 ## I-5 - Verify packaging and both JavaScript runtimes
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P6
 - **Rubric criteria:** R1, R3, R8
 - **Depends on:** I-3, I-4
-- **PR:** -
+- **PR:** [#41](https://github.com/TrentBrown/portreeve/pull/41)
 
 Validate packaged controller/artifact identity, absence of lifecycle CLI
 spawning, common contract behavior under Bun and Electron Node, and compiled/

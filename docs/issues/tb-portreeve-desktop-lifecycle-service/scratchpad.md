@@ -98,7 +98,7 @@ Use renderer-local busy state as close authority - rejected because renderer sta
 
 ## [7] Verify the packaged direct-controller boundary
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
