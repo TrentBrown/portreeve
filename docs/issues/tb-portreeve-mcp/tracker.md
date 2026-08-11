@@ -9,13 +9,13 @@
 
 | # | Criterion (short) | Status | PR | Notes |
 | --- | --- | --- | --- | --- |
-| R1 | Transport and single authority | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43) | P1 pins SDK v2 and preserves the daemon/socket authority; stdio and packaged proof remain P2/P7. |
-| R2 | Complete typed tool surface | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43) | P1 freezes the catalog; registrations and completeness audit remain P2/P5/P7. |
-| R3 | Availability and explicit scope | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43) | P1 adds diagnostic-only origin and explicit catalog scope; availability/setup remain P2/P6/P7. |
+| R1 | Transport and single authority | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44) | P2 delivers dual-era stdio through the official socket client with stdout framing; packaged proof remains P7. |
+| R2 | Complete typed tool surface | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44) | P2 registers the complete read-only subset with strict schemas and bounded pages; mutation and final completeness work remain P3-P5/P7. |
+| R3 | Availability and explicit scope | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44) | P2 proves absence, incompatibility, live retry, filters, explicit identifiers, and diagnostic-only labels; setup remains P6/P7. |
 | R4 | Credential custody | NOT YET | - | Planned across P3 and P7 / I-3 and I-7. |
 | R5 | Lifecycle and idempotency | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43) | P1 supplies durable replay and serialized receipt execution; lifecycle families remain P3-P5/P7. |
 | R6 | Consequential mutation safety | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43) | P1 supplies five-minute evidence-bound receipts; action-specific integration remains P4/P7. |
-| R7 | Safe documents and observability | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43) | P1 completes bounded cursored history; documents and snapshots remain P2/P4/P5/P7. |
+| R7 | Safe documents and observability | NOT YET | [#43](https://github.com/TrentBrown/portreeve/pull/43), [#44](https://github.com/TrentBrown/portreeve/pull/44) | P2 exposes bounded structured history and no raw logs/files; documents and snapshots remain P4/P5/P7. |
 | R8 | Setup and shipped compatibility | NOT YET | - | Planned across P6 and P7 / I-6 and I-7. |
 
 ## PR Log
@@ -25,7 +25,7 @@ Append PR boundary entries here.
 ### PR #43 - MCP protocol and client foundations
 
 - **PR:** [#43](https://github.com/TrentBrown/portreeve/pull/43)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P1 / I-1: SDK v2, stable tool catalog, cursor pages, origin
   attribution, and daemon-authoritative action receipts.
 - **Evidence packet:** [pr-43](pr-43/)
@@ -33,3 +33,17 @@ Append PR boundary entries here.
   pending I-2 through I-7. All 432 repository tests, the standalone build,
   typecheck, lint, and changed-file formatting pass. Judge: PASS. Code review:
   no remaining findings.
+
+### PR #44 - MCP stdio diagnostics and reads
+
+- **PR:** [#44](https://github.com/TrentBrown/portreeve/pull/44)
+- **Status:** in review
+- **Scope:** P2 / I-2: dual-era stdio bridge, stable diagnostics and errors,
+  global filtered reads, bounded cursor pages, daemon recovery, and explicit
+  MCP attribution.
+- **Evidence packet:** [pr-44](pr-44/)
+- **Result:** Slice verdict PASS. The bridge supports modern and legacy MCP,
+  fails closed on incompatible daemons, recovers without restart, and exposes
+  fifteen strictly described read tools. All 439 repository tests, standalone
+  build, typecheck, lint, and changed-file formatting pass. Judge: PASS. Code
+  review: no remaining findings.

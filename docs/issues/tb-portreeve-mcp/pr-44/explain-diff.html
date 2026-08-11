@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>PortReeve MCP stdio reads — PR #44</title>
+    <style>
+      :root {
+        --ink: #172b33;
+        --muted: #52666d;
+        --paper: #f5f1e8;
+        --panel: #fffdf8;
+        --navy: #12385c;
+        --green: #17634d;
+        --blue: #dcebf1;
+        --mint: #dcecdf;
+        --line: #c7d1ce;
+        --gold: #d9b96e;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; color: var(--ink); background: var(--paper); font: 16px/1.55 system-ui, sans-serif; }
+      header { padding: 3.5rem max(6vw, 1.5rem); color: white; background: linear-gradient(120deg, var(--navy), #245f72); }
+      header p { max-width: 72ch; color: #e1eff0; }
+      h1 { margin: 0; font: 700 clamp(2.2rem, 6vw, 4.6rem)/1.02 Georgia, serif; }
+      h2, h3 { font-family: Georgia, serif; }
+      main { width: min(1120px, 92vw); margin: 2.5rem auto 5rem; }
+      .badge { display: inline-block; margin-bottom: 1rem; padding: .28rem .7rem; border: 1px solid #88b3b8; border-radius: 999px; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(245px, 1fr)); gap: 1rem; }
+      .card, section { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 24px #17384910; }
+      section { margin: 1.2rem 0; padding: 1.4rem; }
+      .card { padding: 1.1rem; }
+      .card h3 { margin-top: 0; }
+      code { padding: .1rem .32rem; color: var(--navy); background: var(--blue); border-radius: 4px; }
+      pre { overflow: auto; padding: 1rem; color: #e9f6f3; background: #17343e; border-radius: 10px; }
+      .flow { display: flex; align-items: center; justify-content: center; gap: .55rem; flex-wrap: wrap; margin: 1.25rem 0; }
+      .actor { padding: .55rem .8rem; border-radius: 999px; border: 1px solid var(--line); font-weight: 700; }
+      .host { background: #f5dfbd; }
+      .bridge { background: var(--blue); }
+      .client { background: var(--mint); }
+      .daemon { background: #efe0f2; }
+      .arrow { color: var(--muted); font-size: 1.3rem; }
+      .result { border-left: 5px solid var(--green); }
+      .warning { border-left: 5px solid var(--gold); }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: .65rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+      th { color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; }
+      button { display: block; width: 100%; margin: .45rem 0; padding: .7rem; text-align: left; color: var(--ink); background: white; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+      button:hover { border-color: var(--green); }
+      .feedback { min-height: 1.5rem; color: var(--green); font-weight: 700; }
+      footer { color: var(--muted); text-align: center; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="badge">PR #44 · MCP slice I-2</span>
+      <h1>A real stdio bridge,<br />without a second authority.</h1>
+      <p>
+        PortReeve can now be launched by an MCP host, speak both current stateless and
+        maintained legacy protocol eras, and expose safe global inspection while the
+        one daemon remains the only owner of durable port state.
+      </p>
+    </header>
+    <main>
+      <section>
+        <h2>The central boundary</h2>
+        <div class="flow" aria-label="MCP authority flow">
+          <span class="actor host">MCP host</span><span class="arrow">→ stdio →</span>
+          <span class="actor bridge">PortReeve bridge</span><span class="arrow">→ calls →</span>
+          <span class="actor client">Official JS client</span><span class="arrow">→ Unix HTTP/JSON →</span>
+          <span class="actor daemon">Single daemon</span>
+        </div>
+        <p>
+          The new <code>portreeve mcp serve</code> command is an adapter, not a second
+          server of record. It opens no network listener, reads no SQLite file, and
+          does not shell through other CLI commands. Its stdout belongs exclusively to
+          MCP framing; diagnostics go to stderr.
+        </p>
+      </section>
+
+      <div class="grid">
+        <article class="card">
+          <h3>Two protocol eras</h3>
+          <p>Official SDK v2 accepts legacy <code>initialize</code> as well as the 2026-07-28 stateless <code>server/discover</code> envelope.</p>
+        </article>
+        <article class="card">
+          <h3>Fifteen focused reads</h3>
+          <p>Health, compatibility, diagnostics, settings, ports, claims, stacks, generations, activations, and structured history.</p>
+        </article>
+        <article class="card">
+          <h3>Bounded by construction</h3>
+          <p>Collections return 50 records by default, accept at most 200, and continue through opaque non-authoritative cursors.</p>
+        </article>
+        <article class="card">
+          <h3>Recoverable absence</h3>
+          <p>The bridge stays alive when the daemon is missing or incompatible and retries the socket on every later domain call.</p>
+        </article>
+      </div>
+
+      <section class="result">
+        <h2>What an agent sees</h2>
+        <pre>{
+  "ok": false,
+  "error": {
+    "code": "portreeve_unavailable",
+    "message": "PortReeve is unavailable …",
+    "retryable": true,
+    "details": { "socketPath": "…" }
+  }
+}</pre>
+        <p>
+          Expected daemon failures are structured tool results, not process crashes.
+          Diagnostics remain successful and include actionable instructions to start or
+          update PortReeve. Unknown internal exceptions are reduced to a stable generic
+          message rather than leaking arbitrary exception text.
+        </p>
+      </section>
+
+      <section>
+        <h2>Read surface</h2>
+        <table>
+          <thead><tr><th>Family</th><th>Selection</th><th>Boundary</th></tr></thead>
+          <tbody>
+            <tr><td>Ports</td><td>classification, listener/claim state, project, workspace, component, endpoint, exact port</td><td>Fresh daemon inventory</td></tr>
+            <tr><td>Claims</td><td>project, persisted workspace root, component, endpoint</td><td>Works for deleted worktrees too</td></tr>
+            <tr><td>Stacks</td><td>project, canonical stack root, explicit ID</td><td>No working-directory inference</td></tr>
+            <tr><td>Generations / activations</td><td>stack, generation, state, explicit ID</td><td>No lease tokens returned</td></tr>
+            <tr><td>History</td><td>event type, entity type/ID, timestamp, cursor</td><td>Structured events; no raw logs</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="warning">
+        <h2>Deliberately not in this slice</h2>
+        <p>
+          No credential-bearing operations or mutations are registered yet. The vault
+          and ordinary coordination lifecycle arrive in I-3; evidence-bound
+          consequential actions arrive in I-4; remaining catalog families and the
+          final completeness audit arrive in I-5. MCP resources, prompts,
+          subscriptions, HTTP transport, server lifecycle control, unsafe eviction,
+          arbitrary shell/filesystem access, and raw output remain excluded.
+        </p>
+      </section>
+
+      <section>
+        <h2>Verification</h2>
+        <div class="grid">
+          <div class="card"><strong>439</strong><br />tests passing</div>
+          <div class="card"><strong>2,133</strong><br />assertions</div>
+          <div class="card"><strong>95</strong><br />test files</div>
+          <div class="card"><strong>PASS</strong><br />standalone build</div>
+        </div>
+        <p>
+          One integration fixture keeps a bridge alive, observes an unavailable daemon,
+          starts that daemon, and succeeds on the next health call. A separate fake
+          incompatible daemon proves diagnostics remain available while domain reads
+          fail closed.
+        </p>
+      </section>
+
+      <section id="quiz">
+        <h2>Review check</h2>
+        <div data-answer="b">
+          <h3>Where does durable port authority live after this PR?</h3>
+          <button data-choice="a">Inside each MCP bridge process</button>
+          <button data-choice="b">Only in the existing PortReeve daemon</button>
+          <button data-choice="c">In the MCP host's configuration</button>
+          <p class="feedback"></p>
+        </div>
+        <div data-answer="c">
+          <h3>What happens after a missing daemon is started?</h3>
+          <button data-choice="a">The agent must reinstall PortReeve</button>
+          <button data-choice="b">The MCP host must restart its bridge</button>
+          <button data-choice="c">The next daemon-backed tool retries and can succeed</button>
+          <p class="feedback"></p>
+        </div>
+      </section>
+      <footer>PortReeve · tb-portreeve-mcp · PR #44</footer>
+    </main>
+    <script>
+      for (const group of document.querySelectorAll('[data-answer]')) {
+        for (const button of group.querySelectorAll('button')) {
+          button.addEventListener('click', () => {
+            const correct = button.dataset.choice === group.dataset.answer;
+            group.querySelector('.feedback').textContent = correct
+              ? 'Correct.'
+              : 'Not quite—follow the authority and recovery boundaries above.';
+          });
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -23,12 +23,12 @@ without exposing MCP transport policy to the daemon.
 
 ## I-2 - Deliver stdio bridge diagnostics and read tools
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2.5d
 - **Plan steps:** P2
 - **Rubric criteria:** R1, R2, R3, R7
 - **Depends on:** I-1
-- **PR:** -
+- **PR:** [#44](https://github.com/TrentBrown/portreeve/pull/44)
 
 Ship the dual-era stdio bridge, stable error model, stdout discipline,
 availability/compatibility diagnostics, explicit attribution, and the complete
