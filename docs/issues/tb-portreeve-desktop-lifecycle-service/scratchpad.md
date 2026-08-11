@@ -68,7 +68,7 @@ Return partial for every purge timeout - rejected because it falsely claims an o
 
 ## [5] Expose controller compatibility as renderer-safe artifact metadata
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
