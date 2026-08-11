@@ -22,6 +22,7 @@
     "build": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/build.js",
     "check": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" run docs:check && \"$npm_execpath\" run typecheck && \"$npm_execpath\" run lint && \"$npm_execpath\" run format:check && \"$npm_execpath\" test",
     "desktop:package": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" run docs:check && \"$npm_execpath\" scripts/package-desktop.js",
+    "desktop:inspect": "PORTREEVE_RELEASE_BASE_URL=https://github.com/TrentBrown/portreeve/releases/download PORTREEVE_HOMEPAGE_URL=https://github.com/TrentBrown/portreeve \"$npm_execpath\" run release:build && node scripts/inspect-desktop.js",
     "desktop:runtime-verify": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/verify-desktop-runtimes.js",
     "desktop:start": "electron apps/desktop",
     "docs:check": "\"$npm_execpath\" scripts/generate-client-guides.js --check",
@@ -52,6 +53,7 @@
     "electron": "43.2.0",
     "eslint": "10.8.0",
     "globals": "17.8.0",
+    "playwright": "1.62.1",
     "prettier": "3.9.6",
     "typescript": "7.0.2"
   }
