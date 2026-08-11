@@ -74,6 +74,7 @@ Version 1 capabilities are:
 - `stack-activations-v1`
 - `stack-discovery-v1`
 - `launcher-operations-v1`
+- `mcp-foundations-v1`
 - `docker-evidence-v1` when the configured host Docker CLI and daemon are available
 
 ## Allocation workflow
@@ -139,7 +140,7 @@ policy.
 | `GET /v1/ports/{port}`                     | Inspect one port with complete listener and ownership evidence                                                                       |
 | `POST /v1/ports/{port}/reclaim`            | Evidence-bound normal reclaim with `client`, `policy`, and `dryRun`                                                                  |
 | `POST /v1/ports/{port}/unsafe-evict`       | Exact-port unsafe eviction; requires `unsafeAnyOwner: true` for that operation                                                       |
-| `GET /v1/claims`                           | List durable claims                                                                                                                  |
+| `GET /v1/claims`                           | List durable claims; accepts project, workspaceRoot, component, and endpoint filters                                                 |
 | `GET /v1/claims/{claimId}`                 | Read one claim                                                                                                                       |
 | `POST /v1/claims/{claimId}/reassign`       | Assign an idle claim a new preferred or exact port                                                                                   |
 | `POST /v1/claims/{claimId}/delete`         | Delete an idle, listener-free claim                                                                                                  |
@@ -151,7 +152,9 @@ policy.
 | `POST /v1/stacks/{stackId}/status`         | Read the current definition plus latest generation, activation, and fresh provider evidence                                          |
 | `POST /v1/stacks/{stackId}/prepare`        | Create or reuse a complete immutable allocation generation; requires `stack-activations-v1`                                          |
 | `POST /v1/stack-activations/begin`         | Create one activation and atomically lease its selected endpoints                                                                    |
+| `GET /v1/stack-activations`                | List activations; accepts stackId, generationId, and state filters                                                                    |
 | `GET /v1/stack-activations/{id}`           | Inspect activation and endpoint states without returning lease tokens                                                                |
+| `GET /v1/stack-generations`                | List immutable generations; accepts stackId and state filters                                                                         |
 | `GET /v1/stack-generations/{id}`           | Inspect one immutable allocation generation                                                                                          |
 | `POST /v1/stack-activations/{id}/renew`    | Validate and renew a batch of pending activation leases                                                                              |
 | `POST /v1/stack-activations/{id}/confirm`  | Confirm one process or Docker endpoint using binding-appropriate fresh evidence                                                       |

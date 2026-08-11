@@ -12,6 +12,7 @@ import {
 } from './commands/claims.js';
 import { getConfigCommand, setConfigCommand } from './commands/config.js';
 import { historyCommand, logsCommand } from './commands/observability.js';
+import { mcpServeCommand } from './commands/mcp.js';
 import {
   installCommand,
   lifecycleStatusCommand,
@@ -79,6 +80,17 @@ export function createProgram() {
     .option('--home <path>', 'override the PortReeve application directory')
     .option('--socket <path>', 'override the Unix socket path')
     .action(serveCommand);
+
+  const mcp = program
+    .command('mcp')
+    .description('Expose PortReeve tools to MCP clients');
+
+  mcp
+    .command('serve')
+    .description('Run the local stdio MCP bridge')
+    .option('--socket <path>', 'override the PortReeve Unix socket path')
+    .option('--label <label>', 'attach a diagnostic label to this bridge run')
+    .action(mcpServeCommand);
 
   program
     .command('status')

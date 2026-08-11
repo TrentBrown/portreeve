@@ -255,6 +255,8 @@ export const StackGenerationSchema = z.object({
   invalidatedAt: TimestampSchema.nullable(),
 });
 
+export const StackGenerationListSchema = z.array(StackGenerationSchema);
+
 export const StackPrepareRequestSchema = z.object({
   client: ClientCompatibilitySchema,
   stackId: IdentifierSchema,
@@ -308,6 +310,8 @@ export const StackActivationSchema = z.object({
   confirmedAt: TimestampSchema.nullable(),
   endedAt: TimestampSchema.nullable(),
 });
+
+export const StackActivationListSchema = z.array(StackActivationSchema);
 
 export const StackActivationLeaseSchema = z.object({
   component: StackNameSchema,

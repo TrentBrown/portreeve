@@ -35,6 +35,7 @@ describe('PortReeve CLI', () => {
     const program = createProgram();
     expect(program.commands.map((command) => command.name())).toEqual([
       'serve',
+      'mcp',
       'status',
       'purge',
       'install',
@@ -51,6 +52,8 @@ describe('PortReeve CLI', () => {
       'history',
       'logs',
     ]);
+    const mcp = program.commands.find((command) => command.name() === 'mcp');
+    expect(mcp?.commands.map((command) => command.name())).toEqual(['serve']);
     const claims = program.commands.find((command) => command.name() === 'claims');
     expect(claims?.commands.map((command) => command.name())).toEqual([
       'list',

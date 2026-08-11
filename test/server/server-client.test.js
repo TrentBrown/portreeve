@@ -390,6 +390,16 @@ test('prepares and confirms a process-backed activation through the official cli
       skippedEndpoints: [{ component: 'api', endpoint: 'metrics' }],
     });
     expect(
+      await client.listStackGenerations({ stackId: applied.stack.id, state: 'valid' }),
+    ).toEqual([prepared.generation]);
+    expect(
+      await client.listStackActivations({
+        stackId: applied.stack.id,
+        generationId: prepared.generation.id,
+        state: 'starting',
+      }),
+    ).toEqual([begun.activation]);
+    expect(
       await client.resolveStackEndpoints(begun.activation.id, 'api'),
     ).toMatchObject({
       activationId: begun.activation.id,
@@ -1028,6 +1038,9 @@ test('administers claims, settings, pruning, and history through the public API'
   if (managed === undefined) {
     throw new Error('Admin test claim was not listed.');
   }
+  expect(
+    await client.listClaims({ component: 'admin-api', endpoint: 'default' }),
+  ).toEqual([managed]);
   expect(await client.getClaim(managed.id)).toMatchObject({
     id: managed.id,
     assignedPort: null,
