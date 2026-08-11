@@ -285,7 +285,7 @@ validates but does not discover or independently verify the gateway.
 | ---------------------- | ------------------------------------------------------------------------------------------ |
 | `GET /v1/config`       | Read validated server settings                                                             |
 | `POST /v1/config`      | Apply a non-empty partial `updates` object with `client`                                   |
-| `GET /v1/history`      | Query bounded structured events by limit, event type, entity type, entity ID, or timestamp |
+| `GET /v1/history`      | Query a newest-first page of structured events by limit, opaque `afterCursor`, event type, entity type, entity ID, or timestamp |
 | `GET /v1/logs`         | Read recent bounded diagnostic entries                                                     |
 | `POST /v1/server/stop` | Request graceful shutdown through the protected socket; requires `lifecycle-control-v1`    |
 
@@ -293,3 +293,8 @@ Default allocation range is `10240-49151`. The default lease TTL is 15 seconds,
 ephemeral assignment TTL one hour, graceful shutdown window five seconds, history bound
 10,000 events, and diagnostic retention three 1 MiB files. Change settings through the
 API/CLI rather than a general config file.
+
+History pages contain `{ items, page: { nextCursor } }`, default to 50 entries, and
+permit at most 200 entries per request. A non-null cursor continues toward older
+events. Each event includes nullable diagnostic `origin` metadata. Origin can identify
+library, CLI, Desktop, or MCP calls, but is never ownership or authorization evidence.

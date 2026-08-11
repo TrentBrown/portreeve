@@ -19,6 +19,7 @@ export const CAPABILITIES = Object.freeze([
   'stack-activations-v1',
   'stack-discovery-v1',
   'launcher-operations-v1',
+  'mcp-foundations-v1',
 ]);
 
 export const DOCKER_CAPABILITY = 'docker-evidence-v1';

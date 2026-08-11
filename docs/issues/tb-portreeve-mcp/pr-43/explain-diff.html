@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PortReeve MCP foundations - PR #43</title>
+    <style>
+      :root { --ink:#142827; --muted:#5e706c; --sea:#0d5f4b; --fog:#f4f0e7; --line:#b8c5bf; --blue:#0b3563; --gold:#d9ad5b; }
+      * { box-sizing:border-box; }
+      body { margin:0; color:var(--ink); background:var(--fog); font:16px/1.58 system-ui,-apple-system,sans-serif; }
+      main { max-width:1050px; margin:auto; padding:28px 22px 70px; }
+      h1,h2,h3 { font-family:Georgia,serif; color:#102d2a; line-height:1.15; }
+      h1 { font-size:clamp(2rem,5vw,3.8rem); margin:.2rem 0; }
+      h2 { margin-top:2.6rem; border-bottom:2px solid var(--line); padding-bottom:.35rem; }
+      a { color:var(--blue); }
+      code,pre { font-family:ui-monospace,SFMono-Regular,monospace; }
+      pre { white-space:pre-wrap; background:#102d2a; color:#eef6f1; padding:16px; border-radius:10px; overflow:auto; }
+      .lede { max-width:760px; color:var(--muted); font-size:1.13rem; }
+      nav,.card,.callout,.quiz { background:#fffdf8; border:1px solid var(--line); border-radius:12px; padding:16px 18px; box-shadow:0 5px 18px #14282712; }
+      nav a { display:inline-block; margin-right:16px; }
+      .flow { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; align-items:center; margin:20px 0; }
+      .node { min-height:90px; display:grid; place-items:center; text-align:center; border:1px solid var(--line); border-radius:10px; padding:10px; background:white; }
+      .node.primary { background:#dfeee7; border-color:var(--sea); }
+      .arrow { text-align:center; color:var(--sea); font-weight:800; }
+      .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; }
+      .callout { border-left:6px solid var(--gold); }
+      .tag { display:inline-block; border-radius:999px; padding:3px 9px; margin:3px; background:#dfeee7; font-size:.86rem; }
+      .quiz button { display:block; width:100%; text-align:left; margin:.5rem 0; padding:.75rem; border:1px solid var(--line); border-radius:8px; background:white; color:var(--ink); font:inherit; cursor:pointer; }
+      .quiz button:hover { border-color:var(--sea); }
+      .feedback { min-height:1.5rem; font-weight:650; }
+      @media (max-width:760px) { .flow { grid-template-columns:1fr; } .arrow { transform:rotate(90deg); } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="tag">PR #43 · MCP slice 1 of 7</p>
+      <h1>The foundations beneath the bridge</h1>
+      <p class="lede">This change does not yet expose an MCP tool. It makes the later bridge predictable: one official SDK, one frozen vocabulary, bounded observation, diagnostic attribution, and durable receipts that cannot execute twice concurrently.</p>
+      <nav aria-label="Contents"><strong>Contents:</strong> <a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#quiz">Quiz</a></nav>
+
+      <h2 id="background">Background</h2>
+      <p>PortReeve already has the hard part: a per-user daemon owns SQLite state and coordinates claims, short leases, confirmed runs, stacks, activations, Docker evidence, and launcher operations. Clients reach it through a private Unix socket carrying HTTP/JSON. The new MCP process must remain a client of that daemon, not become a second authority.</p>
+      <div class="flow" aria-label="Authority flow">
+        <div class="node">Agent host</div><div class="arrow">→ stdio</div><div class="node primary">MCP bridge<br /><small>future slice</small></div><div class="arrow">→ Unix HTTP/JSON</div><div class="node">PortReeve daemon<br /><small>only authority</small></div>
+      </div>
+      <p>Before a bridge can register tools, it needs contracts that ordinary CLI calls did not require: every collection must page, every automated mutation needs attribution, consequential work needs evidence-bound preview and replay, and tool names must not drift between implementation slices.</p>
+
+      <h2 id="intuition">Intuition</h2>
+      <div class="grid">
+        <section class="card"><h3>A cursor is a bookmark</h3><p>A cursor encodes only the last event's timestamp and ID. It says where to continue; it grants no right to read or mutate anything.</p></section>
+        <section class="card"><h3>An origin is a luggage tag</h3><p><code>{ kind: "mcp", runId, label }</code> helps history explain who initiated work. It is never proof of ownership.</p></section>
+        <section class="card"><h3>A receipt is a sealed proposal</h3><p>It binds action + target + evidence for five minutes. The result is retained so a lost response can be replayed without repeating the effect.</p></section>
+      </div>
+      <h3>Why the extra <code>executing</code> state?</h3>
+      <pre>pending --atomic claim--> executing --effect succeeds--> completed
+   ^                          |
+   +------ effect fails ------+
+
+second executor during "executing" => receipt_in_progress
+retry after "completed"             => recorded result</pre>
+      <p>Without the middle state, two independent agents could read the same pending row and both kill, delete, or rewrite. SQLite's immediate transaction admits exactly one executor before the external effect begins.</p>
+      <div class="callout"><strong>Important boundary:</strong> this slice builds the generic safety machinery. Slice I-4 will connect it to reclaim, claim, stack, document, and setting operations after each operation can collect and revalidate the right fresh evidence.</div>
+
+      <h2 id="code">Code walkthrough</h2>
+      <h3>1. Freeze the surface and runtime</h3>
+      <p><code>@modelcontextprotocol/server@2.0.0</code> is an exact runtime dependency. <code>src/mcp/catalog.js</code> freezes 51 operation-specific names, marks receipt-bound and credential-custody operations, and lists exclusions such as unsafe eviction, shell execution, HTTP MCP, resources, and prompts.</p>
+      <h3>2. Page history without breaking the CLI</h3>
+      <p>The daemon returns newest-first pages of 50 by default and at most 200. The official client's new <code>historyPage</code> exposes that directly. Existing <code>history</code> follows as many pages as requested and reverses the result back to chronological order, so CLI output stays familiar.</p>
+      <h3>3. Carry diagnostic origin through mutations</h3>
+      <p>The compatibility envelope accepts a strict origin. Request-local async context lets all registry history emitted by one mutation inherit it without threading an argument through every domain method. Tests prove an MCP-labeled client writes that label to the resulting history event.</p>
+      <h3>4. Migrate durable state</h3>
+      <p>Schema migration 8 adds the history origin column, a stable history-order index, and the action receipt table. Receipt rows constrain valid pending, executing, and completed shapes at the database layer.</p>
+      <h3>5. Preserve trust boundaries</h3>
+      <p>The SDK is not imported by the daemon. No HTTP MCP listener appears. No raw lease token or launcher credential is added to receipts or history. No unsafe-any-owner operation appears in the catalog.</p>
+
+      <h2 id="quiz">Quiz</h2>
+      <div class="quiz" data-answer="1"><h3>1. Which component remains authoritative?</h3><button>The MCP bridge because it owns stdio</button><button>The existing PortReeve daemon behind the Unix socket</button><button>Whichever client created the claim first</button><p class="feedback"></p></div>
+      <div class="quiz" data-answer="2"><h3>2. What authority does an opaque cursor carry?</h3><button>Permission to read all later events</button><button>Permission limited to one event type</button><button>None; it is continuation state only</button><p class="feedback"></p></div>
+      <div class="quiz" data-answer="0"><h3>3. Why persist a completed receipt result?</h3><button>To replay a lost response without repeating its effect</button><button>To let a later bridge recover lease tokens</button><button>To replace fresh evidence checks permanently</button><p class="feedback"></p></div>
+      <div class="quiz" data-answer="1"><h3>4. What prevents concurrent duplicate effects?</h3><button>A model-host approval prompt</button><button>An atomic transition from pending to executing</button><button>The five-minute expiry by itself</button><p class="feedback"></p></div>
+      <div class="quiz" data-answer="2"><h3>5. Why does <code>history()</code still exist beside <code>historyPage()</code>?</h3><button>It bypasses the server limit for MCP tools</button><button>It reads SQLite directly for better performance</button><button>It adapts cursor pages to the CLI's chronological array contract</button><p class="feedback"></p></div>
+    </main>
+    <script>
+      document.querySelectorAll('.quiz').forEach((quiz) => {
+        const answer = Number(quiz.dataset.answer);
+        quiz.querySelectorAll('button').forEach((button, index) => {
+          button.addEventListener('click', () => {
+            const correct = index === answer;
+            quiz.querySelector('.feedback').textContent = correct ? 'Correct — that is the contract this slice establishes.' : 'Not quite. Revisit the foundation described immediately above.';
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "scope": "slice",
+  "featureId": "tb-portreeve-mcp",
+  "repositoryAlias": "portreeve",
+  "packetId": "pr-43",
+  "pullRequest": {
+    "repository": "TrentBrown/portreeve",
+    "number": 43,
+    "url": "https://github.com/TrentBrown/portreeve/pull/43",
+    "state": "OPEN",
+    "isDraft": true,
+    "baseRefName": "main",
+    "baseRefOid": "4a30bd67910642ab9e9b35dd6e5fdd7bc0d4b7ad",
+    "headRefName": "tb-portreeve-mcp",
+    "headRefOid": "1dc9119667c17fa6b9571be83df7aeafe62457e1"
+  },
+  "mergeBaseSha": "4a30bd67910642ab9e9b35dd6e5fdd7bc0d4b7ad",
+  "evaluatedSourceSha": "1dc9119667c17fa6b9571be83df7aeafe62457e1",
+  "featureBaseSha": null,
+  "applicability": {
+    "specEvaluation": true,
+    "judge": true,
+    "patternReview": true
+  },
+  "gates": {
+    "verification": { "disposition": "passed", "reason": null },
+    "specEvaluation": { "disposition": "passed", "reason": null },
+    "judge": { "disposition": "passed", "reason": null },
+    "codeReview": { "disposition": "passed", "reason": null },
+    "patternReview": { "disposition": "passed", "reason": null },
+    "explainDiff": { "disposition": "passed", "reason": null }
+  }
+}

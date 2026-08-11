@@ -42,10 +42,25 @@ export class PortreeveClientError extends Error {
 
 export class PortreeveClient {
   /**
-   * @param {{socketPath?: string}} [options]
+   * @param {{
+   *   socketPath?: string,
+   *   origin?: {kind: 'library' | 'cli' | 'desktop' | 'mcp', runId?: string, label?: string}
+   * }} [options]
    */
   constructor(options = {}) {
     this.socketPath = options.socketPath ?? defaultSocketPath();
+    this.operationOrigin = options.origin ?? { kind: 'library' };
+  }
+
+  /**
+   * @param {Record<string, unknown>} body
+   * @param {string[]} [requiredCapabilities]
+   */
+  withClient(
+    body,
+    requiredCapabilities = [...clientCompatibility.requiredCapabilities],
+  ) {
+    return withClient(body, requiredCapabilities, this.operationOrigin);
   }
 
   /** @param {{signal?: AbortSignal}} [options] */
@@ -59,7 +74,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       '/v1/server/stop',
-      withClient({}, ['lifecycle-control-v1']),
+      this.withClient({}, ['lifecycle-control-v1']),
       options,
     );
   }
@@ -99,7 +114,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       '/v1/stacks/apply',
-      withClient({ stackRoot, definition: request.definition }, [
+      this.withClient({ stackRoot, definition: request.definition }, [
         'stack-definitions-v1',
       ]),
     );
@@ -126,7 +141,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/stacks/${stackId}/status`,
-      withClient({}, ['stack-activations-v1']),
+      this.withClient({}, ['stack-activations-v1']),
     );
   }
 
@@ -137,7 +152,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/stacks/${stackId}/prepare`,
-      withClient({ stackId }, ['stack-activations-v1']),
+      this.withClient({ stackId }, ['stack-activations-v1']),
     );
   }
 
@@ -158,7 +173,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       '/v1/stack-activations/begin',
-      withClient(
+      this.withClient(
         {
           generationId,
           requiredEndpoints: options.requiredEndpoints ?? [],
@@ -191,7 +206,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/stack-activations/${activationId}/renew`,
-      withClient({ leases }, ['stack-activations-v1']),
+      this.withClient({ leases }, ['stack-activations-v1']),
     );
   }
 
@@ -209,7 +224,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/stack-activations/${activationId}/confirm`,
-      withClient(evidence, capabilities),
+      this.withClient(evidence, capabilities),
     );
   }
 
@@ -226,7 +241,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/stack-activations/${activationId}/abandon`,
-      withClient(evidence, ['stack-activations-v1']),
+      this.withClient(evidence, ['stack-activations-v1']),
     );
   }
 
@@ -239,7 +254,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/stack-activations/${activationId}/skip`,
-      withClient(evidence, ['stack-activations-v1']),
+      this.withClient(evidence, ['stack-activations-v1']),
     );
   }
 
@@ -249,7 +264,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/stack-activations/${activationId}/end`,
-      withClient({}, ['stack-activations-v1']),
+      this.withClient({}, ['stack-activations-v1']),
     );
   }
 
@@ -260,7 +275,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/stack-activations/${activationId}/reconcile`,
-      withClient({}, ['stack-activations-v1']),
+      this.withClient({}, ['stack-activations-v1']),
     );
   }
 
@@ -271,7 +286,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       '/v1/stacks/prune',
-      withClient(options, ['stack-activations-v1']),
+      this.withClient(options, ['stack-activations-v1']),
     );
   }
 
@@ -282,7 +297,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/stack-activations/${activationId}/resolve`,
-      withClient({ component }, ['stack-discovery-v1']),
+      this.withClient({ component }, ['stack-discovery-v1']),
     );
   }
 
@@ -296,7 +311,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/stack-activations/${activationId}/snapshot`,
-      withClient(options, ['stack-discovery-v1']),
+      this.withClient(options, ['stack-discovery-v1']),
     );
   }
 
@@ -316,7 +331,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       '/v1/launcher-operations/begin',
-      withClient(
+      this.withClient(
         {
           stackId,
           operation: options.operation,
@@ -336,7 +351,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/launcher-operations/${operationId}/renew`,
-      withClient({ credential }, ['launcher-operations-v1']),
+      this.withClient({ credential }, ['launcher-operations-v1']),
     );
   }
 
@@ -350,7 +365,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/launcher-operations/${operationId}/complete`,
-      withClient({ credential, completion }, ['launcher-operations-v1']),
+      this.withClient({ credential, completion }, ['launcher-operations-v1']),
     );
   }
 
@@ -414,7 +429,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/claims/${claimId}/reassign`,
-      withClient(options, ['administration-v1']),
+      this.withClient(options, ['administration-v1']),
     );
   }
 
@@ -426,7 +441,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/claims/${claimId}/delete`,
-      withClient({}, ['administration-v1']),
+      this.withClient({}, ['administration-v1']),
     );
   }
 
@@ -438,7 +453,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       '/v1/claims/prune',
-      withClient(options, ['administration-v1']),
+      this.withClient(options, ['administration-v1']),
     );
   }
 
@@ -454,13 +469,14 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       '/v1/config',
-      withClient({ updates }, ['administration-v1']),
+      this.withClient({ updates }, ['administration-v1']),
     );
   }
 
   /**
    * @param {{
    *   limit?: number,
+   *   afterCursor?: string,
    *   eventType?: string,
    *   entityType?: string,
    *   entityId?: string,
@@ -468,6 +484,35 @@ export class PortreeveClient {
    * }} [filters]
    */
   async history(filters = {}) {
+    const requestedLimit = filters.limit ?? 100;
+    const events = [];
+    let afterCursor = filters.afterCursor;
+    while (events.length < requestedLimit) {
+      const page = await this.historyPage({
+        ...filters,
+        limit: Math.min(200, requestedLimit - events.length),
+        ...(afterCursor === undefined ? {} : { afterCursor }),
+      });
+      events.push(...page.items);
+      if (page.page.nextCursor === null) {
+        break;
+      }
+      afterCursor = page.page.nextCursor;
+    }
+    return events.reverse();
+  }
+
+  /**
+   * @param {{
+   *   limit?: number,
+   *   afterCursor?: string,
+   *   eventType?: string,
+   *   entityType?: string,
+   *   entityId?: string,
+   *   since?: string
+   * }} [filters]
+   */
+  async historyPage(filters = {}) {
     return requestJson(this.socketPath, 'GET', `/v1/history${queryString(filters)}`);
   }
 
@@ -490,7 +535,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/ports/${port}/reclaim`,
-      withClient(
+      this.withClient(
         {
           policy: options.policy,
           dryRun: options.dryRun ?? false,
@@ -513,7 +558,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/ports/${port}/unsafe-evict`,
-      withClient(
+      this.withClient(
         {
           unsafeAnyOwner: options.unsafeAnyOwner,
           policy: options.policy ?? 'graceful',
@@ -548,7 +593,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       '/v1/leases/acquire',
-      withClient({
+      this.withClient({
         claim: {
           ...request.claim,
           workspaceRoot,
@@ -572,7 +617,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/leases/${lease.leaseId}/confirm`,
-      withClient({
+      this.withClient({
         leaseToken: lease.leaseToken,
         rootPid: options.rootPid ?? process.pid,
       }),
@@ -588,7 +633,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/leases/${lease.leaseId}/abandon`,
-      withClient({ leaseToken: lease.leaseToken, reason }),
+      this.withClient({ leaseToken: lease.leaseToken, reason }),
     );
   }
 
@@ -600,7 +645,7 @@ export class PortreeveClient {
       this.socketPath,
       'POST',
       `/v1/runs/${runId}/release`,
-      withClient({}),
+      this.withClient({}),
     );
   }
 
@@ -720,11 +765,13 @@ export async function canonicalStackRoot(stackPath) {
 function withClient(
   body,
   requiredCapabilities = [...clientCompatibility.requiredCapabilities],
+  origin = { kind: 'library' },
 ) {
   return {
     client: {
       ...clientCompatibility,
       requiredCapabilities,
+      origin,
     },
     ...body,
   };

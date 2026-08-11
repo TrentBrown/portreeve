@@ -29,6 +29,18 @@ process.once('SIGTERM', async () => {
 });
 ```
 
+Automation adapters may provide diagnostic attribution without granting authority:
+
+```js
+const portreeve = new PortreeveClient({
+  origin: { kind: 'mcp', runId: crypto.randomUUID(), label: 'codex' },
+});
+```
+
+Use `historyPage({ limit, afterCursor })` for bounded newest-first pagination. The
+legacy-friendly `history` helper follows pages and returns the selected events in
+chronological order.
+
 See the repository's `docs/client.md` and `docs/protocol.md` for the complete contract.
 
 For sandbox discovery, a trusted host launcher can call `createStackEndpointSnapshot`,

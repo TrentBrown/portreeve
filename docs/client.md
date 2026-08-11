@@ -198,10 +198,15 @@ The `PortreeveClient` exposes `health`, `acquire`, `confirm`, `abandon`, `releas
 `getStackGeneration`, `reconcileStackActivation`, `endStackActivation`, `pruneStacks`,
 `beginLauncherOperation`, `renewLauncherOperation`, `completeLauncherOperation`,
 `getLauncherOperation`, `listLauncherOperations`,
-`getConfig`, `setConfig`, `history`, `logs`,
+`getConfig`, `setConfig`, `history`, `historyPage`, `logs`,
 `resolveStackEndpoints`, `createStackEndpointSnapshot`, and `stopServer`.
 
-Construct it with `{ socketPath }` only when overriding the per-user default. Failures
+Construct it with `{ socketPath }` only when overriding the per-user default. Callers
+may also provide diagnostic-only `origin` metadata with `kind`, optional `runId`, and
+optional `label`; PortReeve records it in mutation history without treating it as
+authority. `historyPage` returns newest-first bounded cursor pages, while `history`
+continues to collect and return the requested events in chronological order for CLI
+and library callers. Failures
 reject with `PortreeveClientError`, whose stable fields are `code`, optional HTTP
 `status`, `requestId`, `retryable`, and `details`.
 

@@ -72,6 +72,27 @@ test('serves health only through a private Unix socket', async () => {
   expect((await stat(socketPath)).mode & 0o777).toBe(0o600);
 });
 
+test('attributes mutations to an explicit diagnostic client origin', async () => {
+  const { socketPath } = await startFixture();
+  const client = new PortreeveClient({
+    socketPath,
+    origin: {
+      kind: 'mcp',
+      runId: '11111111-1111-4111-8111-111111111111',
+      label: 'codex-backend-worktree',
+    },
+  });
+  const lease = await client.acquire({ claim: claim('origin-test') });
+  await client.abandon(lease, 'client-cancelled');
+
+  const page = await client.historyPage({ eventType: 'lease.abandoned', limit: 1 });
+  expect(page.items[0]?.origin).toEqual({
+    kind: 'mcp',
+    runId: '11111111-1111-4111-8111-111111111111',
+    label: 'codex-backend-worktree',
+  });
+});
+
 test('allows lifecycle callers to abort a pending health request', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'portreeve-client-abort-'));
   const socketPath = join(directory, 'hanging.sock');
