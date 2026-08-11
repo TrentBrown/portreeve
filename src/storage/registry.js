@@ -271,12 +271,32 @@ export class Registry {
     return row === null ? null : claimFromRow(row);
   }
 
-  listClaims() {
+  /**
+   * @param {{project?: string, workspaceRoot?: string, component?: string, endpoint?: string}} [filters]
+   */
+  listClaims(filters = {}) {
+    const clauses = [];
+    /** @type {Record<string, string>} */
+    const parameters = {};
+    for (const entry of [
+      { property: /** @type {const} */ ('project'), column: 'project' },
+      { property: /** @type {const} */ ('workspaceRoot'), column: 'workspace_root' },
+      { property: /** @type {const} */ ('component'), column: 'component' },
+      { property: /** @type {const} */ ('endpoint'), column: 'endpoint' },
+    ]) {
+      const value = filters[entry.property];
+      if (value !== undefined) {
+        clauses.push(`${entry.column} = $${entry.property}`);
+        parameters[entry.property] = value;
+      }
+    }
+    const where = clauses.length === 0 ? '' : `WHERE ${clauses.join(' AND ')}`;
     return this.database
       .query(
-        'SELECT * FROM claims ORDER BY project, workspace_root, component, endpoint',
+        `SELECT * FROM claims ${where}
+         ORDER BY project, workspace_root, component, endpoint`,
       )
-      .all()
+      .all(parameters)
       .map(claimFromRow);
   }
 
@@ -738,6 +758,29 @@ export class Registry {
     });
   }
 
+  /** @param {{stackId?: string, state?: 'valid' | 'stale'}} [filters] */
+  listStackGenerations(filters = {}) {
+    const clauses = [];
+    /** @type {Record<string, string>} */
+    const parameters = {};
+    if (filters.stackId !== undefined) {
+      clauses.push('stack_id = $stackId');
+      parameters.stackId = IdentifierSchema.parse(filters.stackId);
+    }
+    if (filters.state !== undefined) {
+      clauses.push('state = $state');
+      parameters.state = filters.state;
+    }
+    const where = clauses.length === 0 ? '' : `WHERE ${clauses.join(' AND ')}`;
+    return this.database
+      .query(`SELECT id FROM stack_generations ${where} ORDER BY id`)
+      .all(parameters)
+      .map((row) =>
+        this.getStackGeneration(z.object({ id: IdentifierSchema }).parse(row).id),
+      )
+      .filter((generation) => generation !== null);
+  }
+
   /** @param {string} stackId @param {string} revision */
   getLatestValidStackGeneration(stackId, revision) {
     const parsedStackId = IdentifierSchema.parse(stackId);
@@ -1056,6 +1099,34 @@ export class Registry {
       confirmedAt: parsed.confirmed_at,
       endedAt: parsed.ended_at,
     });
+  }
+
+  /**
+   * @param {{stackId?: string, generationId?: string, state?: 'starting' | 'confirmed' | 'degraded' | 'failed' | 'lost' | 'ended'}} [filters]
+   */
+  listStackActivations(filters = {}) {
+    const clauses = [];
+    /** @type {Record<string, string>} */
+    const parameters = {};
+    for (const entry of [
+      { property: /** @type {const} */ ('stackId'), column: 'stack_id' },
+      { property: /** @type {const} */ ('generationId'), column: 'generation_id' },
+      { property: /** @type {const} */ ('state'), column: 'state' },
+    ]) {
+      const value = filters[entry.property];
+      if (value !== undefined) {
+        clauses.push(`${entry.column} = $${entry.property}`);
+        parameters[entry.property] = value;
+      }
+    }
+    const where = clauses.length === 0 ? '' : `WHERE ${clauses.join(' AND ')}`;
+    return this.database
+      .query(`SELECT id FROM stack_activations ${where} ORDER BY id`)
+      .all(parameters)
+      .map((row) =>
+        this.getStackActivation(z.object({ id: IdentifierSchema }).parse(row).id),
+      )
+      .filter((activation) => activation !== null);
   }
 
   /** @param {string} stackId */

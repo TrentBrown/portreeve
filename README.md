@@ -73,6 +73,7 @@ when the project launcher is ready to prove ownership and cleanup.
 - [Installation and releases](docs/installation.md)
 - [JavaScript client](docs/client.md)
 - [Socket protocol](docs/protocol.md)
+- [MCP bridge](docs/mcp.md)
 - [CLI automation contract](docs/cli-contract.md)
 - [Stack definitions](docs/stacks.md)
 - [Project launchers](docs/launchers.md)

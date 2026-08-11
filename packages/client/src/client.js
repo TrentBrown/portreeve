@@ -100,8 +100,9 @@ export class PortreeveClient {
     return requestJson(this.socketPath, 'GET', `/v1/ports/${port}`);
   }
 
-  async listClaims() {
-    return requestJson(this.socketPath, 'GET', '/v1/claims');
+  /** @param {{project?: string, workspaceRoot?: string, component?: string, endpoint?: string}} [filters] */
+  async listClaims(filters = {}) {
+    return requestJson(this.socketPath, 'GET', `/v1/claims${queryString(filters)}`);
   }
 
   /**
@@ -195,6 +196,28 @@ export class PortreeveClient {
   async getStackGeneration(generationId) {
     await this.#requireCapabilities(['stack-activations-v1']);
     return requestJson(this.socketPath, 'GET', `/v1/stack-generations/${generationId}`);
+  }
+
+  /** @param {{stackId?: string, state?: 'valid' | 'stale'}} [filters] */
+  async listStackGenerations(filters = {}) {
+    await this.#requireCapabilities(['stack-activations-v1']);
+    return requestJson(
+      this.socketPath,
+      'GET',
+      `/v1/stack-generations${queryString(filters)}`,
+    );
+  }
+
+  /**
+   * @param {{stackId?: string, generationId?: string, state?: 'starting' | 'confirmed' | 'degraded' | 'failed' | 'lost' | 'ended'}} [filters]
+   */
+  async listStackActivations(filters = {}) {
+    await this.#requireCapabilities(['stack-activations-v1']);
+    return requestJson(
+      this.socketPath,
+      'GET',
+      `/v1/stack-activations${queryString(filters)}`,
+    );
   }
 
   /**

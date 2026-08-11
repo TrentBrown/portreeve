@@ -46,6 +46,7 @@ import {
   StackApplyRequestSchema,
   StackApplyResponseSchema,
   StackActivationSchema,
+  StackActivationListSchema,
   StackBeginActivationRequestSchema,
   StackBeginActivationResponseSchema,
   StackListSchema,
@@ -63,6 +64,7 @@ import {
   StackEndActivationResponseSchema,
   StackEndpointSnapshotSchema,
   StackGenerationSchema,
+  StackGenerationListSchema,
   StackResolutionSchema,
   StackResolveRequestSchema,
   StackSnapshotRequestSchema,
@@ -310,6 +312,54 @@ async function handleRequest(
         ),
       );
     }
+    if (request.method === 'GET' && pathname === '/v1/stack-generations') {
+      return success(
+        requestId,
+        StackGenerationListSchema.parse(
+          allocationService.registry.listStackGenerations({
+            ...(url.searchParams.has('stackId')
+              ? { stackId: url.searchParams.get('stackId') ?? '' }
+              : {}),
+            ...(url.searchParams.has('state')
+              ? {
+                  state: z
+                    .enum(['valid', 'stale'])
+                    .parse(url.searchParams.get('state')),
+                }
+              : {}),
+          }),
+        ),
+      );
+    }
+    if (request.method === 'GET' && pathname === '/v1/stack-activations') {
+      return success(
+        requestId,
+        StackActivationListSchema.parse(
+          allocationService.registry.listStackActivations({
+            ...(url.searchParams.has('stackId')
+              ? { stackId: url.searchParams.get('stackId') ?? '' }
+              : {}),
+            ...(url.searchParams.has('generationId')
+              ? { generationId: url.searchParams.get('generationId') ?? '' }
+              : {}),
+            ...(url.searchParams.has('state')
+              ? {
+                  state: z
+                    .enum([
+                      'starting',
+                      'confirmed',
+                      'degraded',
+                      'failed',
+                      'lost',
+                      'ended',
+                    ])
+                    .parse(url.searchParams.get('state')),
+                }
+              : {}),
+          }),
+        ),
+      );
+    }
     const showLauncherOperation = pathname.match(
       /^\/v1\/launcher-operations\/([0-9a-f-]+)$/,
     );
@@ -369,7 +419,22 @@ async function handleRequest(
     if (request.method === 'GET' && pathname === '/v1/claims') {
       return success(
         requestId,
-        ClaimsListSchema.parse(administrationService.listClaims()),
+        ClaimsListSchema.parse(
+          administrationService.listClaims({
+            ...(url.searchParams.has('project')
+              ? { project: url.searchParams.get('project') ?? '' }
+              : {}),
+            ...(url.searchParams.has('workspaceRoot')
+              ? { workspaceRoot: url.searchParams.get('workspaceRoot') ?? '' }
+              : {}),
+            ...(url.searchParams.has('component')
+              ? { component: url.searchParams.get('component') ?? '' }
+              : {}),
+            ...(url.searchParams.has('endpoint')
+              ? { endpoint: url.searchParams.get('endpoint') ?? '' }
+              : {}),
+          }),
+        ),
       );
     }
     const showClaim = pathname.match(/^\/v1\/claims\/([0-9a-f-]+)$/);

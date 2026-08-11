@@ -36,8 +36,9 @@ export class AdministrationService {
     this.now = now;
   }
 
-  listClaims() {
-    return this.registry.listClaims();
+  /** @param {{project?: string, workspaceRoot?: string, component?: string, endpoint?: string}} [filters] */
+  listClaims(filters = {}) {
+    return this.registry.listClaims(filters);
   }
 
   /**

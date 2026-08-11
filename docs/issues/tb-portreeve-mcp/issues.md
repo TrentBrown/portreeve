@@ -9,7 +9,7 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Establish MCP protocol and client foundations
 
-- **Status:** in-review
+- **Status:** complete
 - **Estimate:** 3d
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R2, R3, R5, R6, R7
@@ -23,7 +23,7 @@ without exposing MCP transport policy to the daemon.
 
 ## I-2 - Deliver stdio bridge diagnostics and read tools
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2.5d
 - **Plan steps:** P2
 - **Rubric criteria:** R1, R2, R3, R7

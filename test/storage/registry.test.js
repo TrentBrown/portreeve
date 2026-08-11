@@ -209,6 +209,12 @@ describe('SQLite registry', () => {
     expect(
       registry.getStackActivation('33333333-3333-4333-8333-333333333333')?.state,
     ).toBe('lost');
+    expect(
+      registry.listStackGenerations({ state: 'valid' }).map(({ id }) => id),
+    ).toEqual(['22222222-2222-4222-8222-222222222222']);
+    expect(
+      registry.listStackActivations({ state: 'lost' }).map(({ id }) => id),
+    ).toEqual(['33333333-3333-4333-8333-333333333333']);
     expect(registry.database.query('PRAGMA foreign_key_check').all()).toEqual([]);
     registry.close();
   });
@@ -233,6 +239,7 @@ describe('SQLite registry', () => {
     expect(http.id).not.toBe(metrics.id);
     expect(registry.findClaim({ ...base, endpoint: 'http' })?.id).toBe(http.id);
     expect(registry.findClaim({ ...base, endpoint: 'metrics' })?.id).toBe(metrics.id);
+    expect(registry.listClaims({ component: 'api', endpoint: 'http' })).toEqual([http]);
     registry.close();
   });
 

@@ -467,6 +467,12 @@ export declare class PortreeveClient {
     port?: number;
   }): Promise<InventoryEntry[]>;
   inspectPort(port: number): Promise<InventoryEntry>;
+  listClaims(filters?: {
+    project?: string;
+    workspaceRoot?: string;
+    component?: string;
+    endpoint?: string;
+  }): Promise<ClaimRecord[]>;
   applyStack(request: {
     stackRoot: string;
     definition: StackDefinition;
@@ -491,6 +497,15 @@ export declare class PortreeveClient {
   ): Promise<StackBeginActivationResult>;
   getStackActivation(activationId: string): Promise<StackActivation>;
   getStackGeneration(generationId: string): Promise<StackGeneration>;
+  listStackGenerations(filters?: {
+    stackId?: string;
+    state?: StackGeneration['state'];
+  }): Promise<StackGeneration[]>;
+  listStackActivations(filters?: {
+    stackId?: string;
+    generationId?: string;
+    state?: StackActivation['state'];
+  }): Promise<StackActivation[]>;
   renewStackActivation(
     activationId: string,
     leases: Array<{ leaseId: string; leaseToken: string }>,
@@ -570,7 +585,6 @@ export declare class PortreeveClient {
     stackId: string,
     options?: { limit?: number },
   ): Promise<LauncherOperationRecord[]>;
-  listClaims(): Promise<ClaimRecord[]>;
   getClaim(claimId: string): Promise<ClaimRecord>;
   reassignClaim(
     claimId: string,
