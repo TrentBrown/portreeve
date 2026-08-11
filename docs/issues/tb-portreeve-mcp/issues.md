@@ -62,7 +62,7 @@ safety while retaining external-edit protection and excluding unsafe eviction.
 
 ## I-5 - Complete and audit the MCP tool catalog
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P5
 - **Rubric criteria:** R2, R5, R7
