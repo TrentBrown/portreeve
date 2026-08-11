@@ -719,7 +719,7 @@ function lifecycleMessage(action, outcome) {
   return `PortReeve ${label} failed without completing.`;
 }
 
-/** @param {'succeeded'|'refused'|'partial'} outcome */
+/** @param {'succeeded'|'refused'|'partial'|'failed'} outcome */
 function purgeMessage(outcome) {
   if (outcome === 'succeeded') return 'All PortReeve service data was deleted.';
   if (outcome === 'partial') {

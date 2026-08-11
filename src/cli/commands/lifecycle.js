@@ -79,9 +79,11 @@ export async function purgeCommand(options) {
     );
   }
   const result = await service.purge(token.data);
-  if (result.outcome === 'refused') {
+  if (result.error !== null) {
+    setExitCode(exitCodeForErrorCode(result.error.code));
+  } else if (result.outcome === 'refused') {
     setExitCode(EXIT_CODES.conflict);
-  } else if (result.outcome === 'partial') {
+  } else if (result.outcome === 'partial' || result.outcome === 'failed') {
     setExitCode(EXIT_CODES.internal);
   }
   renderOutput(options.json ?? false, 'result', result, purgeResultLines(result));

@@ -34,6 +34,29 @@ test('places shared launcher state inside the marker-owned application home', ()
   );
 });
 
+test('places the lifecycle lock outside the purge-owned application home', () => {
+  const paths = resolveRuntimePaths({
+    PORTREEVE_HOME: '/private/portreeve-test-home',
+    PORTREEVE_LIFECYCLE_RUNTIME_DIRECTORY: '/private/portreeve-test-runtime',
+  });
+  expect(paths.lifecycleLockPath).toBe(
+    '/private/portreeve-test-runtime/lifecycle-mutation.sock',
+  );
+  expect(paths.lifecycleLockPath.startsWith(`${paths.applicationDirectory}/`)).toBe(
+    false,
+  );
+});
+
+test('rejects a lifecycle lock placed inside the purge-owned application home', () => {
+  expect(() =>
+    resolveRuntimePaths({
+      PORTREEVE_HOME: '/private/portreeve-test-home',
+      PORTREEVE_LIFECYCLE_LOCK_PATH:
+        '/private/portreeve-test-home/lifecycle-mutation.sock',
+    }),
+  ).toThrow('must be outside');
+});
+
 test('creates private application and socket directories', async () => {
   const root = await directory();
   const applicationDirectory = join(root, 'data');

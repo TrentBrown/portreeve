@@ -52,23 +52,22 @@ WantedBy=default.target
 `;
   }
 
-  async state() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async state(context) {
+    context?.assertActive('systemd-state');
     const installed = await fileExists(this.definitionPath);
-    const activeResult = await this.runner('systemctl', [
-      '--user',
-      'is-active',
-      '--quiet',
-      this.unit,
-    ]);
+    const activeResult = await this.runner(
+      'systemctl',
+      ['--user', 'is-active', '--quiet', this.unit],
+      context?.commandOptions('systemd-state'),
+    );
     let mainPid = null;
     if (activeResult.code === 0) {
-      const pidResult = await this.runner('systemctl', [
-        '--user',
-        'show',
-        '--property=MainPID',
-        '--value',
-        this.unit,
-      ]);
+      const pidResult = await this.runner(
+        'systemctl',
+        ['--user', 'show', '--property=MainPID', '--value', this.unit],
+        context?.commandOptions('systemd-state'),
+      );
       if (pidResult.code === 0 && /^\d+$/.test(pidResult.stdout.trim())) {
         const candidate = Number.parseInt(pidResult.stdout.trim(), 10);
         mainPid = candidate > 0 ? candidate : null;
@@ -82,40 +81,66 @@ WantedBy=default.target
     };
   }
 
-  /** @param {string} content */
-  async installDefinition(content) {
+  /** @param {string} content @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async installDefinition(content, context) {
+    context?.assertActive('systemd-definition-install');
     await atomicWrite(this.definitionPath, content);
+    context?.assertActive('systemd-definition-install');
     assertCommandSucceeded(
-      await this.runner('systemctl', ['--user', 'daemon-reload']),
+      await this.runner(
+        'systemctl',
+        ['--user', 'daemon-reload'],
+        context?.commandOptions('systemd-definition-install'),
+      ),
       'systemd user daemon reload',
     );
     assertCommandSucceeded(
-      await this.runner('systemctl', ['--user', 'enable', this.unit]),
+      await this.runner(
+        'systemctl',
+        ['--user', 'enable', this.unit],
+        context?.commandOptions('systemd-definition-install'),
+      ),
       'systemd user enable',
     );
   }
 
-  async start() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async start(context) {
     assertCommandSucceeded(
-      await this.runner('systemctl', ['--user', 'start', this.unit]),
+      await this.runner(
+        'systemctl',
+        ['--user', 'start', this.unit],
+        context?.commandOptions('systemd-start'),
+      ),
       'systemd user start',
     );
   }
 
-  async stop() {
-    const state = await this.state();
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async stop(context) {
+    const state = await this.state(context);
     if (!state.active) {
       return;
     }
     assertCommandSucceeded(
-      await this.runner('systemctl', ['--user', 'stop', this.unit]),
+      await this.runner(
+        'systemctl',
+        ['--user', 'stop', this.unit],
+        context?.commandOptions('systemd-stop'),
+      ),
       'systemd user stop',
     );
   }
 
-  async uninstall() {
-    await this.stop();
-    await this.runner('systemctl', ['--user', 'disable', this.unit]);
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async uninstall(context) {
+    await this.stop(context);
+    await this.runner(
+      'systemctl',
+      ['--user', 'disable', this.unit],
+      context?.commandOptions('systemd-uninstall'),
+    );
+    context?.assertActive('systemd-uninstall');
     await unlink(this.definitionPath).catch((error) => {
       if (!(
         error instanceof Error &&
@@ -126,7 +151,11 @@ WantedBy=default.target
       }
     });
     assertCommandSucceeded(
-      await this.runner('systemctl', ['--user', 'daemon-reload']),
+      await this.runner(
+        'systemctl',
+        ['--user', 'daemon-reload'],
+        context?.commandOptions('systemd-uninstall'),
+      ),
       'systemd user daemon reload',
     );
   }

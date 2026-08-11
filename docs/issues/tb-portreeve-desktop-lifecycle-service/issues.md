@@ -9,7 +9,7 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Extract shared lifecycle service and migrate CLI
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P1, P3
 - **Rubric criteria:** R1, R2, R8
@@ -22,12 +22,12 @@ fixtures before another caller adopts the service.
 
 ## I-2 - Add deadlines, uncertain recovery, and mutation locking
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R4, R5, R8
 - **Depends on:** I-1
-- **PR:** -
+- **PR:** [#38](https://github.com/TrentBrown/portreeve/pull/38)
 
 Centralize bounded execution, timeout recovery, and the purge-safe per-user
 cross-process lock. Record the selected lock mechanism and any dependency

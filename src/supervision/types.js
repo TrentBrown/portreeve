@@ -20,11 +20,11 @@
  *   kind: string,
  *   definitionPath: string,
  *   renderDefinition(definition: SupervisorDefinition): string,
- *   state(): Promise<SupervisorState>,
- *   installDefinition(content: string): Promise<void>,
- *   start(): Promise<void>,
- *   stop(): Promise<void>,
- *   uninstall(): Promise<void>
+ *   state(context?: import('./deadline.js').LifecycleDeadline): Promise<SupervisorState>,
+ *   installDefinition(content: string, context?: import('./deadline.js').LifecycleDeadline): Promise<void>,
+ *   start(context?: import('./deadline.js').LifecycleDeadline): Promise<void>,
+ *   stop(context?: import('./deadline.js').LifecycleDeadline): Promise<void>,
+ *   uninstall(context?: import('./deadline.js').LifecycleDeadline): Promise<void>
  * }} Supervisor
  */
 

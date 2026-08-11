@@ -4,6 +4,7 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtemp, realpath, rm, stat, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { createServer } from 'node:net';
 import {
   PortreeveClient,
   PortreeveClientError,
@@ -69,6 +70,33 @@ test('serves health only through a private Unix socket', async () => {
     mode: 'manual',
   });
   expect((await stat(socketPath)).mode & 0o777).toBe(0o600);
+});
+
+test('allows lifecycle callers to abort a pending health request', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'portreeve-client-abort-'));
+  const socketPath = join(directory, 'hanging.sock');
+  /** @type {Set<import('node:net').Socket>} */
+  const sockets = new Set();
+  const server = createServer((socket) => {
+    sockets.add(socket);
+    socket.once('close', () => sockets.delete(socket));
+  });
+  await new Promise((resolvePromise, reject) => {
+    server.once('error', reject);
+    server.listen(socketPath, () => resolvePromise(undefined));
+  });
+  cleanups.push(async () => {
+    for (const socket of sockets) socket.destroy();
+    server.close();
+    await rm(directory, { force: true, recursive: true });
+  });
+  const controller = new AbortController();
+  const pendingHealth = new PortreeveClient({ socketPath }).health({
+    signal: controller.signal,
+  });
+  controller.abort();
+
+  await expect(pendingHealth).rejects.toMatchObject({ code: 'request_aborted' });
 });
 
 test('accepts a protected graceful shutdown request through the client', async () => {

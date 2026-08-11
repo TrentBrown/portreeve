@@ -66,56 +66,73 @@ ${argumentsXml}
 `;
   }
 
-  async state() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async state(context) {
+    context?.assertActive('launchd-state');
     const installed = await fileExists(this.definitionPath);
-    const result = await this.runner('launchctl', ['print', this.service]);
+    const result = await this.runner(
+      'launchctl',
+      ['print', this.service],
+      context?.commandOptions('launchd-state'),
+    );
     const active = result.code === 0;
     const pid = active ? parseLaunchdPid(result.stdout) : null;
     return { kind: this.kind, installed, active, mainPid: pid };
   }
 
-  /** @param {string} content */
-  async installDefinition(content) {
+  /** @param {string} content @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async installDefinition(content, context) {
+    context?.assertActive('launchd-definition-install');
     await atomicWrite(this.definitionPath, content);
+    context?.assertActive('launchd-definition-install');
   }
 
-  async start() {
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async start(context) {
     let result = { code: 1, stdout: '', stderr: '' };
     for (let attempt = 0; attempt < 20; attempt += 1) {
-      result = await this.runner('launchctl', [
-        'bootstrap',
-        this.domain,
-        this.definitionPath,
-      ]);
-      if (result.code === 0 || (await this.state()).active) {
+      context?.assertActive('launchd-start');
+      result = await this.runner(
+        'launchctl',
+        ['bootstrap', this.domain, this.definitionPath],
+        context?.commandOptions('launchd-start'),
+      );
+      if (result.code === 0 || (await this.state(context)).active) {
         return;
       }
       if (result.code !== 5) {
         break;
       }
-      await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
+      await wait(context, 100, 'launchd-start');
     }
     assertCommandSucceeded(result, 'launchd start');
   }
 
-  async stop() {
-    const state = await this.state();
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async stop(context) {
+    const state = await this.state(context);
     if (!state.active) {
       return;
     }
-    const result = await this.runner('launchctl', ['bootout', this.service]);
+    const result = await this.runner(
+      'launchctl',
+      ['bootout', this.service],
+      context?.commandOptions('launchd-stop'),
+    );
     assertCommandSucceeded(result, 'launchd stop');
     for (let attempt = 0; attempt < 50; attempt += 1) {
-      if (!(await this.state()).active) {
+      if (!(await this.state(context)).active) {
         return;
       }
-      await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
+      await wait(context, 100, 'launchd-stop');
     }
     throw new Error('launchd did not finish unloading the PortReeve service.');
   }
 
-  async uninstall() {
-    await this.stop();
+  /** @param {import('./deadline.js').LifecycleDeadline} [context] */
+  async uninstall(context) {
+    await this.stop(context);
+    context?.assertActive('launchd-uninstall');
     await unlink(this.definitionPath).catch((error) => {
       if (!(
         error instanceof Error &&
@@ -125,7 +142,15 @@ ${argumentsXml}
         throw error;
       }
     });
+    context?.assertActive('launchd-uninstall');
   }
+}
+
+/** @param {import('./deadline.js').LifecycleDeadline | undefined} context @param {number} milliseconds @param {string} layer */
+function wait(context, milliseconds, layer) {
+  return context === undefined
+    ? new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds))
+    : context.wait(milliseconds, layer);
 }
 
 /** @param {string} output */

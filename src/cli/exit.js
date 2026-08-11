@@ -49,7 +49,9 @@ export function exitCodeForErrorCode(code) {
   if (code === 'unavailable') return EXIT_CODES.unavailable;
   if (code === 'incompatible_protocol') return EXIT_CODES.incompatible;
   if (code === 'invalid_input') return EXIT_CODES.invalidInput;
-  if (code === 'conflict' || code === 'not_found') return EXIT_CODES.conflict;
+  if (code === 'conflict' || code === 'not_found' || code === 'lifecycle_busy') {
+    return EXIT_CODES.conflict;
+  }
   return EXIT_CODES.internal;
 }
 
