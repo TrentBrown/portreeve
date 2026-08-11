@@ -9,12 +9,12 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Build documentation generation and contract metadata
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2.5d
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R2, R7
 - **Depends on:** none
-- **PR:** -
+- **PR:** [#50](https://github.com/TrentBrown/portreeve/pull/50)
 
 Add complete CLI/MCP documentation metadata, strict generated regions, a safe
 static compiler, committed artifacts, stable anchors, cross-reference checks,
