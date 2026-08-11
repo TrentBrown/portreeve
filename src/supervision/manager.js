@@ -9,7 +9,10 @@ import { PORTREEVE_VERSION } from '../version.js';
 import { prepareRuntimeDirectories } from '../platform/paths.js';
 import { HealthResponseSchema } from '../protocol/schemas.js';
 import { runCommand, assertCommandSucceeded } from './command.js';
-import { LifecycleTimeoutError } from './deadline.js';
+import {
+  DEFAULT_LIFECYCLE_WAIT_TIMEOUT_MILLISECONDS,
+  LifecycleTimeoutError,
+} from './deadline.js';
 import { promoteExecutable, readOptionalFile, restoreExecutable } from './files.js';
 import {
   executePurge as executePurgeOperation,
@@ -60,7 +63,8 @@ export class LifecycleManager {
       options.uid ??
       (typeof process.getuid === 'function' ? process.getuid() : undefined);
     this.runner = options.runner ?? runCommand;
-    this.healthTimeoutMilliseconds = options.healthTimeoutMilliseconds ?? 10_000;
+    this.healthTimeoutMilliseconds =
+      options.healthTimeoutMilliseconds ?? DEFAULT_LIFECYCLE_WAIT_TIMEOUT_MILLISECONDS;
   }
 
   /** @param {import('./deadline.js').LifecycleDeadline} [context] */
