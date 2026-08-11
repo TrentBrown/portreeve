@@ -1,79 +1,78 @@
 // @ts-check
 
 import { expect, test } from 'bun:test';
+import { readFile } from 'node:fs/promises';
 import {
-  executeLifecycleMutation,
+  installCommand,
   purgeCommand,
+  restartCommand,
+  startCommand,
+  stopCommand,
+  stopManualCommand,
+  uninstallCommand,
 } from '../../src/cli/commands/lifecycle.js';
 import { CliUsageError } from '../../src/cli/exit.js';
-import { LifecycleConflictError } from '../../src/supervision/manager.js';
+import { captureOutput, parseRenderedJson } from '../fixtures/cli-runtime.js';
 
 const timestamp = '2026-07-30T23:00:00.000Z';
 
-test('lifecycle mutation execution returns structured refusal evidence', async () => {
-  const before = snapshot();
-  const manager = managerWithStatuses(before, before);
-  const execution = await executeLifecycleMutation(
-    /** @type {any} */ (manager),
-    'start',
-    async () => {
-      throw new LifecycleConflictError('A manual server is running.');
-    },
-    () => new Date(timestamp),
-  );
-
-  expect(execution.exitCode).toBe(20);
-  expect(execution.result).toMatchObject({
-    operation: 'start',
-    outcome: 'refused',
-    changed: false,
-    before,
-    after: before,
-    error: {
-      code: 'conflict',
-      message: 'A manual server is running.',
-    },
-  });
+test('keeps lifecycle orchestration in the shared service rather than the CLI', async () => {
+  const source = await readFile('src/cli/commands/lifecycle.js', 'utf8');
+  expect(source).toContain('createLifecycleService');
+  expect(source).not.toContain('createLifecycleManager');
+  expect(source).not.toContain('executeLifecycleMutation');
+  expect(source).not.toContain('lifecycleStateChanged');
 });
 
-test('lifecycle mutation execution reports changed state as partial on failure', async () => {
-  const before = snapshot();
-  const after = snapshot({
-    supervisor: {
-      kind: 'launchd',
-      state: 'active',
-      mainPid: 4242,
-      error: null,
-    },
-    socket: {
-      path: '/tmp/portreeve.sock',
-      state: 'unavailable',
-      server: null,
-      error: { code: 'unavailable', message: 'Socket is unavailable.' },
-    },
-    mode: 'ambiguous',
-    limitations: ['execution-mode-ambiguous'],
+test('preserves the JSON envelope for every lifecycle mutation adapter', async () => {
+  /** @type {string[]} */
+  const calls = [];
+  const service = mutationService(calls);
+  /** @type {Array<[string, (options: any) => Promise<void>]>} */
+  const commands = [
+    ['install', installCommand],
+    ['uninstall', uninstallCommand],
+    ['start', startCommand],
+    ['restart', restartCommand],
+    ['stop', stopCommand],
+    ['stop-manual', stopManualCommand],
+  ];
+
+  for (const [operation, command] of commands) {
+    const output = await captureOutput(() =>
+      /** @type {(options: any) => Promise<void>} */ (command)({
+        json: true,
+        service,
+      }),
+    );
+    expect(output.exitCode).toBe(0);
+    expect(parseRenderedJson(output.lines)).toEqual({
+      version: 1,
+      result: mutationResult(String(operation)),
+    });
+  }
+
+  expect(calls).toEqual(commands.map(([operation]) => operation));
+});
+
+test('maps a shared lifecycle error code onto the existing CLI exit band', async () => {
+  const service = mutationService([], {
+    start: mutationResult('start', {
+      outcome: 'failed',
+      changed: false,
+      error: { code: 'unavailable', message: 'Supervisor evidence is unavailable.' },
+    }),
   });
-  const manager = managerWithStatuses(before, after);
-  const execution = await executeLifecycleMutation(
-    /** @type {any} */ (manager),
-    'start',
-    async () => {
-      throw new Error('Health verification failed.');
-    },
-    () => new Date(timestamp),
+  const output = await captureOutput(() =>
+    startCommand({ json: true, service: /** @type {any} */ (service) }),
   );
 
-  expect(execution.exitCode).toBe(70);
-  expect(execution.result).toMatchObject({
-    operation: 'start',
-    outcome: 'partial',
-    changed: true,
-    before,
-    after,
-    error: {
-      code: 'internal',
-      message: 'Health verification failed.',
+  expect(output.exitCode).toBe(30);
+  expect(parseRenderedJson(output.lines)).toMatchObject({
+    result: {
+      operation: 'start',
+      outcome: 'failed',
+      error: { code: 'unavailable' },
     },
   });
 });
@@ -89,23 +88,42 @@ test('purge requires exactly one preview or evidence-bound execution mode', asyn
 });
 
 /**
- * @param {ReturnType<typeof snapshot>} before
- * @param {ReturnType<typeof snapshot>} after
+ * @param {string[]} calls
+ * @param {Record<string, ReturnType<typeof mutationResult>>} [overrides]
  */
-function managerWithStatuses(before, after) {
-  let count = 0;
+function mutationService(calls, overrides = {}) {
+  /** @param {string} operation */
+  const invoke = (operation) => async () => {
+    calls.push(operation);
+    return overrides[operation] ?? mutationResult(operation);
+  };
+  return /** @type {any} */ ({
+    install: invoke('install'),
+    uninstall: invoke('uninstall'),
+    start: invoke('start'),
+    restart: invoke('restart'),
+    stop: invoke('stop'),
+    stopManual: invoke('stop-manual'),
+  });
+}
+
+/** @param {string} operation @param {Record<string, unknown>} [overrides] */
+function mutationResult(operation, overrides = {}) {
+  const status = snapshot();
   return {
-    status() {
-      count += 1;
-      return Promise.resolve(count === 1 ? before : after);
-    },
+    operation,
+    outcome: 'succeeded',
+    changed: true,
+    startedAt: timestamp,
+    completedAt: timestamp,
+    before: status,
+    after: status,
+    error: null,
+    ...overrides,
   };
 }
 
-/**
- * @param {Record<string, unknown>} [overrides]
- */
-function snapshot(overrides = {}) {
+function snapshot() {
   return {
     observedAt: timestamp,
     installation: {
@@ -127,12 +145,7 @@ function snapshot(overrides = {}) {
       error: { code: 'unavailable', message: 'Socket is unavailable.' },
     },
     mode: 'none',
-    versions: {
-      cli: '0.1.0',
-      managed: '0.1.0',
-      running: null,
-    },
+    versions: { cli: '0.1.0', managed: '0.1.0', running: null },
     limitations: [],
-    ...overrides,
   };
 }
