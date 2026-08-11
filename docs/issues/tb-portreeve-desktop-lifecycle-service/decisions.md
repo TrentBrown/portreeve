@@ -87,4 +87,4 @@ Construct the fixed controller in Electron main from the checksum-verified artif
 **Alternatives considered:**
 Abort Desktop startup on mismatch - rejected because compatible read-only daemon features must remain usable. Hide the mismatch until a mutation is attempted - rejected because the packaging defect must be visible. Put privileged controller inputs into the snapshot or IPC - rejected because the renderer must not control or receive paths, environment, supervisor, socket, or native arguments.
 
-**Promoted:** 2026-08-10.
+**Promoted:** 2026-08-10. PR: #39.
