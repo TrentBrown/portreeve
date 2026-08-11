@@ -53,7 +53,7 @@ Return unbounded arrays; use numeric offsets; infer caller identity from process
 
 ## [4] Keep credentials and ordinary retry replay bridge-local
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -68,7 +68,7 @@ Return raw tokens to MCP hosts; persist encrypted tokens in the daemon; use MCP 
 
 ## [5] Add token-proven standalone pending-lease renewal
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
