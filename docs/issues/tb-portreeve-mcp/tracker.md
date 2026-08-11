@@ -22,4 +22,14 @@
 
 Append PR boundary entries here.
 
-- [PR #43](https://github.com/TrentBrown/portreeve/pull/43) - I-1 protocol and client foundations. Packet: [`pr-43/boundary.json`](pr-43/boundary.json). Slice verdict PASS; all feature-level criteria remain `NOT YET` pending I-2 through I-7.
+### PR #43 - MCP protocol and client foundations
+
+- **PR:** [#43](https://github.com/TrentBrown/portreeve/pull/43)
+- **Status:** in review
+- **Scope:** P1 / I-1: SDK v2, stable tool catalog, cursor pages, origin
+  attribution, and daemon-authoritative action receipts.
+- **Evidence packet:** [pr-43](pr-43/)
+- **Result:** Slice verdict PASS. All feature-level criteria remain `NOT YET`
+  pending I-2 through I-7. All 432 repository tests, the standalone build,
+  typecheck, lint, and changed-file formatting pass. Judge: PASS. Code review:
+  no remaining findings.
