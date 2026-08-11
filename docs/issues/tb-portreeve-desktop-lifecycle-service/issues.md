@@ -48,12 +48,12 @@ while retaining the verified artifact as the installation payload.
 
 ## I-4 - Add desktop close protection and safe diagnostics
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1.5d
 - **Plan steps:** P5
 - **Rubric criteria:** R2, R3, R6, R7
 - **Depends on:** I-3
-- **PR:** -
+- **PR:** [#40](https://github.com/TrentBrown/portreeve/pull/40)
 
 Complete the coordinator, window, schema, preload, renderer, and security-test
 changes for active-operation visibility, close blocking, final refresh, and

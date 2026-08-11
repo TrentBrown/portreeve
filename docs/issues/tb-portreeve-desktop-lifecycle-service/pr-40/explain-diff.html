@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR 40 · Desktop lifecycle safety and diagnostics</title>
+    <style>
+      :root {
+        --ink: #122838;
+        --muted: #566974;
+        --paper: #f5f1e8;
+        --panel: #fffdf7;
+        --line: #c9d1cc;
+        --green: #0f684d;
+        --green-soft: #dcebe3;
+        --blue: #0b3866;
+        --blue-soft: #dce9f4;
+        --amber: #93661d;
+        --amber-soft: #f4e7c9;
+        --red: #9a3d31;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--paper);
+        font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      header, main { width: min(1080px, calc(100% - 32px)); margin: 0 auto; }
+      header { padding: 52px 0 22px; }
+      h1, h2, h3 { font-family: Georgia, serif; line-height: 1.15; }
+      h1 { max-width: 780px; margin: 8px 0 16px; font-size: clamp(2.2rem, 6vw, 4.5rem); }
+      h2 { margin-top: 56px; font-size: 2rem; }
+      h3 { margin-top: 30px; }
+      .eyebrow { color: var(--green); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+      .lede { max-width: 800px; color: var(--muted); font-size: 1.15rem; }
+      .pin { display: inline-block; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); font: 12px ui-monospace, monospace; }
+      nav { position: sticky; top: 0; z-index: 3; border-block: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 93%, transparent); backdrop-filter: blur(8px); }
+      nav div { width: min(1080px, calc(100% - 32px)); margin: auto; display: flex; gap: 18px; overflow-x: auto; padding: 11px 0; }
+      nav a { color: var(--blue); font-weight: 700; text-decoration: none; white-space: nowrap; }
+      .card, .callout, .diagram, .quiz { margin: 22px 0; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+      .callout { border-left: 5px solid var(--green); }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 14px; }
+      .actor { padding: 14px; border-radius: 10px; border: 1px solid; }
+      .main { background: var(--blue-soft); border-color: #8ca9c1; }
+      .preload { background: var(--green-soft); border-color: #91b6a2; }
+      .renderer { background: var(--amber-soft); border-color: #cfb06f; }
+      .host { background: #ece7ef; border-color: #baaac1; }
+      .flow { display: grid; gap: 10px; }
+      .step { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; }
+      .number { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: white; background: var(--green); font-weight: 800; }
+      .arrow { margin-left: 17px; height: 20px; border-left: 2px solid var(--line); }
+      code { color: var(--blue); }
+      pre { overflow-x: auto; white-space: pre-wrap; padding: 16px; border-radius: 10px; color: #eef5f7; background: #142b3a; font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
+      table { width: 100%; border-collapse: collapse; background: var(--panel); }
+      th, td { padding: 11px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+      th { background: var(--green-soft); }
+      .bad { color: var(--red); text-decoration: line-through; }
+      .answer { display: block; width: 100%; margin: 8px 0; padding: 11px; border: 1px solid var(--line); border-radius: 8px; text-align: left; color: var(--ink); background: white; cursor: pointer; }
+      .answer:hover { border-color: var(--green); }
+      .answer.correct { background: var(--green-soft); border-color: var(--green); }
+      .answer.wrong { background: #f5ded9; border-color: var(--red); }
+      .feedback { min-height: 1.5em; color: var(--muted); font-weight: 650; }
+      footer { margin-top: 64px; padding: 28px 0 50px; border-top: 1px solid var(--line); color: var(--muted); }
+      @media (max-width: 600px) { header { padding-top: 30px; } .card, .diagram, .quiz { padding: 15px; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="eyebrow">PortReeve · Pull request 40</div>
+      <h1>Keep the desktop open while it changes the machine</h1>
+      <p class="lede">
+        This slice makes lifecycle work visible and non-cancellable, guards both
+        window close and application quit, and turns opaque failures into useful
+        diagnostic packets without carrying privileged process output into the UI.
+      </p>
+      <span class="pin">7ca69c1f… → e66ca5cb…</span>
+    </header>
+    <nav><div><a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#edge-cases">Edge cases</a><a href="#quiz">Quiz</a></div></nav>
+    <main>
+      <section id="background">
+        <h2>Background</h2>
+        <p>
+          PortReeve Desktop does not merely edit preferences. Its main process can
+          install an executable, create or remove native supervision, start and stop
+          the server, and purge service data. Earlier slices moved these operations
+          out of a spawned CLI and into the same lifecycle service used by the CLI.
+          That gave both entry points one definition of success, refusal, partial
+          completion, and failure.
+        </p>
+        <div class="grid">
+          <div class="actor renderer"><strong>Renderer</strong><br />Displays evidence and asks for a named action. It is not trusted with paths or native arguments.</div>
+          <div class="actor preload"><strong>Preload</strong><br />Allows a narrow API across Electron context isolation and validates returned data.</div>
+          <div class="actor main"><strong>Electron main</strong><br />Owns the controller, lifecycle activity, close decision, and safe reduction.</div>
+          <div class="actor host"><strong>Host</strong><br />launchd or systemd-user, files, socket evidence, and the managed PortReeve process.</div>
+        </div>
+        <p>
+          Two gaps remained. First, a user could normally close the application while
+          a trusted mutation was in flight. Second, the old failure view either said
+          too little or retained bounded native output—which can still contain a
+          secret, command argument, or private path.
+        </p>
+        <div class="callout">
+          <strong>Why “bounded output” is not “safe output.”</strong> A 2 KB stderr
+          tail is small, but it can still contain <code>TOKEN=…</code>, a complete
+          invocation, or a home-directory path. The safe boundary must select fields,
+          not merely truncate bytes.
+        </div>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <h3>One main-process fact drives two presentations</h3>
+        <p>
+          When a lifecycle mutation is accepted, the coordinator immediately records
+          a small fact such as <code>{ operation: "restart", startedAt: "…" }</code>.
+          The same fact drives the visible activity notice and the close guard. The
+          renderer may display it, but it cannot clear it or approve a close.
+        </p>
+        <div class="diagram flow">
+          <div class="step"><span class="number">1</span><div><strong>Renderer requests Restart.</strong><br />No executable, path, environment, or supervisor is supplied.</div></div>
+          <div class="arrow"></div>
+          <div class="step"><span class="number">2</span><div><strong>Main records active = restart.</strong><br />Subscribers receive the strict activity event immediately.</div></div>
+          <div class="arrow"></div>
+          <div class="step"><span class="number">3</span><div><strong>A close attempt asks main again.</strong><br />BrowserWindow close and Command-Q both call <code>applicationCloseState()</code>.</div></div>
+          <div class="arrow"></div>
+          <div class="step"><span class="number">4</span><div><strong>The service settles and refreshes evidence.</strong><br />Only then is activity cleared and normal close allowed.</div></div>
+        </div>
+
+        <h3>Diagnostics are a projection, not a copy</h3>
+        <p>A thrown object might contain dangerous material:</p>
+        <pre>{
+  code: "lifecycle_unavailable",
+  output: "TOKEN=top-secret",
+  arguments: ["--home", "/private/path"],
+  stack: "Error … /private/path/file.js"
+}</pre>
+        <p>The renderer receives only an approved projection:</p>
+        <pre>{
+  "operation": "start",
+  "layer": "start",
+  "outcome": "failed",
+  "code": "lifecycle_unavailable",
+  "message": "The lifecycle operation is currently unavailable; refresh host evidence before retrying.",
+  "timedOut": false,
+  "nativeExitCode": 70,
+  "before": null,
+  "after": null,
+  "recovery": ["Refresh PortReeve status to gather fresh host evidence, then retry the operation."]
+}</pre>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <h3>1. Coordinator activity and final refresh</h3>
+        <p>
+          <code>mutate(work, lifecycleOperation)</code> distinguishes lifecycle
+          mutations from other serialized desktop work. Install-and-start, start,
+          stop, manual stop, restart, upgrade, uninstall, and purge execution supply
+          a name. Purge preview deliberately does not. Existing result paths still
+          call <code>collect()</code> before returning their final snapshot.
+        </p>
+        <h3>2. Window close and application quit share authority</h3>
+        <p>
+          The former launcher-only close state is now composed in the coordinator.
+          <code>bindWindowCloseGuard</code> covers the BrowserWindow event, while the
+          new <code>bindApplicationCloseGuard</code> covers Command-Q and other
+          <code>before-quit</code> paths. Both prevent the event before notifying the
+          renderer.
+        </p>
+        <h3>3. Separate launcher and application schemas</h3>
+        <p>
+          An attached launcher still has its original reduced close state. The
+          application state extends it with nullable lifecycle activity. Keeping the
+          schemas distinct avoids pretending that a launcher process group and a
+          native lifecycle mutation are the same thing.
+        </p>
+        <h3>4. Two strict validation layers</h3>
+        <table>
+          <thead><tr><th>Boundary</th><th>Mechanism</th><th>What it prevents</th></tr></thead>
+          <tbody>
+            <tr><td>Electron main</td><td>Strict Zod schemas and allowlisted error reduction</td><td>Arbitrary exceptions cannot become renderer result fields.</td></tr>
+            <tr><td>Preload</td><td>Exact-key and enum validation</td><td>An extra <code>output</code>, <code>path</code>, or <code>credentials</code> field is rejected.</td></tr>
+            <tr><td>Renderer</td><td><code>textContent</code> and JSON in a <code>pre</code></td><td>Diagnostic strings cannot become executable markup.</td></tr>
+          </tbody>
+        </table>
+        <h3>5. A developer-facing failure view</h3>
+        <p>
+          The last-operation card keeps its concise summary and evidence list. On
+          failure it adds an expandable “Diagnostic packet” section and a copy button.
+          Close attempts during mutation show the exact operation and explicitly say
+          it cannot be cancelled safely. Launcher termination controls are hidden in
+          that state because they solve a different problem.
+        </p>
+      </section>
+
+      <section id="edge-cases">
+        <h2>Edge cases and preserved behavior</h2>
+        <div class="grid">
+          <div class="card"><strong>Purge preview</strong><p>It remains serialized with desktop work but does not set lifecycle activity, so it does not block close.</p></div>
+          <div class="card"><strong>Command-Q</strong><p>It may bypass a window-first path, so the application <code>before-quit</code> event has its own guard.</p></div>
+          <div class="card"><strong>Force quit</strong><p>The OS can still terminate the app. The next launch must use fresh host evidence; that native interruption proof belongs to I-6.</p></div>
+          <div class="card"><strong>Unknown error code</strong><p>It is reduced to <code>internal</code> and a fixed message rather than echoed into the renderer.</p></div>
+        </div>
+        <p>
+          The PR does <em>not</em> make the renderer a lifecycle controller, invent a
+          cancel protocol, change CLI output, alter PortReeve's daemon protocol, or
+          treat a stored PID as authority.
+        </p>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="b"><strong>1. Why is lifecycle activity stored in Electron main?</strong><button class="answer" data-choice="a">So the renderer can clear it after closing its dialog.</button><button class="answer" data-choice="b">So close authorization comes from trusted current state rather than UI state.</button><button class="answer" data-choice="c">So the lifecycle service can avoid its cross-process lock.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="c"><strong>2. Which operation intentionally does not block normal close?</strong><button class="answer" data-choice="a">Uninstall</button><button class="answer" data-choice="b">Purge execution</button><button class="answer" data-choice="c">Purge preview</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="a"><strong>3. Why was bounded stdout removed from lifecycle diagnostics?</strong><button class="answer" data-choice="a">A bounded tail can still contain secrets, arguments, or private paths.</button><button class="answer" data-choice="b">Electron cannot display strings longer than one kilobyte.</button><button class="answer" data-choice="c">The CLI already persists all stdout in the Desktop database.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="b"><strong>4. What makes preload validation “strict” in this slice?</strong><button class="answer" data-choice="a">It checks only that a result has an outcome string.</button><button class="answer" data-choice="b">It checks exact keys as well as allowlisted values and nested evidence shapes.</button><button class="answer" data-choice="c">It trusts any object already accepted by the renderer.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="c"><strong>5. What happens after an ordinary lifecycle mutation settles?</strong><button class="answer" data-choice="a">The UI closes automatically before refreshing.</button><button class="answer" data-choice="b">The stored process ID is used as the final state.</button><button class="answer" data-choice="c">Fresh evidence is collected, the result returns its snapshot, and activity is cleared.</button><p class="feedback"></p></div>
+      </section>
+      <footer>Generated for the pinned PR 40 boundary. Packaging and native interruption verification remain subsequent slices.</footer>
+    </main>
+    <script>
+      document.querySelectorAll('.quiz').forEach((quiz) => {
+        quiz.querySelectorAll('.answer').forEach((button) => {
+          button.addEventListener('click', () => {
+            quiz.querySelectorAll('.answer').forEach((item) => item.classList.remove('correct', 'wrong'));
+            const correct = button.dataset.choice === quiz.dataset.answer;
+            button.classList.add(correct ? 'correct' : 'wrong');
+            quiz.querySelector('.feedback').textContent = correct
+              ? 'Correct.'
+              : 'Not quite. Revisit the relevant section above and try again.';
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
