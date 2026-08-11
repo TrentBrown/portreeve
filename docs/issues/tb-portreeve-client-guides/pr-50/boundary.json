@@ -17,7 +17,7 @@
   },
   "mergeBaseSha": "998ce8dda11a0dce5d1504907692a0515e9b19d9",
   "evaluatedSourceSha": "74fa05ce3a8d0f239cc98c4576f60dc6b3947609",
-  "featureBaseSha": "998ce8dda11a0dce5d1504907692a0515e9b19d9",
+  "featureBaseSha": null,
   "applicability": {
     "specEvaluation": true,
     "judge": true,

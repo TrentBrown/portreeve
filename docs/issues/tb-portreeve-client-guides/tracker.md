@@ -20,4 +20,14 @@
 
 ## PR Log
 
-- PR [#50](https://github.com/TrentBrown/portreeve/pull/50) - P1/I-1 contract metadata and deterministic safe documentation generation; slice gates passed at `74fa05ce3a8d0f239cc98c4576f60dc6b3947609`.
+### PR #50 - Client-guide generation foundation
+
+- **PR:** [#50](https://github.com/TrentBrown/portreeve/pull/50)
+- **Status:** in review
+- **Scope:** P1 / I-1: complete CLI and MCP contract metadata, deterministic
+  marked generation, safe static compilation, and freshness enforcement.
+- **Evidence packet:** [pr-50](pr-50/)
+- **Result:** Slice verdict PASS. The generated catalogs contain 49 CLI leaves
+  and 51 MCP tools; all 470 repository tests, the standalone build, typecheck,
+  lint, documentation freshness, and changed-file formatting pass. All
+  feature-level criteria remain `NOT YET` pending I-2 through I-5.
