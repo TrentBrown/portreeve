@@ -67,7 +67,7 @@ safety while retaining external-edit protection and excluding unsafe eviction.
 - **Plan steps:** P5
 - **Rubric criteria:** R2, R5, R7
 - **Depends on:** I-2, I-3, I-4
-- **PR:** -
+- **PR:** [#47](https://github.com/TrentBrown/portreeve/pull/47)
 
 Complete Docker snapshots, launcher coordination, structured history, and
 remaining inspections. Prove catalog completeness, excluded-surface absence,

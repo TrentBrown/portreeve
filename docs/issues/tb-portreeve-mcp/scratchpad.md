@@ -98,7 +98,7 @@ Let the bridge resubmit evidence; keep consequential actions as direct or dry-ru
 
 ## [7] Keep launcher operation credentials in dedicated bridge-local custody
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
