@@ -84,6 +84,66 @@ test('stdio bridge accepts the 2026-07-28 stateless opening', async () => {
   });
 });
 
+test('diagnostics survive an incompatible daemon while daemon reads fail closed', async () => {
+  const socketPath = `/tmp/pr-mcp-${crypto.randomUUID()}.sock`;
+  const daemon = Bun.serve({
+    unix: socketPath,
+    fetch() {
+      return Response.json({
+        protocolVersion: 1,
+        requestId: crypto.randomUUID(),
+        data: {
+          softwareVersion: '99.0.0',
+          protocol: { minimum: 99, maximum: 99 },
+          capabilities: [],
+          pid: process.pid,
+          mode: 'manual',
+        },
+      });
+    },
+  });
+  try {
+    const messages = await runBridge(
+      [
+        {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'initialize',
+          params: {
+            protocolVersion: '2025-11-25',
+            capabilities: {},
+            clientInfo: { name: 'compatibility-test', version: '1' },
+          },
+        },
+        {
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'tools/call',
+          params: { name: 'portreeve_diagnostics', arguments: {} },
+        },
+        {
+          jsonrpc: '2.0',
+          id: 3,
+          method: 'tools/call',
+          params: { name: 'portreeve_health', arguments: {} },
+        },
+      ],
+      socketPath,
+    );
+    expect(messages[1]?.result.structuredContent).toMatchObject({
+      ok: true,
+      data: { daemon: { available: true, compatible: false } },
+    });
+    expect(messages[2]?.result.structuredContent).toMatchObject({
+      ok: false,
+      error: { code: 'portreeve_incompatible', retryable: false },
+    });
+  } finally {
+    daemon.stop(true);
+    await rm(socketPath, { force: true });
+  }
+});
+
 test('stdio bridge exits cleanly when its host sends SIGTERM', async () => {
   const child = Bun.spawn(
     [process.execPath, resolve('src/cli/main.js'), 'mcp', 'serve'],
@@ -192,7 +252,10 @@ test('one bridge retries the daemon after it becomes available', async () => {
 });
 
 /** @param {Array<Record<string, unknown>>} requests */
-async function runBridge(requests) {
+async function runBridge(
+  requests,
+  socketPath = `/tmp/portreeve-missing-${crypto.randomUUID()}.sock`,
+) {
   const child = Bun.spawn(
     [
       process.execPath,
@@ -200,7 +263,7 @@ async function runBridge(requests) {
       'mcp',
       'serve',
       '--socket',
-      `/tmp/portreeve-missing-${crypto.randomUUID()}.sock`,
+      socketPath,
       '--label',
       'test-bridge',
     ],
