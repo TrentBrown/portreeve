@@ -26,7 +26,7 @@ diff.
 - **Missing behavior:** none found. The eight criteria are supported by contract tests,
   package inspection, complete regression suites, release/runtime verification, and
   real-app interaction evidence.
-- **Retention:** complete. All 36 feature-record files are tracked by Git.
+- **Retention:** complete. All 44 feature-record files are tracked by Git.
 - **Residual risk:** future CLI/MCP contract or release-state changes require guide or
   README regeneration. Freshness, coverage, and explicit pre-release assertions make
   those changes fail visibly rather than drift silently.

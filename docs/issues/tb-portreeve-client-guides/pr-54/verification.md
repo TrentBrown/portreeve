@@ -17,7 +17,7 @@
 | Homebrew release verification | PASS - six release artifacts |
 | Real stack verification | PASS - Docker/process activation, evidence, shutdown, pruning, and retained history |
 | Real Desktop review | PASS - ordinary and 760x560 widths; search, filters, disclosure, copy, navigation, and Guide bridge |
-| Feature-record retention | PASS - tracked; 36 tracked files, no untracked or ignored feature records |
+| Feature-record retention | PASS - tracked; 44 tracked files, no untracked or ignored feature records |
 
 Package attestation now proves that the ASAR contains the generated version-bound guide
 bundle and the renderer modules that consume it. The verifier rejects documentation

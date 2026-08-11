@@ -53,7 +53,7 @@ by that aggregate command passes against the final source SHA.
 The packaged application contains the version-attested static guide bundle and the
 renderer path that consumes it. Verification rejects runtime documentation fetching,
 Markdown parsing, arbitrary HTML insertion, and CLI-backed guide evidence. The feature
-record has `tracked` retention status: all 36 current lifecycle and evidence files are
+record has `tracked` retention status: all 44 current lifecycle and evidence files are
 tracked, with no untracked or ignored feature records.
 
 ## Deferred work
