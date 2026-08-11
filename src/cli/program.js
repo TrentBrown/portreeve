@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import { PORTREEVE_VERSION } from '../version.js';
+import { annotateCliProgram } from './documentation.js';
 import {
   DEFAULT_PRUNE_AGE,
   deleteClaimCommand,
@@ -542,5 +543,5 @@ export function createProgram() {
     .option('--json', 'emit versioned JSON output')
     .action(logsCommand);
 
-  return program;
+  return annotateCliProgram(program);
 }

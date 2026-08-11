@@ -312,3 +312,1471 @@ permissions, path types, and symlinks after supervision changes and before delet
 data. The result reports `removed`, `retained`, `missing`, and `refused` paths and uses
 `succeeded`, `refused`, or `partial` without claiming complete reset after partial
 failure.
+
+<!-- PORTREEVE:GENERATED CLI-COMMANDS START -->
+## Complete command reference
+
+> Generated from the Commander command tree and required documentation metadata. Do not edit this region directly.
+
+### CLI command: `portreeve serve`
+
+Run the PortReeve server in the foreground
+
+- **Family:** server
+- **Safety:** Service administration
+- **Synopsis:** `portreeve serve [options]`
+
+#### Arguments for `portreeve serve`
+
+None.
+
+#### Options for `portreeve serve`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+
+#### Environment and configuration for `portreeve serve`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve serve`
+
+Runs the PortReeve server in the foreground until stopped. Startup and runtime failures use the documented CLI exit bands.
+
+### CLI command: `portreeve mcp serve`
+
+Run the local stdio MCP bridge
+
+- **Family:** mcp
+- **Safety:** Service administration
+- **Synopsis:** `portreeve mcp serve [options]`
+
+#### Arguments for `portreeve mcp serve`
+
+None.
+
+#### Options for `portreeve mcp serve`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the PortReeve Unix socket path |
+| `--label <label>` | no | — | — | attach a diagnostic label to this bridge run |
+
+#### Environment and configuration for `portreeve mcp serve`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve mcp serve`
+
+Runs a blocking stdio MCP bridge. Standard output is reserved for MCP framing; startup or protocol failures use the documented CLI exit bands.
+
+### CLI command: `portreeve mcp setup`
+
+Generate MCP host configuration without changing host settings
+
+- **Family:** mcp
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve mcp setup [options]`
+
+#### Arguments for `portreeve mcp setup`
+
+None.
+
+#### Options for `portreeve mcp setup`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--host <host>` | yes | — | — | configuration format: generic, codex, or claude-code |
+| `--portable` | no | — | — | use bare portreeve and require it on PATH |
+| `--label <label>` | no | — | — | attach a diagnostic label to bridge runs |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve mcp setup`
+
+No command-specific environment input.
+
+#### Output and exit behavior for `portreeve mcp setup`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve status`
+
+Report server and native supervision state
+
+- **Family:** server
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve status [options]`
+
+#### Arguments for `portreeve status`
+
+None.
+
+#### Options for `portreeve status`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve status`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve status`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve purge`
+
+Preview or execute complete PortReeve removal
+
+- **Family:** server
+- **Safety:** Service administration
+- **Synopsis:** `portreeve purge [options]`
+
+#### Arguments for `portreeve purge`
+
+None.
+
+#### Options for `portreeve purge`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--dry-run` | no | — | — | inspect the exact deletion evidence without mutation |
+| `--confirm <preview-token>` | no | — | — | execute only when current evidence matches this preview token |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve purge`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve purge`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve install`
+
+Install or atomically upgrade native per-user supervision
+
+- **Family:** server
+- **Safety:** Service administration
+- **Synopsis:** `portreeve install [options]`
+
+#### Arguments for `portreeve install`
+
+None.
+
+#### Options for `portreeve install`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve install`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve install`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve uninstall`
+
+Remove native supervision while preserving PortReeve data
+
+- **Family:** server
+- **Safety:** Service administration
+- **Synopsis:** `portreeve uninstall [options]`
+
+#### Arguments for `portreeve uninstall`
+
+None.
+
+#### Options for `portreeve uninstall`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve uninstall`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve uninstall`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve start`
+
+Start the installed supervised server
+
+- **Family:** server
+- **Safety:** Service administration
+- **Synopsis:** `portreeve start [options]`
+
+#### Arguments for `portreeve start`
+
+None.
+
+#### Options for `portreeve start`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve start`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve start`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stop`
+
+Stop the installed supervised server
+
+- **Family:** server
+- **Safety:** Service administration
+- **Synopsis:** `portreeve stop [options]`
+
+#### Arguments for `portreeve stop`
+
+None.
+
+#### Options for `portreeve stop`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stop`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stop`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stop-manual`
+
+Explicitly stop a server running outside native supervision
+
+- **Family:** server
+- **Safety:** Service administration
+- **Synopsis:** `portreeve stop-manual [options]`
+
+#### Arguments for `portreeve stop-manual`
+
+None.
+
+#### Options for `portreeve stop-manual`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stop-manual`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stop-manual`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve restart`
+
+Restart the installed supervised server
+
+- **Family:** server
+- **Safety:** Service administration
+- **Synopsis:** `portreeve restart [options]`
+
+#### Arguments for `portreeve restart`
+
+None.
+
+#### Options for `portreeve restart`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve restart`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve restart`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve ports list`
+
+List every claimed or listening TCP port
+
+- **Family:** ports
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve ports list [options]`
+
+#### Arguments for `portreeve ports list`
+
+None.
+
+#### Options for `portreeve ports list`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit the versioned JSON response |
+| `--status <classification>` | no | — | — | filter by reconciliation status |
+| `--claimed` | no | — | — | show ports with durable claims |
+| `--unclaimed` | no | — | — | show ports without durable claims |
+| `--listening` | no | — | — | show ports with live listeners |
+| `--project <name>` | no | — | — | filter by project namespace |
+| `--workspace <path>` | no | — | — | filter by canonical workspace root |
+| `--service <name>` | no | — | — | filter by service name |
+| `--component <name>` | no | — | — | filter by component name |
+| `--endpoint <name>` | no | — | — | filter by endpoint name |
+| `--port <number>` | no | — | — | filter by exact TCP port |
+
+#### Environment and configuration for `portreeve ports list`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve ports list`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve ports inspect`
+
+Inspect durable and live evidence for one TCP port
+
+- **Family:** ports
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve ports inspect <port> [options]`
+
+#### Arguments for `portreeve ports inspect`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `port` | yes | no | — | — |
+
+#### Options for `portreeve ports inspect`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit the versioned JSON response |
+
+#### Environment and configuration for `portreeve ports inspect`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve ports inspect`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve ports reclaim`
+
+Reclaim a port from its verified PortReeve run
+
+- **Family:** ports
+- **Safety:** Evidence-bound consequential mutation
+- **Synopsis:** `portreeve ports reclaim <port> [options]`
+
+#### Arguments for `portreeve ports reclaim`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `port` | yes | no | — | — |
+
+#### Options for `portreeve ports reclaim`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--policy <policy>` | no | `"graceful"` | — | replacement policy: never, graceful, or force-after-grace |
+| `--dry-run` | no | — | — | show the evidence-bound target plan without signaling |
+| `--json` | no | — | — | emit the versioned JSON response |
+
+#### Environment and configuration for `portreeve ports reclaim`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve ports reclaim`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve ports unsafe-evict`
+
+Dangerously evict any observable listener from an exact port
+
+- **Family:** ports
+- **Safety:** Unsafe override
+- **Synopsis:** `portreeve ports unsafe-evict <port> [options]`
+
+#### Arguments for `portreeve ports unsafe-evict`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `port` | yes | no | — | — |
+
+#### Options for `portreeve ports unsafe-evict`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--unsafe-any-owner` | yes | — | — | explicitly authorize bypassing PortReeve claim ownership |
+| `--force-after-grace` | no | — | — | authorize SIGKILL after the grace period |
+| `--dry-run` | no | — | — | show the evidence-bound target plan without signaling |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit the versioned JSON response |
+
+#### Environment and configuration for `portreeve ports unsafe-evict`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve ports unsafe-evict`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve claims list`
+
+List durable claims
+
+- **Family:** claims
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve claims list [options]`
+
+#### Arguments for `portreeve claims list`
+
+None.
+
+#### Options for `portreeve claims list`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve claims list`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve claims list`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve claims show`
+
+Show one durable claim
+
+- **Family:** claims
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve claims show <claim-id> [options]`
+
+#### Arguments for `portreeve claims show`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `claim-id` | yes | no | — | — |
+
+#### Options for `portreeve claims show`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve claims show`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve claims show`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve claims reassign`
+
+Assign a new idle port to a claim
+
+- **Family:** claims
+- **Safety:** Evidence-bound consequential mutation
+- **Synopsis:** `portreeve claims reassign <claim-id> [options]`
+
+#### Arguments for `portreeve claims reassign`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `claim-id` | yes | no | — | — |
+
+#### Options for `portreeve claims reassign`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--preferred-port <port>` | no | — | — | prefer this port, then permit fallback |
+| `--exact-port <port>` | no | — | — | require this exact port without fallback |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve claims reassign`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve claims reassign`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve claims delete`
+
+Delete an idle claim and return its assignment to the pool
+
+- **Family:** claims
+- **Safety:** Evidence-bound consequential mutation
+- **Synopsis:** `portreeve claims delete <claim-id> [options]`
+
+#### Arguments for `portreeve claims delete`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `claim-id` | yes | no | — | — |
+
+#### Options for `portreeve claims delete`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve claims delete`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve claims delete`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve claims prune`
+
+Delete old claims whose workspace paths no longer exist
+
+- **Family:** claims
+- **Safety:** Evidence-bound consequential mutation
+- **Synopsis:** `portreeve claims prune [options]`
+
+#### Arguments for `portreeve claims prune`
+
+None.
+
+#### Options for `portreeve claims prune`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--older-than <duration>` | no | `"7d"` | — | minimum age such as 12h or 7d |
+| `--dry-run` | no | — | — | report eligible claims without mutation |
+| `--yes` | no | — | — | execute without an interactive confirmation |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve claims prune`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve claims prune`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks apply`
+
+Validate and apply a stack-root definition
+
+- **Family:** stacks
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve stacks apply [options]`
+
+#### Arguments for `portreeve stacks apply`
+
+None.
+
+#### Options for `portreeve stacks apply`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--file <path>` | no | — | — | select an explicit stack definition file |
+| `--stack-root <path>` | no | — | — | select a root containing portreeve.stack.json |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks apply`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks apply`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks list`
+
+List registered stacks
+
+- **Family:** stacks
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve stacks list [options]`
+
+#### Arguments for `portreeve stacks list`
+
+None.
+
+#### Options for `portreeve stacks list`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--project <name>` | no | — | — | filter by project namespace |
+| `--stack-root <path>` | no | — | — | filter by canonical stack root |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks list`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks list`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks show`
+
+Show one registered stack and its current definition
+
+- **Family:** stacks
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve stacks show <stack-id> [options]`
+
+#### Arguments for `portreeve stacks show`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `stack-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks show`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks show`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks show`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks status`
+
+Show the enclosing or explicitly selected registered stack
+
+- **Family:** stacks
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve stacks status [options]`
+
+#### Arguments for `portreeve stacks status`
+
+None.
+
+#### Options for `portreeve stacks status`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--project <name>` | no | — | — | select a project namespace |
+| `--stack-root <path>` | no | — | — | select an explicit stack root |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks status`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks status`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks prepare`
+
+Create or reuse a complete immutable allocation generation
+
+- **Family:** stacks
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve stacks prepare <stack-id> [options]`
+
+#### Arguments for `portreeve stacks prepare`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `stack-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks prepare`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks prepare`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks prepare`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks begin`
+
+Begin one exclusive activation and atomically lease its endpoints
+
+- **Family:** stacks
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve stacks begin <generation-id> [options]`
+
+#### Arguments for `portreeve stacks begin`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `generation-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks begin`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--required-endpoint <component.endpoint...>` | no | — | — | promote optional endpoints; JSON objects preserve names containing dots |
+| `--skip-endpoint <component.endpoint...>` | no | — | — | skip optional endpoints; JSON objects preserve names containing dots |
+| `--docker-component <name...>` | no | — | — | bind named components through Docker for this activation |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output including private lease tokens |
+
+#### Environment and configuration for `portreeve stacks begin`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks begin`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks activation`
+
+Inspect one activation and its endpoint outcomes
+
+- **Family:** stacks
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve stacks activation <activation-id> [options]`
+
+#### Arguments for `portreeve stacks activation`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `activation-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks activation`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks activation`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks activation`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks generation`
+
+Inspect one immutable allocation generation
+
+- **Family:** stacks
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve stacks generation <generation-id> [options]`
+
+#### Arguments for `portreeve stacks generation`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `generation-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks generation`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks generation`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks generation`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks renew`
+
+Renew pending activation leases from a private JSON file
+
+- **Family:** stacks
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve stacks renew <activation-id> [options]`
+
+#### Arguments for `portreeve stacks renew`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `activation-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks renew`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--leases-file <path>` | yes | — | — | JSON array of lease IDs and tokens |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks renew`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks renew`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks confirm`
+
+Confirm one bound process endpoint with fresh listener evidence
+
+- **Family:** stacks
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve stacks confirm <activation-id> [options]`
+
+#### Arguments for `portreeve stacks confirm`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `activation-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks confirm`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--lease-file <path>` | yes | — | — | private JSON lease credential |
+| `--root-pid <pid>` | yes | — | — | root process PID for lineage verification |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks confirm`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks confirm`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks confirm-docker`
+
+Confirm one Docker endpoint with fresh listener and container evidence
+
+- **Family:** stacks
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve stacks confirm-docker <activation-id> [options]`
+
+#### Arguments for `portreeve stacks confirm-docker`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `activation-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks confirm-docker`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--lease-file <path>` | yes | — | — | private JSON lease credential |
+| `--container-id <id>` | yes | — | — | Docker container ID lookup key |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks confirm-docker`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks confirm-docker`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks abandon`
+
+Fail one pending activation endpoint
+
+- **Family:** stacks
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve stacks abandon <activation-id> [options]`
+
+#### Arguments for `portreeve stacks abandon`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `activation-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks abandon`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--lease-file <path>` | yes | — | — | private JSON lease credential |
+| `--reason <reason>` | no | `"startup-error"` | — | address-in-use, startup-error, or client-cancelled |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks abandon`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks abandon`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks skip`
+
+Skip one optional pending activation endpoint
+
+- **Family:** stacks
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve stacks skip <activation-id> [options]`
+
+#### Arguments for `portreeve stacks skip`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `activation-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks skip`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--lease-file <path>` | yes | — | — | private JSON lease credential |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks skip`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks skip`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks end`
+
+End an activation only after every provider has stopped
+
+- **Family:** stacks
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve stacks end <activation-id> [options]`
+
+#### Arguments for `portreeve stacks end`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `activation-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks end`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks end`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks end`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks reconcile`
+
+Reconcile one activation from fresh process and Docker evidence
+
+- **Family:** stacks
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve stacks reconcile <activation-id> [options]`
+
+#### Arguments for `portreeve stacks reconcile`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `activation-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks reconcile`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks reconcile`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks reconcile`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks prune`
+
+Delete old missing-stack-root records with no live provider evidence
+
+- **Family:** stacks
+- **Safety:** Evidence-bound consequential mutation
+- **Synopsis:** `portreeve stacks prune [options]`
+
+#### Arguments for `portreeve stacks prune`
+
+None.
+
+#### Options for `portreeve stacks prune`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--older-than <duration>` | no | `"7d"` | — | minimum age such as 12h or 7d |
+| `--dry-run` | no | — | — | report eligible and blocked stacks without mutation |
+| `--yes` | no | — | — | execute without an interactive confirmation |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks prune`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks prune`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks resolve`
+
+Resolve one component own endpoints and declared dependencies
+
+- **Family:** stacks
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve stacks resolve <activation-id> [options]`
+
+#### Arguments for `portreeve stacks resolve`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `activation-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks resolve`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--component <name>` | yes | — | — | consumer component name |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks resolve`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks resolve`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve stacks snapshot`
+
+Write one redacted sandbox endpoint discovery document atomically
+
+- **Family:** stacks
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve stacks snapshot <activation-id> [options]`
+
+#### Arguments for `portreeve stacks snapshot`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `activation-id` | yes | no | — | — |
+
+#### Options for `portreeve stacks snapshot`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--component <name>` | yes | — | — | sandbox consumer component name |
+| `--gateway-host <host>` | yes | — | — | launcher-rendered sandbox gateway host |
+| `--file <path>` | yes | — | — | destination JSON document |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve stacks snapshot`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve stacks snapshot`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve launcher init`
+
+Interactively create and trust an absent launcher definition
+
+- **Family:** launcher
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve launcher init [options]`
+
+#### Arguments for `portreeve launcher init`
+
+None.
+
+#### Options for `portreeve launcher init`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--stack-root <path>` | no | — | — | select an explicit applied stack root |
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve launcher init`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve launcher init`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve launcher validate`
+
+Validate a launcher against its local stack definition
+
+- **Family:** launcher
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve launcher validate [options]`
+
+#### Arguments for `portreeve launcher validate`
+
+None.
+
+#### Options for `portreeve launcher validate`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--stack-root <path>` | no | — | — | select an explicit stack root |
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve launcher validate`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve launcher validate`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve launcher trust`
+
+Review and trust the exact current launcher revision
+
+- **Family:** launcher
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve launcher trust [options]`
+
+#### Arguments for `portreeve launcher trust`
+
+None.
+
+#### Options for `portreeve launcher trust`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--stack-root <path>` | no | — | — | select an explicit applied stack root |
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve launcher trust`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve launcher trust`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve launcher start`
+
+Start the selected stack through its trusted launcher
+
+- **Family:** launcher
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve launcher start [options]`
+
+#### Arguments for `portreeve launcher start`
+
+None.
+
+#### Options for `portreeve launcher start`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--stack-root <path>` | no | — | — | select an explicit applied stack root |
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--run-start-anyway` | no | — | — | explicitly repair a partially observed non-conflicting stack |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve launcher start`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve launcher start`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve launcher stop`
+
+Stop the selected stack through its trusted project command
+
+- **Family:** launcher
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve launcher stop [options]`
+
+#### Arguments for `portreeve launcher stop`
+
+None.
+
+#### Options for `portreeve launcher stop`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--stack-root <path>` | no | — | — | select an explicit applied stack root |
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--allow-degraded` | no | — | — | explicitly run Stop from cached context without daemon coordination |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve launcher stop`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve launcher stop`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve launcher restart`
+
+Restart the selected stack through its trusted launcher
+
+- **Family:** launcher
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve launcher restart [options]`
+
+#### Arguments for `portreeve launcher restart`
+
+None.
+
+#### Options for `portreeve launcher restart`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--stack-root <path>` | no | — | — | select an explicit applied stack root |
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve launcher restart`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve launcher restart`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve launcher status`
+
+Run advisory project Status and report authoritative evidence
+
+- **Family:** launcher
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve launcher status [options]`
+
+#### Arguments for `portreeve launcher status`
+
+None.
+
+#### Options for `portreeve launcher status`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--stack-root <path>` | no | — | — | select an explicit applied stack root |
+| `--home <path>` | no | — | — | override the PortReeve application directory |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve launcher status`
+
+- Uses the platform PortReeve application directory unless --home is set.
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve launcher status`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve config get`
+
+Read all settings or one setting
+
+- **Family:** config
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve config get [key] [options]`
+
+#### Arguments for `portreeve config get`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `key` | no | no | — | — |
+
+#### Options for `portreeve config get`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve config get`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve config get`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve config set`
+
+Update one setting with a JSON value
+
+- **Family:** config
+- **Safety:** Ordinary coordination mutation
+- **Synopsis:** `portreeve config set <key> <json-value> [options]`
+
+#### Arguments for `portreeve config set`
+
+| Name | Required | Variadic | Default | Description |
+|---|---:|---:|---|---|
+| `key` | yes | no | — | — |
+| `json-value` | yes | no | — | — |
+
+#### Options for `portreeve config set`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve config set`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve config set`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve history`
+
+Query structured operational history
+
+- **Family:** observability
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve history [options]`
+
+#### Arguments for `portreeve history`
+
+None.
+
+#### Options for `portreeve history`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--limit <count>` | no | `"100"` | — | maximum recent events |
+| `--event-type <type>` | no | — | — | filter by exact event type |
+| `--entity-type <type>` | no | — | — | filter by exact entity type |
+| `--entity-id <id>` | no | — | — | filter by exact entity ID |
+| `--since <timestamp>` | no | — | — | filter from an ISO-8601 timestamp |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve history`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve history`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+
+### CLI command: `portreeve logs`
+
+Show recent bounded local diagnostic logs
+
+- **Family:** observability
+- **Safety:** Read-only or local generation
+- **Synopsis:** `portreeve logs [options]`
+
+#### Arguments for `portreeve logs`
+
+None.
+
+#### Options for `portreeve logs`
+
+| Flags | Required | Default | Choices | Description |
+|---|---:|---|---|---|
+| `--limit <count>` | no | `"100"` | — | maximum recent entries |
+| `--socket <path>` | no | — | — | override the Unix socket path |
+| `--json` | no | — | — | emit versioned JSON output |
+
+#### Environment and configuration for `portreeve logs`
+
+- Uses the platform PortReeve Unix socket unless --socket is set.
+
+#### Output and exit behavior for `portreeve logs`
+
+Uses concise human output by default when supported and versioned JSON with `--json`. Automation must use structured output and the documented `0`, `10`, `20`, `30`, `40`, `50`, and `70` exit bands rather than parsing prose.
+<!-- PORTREEVE:GENERATED CLI-COMMANDS END -->
