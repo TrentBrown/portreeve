@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PortReeve PR #50 - Generated client-guide foundation</title>
+    <style>
+      :root { color-scheme: light; --ink:#102a43; --muted:#526777; --paper:#fbf7ed; --card:#fffdf8; --line:#c9d3ce; --green:#176b55; --blue:#164e77; --gold:#d7a73c; }
+      * { box-sizing: border-box; }
+      body { margin:0; background:linear-gradient(145deg,#eef4ef,var(--paper) 42%); color:var(--ink); font:16px/1.55 system-ui,-apple-system,sans-serif; }
+      main { width:min(1120px,calc(100% - 32px)); margin:32px auto 64px; }
+      header,.card { background:rgba(255,253,248,.94); border:1px solid var(--line); border-radius:18px; box-shadow:0 12px 32px rgba(16,42,67,.08); }
+      header { padding:clamp(24px,5vw,52px); border-top:7px solid var(--green); }
+      h1 { margin:.1em 0; font:700 clamp(2rem,5vw,4rem)/1.02 Georgia,serif; }
+      h2 { margin-top:0; font:700 1.55rem/1.15 Georgia,serif; }
+      .eyebrow { color:var(--green); font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+      .lead { max-width:760px; color:var(--muted); font-size:1.15rem; }
+      .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:18px; }
+      .card { padding:24px; }
+      .flow { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; align-items:center; gap:10px; text-align:center; }
+      .node { min-height:92px; display:grid; place-items:center; padding:12px; border-radius:14px; border:2px solid var(--line); background:white; }
+      .node.source { border-color:var(--blue); } .node.generator { border-color:var(--green); } .node.output { border-color:var(--gold); }
+      code { padding:.1em .35em; border-radius:5px; background:#eaf0ed; color:#173d53; }
+      pre { overflow:auto; padding:16px; border-radius:12px; background:#102a43; color:#f7fafc; }
+      table { width:100%; border-collapse:collapse; } th,td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+      th { color:var(--green); }
+      .badge { display:inline-block; margin:.2em .25em .2em 0; padding:.25em .65em; border-radius:999px; background:#dcece4; color:#155844; font-weight:700; }
+      details { border-top:1px solid var(--line); padding:12px 0; } summary { cursor:pointer; font-weight:750; }
+      @media (max-width:760px) { .grid { grid-template-columns:1fr; } .flow { grid-template-columns:1fr; } .arrow { transform:rotate(90deg); } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="eyebrow">PR #50 · Slice I-1</div>
+        <h1>One contract, three useful forms</h1>
+        <p class="lead">PortReeve can now derive complete CLI and MCP reference material directly from the interfaces it ships, validate authored guidance as inert content, and commit a version-bound Desktop bundle. This is the foundation for the human guides and Desktop tabs that follow.</p>
+        <span class="badge">49 CLI leaves</span><span class="badge">51 MCP tools</span><span class="badge">470 tests pass</span>
+      </header>
+
+      <section class="card" style="margin-top:18px">
+        <h2>The central idea</h2>
+        <div class="flow" aria-label="Documentation generation flow">
+          <div class="node source"><strong>Runtime contracts</strong><small>Commander tree + MCP registry</small></div><div class="arrow">→</div>
+          <div class="node generator"><strong>Strict generator</strong><small>coverage, safety, links, inert Markdown</small></div><div class="arrow">→</div>
+          <div class="node output"><strong>Versioned artifacts</strong><small>GitHub Markdown + static Desktop JSON</small></div>
+        </div>
+        <p>Previously, prose and runtime surfaces could drift independently. The new pipeline makes interface metadata executable documentation input. A missing CLI classification, missing tool, broken anchor, unsafe link, or stale committed output now fails verification.</p>
+      </section>
+
+      <div class="grid">
+        <section class="card">
+          <h2>What changed</h2>
+          <table>
+            <tr><th>Area</th><th>Change</th></tr>
+            <tr><td>CLI</td><td>Every executable leaf receives documentation metadata and exactly one of five safety classes.</td></tr>
+            <tr><td>MCP</td><td>A side-effect-free catalog exposes exact registered tools, annotations, and JSON schemas.</td></tr>
+            <tr><td>Generator</td><td>Strict markers preserve authored prose while complete references are replaced deterministically.</td></tr>
+            <tr><td>Desktop</td><td>A committed JSON bundle contains a constrained authored AST and structured reference catalogs.</td></tr>
+            <tr><td>Checks</td><td>Freshness is part of ordinary verification and Desktop packaging.</td></tr>
+          </table>
+        </section>
+        <section class="card">
+          <h2>Safety model</h2>
+          <p>Documentation is data, not runtime authority. The compiler accepts a deliberately small Markdown subset and rejects active or ambiguous content.</p>
+          <pre><code>author prose
+  → validate markers and links
+  → reject HTML / unsafe URLs
+  → compile to inert nodes
+  → render only trusted components</code></pre>
+          <p>The Desktop will not parse Markdown at runtime, fetch documentation from the network, or execute examples found in prose.</p>
+        </section>
+        <section class="card">
+          <h2>Why exact schemas are retained</h2>
+          <p>The MCP reference is large because the tool schemas are the public contract. Summaries are useful for onboarding; exact required fields, closed objects, enums, and output shapes are what let developers and agents act correctly. The bundle stores generated reference structurally rather than duplicating it inside the authored AST.</p>
+        </section>
+        <section class="card">
+          <h2>Review outcome</h2>
+          <p>A review caught one raw-HTML edge case: a tag after ordinary text could bypass a line-start check. The validator now removes inline-code spans and rejects HTML-shaped tags everywhere else on a line. A regression test proves the fix.</p>
+          <p><strong>Result:</strong> no remaining correctness, security, regression, or test-gap findings.</p>
+        </section>
+      </div>
+
+      <section class="card" style="margin-top:18px">
+        <h2>Knowledge check</h2>
+        <details><summary>1. Why generate from Commander and the MCP registry?</summary><p>They are the shipped interfaces. Deriving documentation from them turns missing coverage and contract drift into test failures.</p></details>
+        <details><summary>2. Does this slice redesign the guides?</summary><p>No. It seeds valid generated regions and the safe pipeline. Complete onboarding, recipes, comparison, and troubleshooting are the next slice.</p></details>
+        <details><summary>3. Can authored Markdown inject HTML into Desktop?</summary><p>No. Raw HTML and unsupported Markdown fail generation, and Desktop receives inert structured content rather than raw Markdown or HTML.</p></details>
+        <details><summary>4. What prevents a stale Desktop guide from shipping?</summary><p>The freshness check compares regenerated Markdown and bundle output with committed artifacts, and Desktop packaging runs that check.</p></details>
+        <details><summary>5. Are feature-level rubric items complete?</summary><p>Not yet. I-1 passes its planned contribution; authored guides, Desktop experiences, README integration, and packaged offline proof remain explicit later slices.</p></details>
+      </section>
+    </main>
+  </body>
+</html>
