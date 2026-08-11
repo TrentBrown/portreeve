@@ -7,7 +7,12 @@ import { CliUsageError, exitCodeForErrorCode, setExitCode } from '../exit.js';
 import { renderOutput } from '../output/render.js';
 
 /**
- * @typedef {{home?: string, socket?: string, json?: boolean}} LifecycleOptions
+ * @typedef {{
+ *   home?: string,
+ *   socket?: string,
+ *   json?: boolean,
+ *   service?: ReturnType<typeof createLifecycleService>
+ * }} LifecycleOptions
  */
 
 /** @param {LifecycleOptions} options */
@@ -163,8 +168,9 @@ function statusSummary(status) {
   return `${status.installation.state} installation, ${status.supervisor.state} supervisor, ${status.socket.state} socket, ${status.mode} mode`;
 }
 
-/** @param {{home?: string, socket?: string}} options */
+/** @param {LifecycleOptions} options */
 function serviceFor(options) {
+  if (options.service !== undefined) return options.service;
   return createLifecycleService({
     ...(options.home ? { home: options.home } : {}),
     ...(options.socket ? { socket: options.socket } : {}),
