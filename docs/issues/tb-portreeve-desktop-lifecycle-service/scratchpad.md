@@ -23,7 +23,7 @@ Return exit codes from the shared service - rejected because it would make termi
 
 ## [2] Use a Unix listener lease for mutation exclusion
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -38,7 +38,7 @@ Exclusive lock file or directory - rejected because crash recovery requires a st
 
 ## [3] Use one overall deadline with bounded child work
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -53,7 +53,7 @@ Adapter Promise.race - rejected because it returns while in-process mutation can
 
 ## [4] Represent unchanged purge timeout as failed
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

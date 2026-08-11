@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PortReeve PR 38 — Lifecycle safety</title>
+  <style>
+    :root{--ink:#172522;--muted:#5b6b67;--paper:#f7f3e9;--card:#fffdf7;--green:#17664d;--green2:#dcece4;--blue:#103c68;--blue2:#dce8f4;--gold:#b9761a;--gold2:#f5e7c8;--red:#8f3d32;--line:#cfd7d1}
+    *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.58 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    main{max-width:1060px;margin:auto;padding:28px 22px 80px} h1,h2,h3{font-family:Georgia,serif;line-height:1.15} h1{font-size:clamp(2.3rem,6vw,4.4rem);margin:.2em 0} h2{margin-top:2.2em;border-bottom:2px solid var(--line);padding-bottom:.3em} a{color:var(--blue)}
+    .eyebrow{font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--green);font-weight:800}.lede{font-size:1.2rem;max-width:780px}.meta,.muted{color:var(--muted)}
+    nav{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin:28px 0;box-shadow:0 8px 24px #1232}
+    nav ol{columns:2;margin:.4em 0}.callout{border-left:5px solid var(--green);background:var(--green2);padding:14px 18px;border-radius:0 12px 12px 0;margin:20px 0}
+    .warning{border-color:var(--gold);background:var(--gold2)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin:18px 0}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 5px 14px #1231}.card h3{margin-top:0}.pill{display:inline-block;border-radius:999px;padding:4px 10px;font-weight:750;font-size:.83rem;background:var(--blue2);color:var(--blue)}
+    .flow{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:center;margin:22px 0}.node{min-height:88px;border:2px solid var(--line);border-radius:12px;background:var(--card);padding:12px;text-align:center;display:grid;place-items:center}.node.service{border-color:var(--green);background:var(--green2)}.node.kernel{border-color:var(--blue);background:var(--blue2)}.node.host{border-color:var(--gold);background:var(--gold2)}.arrow{text-align:center;color:var(--muted);font-size:1.5rem}
+    .timeline{display:grid;grid-template-columns:140px 1fr;gap:7px 14px}.timeline .who{font-weight:800;color:var(--blue)}.event{border-left:3px solid var(--line);padding:4px 0 12px 14px}
+    pre{white-space:pre-wrap;overflow:auto;background:#12201d;color:#f3f6f2;border-radius:12px;padding:16px;font-size:.9rem}
+    code{background:#e7ece8;border-radius:4px;padding:.08em .3em} pre code{background:none;padding:0}
+    table{width:100%;border-collapse:collapse;background:var(--card)}th,td{text-align:left;vertical-align:top;border:1px solid var(--line);padding:10px}th{background:var(--green2)}
+    .quiz{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}.choices{display:grid;gap:8px}.choices button{font:inherit;text-align:left;border:1px solid var(--line);background:white;border-radius:9px;padding:10px;cursor:pointer}.choices button:hover{border-color:var(--green)}.feedback{min-height:1.6em;margin-top:10px;font-weight:700}.correct{color:var(--green)}.incorrect{color:var(--red)}
+    @media(max-width:760px){nav ol{columns:1}.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}.timeline{grid-template-columns:1fr}.timeline .who{margin-top:8px}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">PortReeve · Pull request 38</div>
+  <h1>Lifecycle work now has a clock and a gate</h1>
+  <p class="lede">This change makes PortReeve’s administrative operations finite, mutually exclusive across processes, and honest about uncertain outcomes. A caller no longer “times out” while hidden work continues; the shared service bounds the work, gathers fresh evidence, and reports what actually changed.</p>
+  <p class="meta">Pinned diff: <code>5d6319e…cda4789</code> · I-2 / plan step P2</p>
+
+  <nav aria-label="Table of contents">
+    <strong>On this page</strong>
+    <ol>
+      <li><a href="#background">Background</a></li>
+      <li><a href="#intuition">Core intuition</a></li>
+      <li><a href="#transaction">One protected transaction</a></li>
+      <li><a href="#timeouts">What timeout means</a></li>
+      <li><a href="#code">Code walkthrough</a></li>
+      <li><a href="#edges">Edges and compatibility</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+    </ol>
+  </nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <h3>The beginner’s version</h3>
+    <p>PortReeve has two kinds of work. The everyday server allocates and describes ports. Lifecycle administration installs that server, asks the operating system to supervise it, starts or stops it, and can remove its data. Those administrative actions touch the filesystem, launchd or systemd, a Unix socket, and a process that may be starting or stopping at the same time.</p>
+    <p>Before this feature, the CLI had already been reduced to a presentation adapter around a shared lifecycle service. PR 38 gives that service two missing safety properties:</p>
+    <div class="grid">
+      <article class="card"><span class="pill">Time</span><h3>Every layer is bounded</h3><p>Native commands, readiness polling, complete mutations, reads, and recovery observations all have finite budgets.</p></article>
+      <article class="card"><span class="pill">Exclusion</span><h3>Only one mutation enters</h3><p>A live per-user Unix listener is the lease. Another CLI or Desktop process receives <code>lifecycle_busy</code> promptly.</p></article>
+      <article class="card"><span class="pill">Evidence</span><h3>Failure is re-observed</h3><p>If a deadline expires after work may have begun, PortReeve gathers fresh status and reports <code>partial</code> or <code>failed</code>.</p></article>
+    </div>
+
+    <h3>The narrower problem</h3>
+    <p>Lifecycle work crosses process boundaries. Suppose one CLI asks launchd to start PortReeve while the Desktop asks system state to uninstall it. Each caller might have correct local logic, yet the interleaving is nonsensical. Likewise, rejecting a UI promise after fifteen seconds does not stop an in-process command or rollback. The shared service must own both serialization and time.</p>
+  </section>
+
+  <section id="intuition">
+    <h2>Core intuition</h2>
+    <div class="callout"><strong>The important inversion:</strong> a timeout is not the caller giving up. It is the lifecycle engine ending bounded work, then asking the host what is true now.</div>
+    <div class="flow" aria-label="Lifecycle actors">
+      <div class="node">CLI or<br>Electron main</div><div class="arrow">→</div>
+      <div class="node service">Lifecycle<br>service</div><div class="arrow">→</div>
+      <div class="node kernel">Unix listener<br>lease</div>
+    </div>
+    <div class="flow" aria-label="Lifecycle host work">
+      <div class="node service">Protected<br>transaction</div><div class="arrow">→</div>
+      <div class="node host">launchd / systemd<br>files / socket</div><div class="arrow">→</div>
+      <div class="node service">Fresh result<br>evidence</div>
+    </div>
+    <p>The listener lease is deliberately not a PID file. Binding a Unix socket is atomic. Connecting to it is fresh proof that an owner is alive. PID, operation, UID, and acquisition time travel over that connection only as diagnostics. If the owner crashes, the kernel drops the listener; a refused connection plus safe socket ownership/type evidence permits recovery.</p>
+  </section>
+
+  <section id="transaction">
+    <h2>One protected transaction</h2>
+    <div class="timeline">
+      <div class="who">Caller</div><div class="event">Requests <code>start</code>, <code>stop</code>, <code>restart</code>, install, uninstall, manual stop, or purge.</div>
+      <div class="who">Service</div><div class="event">Starts the overall deadline and atomically binds the mutation-listener path.</div>
+      <div class="who">Service</div><div class="event">Collects validated before-evidence while holding the lease.</div>
+      <div class="who">Manager</div><div class="event">Runs bounded native commands and bounded readiness waits using the same deadline signal.</div>
+      <div class="who">Service</div><div class="event">Collects after-evidence. On error or expiry, it uses a separate bounded recovery observation.</div>
+      <div class="who">Service</div><div class="event">Returns one canonical result, then closes accepted peers and releases the listener.</div>
+    </div>
+    <p>Status and purge preview skip the lease. They are finite reads, so they remain available while another process mutates the installation.</p>
+    <div class="warning callout"><strong>Purge detail:</strong> the mutation listener lives in the per-user runtime directory, outside the marker-owned application home. Complete purge may delete PortReeve data, but it cannot delete the lock that protects that very purge.</div>
+  </section>
+
+  <section id="timeouts">
+    <h2>What timeout means</h2>
+    <table>
+      <thead><tr><th>Layer</th><th>Default budget</th><th>What happens at expiry</th></tr></thead>
+      <tbody>
+        <tr><td>Native control command</td><td>15 seconds</td><td>The control subprocess is hard-stopped; the surrounding mutation becomes uncertain and is re-observed.</td></tr>
+        <tr><td>Readiness / unavailable wait</td><td>10 seconds</td><td>Polling stops through the shared deadline rather than an adapter race.</td></tr>
+        <tr><td>Complete mutation</td><td>60 seconds</td><td>The AbortSignal reaches child work and socket probes; recovery status starts afterward.</td></tr>
+        <tr><td>Status / purge preview</td><td>15 seconds</td><td>The read terminates without taking the mutation lease.</td></tr>
+        <tr><td>Recovery evidence</td><td>10 seconds</td><td>Fresh host state determines failed versus partial; PortReeve never fabricates success.</td></tr>
+      </tbody>
+    </table>
+    <h3>Toy example</h3>
+    <pre><code>before: supervisor=inactive, socket=unavailable
+action: launchd accepts start, but health wait expires
+after:  supervisor=active, socket=unavailable
+
+result:
+  code: lifecycle_timeout
+  outcome: partial
+  changed: true</code></pre>
+    <p>If after-evidence equals before-evidence, the outcome is <code>failed</code>. Purge now has that same vocabulary; calling an unchanged timeout “partial” would falsely claim that evidence changed.</p>
+  </section>
+
+  <section id="code">
+    <h2>Code walkthrough</h2>
+    <h3>1. Deadline policy</h3>
+    <p><code>src/supervision/deadline.js</code> centralizes budgets, expiration, command options, and referenced intentional waits. The overall timer itself is unreferenced so an unused deadline cannot keep a process alive; an awaited lifecycle sleep remains referenced so foreground Node does not exit mid-operation.</p>
+    <h3>2. Process-safe lease</h3>
+    <p><code>src/supervision/lock.js</code> binds a private Unix socket. It probes an existing listener, refuses live owners, and only removes an abandoned path when it is a same-owner socket rather than a symlink or regular file. Release stops new connections and destroys accepted peers before awaiting server close.</p>
+    <h3>3. Service transaction</h3>
+    <p><code>src/supervision/service.js</code> wraps every mutation and purge. The lease surrounds before-evidence, mutation, rollback performed below the service, after/recovery evidence, and canonical result creation. Busy is a refusal; other unchanged errors fail; changed evidence is partial.</p>
+    <h3>4. Propagation through existing mechanisms</h3>
+    <p>The manager, launchd adapter, and systemd-user adapter accept the shared context. Native commands receive the remaining budget and AbortSignal. The official client adds optional signals only to health and protected stop requests, preserving every existing call.</p>
+    <h3>5. Adapter compatibility</h3>
+    <p>The CLI still maps stable service codes to old exit bands: busy remains conflict (20), while lifecycle timeout remains internal (70). Desktop schemas temporarily accept purge’s new <code>failed</code> outcome; the next slice replaces the Desktop CLI subprocess adapter with this service directly.</p>
+  </section>
+
+  <section id="edges">
+    <h2>Edges and compatibility</h2>
+    <ul>
+      <li>A regular file, symlink, or foreign-owner object at the lock path is never removed. PortReeve fails closed.</li>
+      <li>Twelve concurrent processes racing to recover a killed owner produce exactly one lease winner in the integration test.</li>
+      <li>A connected peer cannot indefinitely delay release.</li>
+      <li>A native command that ignores SIGTERM is still bounded because the expired control subprocess receives SIGKILL.</li>
+      <li>No registry schema, daemon endpoint, supervisor definition, command name, or existing JavaScript call signature is removed.</li>
+    </ul>
+    <p class="muted">Remaining release gates are intentionally elsewhere: real Linux systemd-user operation, full real macOS mutation, packaged Electron execution, close protection, and forced-interruption recovery.</p>
+  </section>
+
+  <section id="quiz">
+    <h2>Knowledge check</h2>
+    <div class="quiz" data-answer="1"><h3>1. What proves that another lifecycle owner is active?</h3><div class="choices"><button>A stored PID whose process still exists</button><button>A successful connection to the bound mutation listener</button><button>A recent lock-file modification time</button></div><div class="feedback"></div></div>
+    <div class="quiz" data-answer="2"><h3>2. Why is timeout followed by a recovery observation?</h3><div class="choices"><button>To retry the same mutation with a larger budget</button><button>To preserve the adapter’s previous Promise.race behavior</button><button>Because the host may have changed before bounded work expired</button></div><div class="feedback"></div></div>
+    <div class="quiz" data-answer="0"><h3>3. Which operations remain available during a mutation?</h3><div class="choices"><button>Status and purge preview</button><button>Restart and uninstall</button><button>Every operation except complete purge</button></div><div class="feedback"></div></div>
+    <div class="quiz" data-answer="2"><h3>4. Why does the lock live outside the application home?</h3><div class="choices"><button>Unix sockets cannot be created under Application Support</button><button>systemd requires all sockets under XDG_RUNTIME_DIR</button><button>Purge must remain protected while deleting the application home</button></div><div class="feedback"></div></div>
+    <div class="quiz" data-answer="1"><h3>5. When does a timed-out mutation return partial?</h3><div class="choices"><button>Whenever any native command was launched</button><button>When fresh after-evidence differs from before-evidence</button><button>Whenever recovery takes more than one observation</button></div><div class="feedback"></div></div>
+  </section>
+</main>
+<script>
+  const explanations=[
+    "Correct. A live listener connection is current kernel-backed evidence; PID metadata is diagnostic only.",
+    "Correct. Mutation may already have affected launchd, systemd, files, or the server before the deadline.",
+    "Correct. Live reads remain finite and lock-free; mutations do not overlap.",
+    "Correct. Keeping the lease outside the purge root protects the complete destructive transaction.",
+    "Correct. Partial means fresh evidence proves that lifecycle state changed."
+  ];
+  document.querySelectorAll(".quiz").forEach((quiz,quizIndex)=>{
+    const buttons=[...quiz.querySelectorAll("button")];
+    buttons.forEach((button,index)=>button.addEventListener("click",()=>{
+      const answer=Number(quiz.dataset.answer);
+      const feedback=quiz.querySelector(".feedback");
+      const correct=index===answer;
+      feedback.className="feedback "+(correct?"correct":"incorrect");
+      feedback.textContent=correct ? explanations[quizIndex] : "Not quite. Re-read the transaction and timeout sections, then try again.";
+      buttons.forEach((candidate,i)=>candidate.setAttribute("aria-pressed",String(i===index)));
+    }));
+  });
+</script>
+</body>
+</html>
