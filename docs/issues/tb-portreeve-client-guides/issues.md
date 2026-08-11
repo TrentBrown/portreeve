@@ -22,12 +22,12 @@ and deterministic freshness and coverage gates.
 
 ## I-2 - Author the shared MCP and CLI guides
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R1, R2, R5, R7
 - **Depends on:** I-1
-- **PR:** -
+- **PR:** [#51](https://github.com/TrentBrown/portreeve/pull/51)
 
 Write the common four-part guides, approved workflows, safety/approval teaching,
 interface comparison, platform boundaries, and symptom-first troubleshooting at
