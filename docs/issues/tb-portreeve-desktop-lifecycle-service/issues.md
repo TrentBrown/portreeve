@@ -22,7 +22,7 @@ fixtures before another caller adopts the service.
 
 ## I-2 - Add deadlines, uncertain recovery, and mutation locking
 
-- **Status:** in-review
+- **Status:** done
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R4, R5, R8
@@ -35,7 +35,7 @@ decision before implementation.
 
 ## I-3 - Replace the desktop CLI lifecycle adapter
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1.5d
 - **Plan steps:** P4
 - **Rubric criteria:** R1, R3, R8

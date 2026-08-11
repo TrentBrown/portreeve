@@ -76,6 +76,39 @@ test('derives only state-appropriate service actions', () => {
   expect(compareVersions('0.1.0+desktop.1', '0.1.0+cli.9')).toBe(0);
 });
 
+test('visibly disables only native lifecycle mutations on controller and artifact mismatch', () => {
+  const artifact = provisionalArtifact();
+  const snapshot = createDesktopSnapshot({
+    artifact: {
+      ...artifact,
+      version: '0.2.0',
+      controller: {
+        version: '0.1.0',
+        mutationsEnabled: false,
+        error: {
+          code: 'controller_artifact_version_mismatch',
+          message:
+            'PortReeve lifecycle controller 0.1.0 does not match bundled artifact 0.2.0. Lifecycle mutations are disabled.',
+        },
+      },
+    },
+    lifecycle: lifecycleSnapshot(),
+    ports: [],
+    refreshedAt: timestamp,
+  });
+
+  expect(snapshot.errors).toContainEqual({
+    source: 'lifecycle',
+    code: 'controller_artifact_version_mismatch',
+    message:
+      'PortReeve lifecycle controller 0.1.0 does not match bundled artifact 0.2.0. Lifecycle mutations are disabled.',
+    observedAt: timestamp,
+  });
+  expect(availableActions(snapshot)).toEqual([]);
+  expect(canUninstall(snapshot)).toBe(false);
+  expect(availableStackActions(snapshot, { activation: null })).toEqual(['prepare']);
+});
+
 test('withholds stack mutations on stale evidence and never invents launcher actions', () => {
   const active = { activation: { state: 'confirmed' } };
   expect(availableStackActions({ errors: [] }, active)).toEqual([
