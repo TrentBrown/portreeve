@@ -21,8 +21,6 @@ Implement MCP framing and compatibility ourselves; use an older SDK generation; 
 
 **Promoted:** 2026-08-10. PR: #43 https://github.com/TrentBrown/portreeve/pull/43.
 
----
-
 ## Keep consequential action receipts daemon-authoritative
 
 **Confidence:** HIGH
@@ -54,3 +52,37 @@ Introduce a reusable versioned opaque base64url cursor format whose payload cont
 Return unbounded arrays; use numeric offsets; infer caller identity from process details; place origin only inside bridge-local logs.
 
 **Promoted:** 2026-08-10. PR: #43 https://github.com/TrentBrown/portreeve/pull/43.
+
+---
+
+## Keep credentials and ordinary retry replay bridge-local
+
+**Confidence:** HIGH
+
+**Blast Radius:** MCP security boundary, lease lifecycle, retry semantics, bridge shutdown
+
+Keep raw standalone and activation lease credentials only in one bridge process behind cryptographically random opaque handles. A separate safe-result cache derives mutation identity from normalized explicit inputs so lost-response retries can return achieved results after the corresponding credential has been erased. Handles never grant authority outside their originating bridge, and bridge shutdown clears both renewal authority and credentials.
+
+**Triggered by:** security-relevant credential custody and semantically idempotent MCP mutation requirements
+
+**Alternatives considered:**
+Return raw tokens to MCP hosts; persist encrypted tokens in the daemon; use MCP request IDs as caller-managed idempotency keys; retain settled credentials solely to support retries.
+
+**Promoted:** 2026-08-11. PR: #45 https://github.com/TrentBrown/portreeve/pull/45.
+
+---
+
+## Add token-proven standalone pending-lease renewal
+
+**Confidence:** HIGH
+
+**Blast Radius:** public socket protocol, official JavaScript client, allocation service, audit history
+
+Add a narrow `POST /v1/leases/{leaseId}/renew` operation and official `renewLease` client method. It accepts only the existing one-time token for a still-pending lease, applies the daemon's configured lease TTL, and records safe renewal history without storing or returning the token. Stack activation leases continue to use their existing atomic batch-renewal operation.
+
+**Triggered by:** public API change required to apply bounded automatic custody consistently to standalone and stack leases
+
+**Alternatives considered:**
+Exclude standalone leases from automatic custody; reacquire on every TTL; make the MCP bridge call storage directly; reuse the activation batch endpoint for non-activation leases.
+
+**Promoted:** 2026-08-11. PR: #45 https://github.com/TrentBrown/portreeve/pull/45.

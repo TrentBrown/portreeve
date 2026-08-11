@@ -42,6 +42,8 @@ import {
   ReclaimRequestSchema,
   ReclamationResultSchema,
   ReleaseRequestSchema,
+  RenewLeaseRequestSchema,
+  RenewLeaseResponseSchema,
   ServerSettingsResponseSchema,
   StackApplyRequestSchema,
   StackApplyResponseSchema,
@@ -778,6 +780,19 @@ async function handleRequest(
           AcquireRequestSchema.parse(body),
         );
         return success(requestId, AcquireResponseSchema.parse(result));
+      }
+
+      const renewLease = pathname.match(/^\/v1\/leases\/([0-9a-f-]+)\/renew$/);
+      if (renewLease !== null) {
+        const leaseId = IdentifierSchema.parse(renewLease[1]);
+        const input = RenewLeaseRequestSchema.parse({
+          ...objectBody(body),
+          leaseId,
+        });
+        return success(
+          requestId,
+          RenewLeaseResponseSchema.parse(allocationService.renew(input)),
+        );
       }
 
       const confirm = pathname.match(/^\/v1\/leases\/([0-9a-f-]+)\/confirm$/);

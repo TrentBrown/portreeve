@@ -631,6 +631,16 @@ export class PortreeveClient {
     );
   }
 
+  /** @param {{leaseId: string, leaseToken: string}} lease */
+  async renewLease(lease) {
+    return requestJson(
+      this.socketPath,
+      'POST',
+      `/v1/leases/${lease.leaseId}/renew`,
+      this.withClient({ leaseToken: lease.leaseToken }),
+    );
+  }
+
   /**
    * @param {{leaseId: string, leaseToken: string}} lease
    * @param {{rootPid?: number}} [options]

@@ -93,6 +93,17 @@ test('attributes mutations to an explicit diagnostic client origin', async () =>
   });
 });
 
+test('renews a standalone lease through the public client without changing its token', async () => {
+  const { socketPath } = await startFixture();
+  const client = new PortreeveClient({ socketPath });
+  const lease = await client.acquire({ claim: claim('renew-through-client') });
+  const renewed = await client.renewLease(lease);
+
+  expect(renewed.leaseId).toBe(lease.leaseId);
+  expect(renewed.expiresAt >= lease.expiresAt).toBe(true);
+  await client.abandon(lease, 'client-cancelled');
+});
+
 test('allows lifecycle callers to abort a pending health request', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'portreeve-client-abort-'));
   const socketPath = join(directory, 'hanging.sock');

@@ -1649,6 +1649,35 @@ export class Registry {
   }
 
   /**
+   * Extend one pending standalone lease after proving possession of its token.
+   * Stack activation leases use renewStackActivation so their activation state
+   * and history remain coordinated as one operation.
+   * @param {{leaseId: string, leaseToken: string, expiresAt: string}} input
+   * @param {Date} [now]
+   */
+  renewPendingLease(input, now = new Date()) {
+    const leaseId = IdentifierSchema.parse(input.leaseId);
+    const expiresAt = TimestampSchema.parse(input.expiresAt);
+    const timestamp = toTimestamp(now);
+    const renew = this.database.transaction(() => {
+      const lease = this.getLease(leaseId);
+      if (lease === null) {
+        throw new RegistryError('not_found', `Lease ${leaseId} was not found.`);
+      }
+      this.#assertPendingLease(lease, input.leaseToken, now);
+      this.database
+        .query(
+          `UPDATE leases SET expires_at = $expiresAt, updated_at = $timestamp
+           WHERE id = $leaseId AND state = 'pending'`,
+        )
+        .run({ expiresAt, timestamp, leaseId });
+      this.#appendHistory('lease.renewed', 'lease', leaseId, { expiresAt }, timestamp);
+    });
+    renew.immediate();
+    return { leaseId, expiresAt };
+  }
+
+  /**
    * @param {{claimId: string, port: number, expiresAt: string}} input
    * @param {Date} [now]
    */

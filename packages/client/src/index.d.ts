@@ -49,6 +49,11 @@ export interface AcquireResult {
   reusedAssignment: boolean;
 }
 
+export interface RenewLeaseResult {
+  leaseId: string;
+  expiresAt: string;
+}
+
 export interface ConfirmResult {
   claimId: string;
   leaseId: string;
@@ -630,6 +635,7 @@ export declare class PortreeveClient {
     },
   ): Promise<ReclamationResult>;
   acquire(request: AcquireOptions): Promise<AcquireResult>;
+  renewLease(lease: { leaseId: string; leaseToken: string }): Promise<RenewLeaseResult>;
   confirm(
     lease: { leaseId: string; leaseToken: string },
     options?: { rootPid?: number },

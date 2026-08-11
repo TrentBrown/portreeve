@@ -45,6 +45,12 @@ Git, preventing symlink and subdirectory spellings from creating duplicate ident
 For compatibility, `service` remains an alias for `component` with endpoint `default`.
 New integrations should use `component` and `endpoint`.
 
+Low-level coordinators may call `renewLease({ leaseId, leaseToken })` while a
+standalone lease is still pending. This extends only that pending lease; confirmation
+or abandonment permanently settles the credential. Most application code should use
+`withPort`, while adapters that retain credentials must keep them out of logs and
+persistence.
+
 ## Stack definitions
 
 `applyStack({ stackRoot, definition })` validates through the same public contract
@@ -194,7 +200,7 @@ The `PortreeveClient` exposes `health`, `acquire`, `confirm`, `abandon`, `releas
 `reassignClaim`, `deleteClaim`, `pruneClaims`, `applyStack`, `listStacks`, `getStack`,
 `getStackStatus`,
 `prepareStack`, `beginStackActivation`, `getStackActivation`,
-`listStackActivations`, `renewStackActivation`,
+`listStackActivations`, `renewLease`, `renewStackActivation`,
 `confirmStackEndpoint`, `abandonStackEndpoint`, `skipStackEndpoint`,
 `getStackGeneration`, `listStackGenerations`, `reconcileStackActivation`,
 `endStackActivation`, `pruneStacks`,

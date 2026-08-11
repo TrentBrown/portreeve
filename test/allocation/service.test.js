@@ -136,6 +136,33 @@ describe('allocation service', () => {
     registry.close();
   });
 
+  test('renews a pending standalone lease only with its credential', async () => {
+    const registry = openRegistry();
+    const allocation = service(registry);
+    const acquired = await allocation.acquire(
+      request('renewable', { exactPort: 20_000 }),
+    );
+
+    expect(
+      allocation.renew({
+        client,
+        leaseId: acquired.leaseId,
+        leaseToken: acquired.leaseToken,
+      }),
+    ).toEqual({
+      leaseId: acquired.leaseId,
+      expiresAt: acquired.expiresAt,
+    });
+    expect(() =>
+      allocation.renew({
+        client,
+        leaseId: acquired.leaseId,
+        leaseToken: 'x'.repeat(43),
+      }),
+    ).toThrow('Lease token does not match');
+    registry.close();
+  });
+
   test('reuses an expired ephemeral assignment only after listeners disappear', async () => {
     const registry = openRegistry();
     let now = new Date('2026-07-30T12:00:00.000Z');

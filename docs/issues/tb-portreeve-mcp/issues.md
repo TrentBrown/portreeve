@@ -9,7 +9,7 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Establish MCP protocol and client foundations
 
-- **Status:** complete
+- **Status:** closed
 - **Estimate:** 3d
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R2, R3, R5, R6, R7
@@ -23,7 +23,7 @@ without exposing MCP transport policy to the daemon.
 
 ## I-2 - Deliver stdio bridge diagnostics and read tools
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2.5d
 - **Plan steps:** P2
 - **Rubric criteria:** R1, R2, R3, R7
@@ -36,12 +36,12 @@ bounded global inspection surface.
 
 ## I-3 - Deliver credential custody and coordination lifecycle
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 3d
 - **Plan steps:** P3
 - **Rubric criteria:** R4, R5
 - **Depends on:** I-1, I-2
-- **PR:** -
+- **PR:** [#45](https://github.com/TrentBrown/portreeve/pull/45)
 
 Implement the process-local handle vault, bounded renewal and extension policy,
 multi-bridge isolation, standalone leases, stack activations, dependency

@@ -10,6 +10,7 @@ import {
 } from '../../packages/client/src/index.js';
 import { PORTREEVE_VERSION } from '../version.js';
 import {
+  ConfirmResponseSchema,
   HealthResponseSchema,
   HistoryPageSchema,
   IdentifierSchema,
@@ -17,12 +18,20 @@ import {
   InventoryEntrySchema,
   PortSchema,
   PageInfoSchema,
+  MutationAcknowledgementSchema,
   ServerSettingsResponseSchema,
+  StackActivationLeaseSchema,
+  StackEndActivationResponseSchema,
   StackActivationSchema,
   StackGenerationSchema,
+  StackPrepareResponseSchema,
+  StackReconcileActivationResponseSchema,
   StackRecordSchema,
+  StackResolutionSchema,
+  StackStatusSchema,
   TimestampSchema,
 } from '../protocol/schemas.js';
+import { CredentialCustody, CredentialCustodyError } from './credential-custody.js';
 import { MCP_MAX_PAGE_SIZE, pageMcpValues } from './pagination.js';
 
 const REQUIRED_CAPABILITY = 'mcp-foundations-v1';
@@ -92,6 +101,103 @@ const READ_ANNOTATIONS = Object.freeze({
   idempotentHint: true,
   openWorldHint: false,
 });
+const MUTATION_ANNOTATIONS = Object.freeze({
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+});
+
+const CredentialHandleSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/u);
+const StackEndpointReferenceInputSchema = z
+  .object({
+    component: z.string().min(1).max(128),
+    endpoint: z.string().min(1).max(128).default('default'),
+  })
+  .strict();
+const CustodySummarySchema = z
+  .object({
+    custodyExpiresAt: TimestampSchema,
+    maximumCustodyExpiresAt: TimestampSchema,
+    credentialCount: z.number().int().min(0),
+  })
+  .strict();
+const HeldCredentialSchema = CustodySummarySchema.extend({
+  credentialHandle: CredentialHandleSchema,
+  leaseId: IdentifierSchema,
+  leaseExpiresAt: TimestampSchema,
+}).strict();
+const SafeActivationLeaseSchema = StackActivationLeaseSchema.omit({
+  leaseToken: true,
+  expiresAt: true,
+})
+  .extend({
+    credentialHandle: CredentialHandleSchema,
+    leaseExpiresAt: TimestampSchema,
+    custodyExpiresAt: TimestampSchema,
+    maximumCustodyExpiresAt: TimestampSchema,
+  })
+  .strict();
+const LeaseAcquireInputSchema = z
+  .object({
+    claim: z
+      .object({
+        project: z.string().trim().min(1).max(128),
+        workspaceRoot: z.string().min(1),
+        service: z.string().trim().min(1).max(128).optional(),
+        component: z.string().trim().min(1).max(128).optional(),
+        endpoint: z.string().trim().min(1).max(128).default('default'),
+        transport: z.literal('tcp').default('tcp'),
+      })
+      .strict()
+      .superRefine(({ component, service }, context) => {
+        if (component === undefined && service === undefined) {
+          context.addIssue({
+            code: 'custom',
+            message: 'claim requires component or service',
+            path: ['component'],
+          });
+        }
+        if (component !== undefined && service !== undefined && component !== service) {
+          context.addIssue({
+            code: 'custom',
+            message: 'service and component must match',
+            path: ['service'],
+          });
+        }
+      }),
+    allocation: z
+      .object({
+        mode: z.enum(['sticky', 'ephemeral']).default('sticky'),
+        preferredPort: PortSchema.optional(),
+        exactPort: PortSchema.optional(),
+        replacementPolicy: z
+          .enum(['never', 'graceful', 'force-after-grace'])
+          .default('never'),
+      })
+      .strict()
+      .refine(
+        ({ exactPort, preferredPort }) =>
+          exactPort === undefined || preferredPort === undefined,
+        { message: 'preferredPort and exactPort are mutually exclusive' },
+      )
+      .default({ mode: 'sticky', replacementPolicy: 'never' }),
+  })
+  .strict();
+const LeaseAcquireDataSchema = HeldCredentialSchema.omit({
+  credentialCount: true,
+}).extend({
+  changed: z.boolean(),
+  claimId: IdentifierSchema,
+  port: PortSchema,
+  reusedAssignment: z.boolean(),
+});
+const ConfirmationDataSchema = ConfirmResponseSchema.extend({
+  changed: z.boolean(),
+}).strict();
+const ActivationMutationDataSchema = z
+  .object({ changed: z.boolean(), activation: StackActivationSchema })
+  .strict();
 
 /**
  * @param {{
@@ -115,6 +221,13 @@ export function createPortreeveMcpServer(options = {}) {
       ...(label === undefined ? {} : { label }),
     },
   });
+  const custody = new CredentialCustody({
+    renewLease: (credential) => client.renewLease(credential),
+    renewActivation: (activationId, credentials) =>
+      client.renewStackActivation(activationId, credentials),
+  });
+  /** @type {Map<string, unknown>} */
+  const mutationResults = new Map();
   const server = new McpServer(
     { name: 'portreeve', version: PORTREEVE_VERSION },
     {
@@ -330,10 +443,466 @@ export function createPortreeveMcpServer(options = {}) {
     run: (input) => daemonRead(client, () => client.historyPage(input)),
   });
 
+  registerCoordinationTools({ server, client, custody, mutationResults });
+
+  const closeServer = server.close.bind(server);
+  server.close = async () => {
+    custody.close();
+    await closeServer();
+  };
+
   return server;
 }
 
-/** @param {McpServer} server @param {{name: string, title: string, description: string, inputSchema: z.ZodType, outputDataSchema: z.ZodType, run: (input: any) => Promise<any>}} definition */
+/**
+ * @param {{
+ *   server: McpServer,
+ *   client: PortreeveClient,
+ *   custody: CredentialCustody,
+ *   mutationResults: Map<string, unknown>
+ * }} context
+ */
+function registerCoordinationTools({ server, client, custody, mutationResults }) {
+  register(server, {
+    name: 'portreeve_lease_acquire',
+    title: 'Acquire a port lease',
+    description:
+      'Acquire one standalone port lease and retain its credential in this bridge behind an opaque handle.',
+    inputSchema: LeaseAcquireInputSchema,
+    outputDataSchema: LeaseAcquireDataSchema,
+    annotations: MUTATION_ANNOTATIONS,
+    run: (input) =>
+      daemonRead(client, async () => {
+        const key = mutationKey('lease_acquire', input);
+        const cached = /** @type {any} */ (mutationResults.get(key));
+        if (cached !== undefined && custody.isHeld(cached.credentialHandle)) {
+          return { ...cached, changed: false };
+        }
+        const acquired = await client.acquire(input);
+        const held = custody.holdLease(acquired);
+        const result = {
+          changed: true,
+          claimId: acquired.claimId,
+          leaseId: acquired.leaseId,
+          port: acquired.port,
+          leaseExpiresAt: acquired.expiresAt,
+          reusedAssignment: acquired.reusedAssignment,
+          credentialHandle: held.credentialHandle,
+          custodyExpiresAt: held.custodyExpiresAt,
+          maximumCustodyExpiresAt: held.maximumCustodyExpiresAt,
+        };
+        rememberMutation(mutationResults, key, result);
+        return result;
+      }),
+  });
+  register(server, {
+    name: 'portreeve_lease_confirm',
+    title: 'Confirm a port lease',
+    description:
+      'Confirm listener ownership for a standalone lease held by this bridge.',
+    inputSchema: z
+      .object({
+        credentialHandle: CredentialHandleSchema,
+        rootPid: z.number().int().positive(),
+      })
+      .strict(),
+    outputDataSchema: ConfirmationDataSchema,
+    annotations: MUTATION_ANNOTATIONS,
+    run: (input) =>
+      daemonRead(client, async () => {
+        const key = mutationKey('lease_confirm', input);
+        const replay = replayMutation(mutationResults, key);
+        if (replay !== undefined) return replay;
+        const credential = custody.get(input.credentialHandle, { kind: 'lease' });
+        const confirmed = await client.confirm(credential, {
+          rootPid: input.rootPid,
+        });
+        custody.settle(input.credentialHandle);
+        const result = { changed: true, ...confirmed };
+        rememberMutation(mutationResults, key, result);
+        return result;
+      }),
+  });
+  register(server, {
+    name: 'portreeve_lease_abandon',
+    title: 'Abandon a port lease',
+    description:
+      'Abandon a standalone lease held by this bridge and immediately erase its credential.',
+    inputSchema: z
+      .object({
+        credentialHandle: CredentialHandleSchema,
+        reason: z.enum(['address-in-use', 'startup-error', 'client-cancelled']),
+      })
+      .strict(),
+    outputDataSchema: MutationAcknowledgementSchema,
+    annotations: MUTATION_ANNOTATIONS,
+    run: (input) =>
+      daemonRead(client, async () => {
+        const key = mutationKey('lease_abandon', input);
+        const replay = replayMutation(mutationResults, key);
+        if (replay !== undefined) return replay;
+        const credential = custody.get(input.credentialHandle, { kind: 'lease' });
+        const result = await client.abandon(credential, input.reason);
+        custody.settle(input.credentialHandle);
+        rememberMutation(mutationResults, key, result);
+        return result;
+      }),
+  });
+  register(server, {
+    name: 'portreeve_run_release',
+    title: 'Release a confirmed run',
+    description: 'Release one confirmed run by explicit durable identifier.',
+    inputSchema: z.object({ runId: IdentifierSchema }).strict(),
+    outputDataSchema: MutationAcknowledgementSchema,
+    annotations: MUTATION_ANNOTATIONS,
+    run: ({ runId }) => daemonRead(client, () => client.release(runId)),
+  });
+  register(server, {
+    name: 'portreeve_stack_status',
+    title: 'Get stack status',
+    description: 'Inspect current generation, activation, and provider evidence.',
+    inputSchema: z.object({ stackId: IdentifierSchema }).strict(),
+    outputDataSchema: StackStatusSchema,
+    run: ({ stackId }) => daemonRead(client, () => client.getStackStatus(stackId)),
+  });
+  register(server, {
+    name: 'portreeve_stack_prepare',
+    title: 'Prepare a stack generation',
+    description:
+      'Prepare or reuse one valid allocation generation for an explicit stack.',
+    inputSchema: z.object({ stackId: IdentifierSchema }).strict(),
+    outputDataSchema: StackPrepareResponseSchema.extend({
+      changed: z.boolean(),
+    }).strict(),
+    annotations: MUTATION_ANNOTATIONS,
+    run: ({ stackId }) =>
+      daemonRead(client, async () => {
+        const prepared = await client.prepareStack(stackId);
+        return { changed: !prepared.reused, ...prepared };
+      }),
+  });
+  register(server, {
+    name: 'portreeve_activation_begin',
+    title: 'Begin stack activation',
+    description:
+      'Begin an activation and retain all pending endpoint credentials in bounded bridge custody.',
+    inputSchema: z
+      .object({
+        generationId: IdentifierSchema,
+        requiredEndpoints: z.array(StackEndpointReferenceInputSchema).default([]),
+        skippedEndpoints: z.array(StackEndpointReferenceInputSchema).default([]),
+        bindings: z
+          .record(z.string().min(1).max(128), z.enum(['process', 'docker']))
+          .default({}),
+      })
+      .strict(),
+    outputDataSchema: z
+      .object({
+        changed: z.boolean(),
+        activation: StackActivationSchema,
+        leases: z.array(SafeActivationLeaseSchema),
+        custodyExpiresAt: TimestampSchema,
+        maximumCustodyExpiresAt: TimestampSchema,
+        credentialCount: z.number().int().min(0),
+      })
+      .strict(),
+    annotations: MUTATION_ANNOTATIONS,
+    run: (input) =>
+      daemonRead(client, async () => {
+        const key = mutationKey('activation_begin', input);
+        const cached = /** @type {any} */ (mutationResults.get(key));
+        if (cached !== undefined) {
+          const leases = cached.leases.filter(
+            (/** @type {{credentialHandle: string}} */ { credentialHandle }) =>
+              custody.isHeld(credentialHandle),
+          );
+          return {
+            ...cached,
+            changed: false,
+            leases,
+            credentialCount: leases.length,
+            activation: await client.getStackActivation(cached.activation.id),
+          };
+        }
+        const begun = await client.beginStackActivation(input.generationId, input);
+        const held = custody.holdActivation(
+          begun.activation.id,
+          begun.leases.map(({ leaseId, leaseToken, expiresAt }) => ({
+            leaseId,
+            leaseToken,
+            expiresAt,
+          })),
+        );
+        const heldByLease = new Map(
+          held.credentials.map((credential) => [credential.leaseId, credential]),
+        );
+        const leases = begun.leases.map((lease) => {
+          const credential = heldByLease.get(lease.leaseId);
+          if (credential === undefined) {
+            throw new Error('Activation credential custody is incomplete.');
+          }
+          return {
+            component: lease.component,
+            endpoint: lease.endpoint,
+            leaseId: lease.leaseId,
+            port: lease.port,
+            bindingKind: lease.bindingKind,
+            docker: lease.docker,
+            credentialHandle: credential.credentialHandle,
+            leaseExpiresAt: credential.leaseExpiresAt,
+            custodyExpiresAt: credential.custodyExpiresAt,
+            maximumCustodyExpiresAt: credential.maximumCustodyExpiresAt,
+          };
+        });
+        const result = {
+          changed: true,
+          activation: begun.activation,
+          leases,
+          custodyExpiresAt: held.custodyExpiresAt,
+          maximumCustodyExpiresAt: held.maximumCustodyExpiresAt,
+          credentialCount: held.credentialCount,
+        };
+        rememberMutation(mutationResults, key, result);
+        return result;
+      }),
+  });
+  register(server, {
+    name: 'portreeve_activation_custody_extend',
+    title: 'Extend activation custody',
+    description:
+      'Extend this bridge custody for pending activation leases up to sixty minutes from acquisition.',
+    inputSchema: z
+      .object({
+        activationId: IdentifierSchema,
+        custodyMinutes: z.number().int().min(10).max(60),
+      })
+      .strict(),
+    outputDataSchema: CustodySummarySchema.extend({
+      changed: z.boolean(),
+      activationId: IdentifierSchema,
+    }).strict(),
+    annotations: MUTATION_ANNOTATIONS,
+    run: ({ activationId, custodyMinutes }) =>
+      daemonRead(client, async () =>
+        custody.extendActivation(activationId, custodyMinutes * 60_000),
+      ),
+  });
+  register(server, {
+    name: 'portreeve_activation_resolve',
+    title: 'Resolve activation endpoints',
+    description:
+      'Resolve one component own and dependency addresses within an activation.',
+    inputSchema: z
+      .object({
+        activationId: IdentifierSchema,
+        component: z.string().min(1).max(128),
+      })
+      .strict(),
+    outputDataSchema: StackResolutionSchema,
+    run: ({ activationId, component }) =>
+      daemonRead(client, () => client.resolveStackEndpoints(activationId, component)),
+  });
+  register(server, {
+    name: 'portreeve_activation_confirm_endpoint',
+    title: 'Confirm an activation endpoint',
+    description:
+      'Confirm process or Docker binding evidence using a credential held by this bridge.',
+    inputSchema: z.union([
+      z
+        .object({
+          activationId: IdentifierSchema,
+          credentialHandle: CredentialHandleSchema,
+          bindingKind: z.literal('process'),
+          rootPid: z.number().int().positive(),
+        })
+        .strict(),
+      z
+        .object({
+          activationId: IdentifierSchema,
+          credentialHandle: CredentialHandleSchema,
+          bindingKind: z.literal('docker'),
+          containerId: z.string().regex(/^[a-f0-9]{12,64}$/u),
+        })
+        .strict(),
+    ]),
+    outputDataSchema: ActivationMutationDataSchema,
+    annotations: MUTATION_ANNOTATIONS,
+    run: (input) =>
+      daemonRead(client, async () => {
+        const key = mutationKey('activation_confirm', input);
+        const replay = replayMutation(mutationResults, key);
+        if (replay !== undefined) return replay;
+        const credential = custody.get(input.credentialHandle, {
+          kind: 'activation',
+          activationId: input.activationId,
+        });
+        const evidence =
+          input.bindingKind === 'docker'
+            ? {
+                ...credential,
+                bindingKind: /** @type {const} */ ('docker'),
+                containerId: input.containerId,
+              }
+            : {
+                ...credential,
+                bindingKind: /** @type {const} */ ('process'),
+                rootPid: input.rootPid,
+              };
+        const activation = await client.confirmStackEndpoint(
+          input.activationId,
+          evidence,
+        );
+        retainPendingActivationCredentials(custody, activation);
+        const result = { changed: true, activation };
+        rememberMutation(mutationResults, key, result);
+        return result;
+      }),
+  });
+  register(server, {
+    name: 'portreeve_activation_skip_endpoint',
+    title: 'Skip an activation endpoint',
+    description: 'Skip one optional activation endpoint and erase its held credential.',
+    inputSchema: activationCredentialInputSchema(),
+    outputDataSchema: ActivationMutationDataSchema,
+    annotations: MUTATION_ANNOTATIONS,
+    run: (input) =>
+      settleActivationCredential({
+        client,
+        custody,
+        mutationResults,
+        input,
+        operation: 'activation_skip',
+        invoke: (credential) =>
+          client.skipStackEndpoint(input.activationId, credential),
+      }),
+  });
+  register(server, {
+    name: 'portreeve_activation_abandon_endpoint',
+    title: 'Abandon an activation endpoint',
+    description: 'Mark one activation endpoint failed and erase its held credential.',
+    inputSchema: activationCredentialInputSchema().extend({
+      reason: z.enum(['address-in-use', 'startup-error', 'client-cancelled']),
+    }),
+    outputDataSchema: ActivationMutationDataSchema,
+    annotations: MUTATION_ANNOTATIONS,
+    run: (input) =>
+      settleActivationCredential({
+        client,
+        custody,
+        mutationResults,
+        input,
+        operation: 'activation_abandon',
+        invoke: (credential) =>
+          client.abandonStackEndpoint(input.activationId, {
+            ...credential,
+            reason: input.reason,
+          }),
+      }),
+  });
+  register(server, {
+    name: 'portreeve_activation_reconcile',
+    title: 'Reconcile an activation',
+    description: 'Refresh durable activation state from current provider evidence.',
+    inputSchema: z.object({ activationId: IdentifierSchema }).strict(),
+    outputDataSchema: StackReconcileActivationResponseSchema,
+    annotations: MUTATION_ANNOTATIONS,
+    run: ({ activationId }) =>
+      daemonRead(client, () => client.reconcileStackActivation(activationId)),
+  });
+  register(server, {
+    name: 'portreeve_activation_end',
+    title: 'End an activation',
+    description: 'End an activation after all endpoint leases and providers settle.',
+    inputSchema: z.object({ activationId: IdentifierSchema }).strict(),
+    outputDataSchema: StackEndActivationResponseSchema,
+    annotations: MUTATION_ANNOTATIONS,
+    run: ({ activationId }) =>
+      daemonRead(client, () => client.endStackActivation(activationId)),
+  });
+}
+
+function activationCredentialInputSchema() {
+  return z
+    .object({
+      activationId: IdentifierSchema,
+      credentialHandle: CredentialHandleSchema,
+    })
+    .strict();
+}
+
+/**
+ * @param {{
+ *   client: PortreeveClient,
+ *   custody: CredentialCustody,
+ *   mutationResults: Map<string, unknown>,
+ *   input: {activationId: string, credentialHandle: string} & Record<string, unknown>,
+ *   operation: string,
+ *   invoke: (credential: {leaseId: string, leaseToken: string}) => Promise<import('zod').infer<typeof StackActivationSchema>>
+ * }} options
+ */
+function settleActivationCredential(options) {
+  return daemonRead(options.client, async () => {
+    const key = mutationKey(options.operation, options.input);
+    const replay = replayMutation(options.mutationResults, key);
+    if (replay !== undefined) return replay;
+    const credential = options.custody.get(options.input.credentialHandle, {
+      kind: 'activation',
+      activationId: options.input.activationId,
+    });
+    const activation = await options.invoke(credential);
+    retainPendingActivationCredentials(options.custody, activation);
+    const result = { changed: true, activation };
+    rememberMutation(options.mutationResults, key, result);
+    return result;
+  });
+}
+
+/** @param {CredentialCustody} custody @param {import('zod').infer<typeof StackActivationSchema>} activation */
+function retainPendingActivationCredentials(custody, activation) {
+  custody.retainActivationLeases(
+    activation.id,
+    activation.endpoints.flatMap(({ leaseId, state }) =>
+      state === 'leased' && leaseId !== null ? [leaseId] : [],
+    ),
+  );
+}
+
+/** @param {string} operation @param {unknown} input */
+function mutationKey(operation, input) {
+  return `${operation}:${JSON.stringify(sortJson(input))}`;
+}
+
+/** @param {unknown} value @returns {unknown} */
+function sortJson(value) {
+  if (Array.isArray(value)) return value.map(sortJson);
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, item]) => [key, sortJson(item)]),
+    );
+  }
+  return value;
+}
+
+/** @param {Map<string, unknown>} results @param {string} key */
+function replayMutation(results, key) {
+  const result = results.get(key);
+  return result !== undefined && result !== null && typeof result === 'object'
+    ? { ...result, changed: false }
+    : result;
+}
+
+/** @param {Map<string, unknown>} results @param {string} key @param {unknown} result */
+function rememberMutation(results, key, result) {
+  results.set(key, result);
+  if (results.size > 1_000) {
+    const oldest = results.keys().next().value;
+    if (oldest !== undefined) results.delete(oldest);
+  }
+}
+
+/** @param {McpServer} server @param {{name: string, title: string, description: string, inputSchema: z.ZodType, outputDataSchema: z.ZodType, annotations?: Readonly<{readOnlyHint: boolean, destructiveHint: boolean, idempotentHint: boolean, openWorldHint: boolean}>, run: (input: any) => Promise<any>}} definition */
 function register(server, definition) {
   const outputSchema = toolResultSchema(definition.outputDataSchema);
   server.registerTool(
@@ -343,7 +912,7 @@ function register(server, definition) {
       description: definition.description,
       inputSchema: definition.inputSchema,
       outputSchema,
-      annotations: READ_ANNOTATIONS,
+      annotations: definition.annotations ?? READ_ANNOTATIONS,
     },
     async (input) => {
       const output = outputSchema.parse(await definition.run(input));
@@ -419,6 +988,14 @@ function failure(code, message, retryable, details = {}) {
 
 /** @param {unknown} error */
 function errorBody(error) {
+  if (error instanceof CredentialCustodyError) {
+    return {
+      code: `portreeve_${error.code}`,
+      message: error.message,
+      retryable: false,
+      details: {},
+    };
+  }
   if (error instanceof PortreeveClientError) {
     return {
       code:
