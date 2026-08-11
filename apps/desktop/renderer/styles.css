@@ -1203,6 +1203,40 @@ tbody tr:last-child td {
   color: var(--pr-color-text-muted);
   line-height: 1.55;
 }
+.guide-client-bridge {
+  border: 1px solid var(--pr-color-border);
+  border-radius: 18px;
+  background: var(--pr-color-surface-subtle);
+  padding: 22px;
+}
+.guide-client-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.guide-client-options article {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  border: 1px solid var(--pr-color-border);
+  border-radius: 12px;
+  background: var(--pr-color-surface);
+  padding: 16px;
+}
+.guide-client-options h4 {
+  margin: 0 0 7px;
+}
+.guide-client-options p {
+  flex: 1;
+  color: var(--pr-color-text-muted);
+  line-height: 1.45;
+}
+.guide-client-options small {
+  margin-top: 10px;
+  color: var(--pr-color-text-muted);
+  overflow-wrap: anywhere;
+}
 .guide-paths {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1580,8 +1614,7 @@ tbody tr:last-child td {
   overflow-x: auto;
   padding-bottom: 5px;
 }
-.guide-architecture .guide-sequence-canvas,
-.guide-sandbox-sequence .guide-sequence-canvas {
+.guide-architecture .guide-sequence-canvas {
   min-width: 820px;
 }
 .guide-sequence-divider {
@@ -1628,11 +1661,6 @@ tbody tr:last-child td {
 }
 .note-runtime > span {
   grid-column: 3 / 6;
-  border-left-color: var(--pr-color-accent);
-  background: var(--pr-color-accent-soft);
-}
-.note-sandbox > span {
-  grid-column: 4 / 6;
   border-left-color: var(--pr-color-accent);
   background: var(--pr-color-accent-soft);
 }
@@ -1740,52 +1768,6 @@ tbody tr:last-child td {
 }
 .guide-object-model figcaption {
   margin-top: 12px;
-  text-align: center;
-}
-.guide-sandbox {
-  margin-top: 22px;
-  border-top: 1px solid var(--pr-color-border);
-  padding-top: 22px;
-}
-.guide-sandbox .guide-section-heading {
-  max-width: 900px;
-}
-.guide-sandbox .guide-section-heading h4 {
-  margin: 0 0 8px;
-  font-family: Georgia, serif;
-  font-size: 22px;
-}
-.guide-sandbox-sequence {
-  margin: 0;
-  border: 1px solid var(--pr-color-border);
-  border-radius: 16px;
-  background: var(--pr-color-surface);
-  box-shadow: 0 8px 28px var(--pr-color-shadow-soft);
-  padding: 16px 20px 18px;
-}
-.guide-trust-bands {
-  display: grid;
-  grid-template-columns: 3fr 2fr;
-  min-width: 820px;
-  margin-bottom: 8px;
-  color: var(--pr-color-text-muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-align: center;
-  text-transform: uppercase;
-}
-.guide-trust-bands span:first-child {
-  border-bottom: 3px solid var(--pr-color-primary);
-}
-.guide-trust-bands span:last-child {
-  border-bottom: 3px solid var(--pr-color-accent);
-}
-.guide-sandbox-sequence figcaption {
-  margin-top: 10px;
-  color: var(--pr-color-text-muted);
-  font-size: 13px;
-  line-height: 1.5;
   text-align: center;
 }
 .guide-callout {
@@ -1897,6 +1879,9 @@ dialog form > input {
   .guide-paths {
     grid-template-columns: 1fr;
   }
+  .guide-client-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .guide-actor-legend header,
   .guide-actor-legend-list,
   .guide-project-integration-advantage {
@@ -1933,6 +1918,9 @@ dialog form > input {
     grid-template-columns: 1fr;
   }
   .guide-object-leases {
+    grid-template-columns: 1fr;
+  }
+  .guide-client-options {
     grid-template-columns: 1fr;
   }
 }

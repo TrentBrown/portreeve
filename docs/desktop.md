@@ -52,8 +52,8 @@ fresh provider evidence through the official client. It supports:
 - preparing or reusing one complete allocation generation;
 - inspecting components, endpoints, dependencies, placements, host addresses,
   Docker-network addresses, and provider evidence;
-- copying individual addresses and previewing a component-scoped sandbox discovery
-  document for a launcher-supplied gateway;
+- copying individual addresses and previewing a component-scoped endpoint document for
+  a launcher-supplied gateway;
 - explicitly reconciling provider evidence after launcher loss;
 - requesting evidence-gated activation ending after the project launcher stops its
   providers;
@@ -131,6 +131,21 @@ See [Project launchers](launchers.md) for the file schema, environment contract,
 command-only and verified semantics, CLI workflow, degraded recovery, concurrency,
 retention, and platform boundaries.
 
+## MCP and CLI
+
+MCP and CLI are peer primary tabs after Launchers. Each renders the same static,
+version-bound guidance and complete reference as the repository's [MCP guide](mcp.md)
+and [CLI guide](cli-contract.md). Search, family and safety filters, accessible result
+counts, disclosures, stable anchors, and copy controls remain entirely local and work
+without a running daemon.
+
+Each tab keeps **This installation** evidence separate from its bundled guide. MCP
+shows the bundled serve command, generated host configuration, and current compatibility
+evidence. CLI distinguishes the bundled, managed, and running versions and locations
+and offers `portreeve status --json` as a safe first diagnostic. These facts come
+through Desktop application services; rendering the guides never invokes the CLI,
+parses Markdown, or fetches documentation from a network.
+
 ## Guide
 
 Guide is the rightmost primary tab. It is a static, offline orientation surface that
@@ -144,6 +159,10 @@ uses the same unsaved-editor protections as primary-tab navigation.
 The identity section also describes the motivating concurrent-development case: several
 agents running independent copies of the same stack from different Git worktrees on one
 machine, where shared default ports would otherwise collide frequently.
+
+A compact **Choose a client** bridge connects Desktop, MCP, CLI, and JavaScript use
+cases without duplicating their full guides. Its buttons open the relevant primary
+destination or the existing project-integration explanation.
 
 The Guide presents three integration paths:
 
@@ -175,9 +194,10 @@ Good path includes the additional shell-command-to-service handoff, while subdue
 identity colors keep Desktop, generated and project tooling, shell commands, services, and PortReeve
 visually distinct. One shared actor legend beneath the comparison defines the union of
 those identities, reusing the exact labeled actor pills from the diagrams rather than a
-separate color key. Native expandable
-sections cover host and Docker evidence, sandbox discovery, shared interfaces, trust
-boundaries, and deliberate non-goals. The Guide adds no live refresh source, IPC
+separate color key. Native expandable sections cover host and Docker evidence, shared
+interfaces, trust boundaries, and deliberate non-goals. They state that ordinary
+Docker-backed endpoint evidence is supported while Docker Sandbox orchestration and
+integration are not. The Guide adds no live refresh source, IPC
 capability, external content, or runtime diagram dependency.
 
 The shared actor key explicitly explains that a generated launcher can use the same
@@ -186,13 +206,6 @@ removes the extra adapter boundary: project-owned tooling requests leases, start
 providers, and calls Confirm only after binding, supplying the live process or container
 identity. PortReeve then verifies fresh ownership evidence. This is deliberately distinct
 from an application readiness or successful-request check, which remains project-owned.
-
-A visible sandbox-boundary sequence explains why isolated agent environments do not
-remove the need for PortReeve. Containers may reuse internal ports, but browser-visible
-and host-testable publications still share the host namespace. It follows the trusted
-host launcher through allocation, loopback publication, Docker evidence, reduced
-snapshot creation, read-only mounting, and browser access; the PortReeve control socket
-and lease credentials never enter the sandbox.
 
 ## Trust and data boundary
 

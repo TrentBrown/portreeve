@@ -63,8 +63,8 @@ verified activation.
    Resolution describes network addresses, not startup readiness. The launcher decides
    when the API is healthy enough to start the website.
 
-5. For a Docker or Codex sandbox, the host launcher renders a separate read-only
-   discovery file instead of mounting the PortReeve socket:
+5. For a consumer that cannot use the ordinary loopback address, the trusted launcher
+   renders a separate read-only endpoint file instead of exposing the PortReeve socket:
 
    ```sh
    portreeve stacks snapshot ACTIVATION_ID \
@@ -73,8 +73,9 @@ verified activation.
      --file .portreeve/runtime/website-endpoints.json
    ```
 
-   Linux launchers supply their configured host-gateway name or address. Sandboxed code
-   reads the mounted file through `readEndpointSnapshot` or `PORTREEVE_ENDPOINTS_FILE`.
+   Linux launchers supply their configured host-gateway name or address. The consumer
+   reads the distributed file through `readEndpointSnapshot` or
+   `PORTREEVE_ENDPOINTS_FILE`. This generic snapshot is not Docker Sandbox integration.
 
 6. On shutdown, the launcher stops the website process and API container first, then
    requests `stacks end`. After a launcher crash, its replacement runs
@@ -91,6 +92,6 @@ bun run stacks:verify
 
 That harness creates a uniquely named disposable container and process listener and
 drives this complete lifecycle through the official JavaScript client: apply, prepare,
-begin, both confirmations, status, resolution, sandbox snapshot write/read, live end
+begin, both confirmations, status, resolution, endpoint snapshot write/read, live end
 refusal, reconciliation, end, missing-stack-root prune, and retained-history inspection.
 It removes every process, container, stack root, and PortReeve data path it creates.

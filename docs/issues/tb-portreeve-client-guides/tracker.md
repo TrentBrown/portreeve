@@ -48,7 +48,7 @@
 ### PR #52 - Desktop MCP and CLI client guides
 
 - **PR:** [#52](https://github.com/TrentBrown/portreeve/pull/52)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P3 / I-3: peer Desktop destinations, static guide rendering,
   searchable complete references, direct installation evidence, and packaged
   offline-safe delivery.

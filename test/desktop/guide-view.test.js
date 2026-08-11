@@ -112,19 +112,20 @@ test('ships the Guide as static semantic architecture and integration guidance',
     'Resolve',
     'Confirm',
     'Ownership is not readiness',
-    'Sandboxes move the conflict boundary—not the need for PortReeve',
-    'Dr. Sandbox',
-    'shared host-port namespace',
-    'the control socket and lease credentials do not',
+    'Choose a client',
+    'Four peers, one PortReeve authority',
+    'Open MCP guide',
+    'Open CLI guide',
+    'Complete API guidance:',
     'Claims, preparation, and leases',
     'Generations, activations, resolve, and confirm',
     'Process and Docker evidence',
-    'Sandbox discovery and trust boundaries',
     'What PortReeve deliberately does not do',
+    'provide Docker Sandbox orchestration or integration',
   ]) {
     expect(html).toContain(phrase);
   }
-  expect(html.match(/<details>/g)).toHaveLength(6);
+  expect(html.match(/<details>/g)).toHaveLength(5);
   expect(html).toContain('<figure class="guide-architecture guide-sequence-five">');
   expect(html).toContain('<figcaption>');
   expect(html.match(/class="guide-mini-sequence/g)).toHaveLength(3);
@@ -164,13 +165,19 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(html).toContain('class="guide-object-generation"');
   expect(html).toContain('class="guide-object-activation"');
   expect(html).toContain('class="guide-object-leases"');
-  expect(html).toContain('aria-label="Sandbox publication and discovery sequence"');
-  expect(html).toContain('Addresses enter the');
+  expect(html).toContain('data-guide-view="overview"');
+  expect(html).toContain('data-guide-view="mcp"');
+  expect(html).toContain('data-guide-view="cli"');
+  expect(html).toContain('data-guide-anchor="guide-project-integration"');
+  expect(html).not.toContain('Dr. Sandbox');
+  expect(html).not.toContain('Sandbox publication and discovery sequence');
   expect(html).not.toMatch(/<script[^>]+(?:mermaid|https?:)/i);
   expect(html).not.toMatch(/<(?:iframe|object|embed)\b/i);
   expect(renderer).not.toMatch(/fetch\(|WebSocket|EventSource/);
   expect(renderer).toContain('void requestView(tab, view)');
   expect(renderer).toContain("await requestView(guideTab, 'guide')");
+  expect(renderer).toContain("querySelectorAll('[data-guide-view]')");
+  expect(renderer).toContain("querySelectorAll('[data-guide-anchor]')");
   expect(renderer).toContain(
     "requiredElement('guide-title').focus({ preventScroll: true })",
   );
@@ -191,7 +198,7 @@ test('ships the Guide as static semantic architecture and integration guidance',
   expect(css).toContain('.guide-project-integration-advantage');
   expect(css).toContain('align-items: baseline');
   expect(css).toContain('@media (max-width: 900px)');
-  expect(css).toContain('.guide-trust-bands');
+  expect(css).toContain('.guide-client-options');
   expect(css).toMatch(
     /\.guide-identity-mark img\s*{[^}]*width:\s*220px;[^}]*height:\s*220px;/,
   );

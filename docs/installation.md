@@ -66,9 +66,9 @@ creates one uniquely named disposable Docker container and one temporary process
 listener, drives a mixed stack through the official JavaScript client, and removes its
 container, worktree, PortReeve home, and runtime files in `finally` cleanup. It pulls
 `node:22.17.0-bookworm` when that default image is absent. Override the trusted Docker
-CLI, image, or launcher-rendered sandbox gateway with
+CLI, image, or launcher-supplied endpoint gateway with
 `PORTREEVE_DOCKER_EXECUTABLE`, `PORTREEVE_DOCKER_SMOKE_IMAGE`, or
-`PORTREEVE_SANDBOX_GATEWAY`.
+`PORTREEVE_SANDBOX_GATEWAY` (the retained machine-level override name).
 
 `release:verify -- --native` verifies every artifact's checksum and executable
 header, validates the formula syntax, and actually runs the artifact matching

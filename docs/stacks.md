@@ -206,7 +206,7 @@ atomically removes the inactive definition, generations, activations, and associ
 endpoint claims while retaining claim history and a final `stack.pruned` identity and
 summary event.
 
-## Resolve dependencies and publish sandbox discovery
+## Resolve dependencies and publish endpoint snapshots
 
 Dependencies are address references, not startup-order edges. PortReeve resolves each
 consumer from one activation generation and returns two non-overlapping maps: its own
@@ -224,7 +224,7 @@ fact exists only when the checked-in provider component declares a Docker servic
 that endpoint declares a fixed container port. These are address facts, not application
 health or Docker ownership evidence.
 
-A trusted launcher may render and atomically write a sandbox-only document:
+A trusted launcher may render and atomically write a reduced endpoint document:
 
 ```sh
 portreeve stacks snapshot ACTIVATION_ID \
@@ -239,6 +239,7 @@ owned listener. The strict document contains only revision, generation, activati
 consumer, and scoped TCP addresses. It excludes stack-root paths, claims, lease tokens,
 runs, process and Docker identifiers, the daemon socket, and mutation authority.
 
-Mount the file read-only instead of exposing PortReeve's socket. The official JavaScript
-reader accepts an explicit path or `PORTREEVE_ENDPOINTS_FILE` and can reject a document
-whose expected generation or activation no longer matches.
+Distribute the file read-only instead of exposing PortReeve's socket. The official
+JavaScript reader accepts an explicit path or `PORTREEVE_ENDPOINTS_FILE` and can reject
+a document whose expected generation or activation no longer matches. This generic
+snapshot capability does not provide Docker Sandbox orchestration or integration.
