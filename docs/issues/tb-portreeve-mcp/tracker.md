@@ -79,7 +79,7 @@ Append PR boundary entries here.
 ### PR #47 - Complete the MCP coordination catalog
 
 - **PR:** [#47](https://github.com/TrentBrown/portreeve/pull/47)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P5 / I-5: redacted Docker-sandbox snapshots, launcher-operation
   begin/renew/complete/get/list with bridge-local custody, and complete catalog
   and excluded-authority auditing.

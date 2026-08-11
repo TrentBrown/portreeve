@@ -53,6 +53,7 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
     'apps/desktop/main/lifecycle-controller.js',
     'apps/desktop/main/inventory-adapter.js',
     'apps/desktop/main/launcher-adapter.js',
+    'apps/desktop/main/mcp-setup-adapter.js',
     'apps/desktop/main/stack-adapter.js',
     'apps/desktop/main/stack-document.js',
     'apps/desktop/main/update.js',
@@ -73,6 +74,7 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
   expect(source).not.toContain('openDownloadPage: async (url) =>');
   expect(source.match(/clipboard\.writeText/g)).toHaveLength(1);
   expect(source).not.toContain('navigator.clipboard');
+  expect(source).not.toMatch(/\.codex\/config\.toml|\.claude\.json|mcpServers.*write/i);
 });
 
 test('constructs one fixed in-process lifecycle controller without a CLI subprocess path', async () => {

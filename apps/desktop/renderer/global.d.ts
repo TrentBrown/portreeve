@@ -51,6 +51,11 @@ interface Window {
     getLauncherOutput(sessionId: string): Promise<any>;
     saveLauncherOutput(sessionId: string): Promise<any>;
     copyText(text: string): Promise<any>;
+    generateMcpSetup(
+      host: 'generic' | 'codex' | 'claude-code',
+      portable: boolean,
+      label: string,
+    ): Promise<any>;
     subscribe(callback: (snapshot: any) => void): () => void;
     subscribeLauncherOutput(callback: (event: any) => void): () => void;
     subscribeLauncherSessions(callback: (session: any) => void): () => void;

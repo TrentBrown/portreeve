@@ -68,6 +68,16 @@ Restart, and Status commands. Desktop and CLI share the same exact-revision trus
 lifecycle engine. Begin with command-only integration, then adopt verified activation
 when the project launcher is ready to prove ownership and cleanup.
 
+Connect an MCP-capable agent host without changing its settings automatically:
+
+```sh
+portreeve mcp setup --host codex
+portreeve mcp setup --host claude-code
+```
+
+Each host starts its own stdio bridge, while every bridge uses the single PortReeve
+daemon. The Desktop **MCP** tab generates and copies the same setup previews.
+
 ## Documentation
 
 - [Installation and releases](docs/installation.md)

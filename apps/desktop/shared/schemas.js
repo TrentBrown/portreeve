@@ -9,6 +9,7 @@ import {
 } from '../../../src/protocol/schemas.js';
 import { LauncherDefinitionSchema } from '../../../src/launcher/definition.js';
 import { LauncherEnvironmentMappingSchema } from '../../../src/launcher/definition.js';
+import { McpSetupRequestSchema, McpSetupResultSchema } from '../../../src/mcp/setup.js';
 
 const TimestampSchema = z.iso.datetime({ offset: true });
 const SemanticVersionSchema = z
@@ -196,6 +197,9 @@ export const DesktopCopyTextRequestSchema = z
 export const DesktopCopyTextResultSchema = z
   .object({ schemaVersion: z.literal(1), copied: z.literal(true) })
   .strict();
+
+export const DesktopMcpSetupRequestSchema = McpSetupRequestSchema;
+export const DesktopMcpSetupResultSchema = McpSetupResultSchema;
 
 const DesktopLauncherFileStateSchema = z.enum(['missing', 'valid', 'invalid']);
 const DesktopLauncherOperationSchema = z.enum(['start', 'stop', 'restart', 'status']);
@@ -1024,4 +1028,5 @@ export const IPC_CHANNELS = Object.freeze({
   lifecycleActivityChanged: 'portreeve:desktop:lifecycle-activity-changed',
   applicationCloseBlocked: 'portreeve:desktop:application-close-blocked',
   copyText: 'portreeve:desktop:copy-text',
+  generateMcpSetup: 'portreeve:desktop:generate-mcp-setup',
 });

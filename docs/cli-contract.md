@@ -37,6 +37,7 @@ output.
 | Command                                            | Success document                                                            |
 | -------------------------------------------------- | --------------------------------------------------------------------------- |
 | `status`                                           | `{ "version": 1, "status": { ... } }`                                       |
+| `mcp setup`                                        | `{ "version": 1, "setup": { ... } }`                                        |
 | `install` / `uninstall`                            | `{ "version": 1, "result": { ... } }`                                       |
 | `start` / `stop` / `stop-manual` / `restart`       | `{ "version": 1, "result": { ... } }`                                       |
 | `purge --dry-run`                                  | `{ "version": 1, "preview": { ... } }`                                      |
@@ -69,6 +70,13 @@ output.
 | `config set`                                       | `{ "version": 1, "settings": { ... } }`                                     |
 | `history`                                          | `{ "version": 1, "events": [ ... ] }`                                       |
 | `logs`                                             | `{ "version": 1, "entries": [ ... ] }`                                      |
+
+`mcp setup --host generic|codex|claude-code` is a local pure generation command. It
+does not require a running daemon and never reads or writes host settings. The returned
+setup includes the selected format, exact command and arguments, optional diagnostic
+label, configuration text, any equivalent host registration command, and explanatory
+notes. It defaults to the managed executable path; `--portable` selects bare
+`portreeve` and therefore depends on the host's `PATH`.
 
 ## Stack definitions
 
