@@ -110,7 +110,10 @@ Version 1 capabilities are:
 `force-after-grace`.
 
 The response contains `claimId`, `leaseId`, a one-time `leaseToken`, `port`,
-`expiresAt`, and `reusedAssignment`. The client must bind before expiration.
+`expiresAt`, and `reusedAssignment`. The client must bind before expiration. A trusted
+coordinator that still owns the token may extend a pending standalone lease with
+`POST /v1/leases/{leaseId}/renew`; the response contains the lease ID and new
+expiration. Stack activation leases use the activation-scoped batch renewal endpoint.
 
 `component` and `endpoint` are the canonical identity fields. An omitted `endpoint`
 means `default`. Existing callers may continue sending `service` as an alias for

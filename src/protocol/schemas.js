@@ -805,6 +805,17 @@ export const AcquireResponseSchema = z.object({
   reusedAssignment: z.boolean(),
 });
 
+export const RenewLeaseRequestSchema = z.object({
+  client: ClientCompatibilitySchema,
+  leaseId: IdentifierSchema,
+  leaseToken: LeaseTokenSchema,
+});
+
+export const RenewLeaseResponseSchema = z.object({
+  leaseId: IdentifierSchema,
+  expiresAt: TimestampSchema,
+});
+
 export const ConfirmRequestSchema = z.object({
   client: ClientCompatibilitySchema,
   leaseId: IdentifierSchema,

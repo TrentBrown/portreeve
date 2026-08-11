@@ -23,7 +23,7 @@ without exposing MCP transport policy to the daemon.
 
 ## I-2 - Deliver stdio bridge diagnostics and read tools
 
-- **Status:** in-review
+- **Status:** complete
 - **Estimate:** 2.5d
 - **Plan steps:** P2
 - **Rubric criteria:** R1, R2, R3, R7
@@ -36,7 +36,7 @@ bounded global inspection surface.
 
 ## I-3 - Deliver credential custody and coordination lifecycle
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 3d
 - **Plan steps:** P3
 - **Rubric criteria:** R4, R5

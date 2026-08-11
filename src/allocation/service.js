@@ -8,6 +8,7 @@ import {
   AcquireRequestSchema,
   AbandonRequestSchema,
   ConfirmRequestSchema,
+  RenewLeaseRequestSchema,
   ReleaseRequestSchema,
   negotiateCompatibility,
 } from '../protocol/schemas.js';
@@ -192,6 +193,26 @@ export class AllocationService {
     const request = ConfirmRequestSchema.parse(input);
     assertCompatible(request.client);
     return this.#confirmProcess(request, null);
+  }
+
+  /** @param {unknown} input */
+  renew(input) {
+    const request = RenewLeaseRequestSchema.parse(input);
+    assertCompatible(request.client);
+    const now = this.now();
+    this.registry.expirePendingLeases(now);
+    const expiresAt = addMilliseconds(
+      now,
+      this.registry.getSettings().leaseTtlMilliseconds,
+    ).toISOString();
+    return this.registry.renewPendingLease(
+      {
+        leaseId: request.leaseId,
+        leaseToken: request.leaseToken,
+        expiresAt,
+      },
+      now,
+    );
   }
 
   /**
