@@ -1,8 +1,10 @@
 # Decision Scratchpad - tb-portreeve-mcp
 
-## [7] Generate setup previews without third-party writes
+## [8] Generate setup previews without third-party writes
 
-**Status:** unreviewed
+[x] **Promote**
+
+**Confidence:** HIGH
 
 **Date:** 2026-08-11
 
