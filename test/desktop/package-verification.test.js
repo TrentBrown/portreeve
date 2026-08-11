@@ -48,7 +48,9 @@ test('inspects packaged identity, direct-controller markers, and retired adapter
     preloadBundle:
       'portreeve:desktop:generate-mcp-setup generateMcpSetup requireMcpSetup',
     rendererDocument:
-      '<button data-view="mcp">MCP</button><form id="mcp-setup-form"><pre id="mcp-configuration"></pre></form>',
+      '<button data-view="mcp">MCP</button><button data-view="cli">CLI</button><form id="mcp-setup-form"><pre id="mcp-configuration"></pre></form><div id="mcp-guide-content"></div><div id="cli-guide-content"></div>',
+    guideBundleDocument:
+      'export const CLIENT_GUIDES_ATTESTATION = Object.freeze({ schemaVersion: 1, generatedForVersion: "0.1.0", cliCommands: 49, mcpTools: 51 }); export default {};',
     controllerVersion: '0.1.0',
     artifactVersion: '0.1.0',
   };
@@ -65,6 +67,13 @@ test('inspects packaged identity, direct-controller markers, and retired adapter
       artifactVersion: '0.2.0',
     }),
   ).toThrow('identity attestation is invalid');
+  expect(() =>
+    assertPackagedDesktopContents({
+      ...valid,
+      guideBundleDocument:
+        'export const CLIENT_GUIDES_ATTESTATION = Object.freeze({ schemaVersion: 1, generatedForVersion: "0.0.9", cliCommands: 0, mcpTools: 0 }); export default {};',
+    }),
+  ).toThrow('client guide bundle is invalid or stale');
 });
 
 test('runs the direct-controller contract in the Bun test runtime', async () => {

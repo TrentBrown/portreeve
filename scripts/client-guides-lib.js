@@ -21,8 +21,7 @@ const GUIDE_SOURCES = Object.freeze({
     marker: 'CLI-COMMANDS',
   }),
 });
-export const CLIENT_GUIDES_BUNDLE =
-  'apps/desktop/renderer/generated/client-guides.json';
+export const CLIENT_GUIDES_BUNDLE = 'apps/desktop/renderer/generated/client-guides.js';
 
 /** @param {{root: string, write?: boolean}} options */
 export async function generateClientGuides({ root, write = false }) {
@@ -66,27 +65,24 @@ export async function generateClientGuides({ root, write = false }) {
     outputs.push({ path: source.sourcePath, expected: markdown, actual: current });
   }
 
-  const bundle = await format(
-    JSON.stringify(
-      {
-        schemaVersion: 1,
-        generatedForVersion: PORTREEVE_VERSION,
-        guides: Object.fromEntries(
-          Object.entries(guides).map(([id, guide]) => [
-            id,
-            {
-              sourcePath: guide.sourcePath,
-              document: guide.document,
-              reference: guide.reference,
-            },
-          ]),
-        ),
-        searchIndex: buildSearchIndex({ cliReference, mcpReference }),
-      },
-      null,
-      2,
+  const bundleData = {
+    schemaVersion: 1,
+    generatedForVersion: PORTREEVE_VERSION,
+    guides: Object.fromEntries(
+      Object.entries(guides).map(([id, guide]) => [
+        id,
+        {
+          sourcePath: guide.sourcePath,
+          document: guide.document,
+          reference: guide.reference,
+        },
+      ]),
     ),
-    { parser: 'json', printWidth: 88 },
+    searchIndex: buildSearchIndex({ cliReference, mcpReference }),
+  };
+  const bundle = await format(
+    `export const CLIENT_GUIDES_ATTESTATION = Object.freeze(${JSON.stringify({ schemaVersion: 1, generatedForVersion: PORTREEVE_VERSION, cliCommands: cliReference.length, mcpTools: mcpReference.length }, null, 2)});\nexport default ${JSON.stringify(bundleData, null, 2)};\n`,
+    { parser: 'babel', printWidth: 88 },
   );
   const bundlePath = join(workspaceRoot, CLIENT_GUIDES_BUNDLE);
   const currentBundle = await readOptional(bundlePath);
@@ -108,6 +104,7 @@ export async function generateClientGuides({ root, write = false }) {
     cliCommands: cliReference.length,
     mcpTools: mcpReference.length,
     bundle,
+    bundleData,
   };
 }
 

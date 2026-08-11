@@ -15,7 +15,7 @@
 }
 body {
   margin: 0;
-  min-width: 720px;
+  min-width: 420px;
   background: var(--pr-color-canvas);
   color: var(--pr-color-text);
 }
@@ -129,7 +129,10 @@ button.danger {
 }
 nav {
   display: flex;
+  flex-wrap: nowrap;
   gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
   padding: 0 36px;
   border-bottom: 1px solid var(--pr-color-border);
 }
@@ -210,7 +213,7 @@ main {
 }
 
 .mcp-status-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 18px 0;
 }
 .mcp-status-grid small {
@@ -273,9 +276,198 @@ main {
   text-decoration: underline;
 }
 
+.client-destination,
+.mcp-setup {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+.client-guide {
+  margin-top: 32px;
+}
+.client-guide-section {
+  scroll-margin-top: 20px;
+  padding: 28px 0;
+  border-top: 1px solid var(--pr-color-border);
+}
+.client-guide-section > :last-child {
+  margin-bottom: 0;
+}
+.client-guide-section h2,
+.client-guide-section h3,
+.client-guide-section h4 {
+  scroll-margin-top: 20px;
+}
+.client-guide-section h3 {
+  margin-top: 28px;
+}
+.client-guide-section p,
+.client-guide-section li {
+  max-width: 82ch;
+}
+.client-guide-callout {
+  border-left: 4px solid var(--pr-color-primary);
+  border-radius: 0 8px 8px 0;
+  background: var(--pr-color-accent-soft);
+  padding: 12px 16px;
+}
+.client-guide-table {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 16px 0 24px;
+}
+.client-guide-table table {
+  min-width: 620px;
+}
+.client-guide-code {
+  position: relative;
+  margin: 14px 0 22px;
+}
+.client-guide-code button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.client-guide-code pre {
+  max-height: 460px;
+  overflow: auto;
+  border: 1px solid var(--pr-color-border);
+  border-radius: 10px;
+  background: var(--pr-color-canvas);
+  padding: 44px 16px 16px;
+  white-space: pre;
+}
+.client-guide-repository-link {
+  border-bottom: 1px dotted var(--pr-color-border-strong);
+}
+.client-reference-controls {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns:
+    minmax(220px, 1fr) minmax(150px, 0.4fr) minmax(170px, 0.5fr)
+    auto;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+  padding: 12px;
+}
+.client-reference-controls input,
+.client-reference-controls select {
+  min-width: 0;
+  width: 100%;
+}
+.client-reference-count {
+  margin: 0;
+  color: var(--pr-color-text-muted);
+  white-space: nowrap;
+}
+.client-reference-results {
+  display: grid;
+  gap: 10px;
+}
+.client-reference-entry {
+  scroll-margin-top: 86px;
+  border: 1px solid var(--pr-color-border);
+  border-radius: 12px;
+  background: var(--pr-color-surface);
+}
+.client-reference-entry > summary {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.55fr) minmax(260px, 1fr) auto;
+  align-items: baseline;
+  gap: 14px;
+  padding: 15px;
+  cursor: pointer;
+}
+.client-reference-entry > summary::marker {
+  color: var(--pr-color-primary);
+}
+.client-reference-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.client-reference-body {
+  border-top: 1px solid var(--pr-color-border);
+  padding: 0 16px 16px;
+}
+.client-reference-body .client-guide-code:first-child {
+  margin-top: 16px;
+}
+.client-installation {
+  margin: 18px 0 30px;
+}
+.client-installation-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.client-installation-grid .status-card h4 {
+  margin: 0 0 8px;
+  color: var(--pr-color-text-muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.client-installation-grid .status-card small {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+.client-diagnostic-command {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 14px;
+  padding: 16px 18px;
+}
+.client-diagnostic-command h4 {
+  margin: 0 0 5px;
+}
+
 @media (max-width: 900px) {
   .mcp-setup-grid {
     grid-template-columns: 1fr;
+  }
+  .mcp-status-grid,
+  .client-installation-grid {
+    grid-template-columns: 1fr;
+  }
+  .client-reference-controls {
+    position: static;
+    grid-template-columns: 1fr 1fr;
+  }
+  .client-reference-count {
+    white-space: normal;
+  }
+  .client-reference-entry > summary {
+    grid-template-columns: 1fr;
+  }
+  .client-reference-badges {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 620px) {
+  .app-header {
+    padding-inline: 18px;
+  }
+  nav {
+    padding-inline: 18px;
+  }
+  main {
+    padding-inline: 18px;
+  }
+  .client-reference-controls {
+    grid-template-columns: 1fr;
+  }
+  .client-diagnostic-command {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 .overview-grid {

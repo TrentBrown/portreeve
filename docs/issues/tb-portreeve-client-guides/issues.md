@@ -22,7 +22,7 @@ and deterministic freshness and coverage gates.
 
 ## I-2 - Author the shared MCP and CLI guides
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R1, R2, R5, R7
@@ -35,12 +35,12 @@ the stable repository paths, then regenerate shared artifacts.
 
 ## I-3 - Deliver Desktop client-guide experiences
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 3d
 - **Plan steps:** P3
 - **Rubric criteria:** R3, R4, R8
 - **Depends on:** I-1, I-2
-- **PR:** -
+- **PR:** [#52](https://github.com/TrentBrown/portreeve/pull/52)
 
 Add the CLI peer tab, expand MCP, render the safe static bundle, implement local
 reference navigation and accessibility, and show direct-service installation

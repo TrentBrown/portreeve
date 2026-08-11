@@ -69,6 +69,7 @@ test('reduces lifecycle and inventory evidence before it reaches the renderer', 
   expect(snapshot.lifecycle?.installation.managedLocation).toBe(
     '/Users/example/.local/portreeve/bin/portreeve',
   );
+  expect(snapshot.artifact.bundledLocation).toBe('/verified/bundled/portreeve');
 });
 
 test('reduces stack definitions, activation evidence, and addresses without credentials', () => {

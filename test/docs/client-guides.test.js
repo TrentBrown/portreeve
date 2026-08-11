@@ -128,16 +128,17 @@ describe('client guide contract generation', () => {
     const generated = await generateClientGuides({ root: process.cwd() });
     expect(generated.changed).toEqual([]);
     expect(generated).toMatchObject({ cliCommands: 49, mcpTools: 51 });
-    const bundle = JSON.parse(
-      await readFile(join(process.cwd(), CLIENT_GUIDES_BUNDLE), 'utf8'),
-    );
+    const bundle = generated.bundleData;
     expect(bundle).toMatchObject({
       schemaVersion: 1,
       generatedForVersion: PORTREEVE_VERSION,
     });
-    expect(bundle.guides.cli.reference).toHaveLength(49);
-    expect(bundle.guides.mcp.reference).toHaveLength(51);
+    expect(bundle.guides.cli?.reference).toHaveLength(49);
+    expect(bundle.guides.mcp?.reference).toHaveLength(51);
     expect(bundle.searchIndex).toHaveLength(100);
+    expect(await readFile(join(process.cwd(), CLIENT_GUIDES_BUNDLE), 'utf8')).toStartWith(
+      'export const CLIENT_GUIDES_ATTESTATION',
+    );
   });
 
   test('ships the approved authored workflows, safety boundaries, and platform contract', async () => {

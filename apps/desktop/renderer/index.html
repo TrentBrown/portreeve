@@ -31,6 +31,7 @@
       <button class="tab" type="button" data-view="stacks">Stacks</button>
       <button class="tab" type="button" data-view="launcher">Launchers</button>
       <button class="tab" type="button" data-view="mcp">MCP</button>
+      <button class="tab" type="button" data-view="cli">CLI</button>
       <button class="tab" type="button" data-view="guide">Guide</button>
     </nav>
     <main>
@@ -228,7 +229,13 @@
             </p>
           </div>
         </div>
+        <h3>This installation</h3>
         <div class="mcp-status-grid cards" aria-label="MCP compatibility">
+          <article class="status-card">
+            <h3>Bundled contract</h3>
+            <p id="mcp-bundled-version">Unavailable</p>
+            <small id="mcp-bundled-detail" class="muted">Loading guide bundle.</small>
+          </article>
           <article class="status-card">
             <h3>Daemon</h3>
             <p id="mcp-daemon-status">Unavailable</p>
@@ -311,6 +318,49 @@
             project-owned integration in the Guide</button
           >.
         </p>
+        <div id="mcp-guide-content" class="client-guide"></div>
+      </section>
+      <section id="cli" class="client-destination" aria-labelledby="cli-title" hidden>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Terminal integration</p>
+            <h2 id="cli-title">PortReeve CLI</h2>
+            <p>
+              The CLI is a peer client of Desktop and MCP. Use it for service
+              administration, shell automation, complete evidence inspection, and
+              project-trusted launcher commands.
+            </p>
+          </div>
+        </div>
+        <section class="client-installation" aria-labelledby="cli-installation-title">
+          <h3 id="cli-installation-title">This installation</h3>
+          <p id="cli-evidence-state" class="muted" aria-live="polite"></p>
+          <div class="cards client-installation-grid">
+            <article class="status-card">
+              <h4>Bundled CLI</h4>
+              <p id="cli-bundled-version">Unavailable</p>
+              <small id="cli-bundled-location" class="muted"></small>
+            </article>
+            <article class="status-card">
+              <h4>Managed CLI</h4>
+              <p id="cli-managed-version">Not installed</p>
+              <small id="cli-managed-location" class="muted"></small>
+            </article>
+            <article class="status-card">
+              <h4>Running server</h4>
+              <p id="cli-running-version">Not running</p>
+              <small id="cli-running-detail" class="muted"></small>
+            </article>
+          </div>
+          <div class="panel client-diagnostic-command">
+            <div>
+              <h4>Safe first diagnostic</h4>
+              <code>portreeve status --json</code>
+            </div>
+            <button id="copy-cli-diagnostic" type="button">Copy command</button>
+          </div>
+        </section>
+        <div id="cli-guide-content" class="client-guide"></div>
       </section>
       <section id="guide" class="guide" aria-labelledby="guide-title" hidden>
         <header class="guide-hero">
