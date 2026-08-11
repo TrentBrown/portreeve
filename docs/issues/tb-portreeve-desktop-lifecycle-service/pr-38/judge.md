@@ -46,4 +46,3 @@ fresh refusal evidence and unlink, mitigated by ownership/type checks, immediate
 atomic rebind, bounded retries, and twelve-way contention coverage. Required
 real Linux and interruption checks remain visible future gates. Neither concern
 blocks this I-2 slice.
-

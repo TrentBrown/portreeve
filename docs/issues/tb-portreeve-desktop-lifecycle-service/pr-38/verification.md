@@ -56,4 +56,3 @@ legitimate user state and is the supported isolation for that fixture.
 None required for I-2 review. Real macOS launchd, Linux systemd-user, packaged
 Desktop, normal-close protection, and forced-interruption recovery remain
 explicit I-5/I-6 verification work and prevent feature-level completion.
-

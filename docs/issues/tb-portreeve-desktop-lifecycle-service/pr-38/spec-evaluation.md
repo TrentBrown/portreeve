@@ -56,4 +56,3 @@ still required.
 
 I-2 satisfies P2 and advances R4, R5, and R8 without claiming complete-feature
 success. No in-scope failure blocks review or merge of this incremental PR.
-

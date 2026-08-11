@@ -1,7 +1,7 @@
 # Code Review - PR 38
 
-**Scope:** slice  
-**Base:** `5d6319ee68efc651465e31064bfa6c7d7edbed72`  
+**Scope:** slice
+**Base:** `5d6319ee68efc651465e31064bfa6c7d7edbed72`
 **Head:** `cda478965f4dd9b21798e2bcf839effd51b91faf`
 
 ## Findings
@@ -51,4 +51,3 @@ remaining duplicate readiness-budget literal.
   responsible for exercising this host-level edge.
 
 None is a regression or an in-scope blocker for I-2.
-
