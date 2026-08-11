@@ -5,7 +5,7 @@
  * @param {{query?: string, family?: string, safety?: string}} filters
  */
 export function filterClientReference(reference, filters = {}) {
-  const query = (filters.query ?? '').trim().toLowerCase();
+  const query = normalizeSearchText(filters.query ?? '');
   const family = filters.family ?? 'all';
   const safety = filters.safety ?? 'all';
   return reference.filter((entry) => {
@@ -77,17 +77,26 @@ export function clientInstallationEvidence(snapshot) {
 
 /** @param {any} entry */
 function referenceSearchText(entry) {
-  return [
-    entry.path,
-    entry.name,
-    entry.title,
-    entry.description,
-    entry.family,
-    entry.safety,
-    entry.safetyLabel,
-    entry.synopsis,
-  ]
-    .filter((value) => typeof value === 'string')
-    .join(' ')
-    .toLowerCase();
+  return normalizeSearchText(
+    [
+      entry.path,
+      entry.name,
+      entry.title,
+      entry.description,
+      entry.family,
+      entry.safety,
+      entry.safetyLabel,
+      entry.synopsis,
+    ]
+      .filter((value) => typeof value === 'string')
+      .join(' '),
+  );
+}
+
+/** @param {string} value */
+function normalizeSearchText(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/gu, ' ');
 }

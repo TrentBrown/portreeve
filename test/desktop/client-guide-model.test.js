@@ -31,6 +31,7 @@ const reference = [
 
 test('filters complete client reference by text, family, and safety', () => {
   expect(filterClientReference(reference, { query: 'reclaim' })).toHaveLength(1);
+  expect(filterClientReference(reference, { query: 'port reclaim' })).toHaveLength(1);
   expect(filterClientReference(reference, { family: 'ports' })).toHaveLength(2);
   expect(filterClientReference(reference, { safety: 'read-only' })).toHaveLength(2);
   expect(
