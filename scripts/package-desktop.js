@@ -5,6 +5,13 @@ import { execFileSync } from 'node:child_process';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { resolveLocalReleaseCandidate } from '../apps/desktop/main/artifact.js';
+import { PORTREEVE_VERSION } from '../src/version.js';
+import {
+  assertDesktopModuleGraph,
+  assertDesktopPackageIdentity,
+  smokePackagedDesktop,
+  verifyPackagedDesktop,
+} from './desktop-package-lib.js';
 
 const workspaceRoot = process.cwd();
 const desktopRoot = resolve(workspaceRoot, 'apps', 'desktop');
@@ -50,6 +57,7 @@ const build = await Bun.build({
   external: ['electron'],
   minify: true,
   naming: 'index.js',
+  metafile: true,
 });
 if (!build.success) {
   throw new Error(
@@ -58,6 +66,17 @@ if (!build.success) {
       .join('\n')}`,
   );
 }
+if (build.metafile === undefined) {
+  throw new Error('Desktop main-process bundle did not produce module evidence.');
+}
+assertDesktopModuleGraph(Object.keys(build.metafile.inputs));
+
+const artifact = await resolveLocalReleaseCandidate({
+  workspaceRoot,
+  architecture,
+});
+assertDesktopPackageIdentity(PORTREEVE_VERSION, metadata.version);
+assertDesktopPackageIdentity(PORTREEVE_VERSION, artifact.version);
 
 await writeFile(
   resolve(stage, 'package.json'),
@@ -74,11 +93,23 @@ await writeFile(
     2,
   ).concat('\n'),
 );
-
-const artifact = await resolveLocalReleaseCandidate({
-  workspaceRoot,
-  architecture,
-});
+await writeFile(
+  resolve(stage, 'desktop-verification.json'),
+  JSON.stringify(
+    {
+      schemaVersion: 1,
+      controllerVersion: PORTREEVE_VERSION,
+      artifactVersion: artifact.version,
+      moduleGraph: {
+        directLifecycleController: true,
+        verifiedArtifactResolver: true,
+        lifecycleCliAdapter: false,
+      },
+    },
+    null,
+    2,
+  ).concat('\n'),
+);
 await cp(
   resolve(workspaceRoot, 'dist', 'release', 'manifest.json'),
   resolve(resources, 'manifest.json'),
@@ -102,4 +133,21 @@ const paths = await packager({
   extraResource: [resolve(stage, 'release-input', 'portreeve')],
 });
 
+for (const packageDirectory of paths) {
+  const applicationPath = resolve(packageDirectory, 'PortReeve.app');
+  const packagedArtifact = await verifyPackagedDesktop({
+    applicationPath,
+    controllerVersion: PORTREEVE_VERSION,
+    architecture,
+  });
+  await smokePackagedDesktop({
+    applicationPath,
+    controllerVersion: PORTREEVE_VERSION,
+    artifactVersion: packagedArtifact.version,
+  });
+}
+
+console.log(
+  `Verified packaged PortReeve ${PORTREEVE_VERSION} controller, artifact, module graph, and read-only startup.`,
+);
 console.log(paths.join('\n'));

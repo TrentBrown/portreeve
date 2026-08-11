@@ -48,7 +48,7 @@ while retaining the verified artifact as the installation payload.
 
 ## I-4 - Add desktop close protection and safe diagnostics
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1.5d
 - **Plan steps:** P5
 - **Rubric criteria:** R2, R3, R6, R7
@@ -61,7 +61,7 @@ copyable renderer-safe failures.
 
 ## I-5 - Verify packaging and both JavaScript runtimes
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1d
 - **Plan steps:** P6
 - **Rubric criteria:** R1, R3, R8

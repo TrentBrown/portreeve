@@ -41,6 +41,7 @@ import {
 
 const desktopRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const workspaceRoot = resolve(desktopRoot, '..', '..');
+const desktopSmoke = process.env.PORTREEVE_DESKTOP_SMOKE === '1';
 /** @param {unknown[]} values */
 const diagnose = (...values) => {
   if (process.env.PORTREEVE_DESKTOP_DIAGNOSTICS === '1') {
@@ -50,7 +51,11 @@ const diagnose = (...values) => {
 
 diagnose('main-entry');
 
-app.setPath('userData', desktopUserDataPath(app.getPath('appData')));
+const userDataPath =
+  desktopSmoke && process.env.PORTREEVE_DESKTOP_SMOKE_USER_DATA
+    ? resolve(process.env.PORTREEVE_DESKTOP_SMOKE_USER_DATA)
+    : desktopUserDataPath(app.getPath('appData'));
+app.setPath('userData', userDataPath);
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -89,6 +94,24 @@ async function startDesktop() {
           : {}),
       });
   diagnose('artifact-verified', artifact.filename);
+  const lifecycle = createDesktopLifecycleController(artifact);
+  if (desktopSmoke) {
+    const status = await lifecycle.status();
+    console.log(
+      `PORTREEVE_DESKTOP_SMOKE ${JSON.stringify({
+        schemaVersion: 1,
+        desktopVersion: app.getVersion(),
+        controllerVersion: lifecycle.compatibility.version,
+        artifactVersion: artifact.version,
+        mode: status.mode,
+        installation: status.installation.state,
+        supervisor: status.supervisor.state,
+        socket: status.socket.state,
+      })}`,
+    );
+    app.quit();
+    return;
+  }
   const client = new PortreeveClient();
   const launcherRuntime = await createLauncherRuntime();
   const launchers = createLauncherAdapter({
@@ -121,7 +144,6 @@ async function startDesktop() {
       return selection.canceled ? null : (selection.filePaths[0] ?? null);
     },
   });
-  const lifecycle = createDesktopLifecycleController(artifact);
   const coordinator = createStateCoordinator({
     artifact: {
       ...artifact,
