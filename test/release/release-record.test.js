@@ -173,6 +173,44 @@ describe('release record', () => {
       'Unsupported release record schema',
     );
   });
+
+  test('rejects hand-edited identity, state, path, and publication fields', async () => {
+    const root = await temporaryDirectory();
+    const path = join(root, 'release-record.json');
+    const record = previewRecord();
+    for (const mutate of [
+      (/** @type {Record<string, any>} */ value) => {
+        value.releaseId = 'portreeve-v9.9.9';
+      },
+      (/** @type {Record<string, any>} */ value) => {
+        value.state = 'prepared';
+      },
+      (/** @type {Record<string, any>} */ value) => {
+        value.publication.state = 'approved';
+      },
+      (/** @type {Record<string, any>} */ value) => {
+        value.stages = [
+          { name: 'source-pinned', completedAt: record.createdAt, evidence: {} },
+        ];
+        value.state = 'preparing';
+        value.artifacts = [
+          {
+            type: 'executable',
+            filename: 'portreeve',
+            path: '../portreeve',
+            bytes: 1,
+            sha256: 'a'.repeat(64),
+            provenanceStage: 'source-pinned',
+          },
+        ];
+      },
+    ]) {
+      const altered = structuredClone(record);
+      mutate(altered);
+      await writeFile(path, JSON.stringify(altered));
+      await expect(readReleaseRecord(path)).rejects.toThrow();
+    }
+  });
 });
 
 function previewRecord() {

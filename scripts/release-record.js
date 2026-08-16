@@ -2,7 +2,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { basename, dirname, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
 import { sha256File } from './release-lib.js';
 
 export const RELEASE_RECORD_SCHEMA_VERSION = 1;
@@ -273,20 +273,120 @@ export function assertReleaseRecord(record) {
     throw new Error('Unsupported release record schema.');
   }
   const candidate = /** @type {Record<string, any>} */ (record);
-  if (!Array.isArray(candidate.stages) || !Array.isArray(candidate.artifacts)) {
+  assertSemanticVersion(candidate.releaseVersion, 'release version');
+  if (candidate.releaseId !== `portreeve-v${candidate.releaseVersion}`) {
+    throw new Error('Release record identity does not match its version.');
+  }
+  requiredString(candidate.source?.repository, 'source repository');
+  if (!COMMIT.test(String(candidate.source?.commit ?? ''))) {
+    throw new Error('Source commit must be a full lowercase Git SHA.');
+  }
+  for (const name of ['server', 'desktop', 'client']) {
+    assertSemanticVersion(candidate.versions?.[name], `${name} version`);
+  }
+  if (
+    candidate.tools === null ||
+    typeof candidate.tools !== 'object' ||
+    Array.isArray(candidate.tools)
+  ) {
+    throw new Error('Release record tool versions are invalid.');
+  }
+  for (const [name, version] of Object.entries(candidate.tools)) {
+    requiredString(name, 'tool name');
+    requiredString(version, `tool version for ${name}`);
+  }
+  assertTimestamp(candidate.createdAt, 'release creation time');
+  assertTimestamp(candidate.updatedAt, 'release update time');
+  if (
+    !Array.isArray(candidate.stages) ||
+    !Array.isArray(candidate.artifacts) ||
+    !Array.isArray(candidate.verifications) ||
+    candidate.publication === null ||
+    typeof candidate.publication !== 'object' ||
+    Array.isArray(candidate.publication)
+  ) {
     throw new Error('Release record collections are invalid.');
   }
   validateReleasePolicy(candidate.releaseVersion, candidate.policy ?? {});
-  const names = candidate.stages.map(
-    (/** @type {{name?: unknown}} */ entry) => entry.name,
-  );
+  const names = candidate.stages.map((/** @type {Record<string, unknown>} */ entry) => {
+    assertTimestamp(
+      entry.completedAt,
+      `completion time for stage ${String(entry.name)}`,
+    );
+    if (
+      entry.evidence === null ||
+      typeof entry.evidence !== 'object' ||
+      Array.isArray(entry.evidence)
+    ) {
+      throw new Error(`Release stage evidence is invalid: ${String(entry.name)}`);
+    }
+    return entry.name;
+  });
   if (names.some((name, index) => name !== RELEASE_STAGES[index])) {
     throw new Error('Release record stages are not a valid ordered prefix.');
   }
+  const filenames = new Set();
+  const paths = new Set();
   for (const artifact of candidate.artifacts) {
-    if (!SHA256.test(artifact.sha256) || !Number.isSafeInteger(artifact.bytes)) {
+    requiredString(artifact.type, 'artifact type');
+    requiredString(artifact.filename, 'artifact filename');
+    requiredString(artifact.path, 'artifact path');
+    if (
+      basename(artifact.filename) !== artifact.filename ||
+      basename(artifact.path) !== artifact.filename ||
+      isAbsolute(artifact.path) ||
+      artifact.path === '..' ||
+      artifact.path.startsWith('../')
+    ) {
+      throw new Error(`Release artifact path is invalid: ${artifact.filename}`);
+    }
+    if (filenames.has(artifact.filename) || paths.has(artifact.path)) {
+      throw new Error(`Release artifact identity is duplicated: ${artifact.filename}`);
+    }
+    filenames.add(artifact.filename);
+    paths.add(artifact.path);
+    if (
+      !SHA256.test(artifact.sha256) ||
+      !Number.isSafeInteger(artifact.bytes) ||
+      artifact.bytes < 0
+    ) {
       throw new Error(`Release artifact identity is invalid: ${artifact.filename}`);
     }
+    if (
+      !RELEASE_STAGES.includes(artifact.provenanceStage) ||
+      !names.includes(artifact.provenanceStage)
+    ) {
+      throw new Error(`Release artifact provenance is invalid: ${artifact.filename}`);
+    }
+    if (
+      artifact.operatingSystem !== undefined &&
+      !['macos', 'linux'].includes(artifact.operatingSystem)
+    ) {
+      throw new Error(
+        `Release artifact operating system is invalid: ${artifact.filename}`,
+      );
+    }
+    if (
+      artifact.architecture !== undefined &&
+      !['arm64', 'x64'].includes(artifact.architecture)
+    ) {
+      throw new Error(`Release artifact architecture is invalid: ${artifact.filename}`);
+    }
+  }
+  const lastStage = names.at(-1);
+  const expectedState =
+    lastStage === undefined ? 'initialized' : stateAfter(String(lastStage));
+  if (candidate.state !== expectedState) {
+    throw new Error('Release record state does not match its completed stages.');
+  }
+  const expectedPublicationState =
+    lastStage === 'published'
+      ? 'published'
+      : lastStage === 'publication-approved'
+        ? 'approved'
+        : 'unpublished';
+  if (candidate.publication.state !== expectedPublicationState) {
+    throw new Error('Release publication state does not match its completed stages.');
   }
 }
 
@@ -353,9 +453,23 @@ function requiredString(value, label) {
 
 /** @param {string} value @param {string} label */
 function assertSemanticVersion(value, label) {
+  if (typeof value !== 'string') {
+    throw new Error(`${label} must be a semantic version.`);
+  }
   const match = SEMANTIC_VERSION.exec(value);
   if (match === null) {
     throw new Error(`${label} must be a semantic version.`);
   }
   return match[4] ?? null;
+}
+
+/** @param {unknown} value @param {string} label */
+function assertTimestamp(value, label) {
+  if (
+    typeof value !== 'string' ||
+    !Number.isFinite(Date.parse(value)) ||
+    new Date(value).toISOString() !== value
+  ) {
+    throw new Error(`${label} must be an ISO timestamp.`);
+  }
 }
