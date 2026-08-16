@@ -123,6 +123,10 @@ test('ships Overview as static semantic architecture and integration guidance', 
     readFile('package.json', 'utf8'),
   ]);
   const normalizedHtml = html.replace(/\s+/g, ' ');
+  const overviewHtml = html.slice(
+    html.indexOf('<section id="overview"'),
+    html.indexOf('</main>'),
+  );
 
   expect(html).toContain('id="overview"');
   expect(html).not.toContain('id="open-guide"');
@@ -142,11 +146,12 @@ test('ships Overview as static semantic architecture and integration guidance', 
   expect(html).toMatch(/modern word\s+<em>sheriff<\/em>/);
   expect(html).toMatch(/market town, not only a\s+seaport/);
   expect(html).toContain('One authority, several peer clients');
-  expect(html).toContain('One supervised PortReeve server');
+  expect(html).toContain('One PortReeve server runs at a time');
+  expect(html).toContain('explicitly in the foreground');
   expect(html).toContain('MCP integrations');
   expect(html).toContain('peers of one another');
   expect(html).toMatch(
-    /your\s+project tooling remains responsible for\s+starting, supervising,\s+and judging the health of your services\./,
+    /your project tooling remains\s+responsible for starting, supervising, and judging the health of your\s+services\./,
   );
   for (const phrase of [
     'Good',
@@ -182,7 +187,7 @@ test('ships Overview as static semantic architecture and integration guidance', 
   ]) {
     expect(html).toContain(phrase);
   }
-  expect(html.match(/<details>/g)).toHaveLength(5);
+  expect(overviewHtml.match(/<details\b/g)).toHaveLength(5);
   expect(html).toContain('<figure class="guide-architecture guide-sequence-five">');
   expect(html).toContain('<figcaption>');
   expect(html.match(/class="guide-mini-sequence/g)).toHaveLength(3);
@@ -209,6 +214,8 @@ test('ships Overview as static semantic architecture and integration guidance', 
   expect(html.match(/aria-label="Generated launcher"/g)).toHaveLength(2);
   expect(html.match(/<span>Generated<\/span><span>launcher<\/span>/g)).toHaveLength(2);
   expect(html).toContain('<dd>Server plus generated launcher</dd>');
+  expect(html).toContain('The planned generator will create');
+  expect(html).toContain('It is not yet shipped.');
   expect(html).toContain('<dt>Payoff</dt>');
   expect(html).toContain('<dd>Reusable automation without Desktop</dd>');
   expect(html.match(/aria-label="Your services"/g)).toHaveLength(4);
@@ -244,6 +251,10 @@ test('ships Overview as static semantic architecture and integration guidance', 
   expect(html).toContain('a generated launcher can obtain the same');
   expect(html).toContain('Confirmation proves ownership, not application readiness.');
   expect(html).toContain('expected provider owns the binding');
+  expect(normalizedHtml).toContain(
+    'Normal reclaim remains ownership- and evidence-bound',
+  );
+  expect(html).toContain('Unsafe any-owner eviction is a separate, explicit');
   expect(html).toContain('aria-label="Canonical PortReeve stack lifecycle"');
   expect(html).toContain('class="guide-sequence-note note-portreeve concept-claim"');
   expect(html).toContain('class="guide-object-model"');

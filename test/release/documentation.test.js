@@ -90,14 +90,14 @@ test('README documentation links resolve to repository files', async () => {
 test('README is a truthful product landing page for the four peer clients', async () => {
   const readme = await readFile(resolve('README.md'), 'utf8');
   expect(readme).toContain('portreeve-lockup.svg');
-  expect(readme).toContain('One PortReeve daemon');
+  expect(readme).toContain('One PortReeve server');
   for (const client of ['Desktop', 'MCP', 'CLI', 'JavaScript client']) {
     expect(readme).toContain(client);
   }
   expect(readme).toContain('bun install --frozen-lockfile');
   expect(readme).toContain('./dist/portreeve status --json');
   expect(readme).toContain('has not published its first npm package');
-  expect(readme).toContain('does not currently provide Docker Sandbox');
+  expect(readme).toMatch(/does not currently\s+provide Docker\s+Sandbox/u);
   expect(readme).not.toContain('npm install portreeve');
 });
 
@@ -125,7 +125,7 @@ test('public documentation does not claim Docker Sandbox integration', async () 
   ]) {
     expect(combined).not.toContain(unsupported);
   }
-  expect(combined).toContain('does not currently provide Docker Sandbox');
+  expect(combined).toMatch(/does not currently\s+provide Docker\s+Sandbox/u);
   expect(combined).toContain('generic snapshot');
 });
 
