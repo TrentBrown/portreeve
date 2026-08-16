@@ -8,7 +8,7 @@ entries are appended to `decisions.md`.
 
 ## [1] Use one ordered release record as the stage authority
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -23,7 +23,7 @@ Keep extending manifest.json - rejected because the legacy build manifest has no
 
 ## [2] Separate coordinated release tags from component versions
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

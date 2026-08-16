@@ -9,12 +9,12 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Release record and transition engine
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R3, R4
 - **Depends on:** none
-- **PR:** -
+- **PR:** [#57](https://github.com/TrentBrown/portreeve/pull/57)
 
 Create the versioned schema, atomic record store, policy matrix, transition
 validation, tamper detection, and unit fixtures.
