@@ -59,6 +59,7 @@ test('keeps server, storage, generic shell, and PATH lookup out of desktop code'
     'apps/desktop/main/update.js',
     'apps/desktop/preload/index.cjs',
     'apps/desktop/renderer/renderer.js',
+    'apps/desktop/renderer/quick-start.js',
     'apps/desktop/renderer/client-guide-model.js',
     'apps/desktop/renderer/client-guide-view.js',
     'apps/desktop/renderer/stack-editor-model.js',

@@ -16,6 +16,10 @@ import {
   createNavigationHistory,
   sameNavigationDestination,
 } from './navigation-history.js';
+import {
+  foregroundServeCommand,
+  quickStartAuthorityPresentation,
+} from './quick-start.js';
 import clientGuides from './generated/client-guides.js';
 
 /** @type {any} */
@@ -40,6 +44,9 @@ let mcpSetup = null;
 const clientGuideBundle = /** @type {any} */ (clientGuides);
 
 const notice = requiredElement('notice');
+const quickStartServeCommand = requiredElement('quick-start-serve-command');
+const quickStartAuthorityState = requiredElement('quick-start-authority-state');
+const quickStartAuthorityDetail = requiredElement('quick-start-authority-detail');
 const activeLifecycleOperation = requiredElement('active-lifecycle-operation');
 const errors = requiredElement('errors');
 const statusCards = requiredElement('status-cards');
@@ -71,6 +78,13 @@ const launcherBrowser = requiredElement('launcher-browser');
 const launcherEditorRoot = requiredElement('launcher-editor');
 const launcherList = requiredElement('launcher-list');
 const launcherDetail = requiredElement('launcher-detail');
+const integrationBuiltInChoice = /** @type {HTMLButtonElement} */ (
+  requiredElement('integration-built-in-choice')
+);
+const integrationGeneratedChoice = /** @type {HTMLButtonElement} */ (
+  requiredElement('integration-generated-choice')
+);
+const generatedLauncherPlaceholder = requiredElement('generated-launcher-placeholder');
 const mcpGuideRoot = requiredElement('mcp-guide-content');
 const cliGuideRoot = requiredElement('cli-guide-content');
 const navigateBack = /** @type {HTMLButtonElement} */ (
@@ -113,6 +127,9 @@ const terminateAttachedButton = /** @type {HTMLButtonElement} */ (
   requiredElement('terminate-attached')
 );
 let snapshotJson = '';
+let quickStartServeCommandText = 'portreeve serve';
+/** @type {'built-in'|'generated'} */
+let launcherIntegrationMode = 'built-in';
 
 createClientGuideView({
   root: mcpGuideRoot,
@@ -242,43 +259,47 @@ for (const tab of document.querySelectorAll('.tab')) {
   });
 }
 
-for (const link of document.querySelectorAll('[data-guide-view]')) {
+for (const link of document.querySelectorAll('[data-app-view]')) {
   link.addEventListener('click', () => {
-    const view = /** @type {HTMLElement} */ (link).dataset.guideView;
+    const element = /** @type {HTMLElement} */ (link);
+    const view = element.dataset.appView;
     if (view === undefined) return;
+    if (view === 'launcher' && element.dataset.integrationMode === 'built-in') {
+      launcherIntegrationMode = 'built-in';
+      renderLauncherIntegrationMode();
+    }
     void navigateTo({ view, anchor: null, scrollY: 0 });
   });
 }
 
-for (const link of document.querySelectorAll('[data-guide-anchor]')) {
+integrationBuiltInChoice.addEventListener('click', () => {
+  void selectLauncherIntegrationMode('built-in');
+});
+integrationGeneratedChoice.addEventListener('click', () => {
+  void selectLauncherIntegrationMode('generated');
+});
+
+for (const link of document.querySelectorAll('[data-overview-anchor]')) {
   link.addEventListener('click', () => {
-    const anchor = /** @type {HTMLElement} */ (link).dataset.guideAnchor;
+    const anchor = /** @type {HTMLElement} */ (link).dataset.overviewAnchor;
     if (anchor === undefined) return;
-    void navigateTo({ view: 'guide', anchor, scrollY: 0 }, { restoreSame: true });
+    void navigateTo({ view: 'overview', anchor, scrollY: 0 }, { restoreSame: true });
   });
 }
 
-requiredElement('open-guide').addEventListener('click', async () => {
-  if (
-    !(await navigateTo(
-      { view: 'guide', anchor: null, scrollY: 0 },
-      { restoreSame: true },
-    ))
-  ) {
-    return;
-  }
-  requiredElement('guide-title').focus({ preventScroll: true });
-});
-
-requiredElement('open-guide-integration').addEventListener('click', async () => {
+requiredElement('open-overview-integration').addEventListener('click', async () => {
   await navigateTo(
     {
-      view: 'guide',
+      view: 'overview',
       anchor: 'guide-project-integration',
       scrollY: 0,
     },
     { restoreSame: true },
   );
+});
+
+requiredElement('copy-quick-start-serve').addEventListener('click', async () => {
+  await copyText(quickStartServeCommandText);
 });
 
 navigateBack.addEventListener('click', () => void traverseNavigation(-1));
@@ -436,6 +457,7 @@ function render(next) {
     ? `Evidence may be stale. Last refresh attempt ${formatTime(next.refreshedAt)}.`
     : `Current as of ${formatTime(next.refreshedAt)}.`;
   notice.classList.toggle('warning', next.stale);
+  renderQuickStart(next);
   errors.replaceChildren(...next.errors.map(errorItem));
   errors.hidden = next.errors.length === 0;
   const lifecycle = next.lifecycle;
@@ -477,6 +499,15 @@ function render(next) {
   renderMcpCompatibility(next);
   renderCliInstallation(next);
   if (busy) setControlsDisabled(true);
+}
+
+/** @param {any} next */
+function renderQuickStart(next) {
+  quickStartServeCommandText = foregroundServeCommand(next.artifact.bundledLocation);
+  quickStartServeCommand.textContent = quickStartServeCommandText;
+  const authority = quickStartAuthorityPresentation(next);
+  quickStartAuthorityState.textContent = authority.label;
+  quickStartAuthorityDetail.textContent = authority.detail;
 }
 
 function renderActions() {
@@ -793,7 +824,7 @@ function renderStackDetail(stack) {
   actions.className = 'actions stack-actions';
   actions.append(
     actionButton('Edit Definition', () => stackEditor.openKnown(stack.id)),
-    actionButton('Open in Launchers', () => openLauncherFromStack(stack.id)),
+    actionButton('Open in Integrations', () => openLauncherFromStack(stack.id)),
   );
   const allowedActions = availableStackActions(snapshot, stack);
   if (allowedActions.includes('prepare')) {
@@ -1125,13 +1156,14 @@ function activateTab(tab, view) {
     candidate.classList.toggle('active', candidate === tab);
   }
   requiredElement('overview').hidden = view !== 'overview';
+  requiredElement('quick-start').hidden = view !== 'quick-start';
+  requiredElement('service').hidden = view !== 'service';
   requiredElement('ports').hidden = view !== 'ports';
   requiredElement('stacks').hidden = view !== 'stacks';
   requiredElement('launcher').hidden = view !== 'launcher';
   requiredElement('mcp').hidden = view !== 'mcp';
   requiredElement('cli').hidden = view !== 'cli';
-  requiredElement('guide').hidden = view !== 'guide';
-  runtimeStatus.hidden = view === 'guide';
+  runtimeStatus.hidden = view === 'overview';
 }
 
 /** @param {string} view */
@@ -1240,7 +1272,12 @@ async function requestView(tab, view, options = {}) {
     if (!(await launcherView.requestClose())) return false;
   }
   activateTab(tab, view);
-  if (view === 'launcher') await launcherView.open(options.launcherStackId ?? null);
+  if (view === 'launcher') {
+    renderLauncherIntegrationMode();
+    if (launcherIntegrationMode === 'built-in') {
+      await launcherView.open(options.launcherStackId ?? null);
+    }
+  }
   if (view === 'mcp') await renderMcpSetup();
   return true;
 }
@@ -1347,10 +1384,32 @@ async function copyMcpText(value, success) {
 
 /** @param {string} stackId */
 async function openLauncherFromStack(stackId) {
+  launcherIntegrationMode = 'built-in';
+  renderLauncherIntegrationMode();
   await navigateTo(
     { view: 'launcher', anchor: null, scrollY: 0 },
     { launcherStackId: stackId },
   );
+}
+
+/** @param {'built-in'|'generated'} mode */
+async function selectLauncherIntegrationMode(mode) {
+  if (mode === launcherIntegrationMode) return;
+  if (mode === 'generated' && !(await launcherView.requestClose())) return;
+  launcherIntegrationMode = mode;
+  renderLauncherIntegrationMode();
+  if (mode === 'built-in') await launcherView.open();
+}
+
+function renderLauncherIntegrationMode() {
+  const builtIn = launcherIntegrationMode === 'built-in';
+  integrationBuiltInChoice.classList.toggle('selected', builtIn);
+  integrationBuiltInChoice.setAttribute('aria-selected', String(builtIn));
+  integrationGeneratedChoice.classList.toggle('selected', !builtIn);
+  integrationGeneratedChoice.setAttribute('aria-selected', String(!builtIn));
+  launcherBrowser.hidden = !builtIn;
+  if (!builtIn) launcherEditorRoot.hidden = true;
+  generatedLauncherPlaceholder.hidden = builtIn;
 }
 
 /** @param {string} reason */

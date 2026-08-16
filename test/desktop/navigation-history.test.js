@@ -14,18 +14,30 @@ test('traverses session locations in both directions', () => {
   expect(history.canMove(1)).toBeFalse();
 
   history.replaceCurrent({ ...overview, scrollY: 240 });
-  history.push({ view: 'guide', anchor: null, scrollY: 0 });
-  history.push({ view: 'guide', anchor: 'guide-project-integration', scrollY: 900 });
+  history.push({ view: 'quick-start', anchor: null, scrollY: 0 });
+  history.push({ view: 'overview', anchor: 'guide-project-integration', scrollY: 900 });
 
-  expect(history.target(-1)).toEqual({ view: 'guide', anchor: null, scrollY: 0 });
-  expect(history.move(-1)).toEqual({ view: 'guide', anchor: null, scrollY: 0 });
+  expect(history.target(-1)).toEqual({
+    view: 'quick-start',
+    anchor: null,
+    scrollY: 0,
+  });
+  expect(history.move(-1)).toEqual({
+    view: 'quick-start',
+    anchor: null,
+    scrollY: 0,
+  });
   expect(history.move(-1)).toEqual({ ...overview, scrollY: 240 });
-  expect(history.move(1)).toEqual({ view: 'guide', anchor: null, scrollY: 0 });
+  expect(history.move(1)).toEqual({
+    view: 'quick-start',
+    anchor: null,
+    scrollY: 0,
+  });
 });
 
 test('new navigation after Back discards forward history', () => {
   const history = createNavigationHistory(overview);
-  history.push({ view: 'guide', anchor: null, scrollY: 0 });
+  history.push({ view: 'overview', anchor: null, scrollY: 0 });
   history.push({ view: 'mcp', anchor: null, scrollY: 0 });
   history.move(-1);
 
@@ -33,7 +45,7 @@ test('new navigation after Back discards forward history', () => {
 
   expect(history.current()).toEqual({ view: 'cli', anchor: null, scrollY: 0 });
   expect(history.canMove(1)).toBeFalse();
-  expect(history.move(-1)).toEqual({ view: 'guide', anchor: null, scrollY: 0 });
+  expect(history.move(-1)).toEqual({ view: 'overview', anchor: null, scrollY: 0 });
 });
 
 test('replaces duplicate destinations without adding history noise', () => {
@@ -50,7 +62,7 @@ test('rejects invalid locations without corrupting the current entry', () => {
     'Navigation view is required.',
   );
   expect(() =>
-    history.replaceCurrent({ view: 'guide', anchor: null, scrollY: -1 }),
+    history.replaceCurrent({ view: 'overview', anchor: null, scrollY: -1 }),
   ).toThrow('Navigation scroll position must be nonnegative.');
   expect(history.current()).toEqual(overview);
 });

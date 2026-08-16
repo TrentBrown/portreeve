@@ -3,7 +3,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from 'bun:test';
 
-test('wires the primary Launcher experience, cross-links, and close protection', async () => {
+test('wires Integrations, its built-in launcher, and close protection', async () => {
   const [html, renderer, view] = await Promise.all([
     readFile('apps/desktop/renderer/index.html', 'utf8'),
     readFile('apps/desktop/renderer/renderer.js', 'utf8'),
@@ -15,12 +15,21 @@ test('wires the primary Launcher experience, cross-links, and close protection',
   );
   expect(html).toContain('id="launcher-browser"');
   expect(html).toContain('id="launcher-editor"');
+  expect(html).toContain('id="integration-built-in-choice"');
+  expect(html).toContain('id="integration-generated-choice"');
+  expect(html).toContain('id="generated-launcher-placeholder"');
+  expect(html).toContain('Generated launcher');
+  expect(html).toContain('Generation is not available in this release.');
+  expect(html).toContain('Learn about project integration');
   expect(html).toContain('From experimentation to verified integration');
   expect(html).toContain('id="attached-close-dialog"');
 
   expect(renderer).toContain('createLauncherView({');
   expect(renderer).toContain("activeView === 'launcher'");
-  expect(renderer).toContain("actionButton('Open in Launchers'");
+  expect(renderer).toContain("actionButton('Open in Integrations'");
+  expect(renderer).toContain("selectLauncherIntegrationMode('built-in')");
+  expect(renderer).toContain("selectLauncherIntegrationMode('generated')");
+  expect(renderer).toContain('generatedLauncherPlaceholder.hidden = builtIn');
   expect(renderer).toContain(
     "navigateTo({ view: 'stacks', anchor: null, scrollY: 0 })",
   );
@@ -49,13 +58,15 @@ test('wires the primary Launcher experience, cross-links, and close protection',
   );
 });
 
-test('keeps Launcher controls keyboard-addressable and evidence content announced', async () => {
+test('keeps launcher controls keyboard-addressable and evidence content announced', async () => {
   const [html, view] = await Promise.all([
     readFile('apps/desktop/renderer/index.html', 'utf8'),
     readFile('apps/desktop/renderer/launcher-view.js', 'utf8'),
   ]);
 
   expect(html).toContain('aria-label="Stack launchers"');
+  expect(html).toContain('role="tablist"');
+  expect(html).toContain('aria-controls="launcher-browser"');
   expect(html).toContain('id="launcher-detail"');
   expect(html).toContain('aria-live="polite"');
   expect(view).toContain("control.type = 'button'");
