@@ -270,9 +270,9 @@
 
         <aside class="quick-start-upgrade">
           <strong>This is an experiment, not a migration.</strong>
-          Keep the command-only launcher while it is useful. Later, generate a
-          standalone launcher or call the official client from your project tooling for
-          tighter activation and cleanup control.
+          Keep the command-only launcher while it is useful. Later, use the planned
+          standalone-launcher generator when it ships, or call the official client from
+          your project tooling for tighter activation and cleanup control.
           <button type="button" data-app-view="overview">
             Compare integration paths
           </button>
@@ -675,7 +675,7 @@
         <div id="cli-guide-content" class="client-guide"></div>
       </section>
       <section id="overview" class="guide" aria-labelledby="overview-title">
-        <header class="guide-hero">
+        <header class="guide-hero" data-product-overview-topic="identity-problem">
           <figure class="guide-identity-mark">
             <img
               src="app://portreeve/branding/portreeve-mark.svg"
@@ -715,15 +715,20 @@
                   network ports.
                 </p>
               </div>
-              <div class="guide-intro-point guide-intro-model">
+              <div
+                class="guide-intro-point guide-intro-model"
+                data-product-overview-topic="authority-model"
+              >
                 <h3>One authority, several peer clients</h3>
                 <p>
-                  One supervised PortReeve server runs for the current operating-system
-                  user. The Desktop app, <code>portreeve</code> CLI, official JavaScript
-                  client, MCP integrations, and project launchers are all clients of
-                  that authority—and peers of one another. PortReeve assigns addresses
-                  and verifies bindings; your project tooling remains responsible for
-                  starting, supervising, and judging the health of your services.
+                  One PortReeve server runs at a time for the current operating-system
+                  user—normally supervised, or explicitly in the foreground for a
+                  temporary session. The Desktop app, <code>portreeve</code> CLI,
+                  official JavaScript client, MCP integrations, and project launchers
+                  are all clients of that authority—and peers of one another. PortReeve
+                  assigns addresses and verifies bindings; your project tooling remains
+                  responsible for starting, supervising, and judging the health of your
+                  services.
                 </p>
               </div>
             </div>
@@ -733,6 +738,7 @@
         <section
           class="guide-section guide-client-bridge"
           aria-labelledby="guide-clients-title"
+          data-product-overview-topic="client-choices"
         >
           <div class="guide-section-heading">
             <p class="eyebrow">Choose a client</p>
@@ -770,7 +776,11 @@
           </div>
         </section>
 
-        <section class="guide-section" aria-labelledby="guide-paths-title">
+        <section
+          class="guide-section"
+          aria-labelledby="guide-paths-title"
+          data-product-overview-topic="integration-paths"
+        >
           <div class="guide-section-heading">
             <p class="eyebrow">Choose your integration</p>
             <h3 id="guide-paths-title">
@@ -866,8 +876,9 @@
               <p class="guide-path-rank">Better</p>
               <h4>Generated launcher</h4>
               <p>
-                Generate an independent launcher or library that coordinates with
-                PortReeve and invokes your existing project tooling without Desktop.
+                The planned generator will create an independent launcher or library
+                that coordinates with PortReeve and invokes your existing project
+                tooling without Desktop. It is not yet shipped.
               </p>
               <figure class="guide-mini-sequence guide-sequence-four">
                 <div class="guide-sequence-canvas">
@@ -1037,7 +1048,9 @@
                 >
                 <div>
                   <small>Integration tool</small>
-                  <p>An independent launcher generated for use without Desktop.</p>
+                  <p>
+                    The planned independent launcher generated for use without Desktop.
+                  </p>
                 </div>
               </li>
               <li>
@@ -1115,6 +1128,7 @@
         <section
           class="guide-section guide-stacks-introduction"
           aria-labelledby="guide-stacks-introduction-title"
+          data-product-overview-topic="stacks"
         >
           <div class="guide-section-heading">
             <p class="eyebrow">Stacks</p>
@@ -1203,7 +1217,11 @@
           </aside>
         </section>
 
-        <section class="guide-section" aria-labelledby="guide-architecture-title">
+        <section
+          class="guide-section"
+          aria-labelledby="guide-architecture-title"
+          data-product-overview-topic="coordination-lifecycle"
+        >
           <div class="guide-section-heading">
             <p class="eyebrow">Architecture</p>
             <h3 id="guide-architecture-title">
@@ -1394,13 +1412,16 @@
               </p>
             </div>
           </details>
-          <details>
+          <details data-product-overview-topic="evidence-ownership">
             <summary>Process and Docker evidence</summary>
             <div>
               <p>
                 Fresh <code>lsof</code> listener evidence is live truth for host ports;
                 stored process IDs are context, not authority. Docker confirmation uses
-                running-container state, exact labels, and publication evidence.
+                running-container state, exact labels, and publication evidence. Normal
+                reclaim remains ownership- and evidence-bound, so PortReeve refuses to
+                kill an unrelated listener merely because a stale claim remembers its
+                port. Unsafe any-owner eviction is a separate, explicit last resort.
                 PortReeve does not stop project processes or containers itself.
               </p>
             </div>
@@ -1416,7 +1437,7 @@
               </p>
             </div>
           </details>
-          <details>
+          <details data-product-overview-topic="boundaries-next-step">
             <summary>What PortReeve deliberately does not do</summary>
             <div>
               <p>
@@ -1425,6 +1446,17 @@
                 system, reverse proxy, DNS server, or sandbox control plane. It can
                 verify ordinary Docker-backed endpoints, but it does not currently
                 provide Docker Sandbox orchestration or integration.
+              </p>
+              <p>
+                Continue with
+                <button class="text-button" type="button" data-app-view="quick-start">
+                  Quick Start
+                </button>
+                to try one existing project, or open
+                <button class="text-button" type="button" data-app-view="launcher">
+                  Integrations
+                </button>
+                to connect a stack.
               </p>
             </div>
           </details>
