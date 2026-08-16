@@ -29,7 +29,7 @@ test('keeps exact executable authority in the main-process MCP setup adapter', (
   ).toThrow();
 });
 
-test('presents bounded setup controls, compatibility, copy actions, and Guide link', async () => {
+test('presents bounded setup controls, compatibility, copy actions, and Overview link', async () => {
   const [html, renderer, preload, main] = await Promise.all([
     readFile('apps/desktop/renderer/index.html', 'utf8'),
     readFile('apps/desktop/renderer/renderer.js', 'utf8'),
@@ -48,7 +48,7 @@ test('presents bounded setup controls, compatibility, copy actions, and Guide li
   expect(html).toContain('Copy configuration');
   expect(html).toContain('Copy command');
   expect(html).toContain('Setup failure details');
-  expect(html).toContain('project-owned integration in the Guide');
+  expect(html).toContain('project-owned integration in Overview');
   expect(renderer).toContain("requiredElement('mcp').hidden = view !== 'mcp'");
   expect(renderer).toContain("if (view === 'mcp') await renderMcpSetup()");
   expect(renderer).toContain('window.portreeveDesktop.generateMcpSetup(');

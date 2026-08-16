@@ -28,7 +28,7 @@ import { createStackDocumentService } from './stack-document.js';
 import { registerDesktopIpc } from './ipc.js';
 import { registerRendererProtocol } from './protocol.js';
 import { createUpdateAdapter } from './update.js';
-import { desktopUpdateStatePath, desktopUserDataPath } from './user-data.js';
+import { desktopUpdateStatePath, resolveDesktopUserDataPath } from './user-data.js';
 import { createLauncherRuntime } from '../../../src/launcher/runtime.js';
 import { resolveRuntimePaths } from '../../../src/platform/paths.js';
 import { IPC_CHANNELS } from '../shared/schemas.js';
@@ -44,6 +44,8 @@ import {
 const desktopRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const workspaceRoot = resolve(desktopRoot, '..', '..');
 const desktopSmoke = process.env.PORTREEVE_DESKTOP_SMOKE === '1';
+const desktopInspector =
+  !app.isPackaged && process.env.PORTREEVE_DESKTOP_INSPECTOR === '1';
 /** @param {unknown[]} values */
 const diagnose = (...values) => {
   if (process.env.PORTREEVE_DESKTOP_DIAGNOSTICS === '1') {
@@ -53,10 +55,16 @@ const diagnose = (...values) => {
 
 diagnose('main-entry');
 
-const userDataPath =
-  desktopSmoke && process.env.PORTREEVE_DESKTOP_SMOKE_USER_DATA
-    ? resolve(process.env.PORTREEVE_DESKTOP_SMOKE_USER_DATA)
-    : desktopUserDataPath(app.getPath('appData'));
+const userDataPath = resolveDesktopUserDataPath({
+  appDataPath: app.getPath('appData'),
+  isPackaged: app.isPackaged,
+  ...(desktopSmoke && process.env.PORTREEVE_DESKTOP_SMOKE_USER_DATA
+    ? { smokePath: resolve(process.env.PORTREEVE_DESKTOP_SMOKE_USER_DATA) }
+    : {}),
+  ...(desktopInspector && process.env.PORTREEVE_DESKTOP_INSPECTOR_USER_DATA
+    ? { inspectorPath: resolve(process.env.PORTREEVE_DESKTOP_INSPECTOR_USER_DATA) }
+    : {}),
+});
 app.setPath('userData', userDataPath);
 
 protocol.registerSchemesAsPrivileged([

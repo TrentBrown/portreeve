@@ -19,24 +19,50 @@
       <div class="app-title">
         <p class="eyebrow">Local port authority</p>
         <h1>PortReeve</h1>
-        <button id="open-guide" class="header-guide-link" type="button">
-          What is this?
-        </button>
       </div>
-      <button id="refresh" type="button">Refresh</button>
+      <div class="header-actions">
+        <div class="header-control-row">
+          <div class="navigation-controls" role="group" aria-label="Navigation history">
+            <button
+              id="navigate-back"
+              class="navigation-button"
+              type="button"
+              aria-label="Go back"
+              title="Go back (Command-[ or Alt-Left Arrow)"
+              disabled
+            >
+              ←
+            </button>
+            <button
+              id="navigate-forward"
+              class="navigation-button"
+              type="button"
+              aria-label="Go forward"
+              title="Go forward (Command-] or Alt-Right Arrow)"
+              disabled
+            >
+              →
+            </button>
+          </div>
+          <button id="refresh" type="button">Refresh</button>
+        </div>
+        <p id="notice" class="notice header-refresh-status" role="status">
+          Loading PortReeve status…
+        </p>
+      </div>
     </header>
     <nav aria-label="Primary">
       <button class="tab active" type="button" data-view="overview">Overview</button>
+      <button class="tab" type="button" data-view="quick-start">Quick Start</button>
+      <button class="tab" type="button" data-view="service">Service</button>
       <button class="tab" type="button" data-view="ports">Ports</button>
       <button class="tab" type="button" data-view="stacks">Stacks</button>
-      <button class="tab" type="button" data-view="launcher">Launchers</button>
+      <button class="tab" type="button" data-view="launcher">Integrations</button>
       <button class="tab" type="button" data-view="mcp">MCP</button>
       <button class="tab" type="button" data-view="cli">CLI</button>
-      <button class="tab" type="button" data-view="guide">Guide</button>
     </nav>
     <main>
-      <div id="runtime-status">
-        <p id="notice" class="notice" role="status">Loading PortReeve status…</p>
+      <div id="runtime-status" hidden>
         <p
           id="active-lifecycle-operation"
           class="notice warning"
@@ -62,8 +88,209 @@
         </section>
         <ul id="errors" class="errors" aria-label="Current errors" hidden></ul>
       </div>
-      <section id="overview" aria-labelledby="overview-title">
-        <h2 id="overview-title">Overview</h2>
+      <section
+        id="quick-start"
+        class="quick-start"
+        aria-labelledby="quick-start-title"
+        hidden
+      >
+        <div class="section-heading quick-start-heading">
+          <div>
+            <p class="eyebrow">Kick the tires</p>
+            <h2 id="quick-start-title">Try PortReeve with a project you already run</h2>
+            <p>
+              Start with one familiar <code>npm run dev</code> project. You can prove
+              allocation and environment injection without adopting PortReeve as your
+              permanent launcher or installing native supervision.
+            </p>
+          </div>
+          <div class="quick-start-readiness" aria-live="polite">
+            <small>Authority</small>
+            <strong id="quick-start-authority-state">Checking…</strong>
+            <span id="quick-start-authority-detail">Refreshing local evidence.</span>
+          </div>
+        </div>
+
+        <ol class="quick-start-steps">
+          <li class="panel quick-start-step">
+            <div class="quick-start-step-number" aria-hidden="true">1</div>
+            <div>
+              <p class="eyebrow">Run the authority</p>
+              <h3>Choose foreground or supervised</h3>
+              <p>
+                Both modes use the same data, socket protocol, and port assignments. Run
+                only one at a time.
+              </p>
+              <div class="quick-start-choice-grid">
+                <section>
+                  <h4>Foreground—no service installation</h4>
+                  <p>
+                    Run the bundled CLI in a terminal. It blocks until you press
+                    <kbd>Control-C</kbd> and registers nothing with launchd or systemd.
+                  </p>
+                  <pre id="quick-start-serve-command">portreeve serve</pre>
+                  <button id="copy-quick-start-serve" type="button">
+                    Copy exact command
+                  </button>
+                </section>
+                <section>
+                  <h4>Supervised—normal daily use</h4>
+                  <p>
+                    Install the same CLI as a per-user launchd or systemd service so it
+                    starts reliably and survives Desktop restarts.
+                  </p>
+                  <button type="button" data-app-view="service">
+                    Open Service setup
+                  </button>
+                </section>
+              </div>
+            </div>
+          </li>
+
+          <li class="panel quick-start-step">
+            <div class="quick-start-step-number" aria-hidden="true">2</div>
+            <div>
+              <p class="eyebrow">Describe one endpoint</p>
+              <h3>Tell PortReeve what your frontend publishes</h3>
+              <p>
+                Open Stacks, choose the project directory, and create one component such
+                as <code>frontend</code> with a published <code>default</code> endpoint.
+                A preferred port such as 3000 is optional; PortReeve may choose another
+                when that port is busy.
+              </p>
+              <p class="quick-start-file-note">
+                <strong>Save and Apply</strong> creates
+                <code>portreeve.stack.json</code> in the selected root. The file records
+                names and relationships—not assigned port numbers.
+              </p>
+              <button type="button" data-app-view="stacks">Open Stacks</button>
+            </div>
+          </li>
+
+          <li class="panel quick-start-step">
+            <div class="quick-start-step-number" aria-hidden="true">3</div>
+            <div>
+              <p class="eyebrow">Connect your command</p>
+              <h3>Map the chosen port into <code>npm run dev</code></h3>
+              <p>
+                Open Integrations for the applied stack. In the built-in launcher, use
+                <code>npm run dev</code> as an <strong>Attached</strong> Start command,
+                then map the environment variable your dev server already reads—often
+                <code>PORT</code> or <code>VITE_PORT</code>—to
+                <code>frontend.default</code>'s <strong>Host port</strong>.
+              </p>
+              <div class="quick-start-example-grid" aria-label="One-service example">
+                <div><small>Command</small><code>npm run dev</code></div>
+                <div><small>Start behavior</small><span>Attached</span></div>
+                <div>
+                  <small>Environment</small><code>PORT → frontend.default</code>
+                </div>
+                <div><small>Value</small><span>Host port</span></div>
+              </div>
+              <p class="quick-start-caution">
+                Launcher definitions require a Stop command. Prefer your project's real
+                stop command. For a disposable attached trial only, you may enter
+                <code>true</code> and end the process with
+                <strong>Terminate attached command</strong>; do not treat that
+                placeholder as a production lifecycle integration.
+              </p>
+              <button
+                type="button"
+                data-app-view="launcher"
+                data-integration-mode="built-in"
+              >
+                Open Integrations
+              </button>
+            </div>
+          </li>
+
+          <li class="panel quick-start-step">
+            <div class="quick-start-step-number" aria-hidden="true">4</div>
+            <div>
+              <p class="eyebrow">Run and inspect</p>
+              <h3>Start once, then see the evidence</h3>
+              <p>
+                Save and Trust the exact launcher revision, run Start, and watch its
+                bounded output. PortReeve prepares an allocation before invoking the
+                command, injects the selected port, and then compares the result with
+                fresh listener evidence.
+              </p>
+              <div class="actions">
+                <button
+                  type="button"
+                  data-app-view="launcher"
+                  data-integration-mode="built-in"
+                >
+                  Run with built-in launcher
+                </button>
+                <button type="button" data-app-view="ports">Inspect the port</button>
+              </div>
+            </div>
+          </li>
+        </ol>
+
+        <section
+          class="panel quick-start-two-service"
+          aria-labelledby="quick-start-two-service-title"
+        >
+          <div>
+            <p class="eyebrow">Next experiment</p>
+            <h3 id="quick-start-two-service-title">Add a backend dependency</h3>
+            <p>
+              If one existing project command starts both services, extend the same
+              stack instead of coordinating two ports by hand.
+            </p>
+          </div>
+          <div class="quick-start-two-service-flow">
+            <article>
+              <strong>Frontend</strong>
+              <span>publishes <code>frontend.default</code></span>
+              <span>depends on <code>api.http</code></span>
+            </article>
+            <span aria-hidden="true">→</span>
+            <article>
+              <strong>Backend API</strong>
+              <span>publishes <code>api.http</code></span>
+            </article>
+          </div>
+          <div class="quick-start-two-service-copy">
+            <p>
+              Map your frontend port variable to <code>frontend.default</code>, your
+              backend port variable to <code>api.http</code>, and the frontend's backend
+              URL variable to the <strong>Host URL</strong> for <code>api.http</code>.
+              PortReeve chooses both ports as one generation and resolves the dependency
+              from that same plan.
+            </p>
+            <p>
+              Your command still owns startup order and readiness. PortReeve owns the
+              coherent addresses and verifies which providers bind them.
+            </p>
+          </div>
+        </section>
+
+        <aside class="quick-start-upgrade">
+          <strong>This is an experiment, not a migration.</strong>
+          Keep the command-only launcher while it is useful. Later, generate a
+          standalone launcher or call the official client from your project tooling for
+          tighter activation and cleanup control.
+          <button type="button" data-app-view="overview">
+            Compare integration paths
+          </button>
+        </aside>
+      </section>
+
+      <section id="service" aria-labelledby="service-title" hidden>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Per-user authority</p>
+            <h2 id="service-title">PortReeve service</h2>
+            <p>
+              Inspect the installed CLI, foreground or supervised runtime, private
+              socket health, and native lifecycle controls. Supervision uses launchd on
+              macOS or <code>systemd --user</code> on Linux and never requires root.
+            </p>
+          </div>
+        </div>
         <div id="status-cards" class="cards"></div>
         <div class="overview-grid">
           <article class="panel">
@@ -149,7 +376,7 @@
               <h2 id="stacks-title">Stacks</h2>
               <p>
                 Persistent definitions and current PortReeve coordination evidence.
-                Project processes and containers remain launcher-owned.
+                Project processes and containers remain project-owned.
               </p>
             </div>
             <div class="actions">
@@ -177,13 +404,58 @@
         <div id="stack-editor" class="stack-editor" hidden></div>
       </section>
       <section id="launcher" aria-labelledby="launcher-title" hidden>
-        <div id="launcher-browser">
-          <div class="section-heading">
+        <div class="section-heading integrations-heading">
+          <div>
+            <p class="eyebrow">Project execution</p>
+            <h2 id="launcher-title">Integrations</h2>
+            <p>
+              Choose how project-owned lifecycle commands receive PortReeve's current
+              endpoint assignments. Start inside Desktop or move toward independent
+              project tooling.
+            </p>
+          </div>
+        </div>
+        <div
+          class="integration-path-choices"
+          role="tablist"
+          aria-label="Launcher integration approach"
+        >
+          <button
+            id="integration-built-in-choice"
+            class="integration-path-choice selected"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="launcher-browser"
+          >
+            <strong>Built-in launcher</strong>
+            <span class="badge state-configured">Available</span>
+            <small>Configure and run project commands inside PortReeve Desktop.</small>
+          </button>
+          <button
+            id="integration-generated-choice"
+            class="integration-path-choice"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="generated-launcher-placeholder"
+          >
+            <strong>Generated launcher</strong>
+            <span class="badge">Coming soon</span>
+            <small>Create independent tooling that runs without Desktop.</small>
+          </button>
+        </div>
+        <div
+          id="launcher-browser"
+          role="tabpanel"
+          aria-labelledby="integration-built-in-choice"
+        >
+          <div class="section-heading compact built-in-launcher-heading">
             <div>
-              <h2 id="launcher-title">Launchers</h2>
+              <h3>Built-in launcher</h3>
               <p>
-                PortReeve allocates and verifies addresses. Your launcher remains
-                responsible for starting, stopping, and observing the project stack.
+                PortReeve allocates and verifies addresses, then Desktop invokes the
+                trusted commands you configure for the selected stack.
               </p>
             </div>
             <button id="refresh-launchers" type="button">Refresh launchers</button>
@@ -214,7 +486,47 @@
             </aside>
           </div>
         </div>
+        <section
+          id="generated-launcher-placeholder"
+          class="panel generated-launcher-placeholder"
+          role="tabpanel"
+          aria-labelledby="integration-generated-choice generated-launcher-title"
+          hidden
+        >
+          <div>
+            <p class="eyebrow">Coming soon</p>
+            <h3 id="generated-launcher-title">Generate an independent launcher</h3>
+            <p>
+              This future workflow will produce project-owned tooling that coordinates
+              with the same PortReeve authority and invokes your existing lifecycle
+              commands without keeping Desktop in the runtime path.
+            </p>
+          </div>
+          <ul>
+            <li>Reuse the selected stack's endpoints and dependency mappings.</li>
+            <li>Run independently from the PortReeve Desktop application.</li>
+            <li>Keep generated output visible and reviewable before adoption.</li>
+          </ul>
+          <p class="muted">
+            Generation is not available in this release. Artifact language and shape
+            will be designed as a separate feature rather than implied by inactive
+            controls here.
+          </p>
+          <button type="button" data-overview-anchor="guide-project-integration">
+            Compare integration paths
+          </button>
+        </section>
         <div id="launcher-editor" class="launcher-editor" hidden></div>
+        <aside class="integration-project-path">
+          <div>
+            <strong>Already own your project's lifecycle tooling?</strong>
+            Direct project integration requests assignments through the official client
+            and confirms bindings only after the project succeeds in using them.
+          </div>
+          <button type="button" data-overview-anchor="guide-project-integration">
+            Learn about project integration
+          </button>
+        </aside>
       </section>
       <section id="mcp" class="mcp-setup" aria-labelledby="mcp-title" hidden>
         <div class="section-heading">
@@ -314,8 +626,8 @@
         </div>
         <p class="mcp-guide-link">
           Want the strongest integration? See
-          <button id="open-guide-integration" class="text-button" type="button">
-            project-owned integration in the Guide</button
+          <button id="open-overview-integration" class="text-button" type="button">
+            project-owned integration in Overview</button
           >.
         </p>
         <div id="mcp-guide-content" class="client-guide"></div>
@@ -326,9 +638,9 @@
             <p class="eyebrow">Terminal integration</p>
             <h2 id="cli-title">PortReeve CLI</h2>
             <p>
-              The CLI is a peer client of Desktop and MCP. Use it for service
-              administration, shell automation, complete evidence inspection, and
-              project-trusted launcher commands.
+              The CLI, Desktop, and MCP are peer clients of the same PortReeve
+              authority. Use the CLI for service administration, shell automation,
+              complete evidence inspection, and project-trusted launcher commands.
             </p>
           </div>
         </div>
@@ -362,7 +674,7 @@
         </section>
         <div id="cli-guide-content" class="client-guide"></div>
       </section>
-      <section id="guide" class="guide" aria-labelledby="guide-title" hidden>
+      <section id="overview" class="guide" aria-labelledby="overview-title">
         <header class="guide-hero">
           <figure class="guide-identity-mark">
             <img
@@ -371,39 +683,50 @@
             />
           </figure>
           <div class="guide-identity-copy">
-            <p class="eyebrow">Guide</p>
-            <h2 id="guide-title" tabindex="-1">What is PortReeve?</h2>
-            <p class="guide-lede">
-              PortReeve is the per-user authority for development TCP ports on your
-              machine. It gives projects and services stable network addresses, avoids
-              conflicts, and verifies which process or container owns each endpoint.
+            <p class="eyebrow">Overview</p>
+            <h2 id="overview-title" tabindex="-1">What is PortReeve?</h2>
+            <p class="guide-summary">
+              <strong>Localhost port conflicts, solved.</strong>
+              PortReeve gives every development service a stable TCP address and
+              verifies which process or container actually owns it.
             </p>
-            <p>
-              This becomes especially valuable during concurrent agentic development.
-              Multiple agents may run independent copies of the same stack from
-              different Git worktrees on one machine. Those copies naturally prefer the
-              same default ports, so collisions become frequent unless a shared
-              authority coordinates their assignments.
-            </p>
-            <p>
-              The name borrows from the historical <em>portreeve</em>: a civic official
-              responsible for administering a port or market borough. In the older term,
-              <em>port</em> could mean a market town—not only a seaport. We use it as a
-              modern play on words: PortReeve is the local official responsible for
-              coordinating your machine's network ports.
-            </p>
-            <p class="guide-principle">
-              <strong>PortReeve coordinates addresses.</strong>
-              <span
-                >Your project tools start, supervise, and evaluate the health of your
-                services.</span
-              >
-            </p>
-            <p>
-              One PortReeve server runs for the current operating-system user. The
-              desktop application, <code>portreeve</code> CLI, official JavaScript
-              client, and project launchers all communicate with that same authority.
-            </p>
+            <div class="guide-intro-grid">
+              <div class="guide-intro-point">
+                <h3>The problem</h3>
+                <p>
+                  On one development machine, services share localhost's TCP port space.
+                  Hostnames do not by themselves let two listeners claim the same local
+                  address and port. Modern agentic development multiplies the pressure:
+                  several agents may run independent copies of the same stack from
+                  different Git worktrees, while every copy reaches for the same
+                  familiar defaults.
+                </p>
+              </div>
+              <div class="guide-intro-point">
+                <h3>The name</h3>
+                <p>
+                  A <em>reeve</em> was a person entrusted with local administration, and
+                  the office took different names—such as shire reeve, borough reeve,
+                  and portreeve—according to the place or responsibility. The title
+                  <em>shire reeve</em> survives in contracted form as the modern word
+                  <em>sheriff</em>. A <em>portreeve</em> governed a port or market
+                  borough, where <em>port</em> could mean a market town, not only a
+                  seaport. PortReeve is the modern local official for your machine's
+                  network ports.
+                </p>
+              </div>
+              <div class="guide-intro-point guide-intro-model">
+                <h3>One authority, several peer clients</h3>
+                <p>
+                  One supervised PortReeve server runs for the current operating-system
+                  user. The Desktop app, <code>portreeve</code> CLI, official JavaScript
+                  client, MCP integrations, and project launchers are all clients of
+                  that authority—and peers of one another. PortReeve assigns addresses
+                  and verifies bindings; your project tooling remains responsible for
+                  starting, supervising, and judging the health of your services.
+                </p>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -413,33 +736,33 @@
         >
           <div class="guide-section-heading">
             <p class="eyebrow">Choose a client</p>
-            <h3 id="guide-clients-title">Four peers, one PortReeve authority</h3>
+            <h3 id="guide-clients-title">Four peer clients, one PortReeve authority</h3>
             <p>
-              Choose the surface that belongs in your workflow. Every client uses the
-              same per-user daemon and durable port state; none creates a second
-              PortReeve authority.
+              Choose the client surface that belongs in your workflow. Each is a peer of
+              the others: all use the same per-user daemon and durable port state, and
+              none creates a second PortReeve authority.
             </p>
           </div>
           <div class="guide-client-options">
             <article>
               <h4>Desktop</h4>
               <p>Visual inspection, stack editing, and low-friction launchers.</p>
-              <button type="button" data-guide-view="overview">Open Overview</button>
+              <button type="button" data-app-view="quick-start">Try Quick Start</button>
             </article>
             <article>
               <h4>MCP</h4>
               <p>Strict agent tools for inspection and evidence-bound coordination.</p>
-              <button type="button" data-guide-view="mcp">Open MCP guide</button>
+              <button type="button" data-app-view="mcp">Open MCP guide</button>
             </article>
             <article>
               <h4>CLI</h4>
               <p>Terminal automation and complete local service administration.</p>
-              <button type="button" data-guide-view="cli">Open CLI guide</button>
+              <button type="button" data-app-view="cli">Open CLI guide</button>
             </article>
             <article>
               <h4>JavaScript</h4>
               <p>Project-owned allocation, startup, confirmation, and cleanup.</p>
-              <button type="button" data-guide-anchor="guide-project-integration">
+              <button type="button" data-overview-anchor="guide-project-integration">
                 See project integration
               </button>
               <small>Complete API guidance: <code>docs/client.md</code></small>
@@ -458,15 +781,21 @@
               differ in what invokes those commands and what must be present at runtime.
               The PortReeve server and coordination lifecycle remain the same.
             </p>
+            <p>
+              Good and Better expose resolved endpoints as environment variables to the
+              shell commands they launch. With Project integration, project tooling
+              requests assignments directly from PortReeve—though it may still pass them
+              to child processes through environment variables.
+            </p>
           </div>
           <div class="guide-paths">
             <article class="guide-path">
               <p class="guide-path-rank">Good</p>
               <h4>Built-in driver</h4>
               <p>
-                Configure shell commands such as <code>npm run dev</code> in Launchers.
-                Desktop injects resolved endpoints and invokes them to drive your
-                project's existing lifecycle tooling.
+                Configure shell commands such as <code>npm run dev</code> under
+                Integrations. The built-in launcher injects resolved endpoints and
+                invokes them to drive your project's existing lifecycle tooling.
               </p>
               <figure
                 class="guide-mini-sequence guide-mini-sequence-dense guide-sequence-five"
@@ -476,13 +805,25 @@
                     <i></i><i></i><i></i><i></i><i></i>
                   </div>
                   <div class="guide-sequence-actors">
-                    <span class="guide-actor-pill guide-actor-developer">Developer</span
-                    ><span class="guide-actor-pill guide-actor-desktop">Desktop</span
-                    ><span class="guide-actor-pill guide-actor-portreeve"
-                      >PortReeve</span
+                    <span
+                      class="guide-actor-pill guide-actor-developer"
+                      aria-label="You or agent"
+                      ><span>You or</span><span>agent</span></span
+                    ><span
+                      class="guide-actor-pill guide-actor-desktop"
+                      aria-label="PortReeve Desktop"
+                      ><span>PortReeve</span><span>Desktop</span></span
+                    ><span
+                      class="guide-actor-pill guide-actor-portreeve"
+                      aria-label="PortReeve Server"
+                      ><span>PortReeve</span><span>Server</span></span
                     ><span class="guide-actor-pill guide-actor-commands"
                       >Shell command</span
-                    ><span class="guide-actor-pill guide-actor-services">Services</span>
+                    ><span
+                      class="guide-actor-pill guide-actor-services"
+                      aria-label="Your services"
+                      ><span>Your</span><span>services</span></span
+                    >
                   </div>
                   <ol aria-label="Built-in driver startup sequence">
                     <li class="guide-message flow-1-2"><span>Start</span></li>
@@ -534,12 +875,23 @@
                     <i></i><i></i><i></i><i></i>
                   </div>
                   <div class="guide-sequence-actors">
-                    <span class="guide-actor-pill guide-actor-developer">Developer</span
-                    ><span class="guide-actor-pill guide-actor-generated"
-                      >Generated tool</span
-                    ><span class="guide-actor-pill guide-actor-portreeve"
-                      >PortReeve</span
-                    ><span class="guide-actor-pill guide-actor-services">Services</span>
+                    <span
+                      class="guide-actor-pill guide-actor-developer"
+                      aria-label="You or agent"
+                      ><span>You or</span><span>agent</span></span
+                    ><span
+                      class="guide-actor-pill guide-actor-generated"
+                      aria-label="Generated launcher"
+                      ><span>Generated</span><span>launcher</span></span
+                    ><span
+                      class="guide-actor-pill guide-actor-portreeve"
+                      aria-label="PortReeve Server"
+                      ><span>PortReeve</span><span>Server</span></span
+                    ><span
+                      class="guide-actor-pill guide-actor-services"
+                      aria-label="Your services"
+                      ><span>Your</span><span>services</span></span
+                    >
                   </div>
                   <ol aria-label="Generated launcher startup sequence">
                     <li class="guide-message flow-1-2"><span>Start</span></li>
@@ -563,15 +915,15 @@
                 </div>
                 <div>
                   <dt>Runtime</dt>
-                  <dd>Server plus generated tool</dd>
+                  <dd>Server plus generated launcher</dd>
                 </div>
                 <div>
                   <dt>Port access</dt>
                   <dd>Environment variables</dd>
                 </div>
                 <div>
-                  <dt>Tradeoff</dt>
-                  <dd>Another project artifact to maintain</dd>
+                  <dt>Payoff</dt>
+                  <dd>Reusable automation without Desktop</dd>
                 </div>
               </dl>
             </article>
@@ -589,12 +941,23 @@
                     <i></i><i></i><i></i><i></i>
                   </div>
                   <div class="guide-sequence-actors">
-                    <span class="guide-actor-pill guide-actor-developer">Developer</span
-                    ><span class="guide-actor-pill guide-actor-project"
-                      >Project tooling</span
-                    ><span class="guide-actor-pill guide-actor-portreeve"
-                      >PortReeve</span
-                    ><span class="guide-actor-pill guide-actor-services">Services</span>
+                    <span
+                      class="guide-actor-pill guide-actor-developer"
+                      aria-label="You or agent"
+                      ><span>You or</span><span>agent</span></span
+                    ><span
+                      class="guide-actor-pill guide-actor-project"
+                      aria-label="Your project tooling"
+                      ><span>Your project</span><span>tooling</span></span
+                    ><span
+                      class="guide-actor-pill guide-actor-portreeve"
+                      aria-label="PortReeve Server"
+                      ><span>PortReeve</span><span>Server</span></span
+                    ><span
+                      class="guide-actor-pill guide-actor-services"
+                      aria-label="Your services"
+                      ><span>Your</span><span>services</span></span
+                    >
                   </div>
                   <ol aria-label="Project integration startup sequence">
                     <li class="guide-message flow-1-2"><span>Start</span></li>
@@ -631,12 +994,6 @@
               </dl>
             </article>
           </div>
-          <p class="guide-port-access-note">
-            Good and Better expose resolved endpoints as environment variables to the
-            shell commands they launch. With Project integration, project tooling
-            requests assignments directly from PortReeve—though it may still pass them
-            to child processes through environment variables.
-          </p>
           <aside class="guide-actor-legend" aria-labelledby="guide-actor-legend-title">
             <header>
               <p class="eyebrow">Actor key</p>
@@ -648,14 +1005,22 @@
             </header>
             <ul class="guide-actor-legend-list">
               <li>
-                <span class="guide-actor-pill guide-actor-developer">Developer</span>
+                <span
+                  class="guide-actor-pill guide-actor-developer"
+                  aria-label="You or agent"
+                  ><span>You or</span><span>agent</span></span
+                >
                 <div>
                   <small>Initiator</small>
                   <p>The person or agent that initiates and observes the operation.</p>
                 </div>
               </li>
               <li>
-                <span class="guide-actor-pill guide-actor-desktop">Desktop</span>
+                <span
+                  class="guide-actor-pill guide-actor-desktop"
+                  aria-label="PortReeve Desktop"
+                  ><span>PortReeve</span><span>Desktop</span></span
+                >
                 <div>
                   <small>Integration tool</small>
                   <p>
@@ -665,8 +1030,10 @@
                 </div>
               </li>
               <li>
-                <span class="guide-actor-pill guide-actor-generated"
-                  >Generated tool</span
+                <span
+                  class="guide-actor-pill guide-actor-generated"
+                  aria-label="Generated launcher"
+                  ><span>Generated</span><span>launcher</span></span
                 >
                 <div>
                   <small>Integration tool</small>
@@ -674,8 +1041,10 @@
                 </div>
               </li>
               <li>
-                <span class="guide-actor-pill guide-actor-project"
-                  >Project tooling</span
+                <span
+                  class="guide-actor-pill guide-actor-project"
+                  aria-label="Your project tooling"
+                  ><span>Your project</span><span>tooling</span></span
                 >
                 <div>
                   <small>Integration tool</small>
@@ -686,7 +1055,11 @@
                 </div>
               </li>
               <li>
-                <span class="guide-actor-pill guide-actor-portreeve">PortReeve</span>
+                <span
+                  class="guide-actor-pill guide-actor-portreeve"
+                  aria-label="PortReeve Server"
+                  ><span>PortReeve</span><span>Server</span></span
+                >
                 <div>
                   <small>Port authority</small>
                   <p>
@@ -707,7 +1080,11 @@
                 </div>
               </li>
               <li>
-                <span class="guide-actor-pill guide-actor-services">Services</span>
+                <span
+                  class="guide-actor-pill guide-actor-services"
+                  aria-label="Your services"
+                  ><span>Your</span><span>services</span></span
+                >
                 <div>
                   <small>Project runtime</small>
                   <p>Processes or containers that run and bind the assigned ports.</p>
@@ -732,6 +1109,97 @@
                 real request remains a project-owned health decision.
               </p>
             </section>
+          </aside>
+        </section>
+
+        <section
+          class="guide-section guide-stacks-introduction"
+          aria-labelledby="guide-stacks-introduction-title"
+        >
+          <div class="guide-section-heading">
+            <p class="eyebrow">Stacks</p>
+            <h3 id="guide-stacks-introduction-title">
+              Your local development stack already exists
+            </h3>
+            <p>
+              The frontend, APIs, workers, and supporting services you run together
+              locally mirror the system you deploy. PortReeve does not invent a new kind
+              of stack; it gives that familiar topology stable names and a coherent set
+              of local network addresses.
+            </p>
+          </div>
+
+          <div class="guide-stack-overview">
+            <article class="guide-stack-definition">
+              <h4>Name relationships, not port numbers</h4>
+              <p>
+                A <code>portreeve.stack.json</code> file names the stack's components,
+                the endpoints each component publishes, and the endpoints its peers
+                need. It contains no current port assignments.
+              </p>
+              <p>
+                One selected development root—often a Git worktree—represents one
+                independently runnable instance of that stack. PortReeve keeps the
+                instance's assignments in its own durable state.
+              </p>
+            </article>
+
+            <figure class="guide-stack-map" aria-labelledby="guide-stack-map-title">
+              <figcaption id="guide-stack-map-title">
+                A familiar local dependency chain
+              </figcaption>
+              <div class="guide-stack-service-flow">
+                <div class="guide-stack-service">
+                  <strong>Web client</strong>
+                  <span>needs <code>api.http</code></span>
+                </div>
+                <span class="guide-stack-arrow" aria-hidden="true">→</span>
+                <div class="guide-stack-service">
+                  <strong>API</strong>
+                  <span>publishes <code>api.http</code></span>
+                  <span>needs <code>database.postgres</code></span>
+                </div>
+                <span class="guide-stack-arrow" aria-hidden="true">→</span>
+                <div class="guide-stack-service">
+                  <strong>Database</strong>
+                  <span>publishes <code>database.postgres</code></span>
+                </div>
+              </div>
+              <p>
+                PortReeve prepares one generation for the whole stack, then resolves
+                each named dependency to the provider's address from that same plan.
+              </p>
+            </figure>
+          </div>
+
+          <div class="guide-stack-responsibilities">
+            <article>
+              <p class="eyebrow">Within one stack</p>
+              <h4>Coordinate service dependencies</h4>
+              <p>
+                PortReeve allocates published endpoints together and gives every
+                consumer the matching dependency addresses. A client therefore learns
+                the API address chosen for this run; the API learns the corresponding
+                database address. No service has to guess another service's port.
+              </p>
+            </article>
+            <article>
+              <p class="eyebrow">Across stack instances</p>
+              <h4>Prevent port collisions</h4>
+              <p>
+                A second worktree or agent can run the same topology with a different,
+                equally coherent generation. The component and endpoint names stay the
+                same while their localhost ports remain isolated from every other
+                running instance.
+              </p>
+            </article>
+          </div>
+
+          <aside class="guide-stack-boundary">
+            <strong>Project tooling still owns execution.</strong>
+            PortReeve coordinates allocations, dependency addresses, leases, and binding
+            evidence. Your launcher or project tooling decides startup order, starts the
+            services, and determines when they are healthy.
           </aside>
         </section>
 

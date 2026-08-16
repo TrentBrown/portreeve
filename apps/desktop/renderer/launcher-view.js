@@ -412,7 +412,7 @@ export function createLauncherView(options) {
     const header = document.createElement('div');
     header.className = 'launcher-editor-header';
     header.append(
-      button('Back to Launcher', () => void requestClose()),
+      button('Back to built-in launcher', () => void requestClose()),
       sectionHeading(
         `${editorState.document.fileState === 'missing' ? 'Set up' : 'Edit'} ${editorState.document.project}`,
         'Save and Trust writes portreeve.launcher.json atomically and trusts only the exact resulting revision.',

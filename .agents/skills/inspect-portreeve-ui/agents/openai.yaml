@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Inspect PortReeve UI'
+  short_description: 'Point at Electron UI elements with Playwright'
+  default_prompt: 'Use $inspect-portreeve-ui to enter PortReeve UI inspection mode.'

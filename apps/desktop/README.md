@@ -45,6 +45,27 @@ Create an unsigned local macOS application bundle with:
 bun run desktop:package
 ```
 
+For interactive DOM-level UI inspection, launch the development-only Playwright harness:
+
+```sh
+bun run desktop:inspect
+```
+
+The harness builds the local release candidate, launches an unpackaged Desktop app with
+an isolated temporary user-data profile, and presents the real renderer in a normal
+window. Option-click any element to replace the current selection without activating it.
+Shift-Option-click adds an element to the ordered selection or removes one already in
+the selection. The numbered outlines correspond to the descriptors recorded in the
+selection set. The terminal also accepts `snapshot`, `selected`, `select <selector>`,
+`add <selector>`, `clear`, `inspect <selector>`, `click <selector>`, `hover <selector>`,
+`screenshot`, `reload`, and `quit`. Inspector output is written beneath the operating
+system temporary directory and Playwright is not included in packaged Desktop artifacts.
+
+Only Electron caches and Desktop preferences are isolated. The inspector still connects
+to the current per-user PortReeve service, so ordinary clicks can perform real actions.
+Use Option-click or Shift-Option-click when identifying elements without activating
+them. The inspector keeps at most ten elements in the current selection.
+
 Rerun `release:build` before every package used for runtime verification. Packaging
 consumes and verifies the existing `dist/release` candidate but intentionally does not
 rebuild it; an old candidate may share the same development version while speaking an
