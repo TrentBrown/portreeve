@@ -40,6 +40,21 @@ const COMMIT = /^[a-f0-9]{40}$/u;
 
 /**
  * @typedef {{
+ *   schemaVersion: 1,
+ *   kind: 'native-cli-verification',
+ *   releaseId: string,
+ *   releaseVersion: string,
+ *   source: {repository: string, commit: string},
+ *   target: {operatingSystem: 'macos'|'linux', architecture: 'arm64'|'x64'},
+ *   artifact: {filename: string, bytes: number, sha256: string},
+ *   checks: {executableFormat: true, executableVersion: true, manualServer: true, supervisedLifecycle: true},
+ *   runner: {name: string, operatingSystem: string, architecture: string},
+ *   verifiedAt: string,
+ * }} NativeVerification
+ */
+
+/**
+ * @typedef {{
  *   schemaVersion: number,
  *   releaseId: string,
  *   releaseVersion: string,
@@ -373,6 +388,31 @@ export function assertReleaseRecord(record) {
       throw new Error(`Release artifact architecture is invalid: ${artifact.filename}`);
     }
   }
+  for (const verification of candidate.verifications) {
+    assertNativeVerification(verification);
+    if (
+      verification.releaseId !== candidate.releaseId ||
+      verification.releaseVersion !== candidate.releaseVersion ||
+      verification.source.repository !== candidate.source.repository ||
+      verification.source.commit !== candidate.source.commit
+    ) {
+      throw new Error('Native verification release identity is invalid.');
+    }
+    const artifact = candidate.artifacts.find(
+      (/** @type {ReleaseArtifact} */ entry) =>
+        entry.type === 'executable' &&
+        entry.operatingSystem === verification.target.operatingSystem &&
+        entry.architecture === verification.target.architecture,
+    );
+    if (
+      artifact === undefined ||
+      artifact.filename !== verification.artifact.filename ||
+      artifact.bytes !== verification.artifact.bytes ||
+      artifact.sha256 !== verification.artifact.sha256
+    ) {
+      throw new Error('Native verification artifact identity is invalid.');
+    }
+  }
   const lastStage = names.at(-1);
   const expectedState =
     lastStage === undefined ? 'initialized' : stateAfter(String(lastStage));
@@ -388,6 +428,63 @@ export function assertReleaseRecord(record) {
   if (candidate.publication.state !== expectedPublicationState) {
     throw new Error('Release publication state does not match its completed stages.');
   }
+}
+
+/** @param {unknown} verification @returns {asserts verification is NativeVerification} */
+export function assertNativeVerification(verification) {
+  if (
+    verification === null ||
+    typeof verification !== 'object' ||
+    /** @type {Record<string, any>} */ (verification).schemaVersion !== 1 ||
+    /** @type {Record<string, any>} */ (verification).kind !== 'native-cli-verification'
+  ) {
+    throw new Error('Unsupported native verification schema.');
+  }
+  const candidate = /** @type {Record<string, any>} */ (verification);
+  requiredString(candidate.releaseId, 'native verification release ID');
+  assertSemanticVersion(
+    candidate.releaseVersion,
+    'native verification release version',
+  );
+  requiredString(candidate.source?.repository, 'native verification source repository');
+  if (!COMMIT.test(String(candidate.source?.commit ?? ''))) {
+    throw new Error('Native verification source commit is invalid.');
+  }
+  if (!['macos', 'linux'].includes(candidate.target?.operatingSystem)) {
+    throw new Error('Native verification operating system is invalid.');
+  }
+  if (!['arm64', 'x64'].includes(candidate.target?.architecture)) {
+    throw new Error('Native verification architecture is invalid.');
+  }
+  requiredString(candidate.artifact?.filename, 'native verification artifact filename');
+  if (
+    basename(candidate.artifact.filename) !== candidate.artifact.filename ||
+    !Number.isSafeInteger(candidate.artifact.bytes) ||
+    candidate.artifact.bytes < 0 ||
+    !SHA256.test(String(candidate.artifact.sha256 ?? ''))
+  ) {
+    throw new Error('Native verification artifact identity is invalid.');
+  }
+  for (const check of [
+    'executableFormat',
+    'executableVersion',
+    'manualServer',
+    'supervisedLifecycle',
+  ]) {
+    if (candidate.checks?.[check] !== true) {
+      throw new Error(`Native verification check is incomplete: ${check}`);
+    }
+  }
+  requiredString(candidate.runner?.name, 'native verification runner name');
+  requiredString(
+    candidate.runner?.operatingSystem,
+    'native verification runner operating system',
+  );
+  requiredString(
+    candidate.runner?.architecture,
+    'native verification runner architecture',
+  );
+  assertTimestamp(candidate.verifiedAt, 'native verification time');
 }
 
 /**

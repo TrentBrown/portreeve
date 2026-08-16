@@ -9,7 +9,7 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Release record and transition engine
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R3, R4
@@ -33,12 +33,12 @@ confirmation/immutability checks, and fake remote adapters.
 
 ## I-3 - Promoted native artifacts
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P3
 - **Rubric criteria:** R2, R3, R5
 - **Depends on:** I-1, I-2
-- **PR:** -
+- **PR:** [#58](https://github.com/TrentBrown/portreeve/pull/58)
 
 Refactor the current build/verify scripts into build-once record stages and
 merge native verification evidence without rebuilding.
