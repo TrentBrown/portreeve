@@ -24,6 +24,7 @@ const SEMANTIC_VERSION =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
 const COMMIT = /^[a-f0-9]{40}$/u;
+const NATIVE_TARGET_KEYS = ['macos-arm64', 'macos-x64', 'linux-arm64', 'linux-x64'];
 
 /**
  * @typedef {{
@@ -163,7 +164,23 @@ export function advanceReleaseRecord(record, stage, evidence, now = () => new Da
   assertStageEvidence(record, stage, evidence);
   const timestamp = now().toISOString();
   const next = structuredClone(record);
-  next.stages.push({ name: stage, completedAt: timestamp, evidence });
+  const persistedEvidence =
+    stage === 'native-cli-verified'
+      ? {
+          targets: evidence.targets,
+          verificationCount: evidence.verificationCount,
+        }
+      : evidence;
+  if (stage === 'native-cli-verified') {
+    next.verifications = structuredClone(
+      /** @type {NativeVerification[]} */ (evidence.verifications),
+    );
+  }
+  next.stages.push({
+    name: stage,
+    completedAt: timestamp,
+    evidence: persistedEvidence,
+  });
   next.updatedAt = timestamp;
   next.state = stateAfter(stage);
   if (stage === 'publication-approved') {
@@ -177,6 +194,7 @@ export function advanceReleaseRecord(record, stage, evidence, now = () => new Da
   if (stage === 'published') {
     next.publication = { state: 'published', ...evidence };
   }
+  assertReleaseRecord(next);
   return next;
 }
 
@@ -388,6 +406,7 @@ export function assertReleaseRecord(record) {
       throw new Error(`Release artifact architecture is invalid: ${artifact.filename}`);
     }
   }
+  const verificationKeys = [];
   for (const verification of candidate.verifications) {
     assertNativeVerification(verification);
     if (
@@ -412,6 +431,19 @@ export function assertReleaseRecord(record) {
     ) {
       throw new Error('Native verification artifact identity is invalid.');
     }
+    verificationKeys.push(
+      `${verification.target.operatingSystem}-${verification.target.architecture}`,
+    );
+  }
+  const nativeStageCompleted = names.includes('native-cli-verified');
+  if (
+    (nativeStageCompleted &&
+      verificationKeys.join(',') !== NATIVE_TARGET_KEYS.join(',')) ||
+    (!nativeStageCompleted && verificationKeys.length !== 0)
+  ) {
+    throw new Error(
+      'Native verification matrix does not match the release stage state.',
+    );
   }
   const lastStage = names.at(-1);
   const expectedState =
@@ -519,6 +551,16 @@ function assertStageEvidence(record, stage, evidence) {
     ) {
       throw new Error('Developer ID Desktop trust evidence is incomplete.');
     }
+  }
+  if (
+    stage === 'native-cli-verified' &&
+    (!Array.isArray(evidence.targets) ||
+      evidence.targets.join(',') !== NATIVE_TARGET_KEYS.join(',') ||
+      evidence.verificationCount !== NATIVE_TARGET_KEYS.length ||
+      !Array.isArray(evidence.verifications) ||
+      evidence.verifications.length !== NATIVE_TARGET_KEYS.length)
+  ) {
+    throw new Error('Native CLI stage evidence requires the complete target matrix.');
   }
   if (stage === 'publication-approved') {
     requiredString(evidence.approvedBy, 'publication approver');

@@ -1,6 +1,6 @@
 // @ts-check
 
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { link, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { RELEASE_TARGETS } from './release-lib.js';
@@ -147,12 +147,14 @@ export function mergeNativeVerifications(
       `Native verification matrix is incomplete (missing: ${missing.join(', ') || 'none'}; unexpected: ${unexpected.join(', ') || 'none'}).`,
     );
   }
-  const next = structuredClone(record);
-  next.verifications = required.map((key) => byTarget.get(key));
   return advanceReleaseRecord(
-    next,
+    record,
     'native-cli-verified',
-    { targets: required, verificationCount: required.length },
+    {
+      targets: required,
+      verificationCount: required.length,
+      verifications: required.map((key) => byTarget.get(key)),
+    },
     now,
   );
 }
@@ -167,7 +169,7 @@ export async function writeNativeVerification(path, verification) {
       encoding: 'utf8',
       flag: 'wx',
     });
-    await rename(temporary, path);
+    await link(temporary, path);
   } finally {
     await rm(temporary, { force: true });
   }

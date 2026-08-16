@@ -17,6 +17,7 @@ import {
 import { RELEASE_TARGETS } from '../../scripts/release-lib.js';
 import {
   advanceReleaseRecord,
+  assertReleaseRecord,
   createReleaseRecord,
   registerReleaseArtifact,
   writeReleaseRecord,
@@ -64,6 +65,16 @@ describe('native release evidence', () => {
     ).toEqual(['macos-arm64', 'macos-x64', 'linux-arm64', 'linux-x64']);
     expect(() => mergeNativeVerifications(merged, evidence)).toThrow(
       'requires artifact-digests-established',
+    );
+    const missing = structuredClone(merged);
+    missing.verifications = [];
+    expect(() => assertReleaseRecord(missing)).toThrow(
+      'matrix does not match the release stage state',
+    );
+    const reordered = structuredClone(merged);
+    reordered.verifications.reverse();
+    expect(() => assertReleaseRecord(reordered)).toThrow(
+      'matrix does not match the release stage state',
     );
   });
 
@@ -120,6 +131,9 @@ describe('native release evidence', () => {
       result.verification,
     );
     expect(await readFile(result.outputPath, 'utf8')).toEndWith('\n');
+    await expect(
+      writeNativeVerification(result.outputPath, result.verification),
+    ).rejects.toMatchObject({ code: 'EEXIST' });
   });
 
   test('aggregates transported evidence files without changing artifact bytes', async () => {

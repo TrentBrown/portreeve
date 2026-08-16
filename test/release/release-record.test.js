@@ -76,9 +76,7 @@ describe('release record', () => {
     expect(() => advanceReleaseRecord(preview, 'policy-resolved', {})).toThrow(
       'expected source-pinned',
     );
-    for (const stage of RELEASE_STAGES.slice(0, 6)) {
-      preview = advanceReleaseRecord(preview, stage, {});
-    }
+    preview = advanceThroughDesktopPackaging(preview);
     expect(() =>
       advanceReleaseRecord(preview, 'desktop-trust-verified', { status: 'signed' }),
     ).toThrow('unsigned preview');
@@ -88,9 +86,7 @@ describe('release record', () => {
     expect(preview.stages.at(-1)?.name).toBe('desktop-trust-verified');
 
     let stable = stableRecord();
-    for (const stage of RELEASE_STAGES.slice(0, 6)) {
-      stable = advanceReleaseRecord(stable, stage, {});
-    }
+    stable = advanceThroughDesktopPackaging(stable);
     expect(() => advanceReleaseRecord(stable, 'desktop-trust-verified', {})).toThrow(
       'Desktop trust evidence signatureIdentity is required.',
     );
@@ -108,13 +104,11 @@ describe('release record', () => {
 
   test('binds publication approval to one exact plan digest', () => {
     let record = previewRecord();
-    for (const stage of RELEASE_STAGES.slice(0, 8)) {
-      record = advanceReleaseRecord(
-        record,
-        stage,
-        stage === 'desktop-trust-verified' ? { status: 'unsigned-preview' } : {},
-      );
-    }
+    record = advanceThroughDesktopPackaging(record);
+    record = advanceReleaseRecord(record, 'desktop-trust-verified', {
+      status: 'unsigned-preview',
+    });
+    record = advanceReleaseRecord(record, 'distribution-finalized', {});
     expect(record.state).toBe('prepared');
     expect(() => advanceReleaseRecord(record, 'publication-approved', {})).toThrow(
       'publication approver is required',
@@ -242,6 +236,67 @@ function stableRecord() {
     },
     tools: { bun: '1.3.14', node: '22.20.0' },
   });
+}
+
+/** @param {ReturnType<typeof previewRecord>} record */
+function advanceThroughDesktopPackaging(record) {
+  for (const stage of RELEASE_STAGES.slice(0, 3)) {
+    record = advanceReleaseRecord(record, stage, {});
+  }
+  /** @type {Array<['macos'|'linux', 'arm64'|'x64']>} */
+  const targets = [
+    ['macos', 'arm64'],
+    ['macos', 'x64'],
+    ['linux', 'arm64'],
+    ['linux', 'x64'],
+  ];
+  record.artifacts = targets.map(([operatingSystem, architecture], index) => ({
+    type: 'executable',
+    filename: `portreeve-${operatingSystem}-${architecture}`,
+    path: `artifacts/portreeve-${operatingSystem}-${architecture}`,
+    bytes: index + 1,
+    sha256: String(index + 1).repeat(64),
+    provenanceStage: 'native-cli-built',
+    operatingSystem,
+    architecture,
+  }));
+  record = advanceReleaseRecord(record, 'artifact-digests-established', {});
+  const verifications = record.artifacts.map((artifact) => ({
+    schemaVersion: /** @type {const} */ (1),
+    kind: /** @type {const} */ ('native-cli-verification'),
+    releaseId: record.releaseId,
+    releaseVersion: record.releaseVersion,
+    source: { ...record.source },
+    target: {
+      operatingSystem: artifact.operatingSystem,
+      architecture: artifact.architecture,
+    },
+    artifact: {
+      filename: artifact.filename,
+      bytes: artifact.bytes,
+      sha256: artifact.sha256,
+    },
+    checks: {
+      executableFormat: /** @type {const} */ (true),
+      executableVersion: /** @type {const} */ (true),
+      manualServer: /** @type {const} */ (true),
+      supervisedLifecycle: /** @type {const} */ (true),
+    },
+    runner: {
+      name: 'fixture',
+      operatingSystem: String(artifact.operatingSystem),
+      architecture: String(artifact.architecture),
+    },
+    verifiedAt: record.updatedAt,
+  }));
+  record = advanceReleaseRecord(record, 'native-cli-verified', {
+    targets: targets.map(
+      ([operatingSystem, architecture]) => `${operatingSystem}-${architecture}`,
+    ),
+    verificationCount: 4,
+    verifications,
+  });
+  return advanceReleaseRecord(record, 'desktop-packaged', {});
 }
 
 async function temporaryDirectory() {
