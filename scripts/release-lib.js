@@ -92,6 +92,7 @@ export async function inspectExecutable(path) {
 /**
  * @param {{
  *   version: string,
+ *   releaseVersion?: string,
  *   releaseBaseUrl: string,
  *   homepageUrl: string,
  *   checksums: Record<string, string>
@@ -99,6 +100,7 @@ export async function inspectExecutable(path) {
  */
 export function renderHomebrewFormula(options) {
   const base = options.releaseBaseUrl.replace(/\/+$/u, '');
+  const releaseVersion = options.releaseVersion ?? options.version;
   /** @type {Record<string, {filename: string, url: string, checksum: string}>} */
   const artifact = Object.fromEntries(
     RELEASE_TARGETS.map((target) => {
@@ -111,7 +113,7 @@ export function renderHomebrewFormula(options) {
         `${target.operatingSystem}-${target.architecture}`,
         {
           filename,
-          url: `${base}/v${options.version}/${filename}`,
+          url: `${base}/v${releaseVersion}/${filename}`,
           checksum,
         },
       ];

@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #57 - Deterministic release preparation</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #102a43;
+        --muted: #526778;
+        --paper: #f6f2e8;
+        --card: #fffdf7;
+        --line: #c8d1ca;
+        --navy: #0b315b;
+        --green: #176448;
+        --green-soft: #dcebe3;
+        --coral: #c75532;
+        --gold: #e7d39a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 17px/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main { width: min(1050px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 80px; }
+      h1, h2, h3 { font-family: Georgia, serif; line-height: 1.15; color: var(--navy); }
+      h1 { font-size: clamp(2.3rem, 6vw, 4.8rem); margin: .2em 0; }
+      h2 { font-size: clamp(1.8rem, 4vw, 2.8rem); margin-top: 2.2em; }
+      h3 { margin-top: 1.8em; }
+      a { color: var(--green); }
+      .eyebrow { color: var(--green); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+      .lede { max-width: 780px; font-size: 1.25rem; color: var(--muted); }
+      .toc, .card, .callout, .quiz {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 22px;
+        box-shadow: 0 8px 30px rgb(11 49 91 / 7%);
+      }
+      .toc { margin: 32px 0; }
+      .toc ol { columns: 2; }
+      .callout { border-left: 7px solid var(--coral); }
+      .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 24px 0; }
+      .node { padding: 14px 10px; text-align: center; border-radius: 12px; background: var(--green-soft); border: 1px solid #91b5a3; font-weight: 700; }
+      .node.pending { background: #eee9db; border-style: dashed; color: var(--muted); }
+      .arrow { display: flex; align-items: center; justify-content: center; color: var(--coral); font-size: 1.5rem; }
+      .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+      .before { border-top: 5px solid var(--gold); }
+      .after { border-top: 5px solid var(--green); }
+      code { background: #e8ede8; border-radius: 5px; padding: .1em .35em; }
+      pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #102a43; color: #eff8f3; padding: 18px; border-radius: 12px; overflow: auto; }
+      table { width: 100%; border-collapse: collapse; background: var(--card); }
+      th, td { padding: 12px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+      th { background: var(--green-soft); }
+      .answers { display: grid; gap: 9px; }
+      .answers button { text-align: left; padding: 12px; border-radius: 9px; border: 1px solid var(--line); background: white; cursor: pointer; font: inherit; }
+      .answers button:hover { border-color: var(--green); }
+      .feedback { min-height: 1.6em; font-weight: 700; margin-top: 10px; }
+      .correct { color: var(--green); }
+      .incorrect { color: var(--coral); }
+      footer { margin-top: 60px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 20px; }
+      @media (max-width: 760px) {
+        .toc ol { columns: 1; }
+        .compare { grid-template-columns: 1fr; }
+        .flow { grid-template-columns: 1fr; }
+        .arrow { transform: rotate(90deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="eyebrow">PortReeve · PR #57</div>
+        <h1>A release becomes a recorded progression</h1>
+        <p class="lede">
+          This first release-pipeline slice turns an implicit series of build commands into a
+          strict, resumable preparation record. It deliberately stops before Desktop DMGs,
+          hosted aggregation, or public publication.
+        </p>
+      </header>
+
+      <nav class="toc" aria-label="Table of contents">
+        <strong>On this page</strong>
+        <ol>
+          <li><a href="#background">Background</a></li>
+          <li><a href="#intuition">Core intuition</a></li>
+          <li><a href="#code">Code walkthrough</a></li>
+          <li><a href="#safety">Safety properties</a></li>
+          <li><a href="#remaining">What remains</a></li>
+          <li><a href="#quiz">Knowledge check</a></li>
+        </ol>
+      </nav>
+
+      <section id="background">
+        <h2>Background</h2>
+        <p>
+          PortReeve already knew how to compile four standalone executables, pack its public
+          JavaScript client, render a Homebrew formula, and verify a native lifecycle. The old
+          entry point, <code>scripts/release.js</code>, did all of that work in one top-level
+          script and wrote a build manifest under <code>dist/release</code>.
+        </p>
+        <div class="compare">
+          <article class="card before">
+            <h3>Before</h3>
+            <p>A build directory answered “what files did this command emit?”</p>
+            <ul>
+              <li>No ordered release state</li>
+              <li>No channel, maturity, or trust policy</li>
+              <li>No durable approval boundary</li>
+              <li>No safe interruption/resume contract</li>
+            </ul>
+          </article>
+          <article class="card after">
+            <h3>After this slice</h3>
+            <p>A release record answers “what source and policy produced which exact bytes?”</p>
+            <ul>
+              <li>Versioned schema and ordered stages</li>
+              <li>Independent release and component versions</li>
+              <li>Artifact sizes, digests, provenance, OS, and architecture</li>
+              <li>Exact-source recovery after interruption</li>
+            </ul>
+          </article>
+        </div>
+        <p>
+          The distinction matters because a build is not yet a release. Native checks, Desktop
+          packaging, signing policy, Homebrew metadata, and human publication approval all occur
+          later. A file’s presence cannot prove any of those facts.
+        </p>
+      </section>
+
+      <section id="intuition">
+        <h2>Core intuition</h2>
+        <p>
+          Think of a release as an append-only passport. Each checkpoint stamps the passport only
+          after inspecting the stamp before it. Skipping from source directly to publication is
+          invalid even if plausible-looking files happen to exist.
+        </p>
+        <div class="flow" aria-label="Current and future release stages">
+          <div class="node">Source pinned</div><div class="arrow">→</div>
+          <div class="node">Policy resolved</div><div class="arrow">→</div>
+          <div class="node">Artifacts built</div>
+          <div class="arrow">→</div><div class="node">Digests fixed</div>
+          <div class="arrow">→</div><div class="node pending">Native + Desktop evidence</div>
+          <div class="arrow">→</div><div class="node pending">Human-approved publication</div>
+        </div>
+        <div class="callout">
+          <strong>Important:</strong> PR #57 implements the solid green preparation stages. The
+          dashed stages remain deliberately unavailable. This is safer than exposing a nominal
+          publish command backed by incomplete evidence.
+        </div>
+        <h3>One coordinated version, several component versions</h3>
+        <p>
+          A coordinated preview such as <code>0.1.0-preview.1</code> may contain server,
+          Desktop, and client components that each still report <code>0.1.0</code>. Download URLs
+          use the coordinated GitHub tag; artifact names and installed formula version use the
+          component version. That separation permits several previews without lying about the
+          identity embedded in an executable.
+        </p>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <h3>1. The release record</h3>
+        <p>
+          <code>scripts/release-record.js</code> defines the schema and ordered stage list. Record
+          creation validates semantic versions, source commit, component versions, tool versions,
+          channel, maturity, and trust. Loading JSON repeats strict validation instead of trusting
+          data merely because its <code>schemaVersion</code> equals one.
+        </p>
+        <pre>{
+  "releaseVersion": "0.1.0-preview.1",
+  "versions": { "server": "0.1.0", "desktop": "0.1.0", "client": "0.1.0" },
+  "policy": { "maturity": "alpha", "channel": "preview", "desktopTrust": "unsigned" },
+  "stages": ["source-pinned", "policy-resolved", "native-cli-built"],
+  "artifacts": [{ "filename": "portreeve-v0.1.0-macos-arm64", "sha256": "…" }]
+}</pre>
+        <p>
+          Artifacts must live beneath the release workspace, have unique public filenames and
+          paths, cite a completed provenance stage, and match their recorded length and SHA-256.
+          Atomic temporary-file replacement prevents a reader from seeing half-written JSON.
+        </p>
+
+        <h3>2. A callable build stage</h3>
+        <p>
+          The old top-level build body moved to <code>scripts/release-build.js</code> as
+          <code>buildReleaseArtifacts()</code>. The legacy <code>release:build</code> command is now
+          a thin compatibility wrapper, so existing CI keeps working while the new orchestrator
+          calls the same implementation.
+        </p>
+
+        <h3>3. Non-publishing preparation</h3>
+        <p><code>scripts/prepare-release.js</code> supplies the new Commander-based entry point:</p>
+        <pre>bun run release:prepare -- \
+  --channel preview \
+  --version 0.1.0-preview.1</pre>
+        <p>
+          The command requires a clean checkout, records the exact commit and remote, writes the
+          initial record before the expensive build, builds artifacts, records their independently
+          computed identities, and emits a human-readable publication plan. It does not call
+          GitHub, alter a tap, create a tag, or contact npm.
+        </p>
+
+        <h3>4. Bounded recovery</h3>
+        <p>
+          If the build stops after the initial record is written, <code>--resume</code> permits one
+          precise recovery. The current checkout must still be clean and must match the original
+          repository, commit, channel, maturity, and trust policy. Resume is refused after artifact
+          state exists, preventing a successful version from being overwritten accidentally.
+        </p>
+      </section>
+
+      <section id="safety">
+        <h2>Safety properties</h2>
+        <table>
+          <thead><tr><th>Threat or mistake</th><th>Current response</th></tr></thead>
+          <tbody>
+            <tr><td>Run preview with a stable version</td><td>Policy validation rejects it before workspace mutation.</td></tr>
+            <tr><td>Skip an evidence stage</td><td>The ordered-prefix validator reports the exact expected stage.</td></tr>
+            <tr><td>Edit artifact bytes after recording</td><td>Size or SHA-256 mismatch rejects the artifact set.</td></tr>
+            <tr><td>Edit source, state, path, or publication JSON coherently</td><td>Strict loaded-record consistency checks reject the document.</td></tr>
+            <tr><td>Retry after an interrupted build from another commit</td><td>Exact-source resume validation refuses the attempt.</td></tr>
+            <tr><td>Prepare the same successful version twice</td><td>Existing recorded workspace is immutable at this boundary.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="remaining">
+        <h2>What remains</h2>
+        <p>
+          This is a cumulative feature. Later slices will merge native evidence from all four
+          operating-system/architecture targets, package separate ARM64/x64 Desktop applications
+          and DMGs, generate a cask, reorganize GitHub Actions, decouple npm, add the Alpha Preview
+          user experience, write the runbook and skill, and finally rehearse publication with fake
+          adapters. A real public release remains a separate human gate.
+        </p>
+      </section>
+
+      <section id="quiz">
+        <h2>Knowledge check</h2>
+        <div class="quiz" data-answer="1">
+          <h3>1. Why is the release record different from the old build manifest?</h3>
+          <div class="answers">
+            <button>It replaces SHA-256 with Git commit identity.</button>
+            <button>It records ordered policy and evidence transitions, not only emitted files.</button>
+            <button>It makes all release output byte-reproducible on every host.</button>
+          </div><div class="feedback" aria-live="polite"></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <h3>2. Which resume attempt is accepted?</h3>
+          <div class="answers">
+            <button>A completed build from the same version, to refresh checksums.</button>
+            <button>An interrupted build from a newer commit on the same branch.</button>
+            <button>An interrupted pre-artifact build from the exact recorded clean source and policy.</button>
+          </div><div class="feedback" aria-live="polite"></div>
+        </div>
+        <div class="quiz" data-answer="0">
+          <h3>3. Why can a release tag and server version differ?</h3>
+          <div class="answers">
+            <button>A coordinated preview identifies a publication event while components retain independent identities.</button>
+            <button>Homebrew requires every tag to sort before the installed version.</button>
+            <button>The executable cannot report semantic prerelease versions.</button>
+          </div><div class="feedback" aria-live="polite"></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <h3>4. What public mutation does <code>release:prepare</code> perform?</h3>
+          <div class="answers">
+            <button>It creates a draft GitHub prerelease but uploads no assets.</button>
+            <button>It updates the personal Homebrew tap only.</button>
+            <button>None; publication is a separate, later approval boundary.</button>
+          </div><div class="feedback" aria-live="polite"></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <h3>5. Why is the complete feature rubric still marked NOT YET?</h3>
+          <div class="answers">
+            <button>The foundation tests pass only under an unsupported Bun version.</button>
+            <button>Native aggregation, Desktop DMGs, cask, hosted publication, UX, and docs remain later slices.</button>
+            <button>The record schema cannot represent stable releases.</button>
+          </div><div class="feedback" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <footer>
+        Pinned explanation for <code>a8e7da6..b3aa066</code>. Generated for the PR #57
+        workflow boundary.
+      </footer>
+    </main>
+    <script>
+      for (const quiz of document.querySelectorAll('.quiz')) {
+        const correct = Number(quiz.dataset.answer);
+        const feedback = quiz.querySelector('.feedback');
+        quiz.querySelectorAll('button').forEach((button, index) => {
+          button.addEventListener('click', () => {
+            const right = index === correct;
+            feedback.textContent = right
+              ? 'Correct — that is the invariant this slice establishes.'
+              : 'Not quite. Re-read the preparation and safety sections, then try again.';
+            feedback.className = `feedback ${right ? 'correct' : 'incorrect'}`;
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
