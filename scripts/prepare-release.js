@@ -10,6 +10,7 @@ import { buildReleaseArtifacts } from './release-build.js';
 import {
   advanceReleaseRecord,
   createReleaseRecord,
+  readReleaseRecord,
   registerReleaseArtifact,
   writeReleaseRecord,
 } from './release-record.js';
@@ -25,6 +26,7 @@ const DEFAULT_RELEASE_BASE = `${DEFAULT_HOMEPAGE}/releases/download`;
  *   outputRoot?: string,
  *   homepageUrl?: string,
  *   releaseBaseUrl?: string,
+ *   resume?: boolean,
  * }} options
  * @param {{
  *   sourceIdentity?: (workspaceRoot: string) => Promise<{repository: string, commit: string, clean: boolean}>,
@@ -39,7 +41,8 @@ export async function prepareRelease(options, dependencies = {}) {
   );
   const releaseRoot = resolve(outputRoot, options.version);
   const recordPath = resolve(releaseRoot, 'release-record.json');
-  if (await exists(recordPath)) {
+  const recordExists = await exists(recordPath);
+  if (recordExists && options.resume !== true) {
     throw new Error(
       `Release workspace already exists: ${releaseRoot}. Published identities are immutable; choose a new version or resume the existing record.`,
     );
@@ -64,27 +67,37 @@ export async function prepareRelease(options, dependencies = {}) {
           channel: 'stable',
           desktopTrust: 'developer-id-notarized',
         });
-  let record = createReleaseRecord({
-    releaseVersion: options.version,
-    source: { repository: source.repository, commit: source.commit },
-    versions: {
-      server: PORTREEVE_VERSION,
-      desktop: desktopMetadata.version,
-      client: PORTREEVE_CLIENT_VERSION,
-    },
-    policy,
-    tools: { bun: Bun.version, node: process.versions.node },
-    now,
-  });
-  await mkdir(releaseRoot, { recursive: true });
-  record = advanceReleaseRecord(
-    record,
-    'source-pinned',
-    { repository: source.repository, commit: source.commit, clean: true },
-    now,
-  );
-  record = advanceReleaseRecord(record, 'policy-resolved', { ...policy }, now);
-  await writeReleaseRecord(recordPath, record);
+  let record;
+  if (recordExists) {
+    record = await readReleaseRecord(recordPath);
+    assertResumablePreparation(record, {
+      version: options.version,
+      source,
+      policy,
+    });
+  } else {
+    record = createReleaseRecord({
+      releaseVersion: options.version,
+      source: { repository: source.repository, commit: source.commit },
+      versions: {
+        server: PORTREEVE_VERSION,
+        desktop: desktopMetadata.version,
+        client: PORTREEVE_CLIENT_VERSION,
+      },
+      policy,
+      tools: { bun: Bun.version, node: process.versions.node },
+      now,
+    });
+    await mkdir(releaseRoot, { recursive: true });
+    record = advanceReleaseRecord(
+      record,
+      'source-pinned',
+      { repository: source.repository, commit: source.commit, clean: true },
+      now,
+    );
+    record = advanceReleaseRecord(record, 'policy-resolved', { ...policy }, now);
+    await writeReleaseRecord(recordPath, record);
+  }
 
   const artifactsRoot = resolve(releaseRoot, 'artifacts');
   const built = await (dependencies.build ?? buildReleaseArtifacts)({
@@ -202,6 +215,34 @@ function normalizeRepository(value) {
   return value.replace(/\.git$/u, '');
 }
 
+/**
+ * @param {Record<string, any>} record
+ * @param {{version: string, source: {repository: string, commit: string}, policy: Record<string, string>}} expected
+ */
+function assertResumablePreparation(record, expected) {
+  if (
+    record.releaseVersion !== expected.version ||
+    record.source.repository !== expected.source.repository ||
+    record.source.commit !== expected.source.commit ||
+    record.policy.maturity !== expected.policy.maturity ||
+    record.policy.channel !== expected.policy.channel ||
+    record.policy.desktopTrust !== expected.policy.desktopTrust
+  ) {
+    throw new Error(
+      'Existing release preparation does not match this source or policy.',
+    );
+  }
+  if (
+    record.artifacts.length !== 0 ||
+    record.stages.map((/** @type {{name: string}} */ stage) => stage.name).join(',') !==
+      'source-pinned,policy-resolved'
+  ) {
+    throw new Error(
+      'Existing release preparation has progressed beyond the resumable build boundary.',
+    );
+  }
+}
+
 /** @param {string} path */
 async function exists(path) {
   try {
@@ -226,6 +267,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     .description('Prepare a non-publishing PortReeve release workspace')
     .requiredOption('--channel <channel>', 'preview or stable')
     .requiredOption('--version <version>', 'coordinated semantic release version')
+    .option('--resume', 'resume an interrupted build from its exact recorded source')
     .action(async (values) => {
       if (!['preview', 'stable'].includes(values.channel)) {
         throw new Error('--channel must be preview or stable.');
@@ -233,6 +275,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       const result = await prepareRelease({
         channel: values.channel,
         version: values.version,
+        resume: values.resume,
       });
       console.log(result.releaseRoot);
     });

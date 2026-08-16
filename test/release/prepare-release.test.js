@@ -108,6 +108,48 @@ describe('release preparation', () => {
     await expect(prepareRelease(options, dependencies)).rejects.toThrow(
       'Release workspace already exists',
     );
+    await expect(
+      prepareRelease({ ...options, resume: true }, dependencies),
+    ).rejects.toThrow('progressed beyond the resumable build boundary');
+  });
+
+  test('resumes an interrupted build only for the exact recorded source and policy', async () => {
+    const outputRoot = await temporaryDirectory();
+    const source = {
+      repository: 'https://github.com/TrentBrown/portreeve',
+      commit: '6'.repeat(40),
+      clean: true,
+    };
+    const options = {
+      channel: /** @type {const} */ ('preview'),
+      version: '0.1.0-preview.4',
+      workspaceRoot: process.cwd(),
+      outputRoot,
+    };
+    await expect(
+      prepareRelease(options, {
+        sourceIdentity: async () => source,
+        build: async () => {
+          throw new Error('simulated build interruption');
+        },
+      }),
+    ).rejects.toThrow('simulated build interruption');
+
+    await expect(
+      prepareRelease(
+        { ...options, resume: true },
+        {
+          sourceIdentity: async () => ({ ...source, commit: '7'.repeat(40) }),
+          build: fakeBuild,
+        },
+      ),
+    ).rejects.toThrow('does not match this source or policy');
+
+    const resumed = await prepareRelease(
+      { ...options, resume: true },
+      { sourceIdentity: async () => source, build: fakeBuild },
+    );
+    expect(resumed.record.stages.at(-1)?.name).toBe('artifact-digests-established');
   });
 });
 
