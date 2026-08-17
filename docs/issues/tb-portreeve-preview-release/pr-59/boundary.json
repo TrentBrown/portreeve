@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "scope": "slice",
+  "featureId": "tb-portreeve-preview-release",
+  "repositoryAlias": "product",
+  "packetId": "pr-59",
+  "pullRequest": {
+    "repository": "TrentBrown/portreeve",
+    "number": 59,
+    "url": "https://github.com/TrentBrown/portreeve/pull/59",
+    "state": "OPEN",
+    "isDraft": true,
+    "baseRefName": "main",
+    "baseRefOid": "e8ded59c99995ea38ada909c6857a49750b81f98",
+    "headRefName": "tb-portreeve-preview-release-03-desktop-distribution",
+    "headRefOid": "15ca407cf0976812f1e7a4e5443571a53921e30d"
+  },
+  "mergeBaseSha": "e8ded59c99995ea38ada909c6857a49750b81f98",
+  "evaluatedSourceSha": "15ca407cf0976812f1e7a4e5443571a53921e30d",
+  "featureBaseSha": null,
+  "applicability": { "specEvaluation": true, "judge": true, "patternReview": true },
+  "gates": {
+    "verification": { "disposition": "passed", "reason": null },
+    "specEvaluation": { "disposition": "passed", "reason": null },
+    "judge": { "disposition": "passed", "reason": null },
+    "codeReview": { "disposition": "passed", "reason": null },
+    "patternReview": { "disposition": "passed", "reason": null },
+    "explainDiff": { "disposition": "passed", "reason": null }
+  }
+}
