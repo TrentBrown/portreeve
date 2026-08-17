@@ -162,6 +162,13 @@ export function advanceReleaseRecord(record, stage, evidence, now = () => new Da
     throw new Error(`Release stage ${stage} is invalid; expected ${expected}.`);
   }
   assertStageEvidence(record, stage, evidence);
+  if (
+    stage === 'native-cli-verified' &&
+    (!Array.isArray(evidence.verifications) ||
+      evidence.verifications.length !== NATIVE_TARGET_KEYS.length)
+  ) {
+    throw new Error('Native CLI transition requires all verification documents.');
+  }
   const timestamp = now().toISOString();
   const next = structuredClone(record);
   const persistedEvidence =
@@ -357,6 +364,13 @@ export function assertReleaseRecord(record) {
   });
   if (names.some((name, index) => name !== RELEASE_STAGES[index])) {
     throw new Error('Release record stages are not a valid ordered prefix.');
+  }
+  for (const stage of candidate.stages) {
+    assertStageEvidence(
+      /** @type {ReleaseRecord} */ (candidate),
+      stage.name,
+      stage.evidence,
+    );
   }
   const filenames = new Set();
   const paths = new Set();
@@ -556,11 +570,29 @@ function assertStageEvidence(record, stage, evidence) {
     stage === 'native-cli-verified' &&
     (!Array.isArray(evidence.targets) ||
       evidence.targets.join(',') !== NATIVE_TARGET_KEYS.join(',') ||
-      evidence.verificationCount !== NATIVE_TARGET_KEYS.length ||
-      !Array.isArray(evidence.verifications) ||
-      evidence.verifications.length !== NATIVE_TARGET_KEYS.length)
+      evidence.verificationCount !== NATIVE_TARGET_KEYS.length)
   ) {
     throw new Error('Native CLI stage evidence requires the complete target matrix.');
+  }
+  if (stage === 'desktop-packaged') {
+    const packages = evidence.packages;
+    if (
+      !Array.isArray(packages) ||
+      packages.length !== 2 ||
+      packages.map((entry) => entry?.architecture).join(',') !== 'arm64,x64'
+    ) {
+      throw new Error('Desktop package stage requires arm64 and x64 evidence.');
+    }
+    for (const entry of packages) {
+      if (
+        typeof entry.filename !== 'string' ||
+        basename(entry.filename) !== entry.filename ||
+        !SHA256.test(String(entry.sha256 ?? '')) ||
+        !SHA256.test(String(entry.cliSha256 ?? ''))
+      ) {
+        throw new Error('Desktop package stage artifact identity is invalid.');
+      }
+    }
   }
   if (stage === 'publication-approved') {
     requiredString(evidence.approvedBy, 'publication approver');

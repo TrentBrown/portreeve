@@ -43,7 +43,7 @@ export function assertDesktopModuleGraph(inputs) {
 }
 
 /**
- * @param {{packageDocument: string, verificationDocument: string, mainBundle: string, preloadBundle: string, rendererDocument: string, rendererBundle: string, guideViewBundle: string, guideBundleDocument: string, controllerVersion: string, artifactVersion: string}} options
+ * @param {{packageDocument: string, verificationDocument: string, mainBundle: string, preloadBundle: string, rendererDocument: string, rendererBundle: string, guideViewBundle: string, guideBundleDocument: string, controllerVersion: string, artifactVersion: string, artifactSha256: string, architecture: 'arm64'|'x64'}} options
  */
 export function assertPackagedDesktopContents(options) {
   const metadata = JSON.parse(options.packageDocument);
@@ -54,6 +54,8 @@ export function assertPackagedDesktopContents(options) {
     verification.schemaVersion !== 1 ||
     verification.controllerVersion !== options.controllerVersion ||
     verification.artifactVersion !== options.artifactVersion ||
+    verification.artifactSha256 !== options.artifactSha256 ||
+    verification.architecture !== options.architecture ||
     verification.moduleGraph?.directLifecycleController !== true ||
     verification.moduleGraph?.verifiedArtifactResolver !== true ||
     verification.moduleGraph?.mcpSetupGenerator !== true ||
@@ -186,6 +188,8 @@ export async function verifyPackagedDesktop(options) {
     ).toString('utf8'),
     controllerVersion: options.controllerVersion,
     artifactVersion: artifact.version,
+    artifactSha256: artifact.sha256,
+    architecture: options.architecture,
   });
   return artifact;
 }

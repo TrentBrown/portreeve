@@ -27,12 +27,14 @@ const ManifestSchema = z
  * Resolve and verify an explicitly provisional CLI input. No PATH lookup or
  * implicit download is permitted.
  *
- * @param {{workspaceRoot: string, platform?: NodeJS.Platform, architecture?: string, overridePath?: string}} options
+ * @param {{workspaceRoot: string, releaseDirectory?: string, platform?: NodeJS.Platform, architecture?: string, overridePath?: string}} options
  */
 export async function resolveLocalReleaseCandidate(options) {
   const platform = options.platform ?? process.platform;
   const architecture = options.architecture ?? process.arch;
-  const releaseDirectory = resolve(options.workspaceRoot, 'dist', 'release');
+  const releaseDirectory = resolve(
+    options.releaseDirectory ?? resolve(options.workspaceRoot, 'dist', 'release'),
+  );
   return resolveReleaseCandidate({
     releaseDirectory,
     platform,
