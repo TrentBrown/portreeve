@@ -17,7 +17,7 @@ import {
 /**
  * @typedef {{
  *   preflight(plan: ReturnType<typeof createPublicationPlan>, releaseRoot: string): Promise<void>,
- *   publish(plan: ReturnType<typeof createPublicationPlan>, releaseRoot: string): Promise<Record<string, string>>,
+ *   publish(plan: ReturnType<typeof createPublicationPlan>, releaseRoot: string, context: {planSha256: string}): Promise<Record<string, string>>,
  * }} PublicationAdapter
  */
 
@@ -70,9 +70,18 @@ export async function publishPreparedRelease(options, adapters) {
     throw new Error('Recorded publication approval does not match this exact plan.');
   }
 
-  const github = await adapters.github.publish(plan, releaseRoot);
-  const homebrew = await adapters.homebrew.publish(plan, releaseRoot);
-  const desktopUpdate = await adapters.desktopUpdate.publish(plan, releaseRoot);
+  const publicationContext = { planSha256 };
+  const github = await adapters.github.publish(plan, releaseRoot, publicationContext);
+  const homebrew = await adapters.homebrew.publish(
+    plan,
+    releaseRoot,
+    publicationContext,
+  );
+  const desktopUpdate = await adapters.desktopUpdate.publish(
+    plan,
+    releaseRoot,
+    publicationContext,
+  );
   const now = options.now ?? (() => new Date());
   record = advanceReleaseRecord(
     record,

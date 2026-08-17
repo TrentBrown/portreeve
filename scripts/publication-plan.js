@@ -36,6 +36,7 @@ export function createPublicationPlan(record) {
     },
     homebrew: {
       repository: DEFAULT_TAP_REPOSITORY,
+      branch: 'main',
       formula: artifactIdentity(formula),
       cask: artifactIdentity(cask),
     },
