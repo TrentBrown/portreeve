@@ -1,0 +1,22 @@
+# Branch Tracker - tb-portreeve-pr-publication
+
+**Spec:** [`spec.md`](spec.md)
+**Plan:** [`plan.md`](plan.md)
+**Issues:** [`issues.md`](issues.md)
+**Created:** 2026-08-17
+
+## Rubric Status
+
+| # | Criterion (short) | Status | PR | Notes |
+|---|-------------------|--------|----|-------|
+| R1 | PR-only publication sequence | NOT YET | - | Planned for P2 / I-2 |
+| R2 | Exact generated branches and PRs | NOT YET | - | Planned for P1-P2 / I-1-I-2 |
+| R3 | Safe merge and policy fallback | NOT YET | - | Planned for P1, P3 / I-1-I-2 |
+| R4 | Idempotent partial recovery | NOT YET | - | Planned for P3 / I-2 |
+| R5 | Complete honest evidence | NOT YET | - | Planned for P4 / I-3 |
+| R6 | Minimal hosted authority | NOT YET | - | Planned for P5 / I-4 |
+| R7 | Verified operator documentation | NOT YET | - | Planned for P6-P7 / I-4-I-5 |
+
+## PR Log
+
+Append PR boundary entries here.
