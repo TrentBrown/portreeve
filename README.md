@@ -1,8 +1,10 @@
 # PortReeve
 
-> [!WARNING] **Alpha Preview** — PortReeve is evolving quickly. Breaking changes remain
-> possible, and the first macOS preview downloads will be unsigned until Apple Developer
-> ID signing and notarization are configured. No public preview has been published yet;
+> [!WARNING]
+>
+> **Alpha Preview** — PortReeve is evolving quickly. Breaking changes remain possible,
+> and the first macOS preview downloads will be unsigned until Apple Developer ID
+> signing and notarization are configured. No public preview has been published yet;
 > current users should build from source. See the
 > [preview installation and removal guide](docs/installation.md) before installing a
 > future preview.

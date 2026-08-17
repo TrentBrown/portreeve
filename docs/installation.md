@@ -117,12 +117,13 @@ Preview releases include four self-contained executables and `SHA256SUMS`:
 Verify the download before making it executable:
 
 ```sh
-shasum -a 256 -c SHA256SUMS
+shasum -a 256 portreeve-vVERSION-OS-ARCH
 chmod 755 portreeve-vVERSION-OS-ARCH
 ./portreeve-vVERSION-OS-ARCH --version
 ```
 
-On Linux, `sha256sum -c SHA256SUMS` is equivalent. Linux has no Desktop application;
+Compare the complete digest with that artifact's line in `SHA256SUMS`. On Linux,
+`sha256sum portreeve-vVERSION-OS-ARCH` is equivalent. Linux has no Desktop application;
 the CLI, MCP bridge, and JavaScript client are the supported surfaces. `portreeve
 install` uses `systemd --user` when a per-user manager is available.
 
