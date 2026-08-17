@@ -23,7 +23,7 @@
 ### PR #57 - Deterministic preparation foundation
 
 - **PR:** [#57](https://github.com/TrentBrown/portreeve/pull/57)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P1 and preparation portions of P2-P3 / I-1-I-3: approved
   feature record, release state/policy schema, exact artifact identity,
   resumable non-publishing preparation, callable build-once stage, and
@@ -32,3 +32,15 @@
 - **Result:** Slice gates pass. R1-R8 remain cumulative `NOT YET`; later slices
   retain all incomplete native, Desktop, hosted, publication, UX, and operator
   documentation work.
+
+### PR #58 - Portable native artifact evidence
+
+- **PR:** [#58](https://github.com/TrentBrown/portreeve/pull/58)
+- **Status:** in review
+- **Scope:** P3 / I-3: native verification fragments bound to the release,
+  source commit, target, and exact promoted executable identity; deterministic
+  four-target aggregation; and compatibility support for verifying an explicit
+  prepared artifact directory without rebuilding.
+- **Evidence packet:** [pr-58](pr-58/)
+- **Result:** Pending slice gates. R2, R3, and R5 gain native-evidence
+  transport and aggregation, but hosted matrix execution remains for P6/P9.

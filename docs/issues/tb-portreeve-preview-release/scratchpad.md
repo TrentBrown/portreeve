@@ -35,3 +35,26 @@ Treat releaseVersion as the coordinated publication identity while server, Deskt
 
 **Alternatives considered:**
 Force every component version to equal the release tag - rejected because the approved design keeps component versions independently visible. Reuse the server version as the GitHub tag - rejected because it cannot represent successive coordinated previews without changing component identity.
+
+## [3] Transport immutable native evidence fragments and aggregate once
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Native verification commands, CI artifact transport, release-record validation, and the hosted matrix
+
+Each native runner consumes the promoted artifact set and emits an independent
+schema-versioned verification fragment bound to the release ID, source commit,
+target, and exact executable digest. A single aggregator validates the complete
+four-target matrix, orders it deterministically, and advances the release record
+once without rebuilding or allowing concurrent runners to mutate shared state.
+
+**Triggered by:** P3 requires macOS/Linux ARM64/x64 evidence to survive runner transport while preserving exact build-once bytes
+
+**Alternatives considered:**
+Let each native runner update the release record - rejected because concurrent
+artifact jobs would race and produce order-dependent state. Rebuild on every
+runner - rejected because verification would no longer apply to the promoted
+bytes. Record only CI job success - rejected because it would not bind evidence
+to the source and artifact identities.

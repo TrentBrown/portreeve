@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #58 — Portable native artifact evidence</title>
+    <style>
+      :root { color-scheme: light; --ink:#17313a; --sea:#1d6b57; --mist:#eef5f2; --sand:#fbf7ee; --line:#c8d7d2; --warn:#fff3cd; }
+      * { box-sizing:border-box; }
+      body { margin:0; font:16px/1.6 system-ui,sans-serif; color:var(--ink); background:var(--sand); }
+      main { width:min(980px,92vw); margin:auto; padding:2rem 0 5rem; }
+      h1 { font:700 clamp(2rem,5vw,3.5rem)/1.05 Georgia,serif; margin:.25rem 0 1rem; }
+      h2 { margin-top:3rem; padding-top:1rem; border-top:2px solid var(--line); }
+      h3 { margin-top:2rem; }
+      nav,.card,.callout,.quiz { background:white; border:1px solid var(--line); border-radius:14px; padding:1.1rem 1.25rem; box-shadow:0 6px 20px #17313a0b; }
+      nav a { color:var(--sea); margin-right:1rem; }
+      code,pre { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+      pre { white-space:pre-wrap; background:#102c35; color:#f7fbfa; padding:1rem; border-radius:10px; overflow:auto; }
+      .eyebrow { letter-spacing:.11em; text-transform:uppercase; font-size:.78rem; color:var(--sea); font-weight:700; }
+      .muted { color:#526d74; }
+      .flow { display:grid; grid-template-columns:repeat(7,auto); gap:.45rem; align-items:center; overflow-x:auto; padding:1rem 0; }
+      .node { min-width:105px; text-align:center; padding:.7rem; border-radius:999px; background:var(--mist); border:1px solid #a7c9be; font-weight:650; }
+      .arrow { color:var(--sea); font-size:1.4rem; }
+      .matrix { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; }
+      .target { border:1px solid var(--line); border-radius:12px; padding:1rem; background:white; }
+      .target strong { display:block; color:var(--sea); }
+      .callout { border-left:5px solid var(--sea); margin:1rem 0; }
+      .warning { background:var(--warn); border-left-color:#b57c00; }
+      button.answer { display:block; width:100%; text-align:left; margin:.5rem 0; padding:.7rem; border:1px solid var(--line); border-radius:8px; background:white; cursor:pointer; }
+      button.answer:hover { background:var(--mist); }
+      .feedback { min-height:1.5em; font-weight:650; }
+      @media(max-width:650px){ .matrix{grid-template-columns:1fr}.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg);text-align:center} }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">PortReeve release pipeline · PR #58</p>
+      <h1>Prove the promoted bytes on every native host</h1>
+      <p class="muted">Pinned diff <code>8ec88c0..46097e4</code>. This page explains exactly that slice.</p>
+      <nav><a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#quiz">Quiz</a></nav>
+
+      <section id="background">
+        <h2>Background</h2>
+        <p>A release build can inspect a macOS or Linux executable without running it. That proves the file format, but it does not prove that the executable starts, serves requests, or works with launchd or systemd. PortReeve ships four native targets, so one laptop cannot supply all required runtime evidence.</p>
+        <div class="matrix">
+          <div class="target"><strong>macOS ARM64</strong>Apple Silicon runner</div>
+          <div class="target"><strong>macOS x64</strong>Intel runner</div>
+          <div class="target"><strong>Linux ARM64</strong>ARM Linux runner</div>
+          <div class="target"><strong>Linux x64</strong>x86-64 Linux runner</div>
+        </div>
+        <p>The previous slice already created a release record containing source identity and SHA-256 identities for the built artifacts. The missing question was how four independent runners could contribute proof without rebuilding or racing to edit the same JSON file.</p>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <div class="flow" aria-label="Evidence flow">
+          <div class="node">Build once</div><div class="arrow">→</div>
+          <div class="node">Promoted bytes</div><div class="arrow">→</div>
+          <div class="node">4 native fragments</div><div class="arrow">→</div>
+          <div class="node">Aggregate once</div>
+        </div>
+        <p>Each runner receives the same promoted artifact workspace. It verifies checksums and format, runs the matching executable, checks the manual server, and exercises the supervised lifecycle. Success produces a small create-once fragment.</p>
+        <pre>{
+  "releaseId": "portreeve-v0.1.0-preview.58.2",
+  "target": { "operatingSystem": "macos", "architecture": "arm64" },
+  "artifact": { "filename": "portreeve-v0.1.0-macos-arm64",
+                "sha256": "aa9e9541..." },
+  "checks": { "manualServer": true, "supervisedLifecycle": true }
+}</pre>
+        <div class="callout"><strong>The key invariant:</strong> evidence is about one source commit and one exact executable digest—not merely a successful job bearing a similar name.</div>
+        <p>The aggregator accepts exactly one fragment for each target, sorts them into canonical order, and advances the record only when the matrix is complete. A missing Linux runner leaves the release preparing; it does not produce a partial “verified” state.</p>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <h3>1. A strict transport document</h3>
+        <p><code>native-release-evidence.js</code> defines creation, validation, create-once persistence, and deterministic aggregation. It rejects stale source commits, altered artifact identities, duplicate targets, missing targets, and attempts to aggregate twice.</p>
+        <h3>2. One command per runner</h3>
+        <p><code>release:native-evidence</code> derives the target from the real host. It verifies the recorded artifact set both before and after native execution, then writes one fragment. It cannot be told to pretend that an ARM runner is x64.</p>
+        <h3>3. One command at the join point</h3>
+        <p><code>release:merge-native-evidence</code> reads transported fragments and atomically updates the release record. It never invokes the compiler, so the verified bytes remain the promoted bytes.</p>
+        <h3>4. Stronger loaded-record validation</h3>
+        <p>The release-record validator now cross-checks every fragment against recorded artifacts. Once the native stage exists, the exact ordered four-target matrix must also exist; before that stage, fragments are forbidden.</p>
+        <h3>5. Compatibility retained</h3>
+        <p>The existing verifier still defaults to <code>dist/release</code>. An explicit <code>PORTREEVE_RELEASE_DIRECTORY</code> lets the new collector point it at a versioned prepared workspace.</p>
+        <div class="callout warning"><strong>Still pending:</strong> this Mac proved macOS ARM64. Hosted jobs must produce macOS x64 and both Linux fragments before aggregation can pass.</div>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="b"><strong>1. Why not let every runner update release-record.json?</strong><button class="answer" data-choice="a">It would make SHA-256 computation slower.</button><button class="answer" data-choice="b">Concurrent jobs would race and create order-dependent shared state.</button><button class="answer" data-choice="c">JSON cannot represent multiple operating systems.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="c"><strong>2. What binds a fragment to the promoted executable?</strong><button class="answer" data-choice="a">Only the CI job name.</button><button class="answer" data-choice="b">Only operating system and architecture.</button><button class="answer" data-choice="c">Release/source identity plus filename, byte count, and SHA-256.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="a"><strong>3. What happens with only three valid fragments?</strong><button class="answer" data-choice="a">Aggregation fails and the record stays before native-cli-verified.</button><button class="answer" data-choice="b">The record advances with a warning.</button><button class="answer" data-choice="c">The missing target is inferred from the manifest.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="b"><strong>4. Why verify artifact identities after native execution too?</strong><button class="answer" data-choice="a">To recompute component versions.</button><button class="answer" data-choice="b">To detect mutation while the runtime checks were executing.</button><button class="answer" data-choice="c">To make the evidence fragment executable.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="c"><strong>5. What did this PR intentionally not do?</strong><button class="answer" data-choice="a">Add local and hosted-callable commands.</button><button class="answer" data-choice="b">Exercise the macOS ARM64 supervised lifecycle.</button><button class="answer" data-choice="c">Claim all four native targets had already run successfully.</button><p class="feedback"></p></div>
+      </section>
+    </main>
+    <script>
+      document.querySelectorAll('.quiz').forEach((quiz) => {
+        quiz.querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
+          const correct = button.dataset.choice === quiz.dataset.answer;
+          quiz.querySelector('.feedback').textContent = correct ? 'Correct.' : 'Not quite—review the section above and try again.';
+          quiz.querySelector('.feedback').style.color = correct ? '#1d6b57' : '#9a4d00';
+        }));
+      });
+    </script>
+  </body>
+</html>

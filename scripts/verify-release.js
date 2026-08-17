@@ -29,7 +29,9 @@ import {
   sha256File,
 } from './release-lib.js';
 
-const releaseDirectory = resolve('dist', 'release');
+const releaseDirectory = resolve(
+  process.env.PORTREEVE_RELEASE_DIRECTORY ?? resolve('dist', 'release'),
+);
 const manifest = JSON.parse(
   await readFile(resolve(releaseDirectory, 'manifest.json'), 'utf8'),
 );

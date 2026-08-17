@@ -24,6 +24,7 @@ const SEMANTIC_VERSION =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
 const COMMIT = /^[a-f0-9]{40}$/u;
+const NATIVE_TARGET_KEYS = ['macos-arm64', 'macos-x64', 'linux-arm64', 'linux-x64'];
 
 /**
  * @typedef {{
@@ -36,6 +37,21 @@ const COMMIT = /^[a-f0-9]{40}$/u;
  *   operatingSystem?: string,
  *   architecture?: string,
  * }} ReleaseArtifact
+ */
+
+/**
+ * @typedef {{
+ *   schemaVersion: 1,
+ *   kind: 'native-cli-verification',
+ *   releaseId: string,
+ *   releaseVersion: string,
+ *   source: {repository: string, commit: string},
+ *   target: {operatingSystem: 'macos'|'linux', architecture: 'arm64'|'x64'},
+ *   artifact: {filename: string, bytes: number, sha256: string},
+ *   checks: {executableFormat: true, executableVersion: true, manualServer: true, supervisedLifecycle: true},
+ *   runner: {name: string, operatingSystem: string, architecture: string},
+ *   verifiedAt: string,
+ * }} NativeVerification
  */
 
 /**
@@ -148,7 +164,23 @@ export function advanceReleaseRecord(record, stage, evidence, now = () => new Da
   assertStageEvidence(record, stage, evidence);
   const timestamp = now().toISOString();
   const next = structuredClone(record);
-  next.stages.push({ name: stage, completedAt: timestamp, evidence });
+  const persistedEvidence =
+    stage === 'native-cli-verified'
+      ? {
+          targets: evidence.targets,
+          verificationCount: evidence.verificationCount,
+        }
+      : evidence;
+  if (stage === 'native-cli-verified') {
+    next.verifications = structuredClone(
+      /** @type {NativeVerification[]} */ (evidence.verifications),
+    );
+  }
+  next.stages.push({
+    name: stage,
+    completedAt: timestamp,
+    evidence: persistedEvidence,
+  });
   next.updatedAt = timestamp;
   next.state = stateAfter(stage);
   if (stage === 'publication-approved') {
@@ -162,6 +194,7 @@ export function advanceReleaseRecord(record, stage, evidence, now = () => new Da
   if (stage === 'published') {
     next.publication = { state: 'published', ...evidence };
   }
+  assertReleaseRecord(next);
   return next;
 }
 
@@ -373,6 +406,45 @@ export function assertReleaseRecord(record) {
       throw new Error(`Release artifact architecture is invalid: ${artifact.filename}`);
     }
   }
+  const verificationKeys = [];
+  for (const verification of candidate.verifications) {
+    assertNativeVerification(verification);
+    if (
+      verification.releaseId !== candidate.releaseId ||
+      verification.releaseVersion !== candidate.releaseVersion ||
+      verification.source.repository !== candidate.source.repository ||
+      verification.source.commit !== candidate.source.commit
+    ) {
+      throw new Error('Native verification release identity is invalid.');
+    }
+    const artifact = candidate.artifacts.find(
+      (/** @type {ReleaseArtifact} */ entry) =>
+        entry.type === 'executable' &&
+        entry.operatingSystem === verification.target.operatingSystem &&
+        entry.architecture === verification.target.architecture,
+    );
+    if (
+      artifact === undefined ||
+      artifact.filename !== verification.artifact.filename ||
+      artifact.bytes !== verification.artifact.bytes ||
+      artifact.sha256 !== verification.artifact.sha256
+    ) {
+      throw new Error('Native verification artifact identity is invalid.');
+    }
+    verificationKeys.push(
+      `${verification.target.operatingSystem}-${verification.target.architecture}`,
+    );
+  }
+  const nativeStageCompleted = names.includes('native-cli-verified');
+  if (
+    (nativeStageCompleted &&
+      verificationKeys.join(',') !== NATIVE_TARGET_KEYS.join(',')) ||
+    (!nativeStageCompleted && verificationKeys.length !== 0)
+  ) {
+    throw new Error(
+      'Native verification matrix does not match the release stage state.',
+    );
+  }
   const lastStage = names.at(-1);
   const expectedState =
     lastStage === undefined ? 'initialized' : stateAfter(String(lastStage));
@@ -388,6 +460,63 @@ export function assertReleaseRecord(record) {
   if (candidate.publication.state !== expectedPublicationState) {
     throw new Error('Release publication state does not match its completed stages.');
   }
+}
+
+/** @param {unknown} verification @returns {asserts verification is NativeVerification} */
+export function assertNativeVerification(verification) {
+  if (
+    verification === null ||
+    typeof verification !== 'object' ||
+    /** @type {Record<string, any>} */ (verification).schemaVersion !== 1 ||
+    /** @type {Record<string, any>} */ (verification).kind !== 'native-cli-verification'
+  ) {
+    throw new Error('Unsupported native verification schema.');
+  }
+  const candidate = /** @type {Record<string, any>} */ (verification);
+  requiredString(candidate.releaseId, 'native verification release ID');
+  assertSemanticVersion(
+    candidate.releaseVersion,
+    'native verification release version',
+  );
+  requiredString(candidate.source?.repository, 'native verification source repository');
+  if (!COMMIT.test(String(candidate.source?.commit ?? ''))) {
+    throw new Error('Native verification source commit is invalid.');
+  }
+  if (!['macos', 'linux'].includes(candidate.target?.operatingSystem)) {
+    throw new Error('Native verification operating system is invalid.');
+  }
+  if (!['arm64', 'x64'].includes(candidate.target?.architecture)) {
+    throw new Error('Native verification architecture is invalid.');
+  }
+  requiredString(candidate.artifact?.filename, 'native verification artifact filename');
+  if (
+    basename(candidate.artifact.filename) !== candidate.artifact.filename ||
+    !Number.isSafeInteger(candidate.artifact.bytes) ||
+    candidate.artifact.bytes < 0 ||
+    !SHA256.test(String(candidate.artifact.sha256 ?? ''))
+  ) {
+    throw new Error('Native verification artifact identity is invalid.');
+  }
+  for (const check of [
+    'executableFormat',
+    'executableVersion',
+    'manualServer',
+    'supervisedLifecycle',
+  ]) {
+    if (candidate.checks?.[check] !== true) {
+      throw new Error(`Native verification check is incomplete: ${check}`);
+    }
+  }
+  requiredString(candidate.runner?.name, 'native verification runner name');
+  requiredString(
+    candidate.runner?.operatingSystem,
+    'native verification runner operating system',
+  );
+  requiredString(
+    candidate.runner?.architecture,
+    'native verification runner architecture',
+  );
+  assertTimestamp(candidate.verifiedAt, 'native verification time');
 }
 
 /**
@@ -422,6 +551,16 @@ function assertStageEvidence(record, stage, evidence) {
     ) {
       throw new Error('Developer ID Desktop trust evidence is incomplete.');
     }
+  }
+  if (
+    stage === 'native-cli-verified' &&
+    (!Array.isArray(evidence.targets) ||
+      evidence.targets.join(',') !== NATIVE_TARGET_KEYS.join(',') ||
+      evidence.verificationCount !== NATIVE_TARGET_KEYS.length ||
+      !Array.isArray(evidence.verifications) ||
+      evidence.verifications.length !== NATIVE_TARGET_KEYS.length)
+  ) {
+    throw new Error('Native CLI stage evidence requires the complete target matrix.');
   }
   if (stage === 'publication-approved') {
     requiredString(evidence.approvedBy, 'publication approver');
