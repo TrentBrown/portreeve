@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #59 — Desktop DMGs and Homebrew distribution</title>
+    <style>
+      :root { color-scheme:light; --ink:#17313a; --sea:#1d6b57; --mist:#eef5f2; --sand:#fbf7ee; --line:#c8d7d2; --warn:#fff3cd; }
+      * { box-sizing:border-box; }
+      body { margin:0; font:16px/1.6 system-ui,sans-serif; color:var(--ink); background:var(--sand); }
+      main { width:min(980px,92vw); margin:auto; padding:2rem 0 5rem; }
+      h1 { font:700 clamp(2rem,5vw,3.5rem)/1.05 Georgia,serif; margin:.25rem 0 1rem; }
+      h2 { margin-top:3rem; padding-top:1rem; border-top:2px solid var(--line); }
+      h3 { margin-top:2rem; }
+      nav,.card,.callout,.quiz { background:white; border:1px solid var(--line); border-radius:14px; padding:1.1rem 1.25rem; box-shadow:0 6px 20px #17313a0b; }
+      nav a { color:var(--sea); margin-right:1rem; }
+      code,pre { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+      pre { white-space:pre-wrap; background:#102c35; color:#f7fbfa; padding:1rem; border-radius:10px; overflow:auto; }
+      .eyebrow { letter-spacing:.11em; text-transform:uppercase; font-size:.78rem; color:var(--sea); font-weight:700; }
+      .muted { color:#526d74; }
+      .flow { display:grid; grid-template-columns:repeat(9,auto); gap:.4rem; align-items:center; overflow-x:auto; padding:1rem 0; }
+      .node { min-width:100px; text-align:center; padding:.7rem; border-radius:999px; background:var(--mist); border:1px solid #a7c9be; font-weight:650; }
+      .arrow { color:var(--sea); font-size:1.35rem; }
+      .matrix { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; }
+      .target { border:1px solid var(--line); border-radius:12px; padding:1rem; background:white; }
+      .target strong { display:block; color:var(--sea); }
+      .callout { border-left:5px solid var(--sea); margin:1rem 0; }
+      .warning { background:var(--warn); border-left-color:#b57c00; }
+      button.answer { display:block; width:100%; text-align:left; margin:.5rem 0; padding:.7rem; border:1px solid var(--line); border-radius:8px; background:white; cursor:pointer; }
+      button.answer:hover { background:var(--mist); }
+      .feedback { min-height:1.5em; font-weight:650; }
+      @media(max-width:650px){ .matrix{grid-template-columns:1fr}.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg);text-align:center} }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">PortReeve release pipeline · PR #59</p>
+      <h1>Turn proven CLI bytes into verifiable Desktop downloads</h1>
+      <p class="muted">Pinned diff <code>e8ded59..15ca407</code>. This page explains exactly that slice.</p>
+      <nav><a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#quiz">Quiz</a></nav>
+
+      <section id="background">
+        <h2>Background</h2>
+        <p>The release record already identifies one source commit and four promoted CLI executables. A Desktop release must preserve that identity while adding Electron, an application bundle, a disk image, and Homebrew metadata. Rebuilding or choosing a CLI implicitly would break the build-once promise.</p>
+        <div class="matrix">
+          <div class="target"><strong>Apple Silicon</strong>Electron ARM64 + the exact promoted macOS ARM64 CLI</div>
+          <div class="target"><strong>Intel Mac</strong>Electron x64 + the exact promoted macOS x64 CLI</div>
+        </div>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <div class="flow" aria-label="Desktop artifact flow">
+          <div class="node">Release record</div><div class="arrow">→</div>
+          <div class="node">Matching CLI</div><div class="arrow">→</div>
+          <div class="node">App bundle</div><div class="arrow">→</div>
+          <div class="node">Verified DMG</div><div class="arrow">→</div>
+          <div class="node">Pinned cask</div>
+        </div>
+        <p>Each native macOS runner packages only its own architecture. It verifies the embedded CLI digest, the Electron executable architecture, application contents, and a read-only launch. It then creates a compressed DMG, mounts it, verifies the application again, and emits a create-once evidence fragment.</p>
+        <div class="callout"><strong>The key invariant:</strong> the cask does not merely point at two plausible files. Each URL and checksum is derived from two DMGs whose evidence traces back to the same release record and exact CLI digests.</div>
+        <p>The join step accepts exactly one ARM64 and one x64 fragment in canonical order. Preview releases explicitly remain unsigned; stable releases fail before writing distribution files unless Apple signing and notarization evidence is present.</p>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <h3>1. Explicit packaging inputs</h3>
+        <p><code>packageDesktop</code> now takes a release directory, output root, architecture, and smoke policy. The application resolver is pointed at the exact prepared workspace instead of searching an ambient default.</p>
+        <h3>2. Architecture and identity attestation</h3>
+        <p>Desktop inspection checks the Electron Mach-O architecture as well as the embedded CLI architecture, digest, byte count, version contract, ASAR contents, and packaged modules.</p>
+        <h3>3. DMGs are exercised, not assumed</h3>
+        <p>The DMG helper creates a non-overwriting compressed image, runs <code>hdiutil verify</code>, mounts it at an isolated path, inspects the copied application, detaches it, and records the final byte count and SHA-256.</p>
+        <h3>4. Homebrew does not own PortReeve service data</h3>
+        <p>The generated cask installs the app and provides lifecycle guidance, but intentionally has no destructive <code>zap</code>. Removing native supervision and deleting claims, history, and settings remain explicit PortReeve operations.</p>
+        <h3>5. Interrupted finalization stays deterministic</h3>
+        <p>Distribution files are create-once. An identical existing cask or checksum manifest is safely reused after interruption; changed content is rejected.</p>
+        <div class="callout warning"><strong>Still pending:</strong> Intel must perform its own native application launch, and hosted release URLs must exist before a real cask installation can be rehearsed.</div>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="b"><strong>1. Why pass the release directory explicitly?</strong><button class="answer" data-choice="a">To reduce the DMG compression ratio.</button><button class="answer" data-choice="b">To bind the app to the exact promoted CLI rather than an ambient build.</button><button class="answer" data-choice="c">To let ARM hosts claim Intel execution.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="c"><strong>2. What must happen before DMG evidence is emitted?</strong><button class="answer" data-choice="a">Only the filename must match.</button><button class="answer" data-choice="b">Only <code>hdiutil create</code> must succeed.</button><button class="answer" data-choice="c">The app and embedded CLI must be attested, and the DMG must mount and verify.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="a"><strong>3. Why is there no cask <code>zap</code>?</strong><button class="answer" data-choice="a">Service removal and data purge are intentionally separate, explicit operations.</button><button class="answer" data-choice="b">Homebrew cannot remove application files.</button><button class="answer" data-choice="c">The application has no persistent data.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="b"><strong>4. What does stable mode do without Apple trust evidence?</strong><button class="answer" data-choice="a">Publishes with an advisory.</button><button class="answer" data-choice="b">Fails before writing distribution outputs.</button><button class="answer" data-choice="c">Silently changes the channel to preview.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="c"><strong>5. What remains for the hosted slice?</strong><button class="answer" data-choice="a">Defining the macOS architectures.</button><button class="answer" data-choice="b">Computing any checksums.</button><button class="answer" data-choice="c">Native Intel execution and real transport across release jobs.</button><p class="feedback"></p></div>
+      </section>
+    </main>
+    <script>
+      document.querySelectorAll('.quiz').forEach((quiz) => {
+        quiz.querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
+          const correct = button.dataset.choice === quiz.dataset.answer;
+          quiz.querySelector('.feedback').textContent = correct ? 'Correct.' : 'Not quite—review the section above and try again.';
+          quiz.querySelector('.feedback').style.color = correct ? '#1d6b57' : '#9a4d00';
+        }));
+      });
+    </script>
+  </body>
+</html>

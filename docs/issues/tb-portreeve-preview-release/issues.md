@@ -33,7 +33,7 @@ confirmation/immutability checks, and fake remote adapters.
 
 ## I-3 - Promoted native artifacts
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P3
 - **Rubric criteria:** R2, R3, R5
@@ -45,24 +45,24 @@ merge native verification evidence without rebuilding.
 
 ## I-4 - Dual-architecture Desktop DMGs
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P4
 - **Rubric criteria:** R2, R3, R4, R6
 - **Depends on:** I-3
-- **PR:** -
+- **PR:** [#59](https://github.com/TrentBrown/portreeve/pull/59)
 
 Package ARM64/x64 Desktop applications from exact CLI bytes, generate and
 verify DMGs, and add signing/notarization policy hooks plus native smokes.
 
 ## I-5 - Homebrew distribution material
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P5
 - **Rubric criteria:** R2, R6
 - **Depends on:** I-3, I-4
-- **PR:** -
+- **PR:** [#59](https://github.com/TrentBrown/portreeve/pull/59)
 
 Generate and verify the formula/cask/publication-plan material while preserving
 explicit supervision and purge semantics.

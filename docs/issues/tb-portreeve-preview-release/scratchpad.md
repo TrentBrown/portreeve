@@ -58,3 +58,28 @@ artifact jobs would race and produce order-dependent state. Rebuild on every
 runner - rejected because verification would no longer apply to the promoted
 bytes. Record only CI job success - rejected because it would not bind evidence
 to the source and artifact identities.
+
+## [4] Package each Desktop architecture around one explicit promoted CLI
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Desktop packaging, DMG assets, release stages, Homebrew cask, and hosted macOS jobs
+
+Make Desktop packaging accept the prepared release artifact directory and
+target architecture explicitly. Embed and attest the exact matching CLI digest,
+inspect the app before and after mounting its conventional architecture-specific
+DMG, and join both package results before advancing distribution state. The cask
+installs only the application and explains that supervised service uninstall and
+data purge remain separate explicit operations.
+
+**Triggered by:** P4-P5 require reproducible direct-download and Homebrew Desktop artifacts without transferring service or data lifecycle authority to the application installer
+
+**Alternatives considered:**
+Let Desktop packaging discover `dist/release` implicitly - rejected because
+hosted transport needs an explicit promoted input. Put both architectures in a
+universal app - rejected because the embedded CLI is architecture-specific and
+the design calls for separately verifiable native packages. Let cask removal
+purge service data - rejected because supervision and user data have independent
+safety boundaries.

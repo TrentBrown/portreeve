@@ -36,7 +36,7 @@
 ### PR #58 - Portable native artifact evidence
 
 - **PR:** [#58](https://github.com/TrentBrown/portreeve/pull/58)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P3 / I-3: native verification fragments bound to the release,
   source commit, target, and exact promoted executable identity; deterministic
   four-target aggregation; and compatibility support for verifying an explicit
@@ -44,3 +44,16 @@
 - **Evidence packet:** [pr-58](pr-58/)
 - **Result:** Pending slice gates. R2, R3, and R5 gain native-evidence
   transport and aggregation, but hosted matrix execution remains for P6/P9.
+
+### PR #59 - Desktop DMGs and Homebrew distribution
+
+- **PR:** [#59](https://github.com/TrentBrown/portreeve/pull/59)
+- **Status:** in review
+- **Scope:** P4-P5 / I-4-I-5: explicit promoted-CLI Desktop packaging,
+  architecture-specific verified apps and DMGs, exact embedded-artifact
+  attestation, Desktop evidence joining, unsigned-preview/stable trust policy,
+  Homebrew cask rendering, and final distribution checksums.
+- **Evidence packet:** [pr-59](pr-59/)
+- **Result:** Pending slice gates. R2, R3, R4, and R6 gain the complete Desktop
+  and direct-download distribution model; native Intel smoke and hosted
+  transport remain P6/P9 evidence.

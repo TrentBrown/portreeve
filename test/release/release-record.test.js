@@ -296,7 +296,22 @@ function advanceThroughDesktopPackaging(record) {
     verificationCount: 4,
     verifications,
   });
-  return advanceReleaseRecord(record, 'desktop-packaged', {});
+  return advanceReleaseRecord(record, 'desktop-packaged', {
+    packages: /** @type {Array<Record<string, unknown>>} */ ([
+      {
+        architecture: 'arm64',
+        filename: 'PortReeve-arm64.dmg',
+        sha256: 'a'.repeat(64),
+        cliSha256: 'b'.repeat(64),
+      },
+      {
+        architecture: 'x64',
+        filename: 'PortReeve-x64.dmg',
+        sha256: 'c'.repeat(64),
+        cliSha256: 'd'.repeat(64),
+      },
+    ]),
+  });
 }
 
 async function temporaryDirectory() {

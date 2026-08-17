@@ -6,6 +6,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { resolveBundledReleaseCandidate } from '../apps/desktop/main/artifact.js';
+import { inspectExecutable } from './release-lib.js';
 
 const SMOKE_PREFIX = 'PORTREEVE_DESKTOP_SMOKE ';
 const OUTPUT_LIMIT = 64 * 1024;
@@ -43,7 +44,7 @@ export function assertDesktopModuleGraph(inputs) {
 }
 
 /**
- * @param {{packageDocument: string, verificationDocument: string, mainBundle: string, preloadBundle: string, rendererDocument: string, rendererBundle: string, guideViewBundle: string, guideBundleDocument: string, controllerVersion: string, artifactVersion: string}} options
+ * @param {{packageDocument: string, verificationDocument: string, mainBundle: string, preloadBundle: string, rendererDocument: string, rendererBundle: string, guideViewBundle: string, guideBundleDocument: string, controllerVersion: string, artifactVersion: string, artifactSha256: string, architecture: 'arm64'|'x64'}} options
  */
 export function assertPackagedDesktopContents(options) {
   const metadata = JSON.parse(options.packageDocument);
@@ -54,6 +55,8 @@ export function assertPackagedDesktopContents(options) {
     verification.schemaVersion !== 1 ||
     verification.controllerVersion !== options.controllerVersion ||
     verification.artifactVersion !== options.artifactVersion ||
+    verification.artifactSha256 !== options.artifactSha256 ||
+    verification.architecture !== options.architecture ||
     verification.moduleGraph?.directLifecycleController !== true ||
     verification.moduleGraph?.verifiedArtifactResolver !== true ||
     verification.moduleGraph?.mcpSetupGenerator !== true ||
@@ -144,6 +147,15 @@ export function assertPackagedDesktopContents(options) {
  */
 export async function verifyPackagedDesktop(options) {
   const resourcesRoot = resolve(options.applicationPath, 'Contents', 'Resources');
+  const executableFormat = await inspectExecutable(
+    resolve(options.applicationPath, 'Contents', 'MacOS', 'PortReeve'),
+  );
+  if (
+    executableFormat.operatingSystem !== 'macos' ||
+    executableFormat.architecture !== options.architecture
+  ) {
+    throw new Error('Packaged Desktop executable architecture is invalid.');
+  }
   const artifact = await resolveBundledReleaseCandidate({
     resourcesRoot,
     platform: 'darwin',
@@ -186,6 +198,8 @@ export async function verifyPackagedDesktop(options) {
     ).toString('utf8'),
     controllerVersion: options.controllerVersion,
     artifactVersion: artifact.version,
+    artifactSha256: artifact.sha256,
+    architecture: options.architecture,
   });
   return artifact;
 }

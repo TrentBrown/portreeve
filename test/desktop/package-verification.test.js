@@ -36,6 +36,8 @@ test('inspects packaged identity, direct-controller markers, and retired adapter
       schemaVersion: 1,
       controllerVersion: '0.1.0',
       artifactVersion: '0.1.0',
+      artifactSha256: 'a'.repeat(64),
+      architecture: 'arm64',
       moduleGraph: {
         directLifecycleController: true,
         verifiedArtifactResolver: true,
@@ -56,6 +58,8 @@ test('inspects packaged identity, direct-controller markers, and retired adapter
       "export const CLIENT_GUIDES_ATTESTATION = Object.freeze({ schemaVersion: 1, generatedForVersion: '0.1.0', cliCommands: 49, mcpTools: 51 }); export default {};",
     controllerVersion: '0.1.0',
     artifactVersion: '0.1.0',
+    artifactSha256: 'a'.repeat(64),
+    architecture: /** @type {const} */ ('arm64'),
   };
   expect(() => assertPackagedDesktopContents(valid)).not.toThrow();
   expect(() =>
@@ -68,6 +72,12 @@ test('inspects packaged identity, direct-controller markers, and retired adapter
     assertPackagedDesktopContents({
       ...valid,
       artifactVersion: '0.2.0',
+    }),
+  ).toThrow('identity attestation is invalid');
+  expect(() =>
+    assertPackagedDesktopContents({
+      ...valid,
+      artifactSha256: 'b'.repeat(64),
     }),
   ).toThrow('identity attestation is invalid');
   expect(() =>
