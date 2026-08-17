@@ -34,6 +34,7 @@
     "release:build": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/release.js",
     "release:finalize-desktop": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/finalize-desktop-distribution.js",
     "release:inspect": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/inspect-release-candidate.js",
+    "release:homebrew-smoke": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/smoke-homebrew-candidate.js",
     "release:merge-native-evidence": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/merge-native-release-evidence.js",
     "release:native-evidence": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/collect-native-release-evidence.js",
     "release:package-desktop": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/package-desktop-release.js",
