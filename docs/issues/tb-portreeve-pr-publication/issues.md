@@ -9,12 +9,12 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Build the deterministic repository PR adapter
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P1
 - **Rubric criteria:** R2, R3
 - **Depends on:** none
-- **PR:** -
+- **PR:** [#65](https://github.com/TrentBrown/portreeve/pull/65)
 
 Implement and exhaustively test the reusable GitHub ref/file/PR/merge state machine with
 no real public mutation.

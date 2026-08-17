@@ -10,8 +10,8 @@
 | # | Criterion (short) | Status | PR | Notes |
 |---|-------------------|--------|----|-------|
 | R1 | PR-only publication sequence | NOT YET | - | Planned for P2 / I-2 |
-| R2 | Exact generated branches and PRs | NOT YET | - | Planned for P1-P2 / I-1-I-2 |
-| R3 | Safe merge and policy fallback | NOT YET | - | Planned for P1, P3 / I-1-I-2 |
+| R2 | Exact generated branches and PRs | NOT YET | [#65](https://github.com/TrentBrown/portreeve/pull/65) | Shared exact-path state machine passes; repository wiring remains P2. |
+| R3 | Safe merge and policy fallback | PASS | [#65](https://github.com/TrentBrown/portreeve/pull/65) | Bounded mergeability, merge commits, blocked-review URL, ancestry, and cleanup recovery pass. |
 | R4 | Idempotent partial recovery | NOT YET | - | Planned for P3 / I-2 |
 | R5 | Complete honest evidence | NOT YET | - | Planned for P4 / I-3 |
 | R6 | Minimal hosted authority | NOT YET | - | Planned for P5 / I-4 |
@@ -20,3 +20,7 @@
 ## PR Log
 
 Append PR boundary entries here.
+
+- [#65](https://github.com/TrentBrown/portreeve/pull/65) - deterministic GitHub
+  publication PR state machine; R3 PASS, R2 remains NOT YET pending live publisher
+  wiring; full repository check 535 pass / 0 fail.

@@ -8,7 +8,7 @@ entries are appended to `decisions.md`.
 
 ## [1] Use PRs as publication transport rather than direct-main mutation
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -31,7 +31,7 @@ recovery also exposed the mismatch with normal protected-branch work.
 
 ## [2] Use one GitHub API authentication path without branch-rule bypass
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -51,7 +51,7 @@ on an unrelated ordinary-Git credential path for one adapter.
 
 ## [3] Extend evidence without fabricating history
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
