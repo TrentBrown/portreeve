@@ -409,6 +409,21 @@ async function assertPublicationBranch(options) {
   if (ancestry?.status !== 'ahead' || ancestry?.ahead_by !== 1) {
     throw new Error('Publication branch must be exactly one commit ahead of its base.');
   }
+  const destination = await options.request({
+    endpoint: `repos/${options.repository}/branches/${encodeURIComponent(options.baseBranch)}`,
+  });
+  const destinationCommit = requireCommit(
+    destination?.commit?.sha,
+    'destination branch commit',
+  );
+  const retainedBase = await options.request({
+    endpoint: `repos/${options.repository}/compare/${options.baseCommit}...${destinationCommit}`,
+  });
+  if (!['ahead', 'identical'].includes(retainedBase?.status)) {
+    throw new Error(
+      'Publication branch base is not retained by the destination branch.',
+    );
+  }
   await assertFilesAtReference(
     options.request,
     options.repository,

@@ -142,6 +142,31 @@ describe('GitHub publication pull requests', () => {
     expect(github.mutations).toEqual([]);
   });
 
+  test('refuses an exact-looking branch based outside destination history', async () => {
+    const github = new FakeGitHub();
+    const rogueBase = 'f'.repeat(40);
+    github.commits.set(rogueBase, {
+      sha: rogueBase,
+      tree: { sha: github.baseTree },
+      parents: [],
+    });
+    github.commits.set(github.publicationCommit, {
+      sha: github.publicationCommit,
+      tree: { sha: github.publicationTree },
+      parents: [{ sha: rogueBase }],
+    });
+    github.commitFiles.set(github.publicationCommit, fileMap(files));
+    github.refs.set(publicationBranchName(releaseVersion), github.publicationCommit);
+    github.comparisonOverrides.set(`${rogueBase}...${github.publicationCommit}`, {
+      status: 'ahead',
+      ahead_by: 1,
+    });
+    await expect(publish(github)).rejects.toThrow(
+      'base is not retained by the destination branch',
+    );
+    expect(github.pulls).toEqual([]);
+  });
+
   test('recovers branch cleanup after content and merge have completed', async () => {
     const github = new FakeGitHub();
     github.failBranchCleanup = true;
@@ -203,6 +228,8 @@ class FakeGitHub {
   mutations = [];
   /** @type {any[]} */
   mergeBodies = [];
+  /** @type {Map<string, {status: string, ahead_by: number}>} */
+  comparisonOverrides = new Map();
 
   /** @param {{destinationFiles?: Map<string, string>}} [options] */
   constructor(options = {}) {
@@ -281,8 +308,16 @@ class FakeGitHub {
       const [base, head] = endpoint
         .slice(`repos/${repository}/compare/`.length)
         .split('...');
+      const override = this.comparisonOverrides.get(`${base}...${head}`);
+      if (override !== undefined) return structuredClone(override);
       if (base === this.originalBase && head === this.publicationCommit) {
         return { status: 'ahead', ahead_by: 1 };
+      }
+      if (base === this.originalBase && head === this.currentBase) {
+        return {
+          status: head === this.originalBase ? 'identical' : 'ahead',
+          ahead_by: head === this.originalBase ? 0 : 1,
+        };
       }
       if (base === this.mergeCommit && head === this.currentBase) {
         return { status: 'identical', ahead_by: 0 };
