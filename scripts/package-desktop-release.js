@@ -26,6 +26,7 @@ export async function packageDesktopRelease(options) {
     releaseDirectory: resolve(releaseRoot, 'artifacts'),
     outputRoot,
     architecture: options.architecture,
+    releaseChannel: record.policy.channel,
     ...(options.smoke === undefined ? {} : { smoke: options.smoke }),
   });
   const dmgPath = resolve(

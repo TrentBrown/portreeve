@@ -157,8 +157,58 @@ const DesktopStackSchema = z
 
 export const DesktopUpdateManifestSchema = z
   .object({
-    schemaVersion: z.literal(1),
-    desktopVersion: SemanticVersionSchema,
+    schemaVersion: z.literal(2),
+    releases: z
+      .array(
+        z
+          .object({
+            releaseVersion: SemanticVersionSchema,
+            desktopVersion: SemanticVersionSchema,
+            maturity: z.enum(['alpha', 'beta', 'stable']),
+            channel: z.enum(['preview', 'stable']),
+            desktopTrust: z.enum(['unsigned', 'developer-id-notarized']),
+            downloadPageUrl: z.string().url().startsWith('https://'),
+            artifacts: z
+              .object({
+                arm64: z
+                  .object({
+                    filename: z.string().min(1),
+                    sha256: z.string().regex(/^[a-f0-9]{64}$/u),
+                  })
+                  .strict(),
+                x64: z
+                  .object({
+                    filename: z.string().min(1),
+                    sha256: z.string().regex(/^[a-f0-9]{64}$/u),
+                  })
+                  .strict(),
+              })
+              .strict(),
+          })
+          .strict()
+          .superRefine((release, context) => {
+            if (
+              release.channel === 'stable' &&
+              (release.maturity !== 'stable' ||
+                release.desktopTrust !== 'developer-id-notarized')
+            ) {
+              context.addIssue({
+                code: 'custom',
+                message:
+                  'Stable updates require stable maturity and Developer ID notarization.',
+              });
+            }
+          }),
+      )
+      .max(2)
+      .superRefine((releases, context) => {
+        if (new Set(releases.map(({ channel }) => channel)).size !== releases.length) {
+          context.addIssue({
+            code: 'custom',
+            message: 'Update manifest release channels must be unique.',
+          });
+        }
+      }),
   })
   .strict();
 

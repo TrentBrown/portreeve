@@ -83,3 +83,49 @@ universal app - rejected because the embedded CLI is architecture-specific and
 the design calls for separately verifiable native packages. Let cask removal
 purge service data - rejected because supervision and user data have independent
 safety boundaries.
+
+## [5] Separate hosted preparation evidence from public publication authority
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** GitHub Actions, publication command and adapters, release-record approval state, credentials, and retry behavior
+
+Transport one prepared release workspace through independent native and Desktop
+evidence artifacts, then aggregate each matrix exactly once. Make publication a
+separate environment-gated job that reuses the same scripts, requires explicit
+confirmation, runs all remote preflights before recording approval, and can
+resume an exact partially completed publication without rebuilding.
+
+**Triggered by:** P6 must use hosted native runners without duplicating release policy or allowing preparation success to imply public mutation
+
+**Alternatives considered:**
+Publish from a tag-triggered build - rejected because creating the tag would
+precede evidence and conflate invocation with authority. Let matrix jobs edit one
+shared record - rejected because concurrent mutations race. Require npm before a
+GitHub preview - rejected because npm Trusted Publishing is independently
+deferred. Make publication all-or-nothing in memory - rejected because GitHub,
+the tap, and update metadata cannot be changed atomically across repositories.
+
+## [6] Bind Desktop update selection to the packaged release channel
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Desktop update schema, packaged application metadata, release packaging attestation, update publication, and future stable releases
+
+Use a channel-aware update manifest that retains release version, component
+version, maturity, trust, download identity, and both DMG digests. Embed the
+selected channel into each packaged app and attest that value so a stable build
+selects only stable metadata and cannot present an unsigned preview as its
+normal upgrade.
+
+**Triggered by:** Merely adding preview and stable entries does not protect a stable app if its update client always defaults to preview
+
+**Alternatives considered:**
+Publish one unqualified latest Desktop version - rejected because it collapses
+channel, maturity, and trust. Make all apps follow preview - rejected because a
+future stable app could advertise an unsigned preview. Make all apps follow
+stable - rejected because alpha preview users would receive no preview updates.

@@ -15,7 +15,7 @@ import {
 } from './desktop-package-lib.js';
 
 /**
- * @param {{workspaceRoot?: string, releaseDirectory?: string, outputRoot?: string, architecture?: 'arm64'|'x64', smoke?: boolean}} [options]
+ * @param {{workspaceRoot?: string, releaseDirectory?: string, outputRoot?: string, architecture?: 'arm64'|'x64', releaseChannel?: 'preview'|'stable', smoke?: boolean}} [options]
  */
 export async function packageDesktop(options = {}) {
   if (process.platform !== 'darwin') {
@@ -94,6 +94,7 @@ export async function packageDesktop(options = {}) {
         private: true,
         type: 'module',
         main: 'main/index.js',
+        portreeveReleaseChannel: options.releaseChannel ?? 'preview',
       },
       null,
       2,
@@ -108,6 +109,7 @@ export async function packageDesktop(options = {}) {
         artifactVersion: artifact.version,
         artifactSha256: artifact.sha256,
         architecture,
+        releaseChannel: options.releaseChannel ?? 'preview',
         moduleGraph: {
           directLifecycleController: true,
           verifiedArtifactResolver: true,

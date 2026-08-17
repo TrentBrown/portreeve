@@ -93,6 +93,20 @@ describe('Desktop distribution', () => {
       'portreeve-app.rb',
     );
     expect(await readFile(result.caskPath, 'utf8')).toContain('cask "portreeve-app"');
+    expect(JSON.parse(await readFile(result.updateManifestPath, 'utf8'))).toMatchObject(
+      {
+        schemaVersion: 2,
+        releases: [
+          {
+            releaseVersion: '0.1.0-preview.1',
+            desktopVersion: '0.1.0',
+            maturity: 'alpha',
+            channel: 'preview',
+            desktopTrust: 'unsigned',
+          },
+        ],
+      },
+    );
     expect((await stat(result.checksumsPath)).size).toBeGreaterThan(100);
   });
 
@@ -160,6 +174,14 @@ async function preparedRecord(channel) {
       architecture: target.architecture,
     });
   }
+  const formulaPath = join(root, 'artifacts', 'portreeve.rb');
+  await Bun.write(formulaPath, 'class Portreeve < Formula\nend\n');
+  record = await registerReleaseArtifact(record, {
+    root,
+    path: formulaPath,
+    type: 'homebrew-formula',
+    provenanceStage: 'native-cli-built',
+  });
   record = advanceReleaseRecord(record, 'artifact-digests-established', {});
   record = mergeNativeVerifications(
     record,

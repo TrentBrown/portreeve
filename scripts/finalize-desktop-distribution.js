@@ -5,6 +5,10 @@ import { readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { desktopDmgName, renderHomebrewCask } from './desktop-release-lib.js';
+import {
+  createDesktopUpdateManifest,
+  renderDesktopUpdateManifest,
+} from './desktop-update-manifest.js';
 import { renderChecksumFile, sha256File } from './release-lib.js';
 import {
   advanceReleaseRecord,
@@ -13,6 +17,7 @@ import {
   verifyReleaseArtifacts,
   writeReleaseRecord,
 } from './release-record.js';
+import { createPublicationPlan, renderPublicationPlan } from './publication-plan.js';
 
 const DEFAULT_HOMEPAGE = 'https://github.com/TrentBrown/portreeve';
 const DEFAULT_RELEASE_BASE = `${DEFAULT_HOMEPAGE}/releases/download`;
@@ -75,7 +80,7 @@ export function assertDesktopPackageEvidence(evidence) {
 }
 
 /**
- * @param {{recordPath: string, evidencePaths: string[], releaseBaseUrl?: string, homepageUrl?: string, trustEvidencePath?: string}} options
+ * @param {{recordPath: string, evidencePaths: string[], releaseBaseUrl?: string, homepageUrl?: string, trustEvidencePath?: string, currentUpdateManifestPath?: string}} options
  */
 export async function finalizeDesktopDistribution(options) {
   const recordPath = resolve(options.recordPath);
@@ -213,8 +218,30 @@ export async function finalizeDesktopDistribution(options) {
     provenanceStage: 'desktop-packaged',
   });
   record = advanceReleaseRecord(record, 'desktop-trust-verified', trustEvidence);
+  const updateManifestPath = resolve(releaseRoot, 'artifacts', 'desktop-update.json');
+  const currentUpdateManifest = JSON.parse(
+    await readFile(
+      resolve(
+        options.currentUpdateManifestPath ??
+          resolve(process.cwd(), 'distribution', 'desktop-update.json'),
+      ),
+      'utf8',
+    ),
+  );
+  await writeImmutableFile(
+    updateManifestPath,
+    renderDesktopUpdateManifest(
+      createDesktopUpdateManifest(record, currentUpdateManifest),
+    ),
+  );
   record = advanceReleaseRecord(record, 'distribution-finalized', {
-    artifactCount: record.artifacts.length + 1,
+    artifactCount: record.artifacts.length + 2,
+  });
+  record = await registerReleaseArtifact(record, {
+    root: releaseRoot,
+    path: updateManifestPath,
+    type: 'desktop-update-metadata',
+    provenanceStage: 'distribution-finalized',
   });
   const checksumsPath = resolve(releaseRoot, 'artifacts', 'SHA256SUMS-DISTRIBUTION');
   await writeImmutableFile(checksumsPath, renderChecksumFile(record.artifacts));
@@ -225,8 +252,13 @@ export async function finalizeDesktopDistribution(options) {
     provenanceStage: 'distribution-finalized',
   });
   await verifyReleaseArtifacts(record, releaseRoot);
+  await writeFile(
+    resolve(releaseRoot, 'publication-plan.md'),
+    renderPublicationPlan(createPublicationPlan(record)),
+    'utf8',
+  );
   await writeReleaseRecord(recordPath, record);
-  return { recordPath, record, caskPath, checksumsPath };
+  return { recordPath, record, caskPath, checksumsPath, updateManifestPath };
 }
 
 /** @param {string} path @param {string} content */
@@ -269,11 +301,17 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     .requiredOption('--record <path>', 'prepared release-record.json path')
     .requiredOption('--evidence <paths...>', 'arm64 and x64 Desktop evidence paths')
     .option('--trust-evidence <path>', 'Developer ID and notarization evidence')
+    .option(
+      '--current-update-manifest <path>',
+      'current channel-aware Desktop update manifest',
+      'distribution/desktop-update.json',
+    )
     .action(async (values) => {
       const result = await finalizeDesktopDistribution({
         recordPath: values.record,
         evidencePaths: values.evidence,
         trustEvidencePath: values.trustEvidence,
+        currentUpdateManifestPath: values.currentUpdateManifest,
       });
       console.log(result.recordPath);
     });

@@ -21,12 +21,12 @@ validation, tamper detection, and unit fixtures.
 
 ## I-2 - Prepare and publish commands
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P2
 - **Rubric criteria:** R1, R3, R4, R8
 - **Depends on:** I-1
-- **PR:** -
+- **PR:** [#60](https://github.com/TrentBrown/portreeve/pull/60)
 
 Create script entry points, versioned workspaces, publication plans, explicit
 confirmation/immutability checks, and fake remote adapters.
@@ -45,7 +45,7 @@ merge native verification evidence without rebuilding.
 
 ## I-4 - Dual-architecture Desktop DMGs
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P4
 - **Rubric criteria:** R2, R3, R4, R6
@@ -57,7 +57,7 @@ verify DMGs, and add signing/notarization policy hooks plus native smokes.
 
 ## I-5 - Homebrew distribution material
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P5
 - **Rubric criteria:** R2, R6
@@ -69,12 +69,12 @@ explicit supervision and purge semantics.
 
 ## I-6 - Hosted release orchestration
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 1.5d
 - **Plan steps:** P6
 - **Rubric criteria:** R3, R4, R5, R6
 - **Depends on:** I-3, I-4, I-5
-- **PR:** -
+- **PR:** [#60](https://github.com/TrentBrown/portreeve/pull/60)
 
 Convert GitHub Actions to the common staged engine, native matrix, record
 aggregation, explicit publication gate, npm decoupling, and channel-aware update

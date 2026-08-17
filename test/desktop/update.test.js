@@ -19,12 +19,11 @@ test('ships a strict update manifest matching the public contract', async () => 
     DesktopUpdateManifestSchema.parse(
       JSON.parse(await readFile('distribution/desktop-update.json', 'utf8')),
     ),
-  ).toEqual({ schemaVersion: 1, desktopVersion: '0.1.0' });
+  ).toEqual({ schemaVersion: 2, releases: [] });
   expect(() =>
     DesktopUpdateManifestSchema.parse({
-      schemaVersion: 1,
-      desktopVersion: '0.1.0',
-      downloadUrl: 'https://example.com/untrusted',
+      schemaVersion: 2,
+      releases: [updateRelease({ channel: 'stable', desktopTrust: 'unsigned' })],
     }),
   ).toThrow();
 });
@@ -39,9 +38,10 @@ test('checks the fixed identifier-free manifest and persists a private result', 
   /** @param {string|URL|Request} input @param {RequestInit} [init] */
   const fetchImplementation = async (input, init) => {
     requests.push({ url: String(input), init });
-    return new Response(JSON.stringify({ schemaVersion: 1, desktopVersion: '0.2.0' }), {
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({ schemaVersion: 2, releases: [updateRelease()] }),
+      { status: 200 },
+    );
   };
   try {
     const adapter = createUpdateAdapter({
@@ -95,7 +95,12 @@ test('reuses every cached attempt for 24 hours and checks again at the boundary'
   let currentTime = new Date(timestamp);
   const fetchImplementation = async () => {
     requests += 1;
-    return new Response(JSON.stringify({ schemaVersion: 1, desktopVersion: '0.1.0' }));
+    return new Response(
+      JSON.stringify({
+        schemaVersion: 2,
+        releases: [updateRelease({ desktopVersion: '0.1.0' })],
+      }),
+    );
   };
   const options = {
     desktopVersion: '0.1.0',
@@ -133,7 +138,7 @@ test('throttles malformed and unavailable responses without exposing an error', 
     statePath,
     fetch: async () => {
       requests += 1;
-      return new Response('{"schemaVersion":1,"desktopVersion":"invalid"}');
+      return new Response('{"schemaVersion":2,"releases":"invalid"}');
     },
     now: () => new Date(timestamp),
     openExternal: async () => {},
@@ -217,7 +222,12 @@ test('recovers from invalid persisted state and refuses navigation without an up
       desktopVersion: '0.2.0',
       statePath,
       fetch: async () =>
-        new Response(JSON.stringify({ schemaVersion: 1, desktopVersion: '0.1.0' })),
+        new Response(
+          JSON.stringify({
+            schemaVersion: 2,
+            releases: [updateRelease({ desktopVersion: '0.1.0' })],
+          }),
+        ),
       now: () => new Date(timestamp),
       async openExternal() {
         opened = true;
@@ -239,3 +249,57 @@ test('compares semantic versions including prerelease and build metadata', () =>
   expect(compareSemanticVersions('1.0.0-rc.2', '1.0.0')).toBe(-1);
   expect(compareSemanticVersions('1.0.0+build.2', '1.0.0+build.1')).toBe(0);
 });
+
+test('selects only the requested update channel', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'portreeve-update-channel-'));
+  try {
+    const adapter = createUpdateAdapter({
+      desktopVersion: '0.1.0',
+      channel: 'stable',
+      statePath: join(root, 'update-state.json'),
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            schemaVersion: 2,
+            releases: [
+              updateRelease(),
+              updateRelease({
+                releaseVersion: '1.0.0',
+                desktopVersion: '1.0.0',
+                channel: 'stable',
+                maturity: 'stable',
+                desktopTrust: 'developer-id-notarized',
+              }),
+            ],
+          }),
+        ),
+      now: () => new Date(timestamp),
+      openExternal: async () => {},
+    });
+    expect(await adapter.check()).toMatchObject({
+      status: 'available',
+      latestVersion: '1.0.0',
+    });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+/**
+ * @param {Partial<{releaseVersion: string, desktopVersion: string, maturity: 'alpha'|'beta'|'stable', channel: 'preview'|'stable', desktopTrust: 'unsigned'|'developer-id-notarized'}>} [overrides]
+ */
+function updateRelease(overrides = {}) {
+  return {
+    releaseVersion: '0.2.0-preview.1',
+    desktopVersion: '0.2.0',
+    maturity: /** @type {const} */ ('alpha'),
+    channel: /** @type {const} */ ('preview'),
+    desktopTrust: /** @type {const} */ ('unsigned'),
+    downloadPageUrl: 'https://github.com/TrentBrown/portreeve/releases',
+    artifacts: {
+      arm64: { filename: 'PortReeve-arm64.dmg', sha256: 'a'.repeat(64) },
+      x64: { filename: 'PortReeve-x64.dmg', sha256: 'b'.repeat(64) },
+    },
+    ...overrides,
+  };
+}

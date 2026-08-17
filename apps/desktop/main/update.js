@@ -25,6 +25,7 @@ export const NOT_CHECKED_UPDATE_STATE = Object.freeze({
 /**
  * @param {{
  *   desktopVersion: string,
+ *   channel?: 'preview'|'stable',
  *   statePath: string,
  *   fetch?: (input: string|URL|Request, init?: RequestInit) => Promise<Response>,
  *   now?: () => Date,
@@ -85,13 +86,21 @@ export function createUpdateAdapter(options) {
           throw new Error(`Update manifest returned ${response.status}.`);
         const text = await readLimitedText(response, MAXIMUM_MANIFEST_BYTES);
         const manifest = DesktopUpdateManifestSchema.parse(JSON.parse(text));
+        const release = manifest.releases.find(
+          ({ channel }) => channel === (options.channel ?? 'preview'),
+        );
+        if (release === undefined) {
+          throw new Error(
+            `Update manifest has no ${options.channel ?? 'preview'} release.`,
+          );
+        }
         result = DesktopUpdateStateSchema.parse({
           status:
-            compareSemanticVersions(manifest.desktopVersion, options.desktopVersion) > 0
+            compareSemanticVersions(release.desktopVersion, options.desktopVersion) > 0
               ? 'available'
               : 'current',
           checkedAt,
-          latestVersion: manifest.desktopVersion,
+          latestVersion: release.desktopVersion,
         });
       } finally {
         clearTimeout(timeout);
