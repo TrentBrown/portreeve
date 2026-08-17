@@ -117,6 +117,15 @@ gh run list --workflow release.yml
 gh run download RUN_ID --name distribution-0.1.0-preview.1
 ```
 
+Revalidate the downloaded record, every recorded byte, both matrices, and the exact
+publication plan without publishing:
+
+```sh
+bun run release:inspect -- \
+  --record distribution-0.1.0-preview.1/release-record.json \
+  --json
+```
+
 Inspect at least:
 
 - workflow conclusions for all six native jobs;

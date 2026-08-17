@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #62 - Complete preview release rehearsal</title>
+    <style>
+      :root { color-scheme: light; --ink: #26383f; --sea: #176b70; --fog: #edf2f3; --paper: #fff; --warn: #8b5b18; --soft: #f8ecd7; }
+      body { margin: 0; font: 16px/1.6 system-ui, sans-serif; color: var(--ink); background: var(--fog); }
+      main { max-width: 980px; margin: auto; padding: 32px 20px 70px; }
+      h1, h2 { line-height: 1.18; }
+      h1 { font-size: clamp(2rem, 5vw, 3.6rem); }
+      nav, .card, .diagram, .quiz { background: var(--paper); border: 1px solid #becbd0; border-radius: 14px; padding: 20px; margin: 20px 0; }
+      nav a { margin-right: 18px; color: var(--sea); }
+      code { background: #e1ecec; padding: 2px 5px; border-radius: 4px; }
+      pre { white-space: pre-wrap; overflow: auto; background: #15282f; color: #eaf6f5; padding: 16px; border-radius: 10px; }
+      .warning { border-left: 5px solid var(--warn); background: var(--soft); padding: 16px; }
+      .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: center; text-align: center; }
+      .flow div { padding: 14px 8px; background: #e1ecec; border-radius: 10px; }
+      .flow span { color: var(--sea); font-size: 1.5rem; }
+      .matrix { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .matrix div { background: #e1ecec; border-radius: 10px; padding: 14px; }
+      button { display: block; width: 100%; text-align: left; padding: 10px; margin: 7px 0; border: 1px solid #9eafb5; border-radius: 8px; background: white; }
+      button:hover { border-color: var(--sea); }
+      .feedback { min-height: 1.5em; font-weight: 650; }
+      @media (max-width: 700px) { .flow, .matrix { grid-template-columns: 1fr; } .flow span { transform: rotate(90deg); } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p>PortReeve PR #62</p>
+      <h1>Prove the release candidate without publishing it</h1>
+      <p>This final slice turns the release design into one complete, inspectable rehearsal. It exercises every architecture and distribution stage, then stops at the human publication boundary.</p>
+      <nav><a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#evidence">Evidence</a><a href="#quiz">Quiz</a></nav>
+
+      <section id="background">
+        <h2>Background</h2>
+        <div class="card"><h3>The beginner's model</h3><p>A release candidate is not a release. It is a sealed set of exact bytes plus evidence describing where they came from and what has verified them. Publication is a later, explicit decision.</p></div>
+        <p>PRs #57-#61 built the record, native artifacts, Desktop packages, distribution material, hosted workflow, alpha user experience, and operator documentation. PR #62 connects those pieces in a real hosted run.</p>
+        <div class="warning"><strong>Safety boundary:</strong> the rehearsal used <code>publish=false</code>. GitHub created temporary workflow artifacts, but it did not create a Git tag, GitHub Release, tap commit, update publication, or npm package.</div>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <p>Think of this as a dress rehearsal performed with the theater doors locked. Every actor and prop must be present, but no audience is admitted until the director gives a separate signal.</p>
+        <div class="diagram flow"><div>Pin source<br /><small>record identity</small></div><span>→</span><div>Build once<br /><small>promote exact bytes</small></div><span>→</span><div>Verify everywhere<br /><small>join evidence</small></div><span>→</span><div>Human boundary<br /><small>publish still disabled</small></div></div>
+        <div class="diagram matrix"><div><strong>Native</strong><br />macOS ARM64 and x64<br />Linux ARM64 and x64</div><div><strong>Desktop</strong><br />ARM64 application and DMG<br />x64 application and DMG</div><div><strong>Distribution</strong><br />checksums, formula, cask<br />release/update metadata</div><div><strong>Policy</strong><br />alpha / preview / unsigned<br />prepared / unpublished</div></div>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <div class="card"><h3>1. A read-only candidate inspector</h3><p><code>scripts/inspect-release-candidate.js</code> validates a downloaded final record, every artifact digest, the publication-plan binding, complete native targets, both DMGs, and the no-public-mutation fact. It does not advance state.</p><pre>bun run release:inspect --record /path/to/release-record.json</pre></div>
+        <div class="card"><h3>2. One hosted release engine</h3><p>The manual workflow invokes the same repository scripts used locally. Prepare builds the initial workspace; matrix jobs add architecture-specific evidence; aggregation and Desktop finalization consume only recorded predecessors.</p></div>
+        <div class="card"><h3>3. Operator guidance follows the evidence</h3><p>The runbook and project skill now tell an operator to download the distribution artifact and run the inspector before considering publication. The command is also contract-tested so the documentation cannot quietly drift away from the executable interface.</p></div>
+        <div class="card"><h3>4. Tampering and incomplete state fail closed</h3><p>Tests prove that inspection refuses an incomplete candidate and a publication plan whose bytes no longer match the recorded SHA-256. Stable Desktop finalization independently refuses absent Apple trust evidence.</p></div>
+      </section>
+
+      <section id="evidence">
+        <h2>What the rehearsal proved</h2>
+        <p>Hosted run <a href="https://github.com/TrentBrown/portreeve/actions/runs/32039385981">32039385981</a> passed prepare, four native jobs, native aggregation, two Desktop jobs, and final distribution. The publish job was skipped.</p>
+        <pre>Release: portreeve-v0.1.0-preview.rehearsal.62
+Source:  f6ed321bd7d2cca5b36f51d5200928ff8de3e637
+Policy:  alpha / preview / unsigned
+State:   prepared / unpublished
+Assets:  13 recorded artifacts
+Checks:  523 tests, 2,744 assertions</pre>
+        <p>Downloaded checksum manifests and Ruby syntax passed locally. Both Desktop evidence records attest exact embedded CLI identity, package inspection, DMG verification and mounting, and native smoke execution.</p>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="1"><p>1. What did this rehearsal publish?</p><button>A draft GitHub Release.</button><button>No public release state; only temporary workflow artifacts.</button><button>The Homebrew tap but not npm.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="2"><p>2. What is the candidate inspector allowed to do?</p><button>Repair missing stage evidence.</button><button>Approve publication after validation.</button><button>Read and validate the finalized candidate without advancing it.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="0"><p>3. Why does the workflow use matrix jobs?</p><button>Each architecture executes and contributes its own evidence for the same recorded candidate.</button><button>Each job may rebuild whichever bytes it prefers.</button><button>Only to shorten the release notes.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="1"><p>4. What happens if the publication plan changes after it is recorded?</p><button>The inspector updates its digest.</button><button>Inspection and publication refuse the candidate.</button><button>The change is accepted for preview releases.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="2"><p>5. What remains after PR #62 approval?</p><button>Rebuild all artifacts on a developer laptop.</button><button>Automatically publish npm first.</button><button>A separately authorized real release using the proved pipeline.</button><p class="feedback"></p></div>
+      </section>
+    </main>
+    <script>
+      document.querySelectorAll('.quiz').forEach((quiz) => {
+        quiz.querySelectorAll('button').forEach((button, index) => button.addEventListener('click', () => {
+          const ok = index === Number(quiz.dataset.answer);
+          quiz.querySelector('.feedback').textContent = ok ? 'Correct.' : 'Not quite. Revisit the section above and distinguish preparation evidence from publication authority.';
+          quiz.querySelector('.feedback').style.color = ok ? '#26745d' : '#9e3f3b';
+        }));
+      });
+    </script>
+  </body>
+</html>

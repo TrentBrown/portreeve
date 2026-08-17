@@ -9,14 +9,14 @@
 
 | # | Criterion (short) | Status | PR | Notes |
 | --- | --- | --- | --- | --- |
-| R1 | Deterministic preparation boundary | NOT YET | [#57](https://github.com/TrentBrown/portreeve/pull/57) | PR #57 establishes strict preparation and resume behavior; complete distribution outputs and publication remain. |
-| R2 | Complete native and Desktop artifacts | NOT YET | - | P3-P5, P9 / I-3, I-4, I-5, I-9 |
-| R3 | Release record and exact-byte state machine | NOT YET | [#57](https://github.com/TrentBrown/portreeve/pull/57) | PR #57 adds schema v1, ordered transitions, atomic persistence, and artifact tamper checks; downstream evidence aggregation remains. |
-| R4 | Policy and publication gates | NOT YET | [#57](https://github.com/TrentBrown/portreeve/pull/57) | PR #57 adds preview/stable policy and approval-plan binding; public adapters and complete Apple evidence gates remain. |
-| R5 | One local/hosted engine with npm decoupled | NOT YET | - | P3, P6, P9 / I-3, I-6, I-9 |
-| R6 | Direct-download and Homebrew lifecycle semantics | NOT YET | - | P4-P6, P9 / I-4, I-5, I-6, I-9 |
-| R7 | Alpha UX and safe installation guidance | NOT YET | - | P7, P9 / I-7, I-9 |
-| R8 | Operator entry points and drift protection | NOT YET | - | P2, P8-P9 / I-2, I-8, I-9 |
+| R1 | Deterministic preparation boundary | PASS | [#62](https://github.com/TrentBrown/portreeve/pull/62) | Hosted preview rehearsal produced a complete inspectable workspace with publication disabled; negative transition and mutation tests pass. |
+| R2 | Complete native and Desktop artifacts | PASS | [#62](https://github.com/TrentBrown/portreeve/pull/62) | Four native targets, two architecture-specific verified DMGs, client archive, checksums, formula, cask, and metadata are recorded across 13 artifacts. |
+| R3 | Release record and exact-byte state machine | PASS | [#62](https://github.com/TrentBrown/portreeve/pull/62) | The downloaded record passed deterministic inspection, digest checks, ordered-stage validation, and changed-plan rejection. |
+| R4 | Policy and publication gates | PASS | [#62](https://github.com/TrentBrown/portreeve/pull/62) | Rehearsal is alpha/preview/unsigned and unpublished; publish was skipped, stable finalization fails without Apple evidence, and fake publication guards pass. |
+| R5 | One local/hosted engine with npm decoupled | PASS | [#62](https://github.com/TrentBrown/portreeve/pull/62) | Manual dispatch used the script-owned engine across all hosted jobs; npm was neither required nor published. |
+| R6 | Direct-download and Homebrew lifecycle semantics | PASS | [#62](https://github.com/TrentBrown/portreeve/pull/62) | Downloaded candidate checksums and Ruby syntax pass; generated material preserves explicit supervision and purge semantics. |
+| R7 | Alpha UX and safe installation guidance | PASS | [#62](https://github.com/TrentBrown/portreeve/pull/62) | README, Desktop, installation guide, release notes, and cask consistently expose alpha and unsigned-preview guidance with safe scoped macOS steps. |
+| R8 | Operator entry points and drift protection | PASS | [#62](https://github.com/TrentBrown/portreeve/pull/62) | Runbook, project skill, local commands, hosted dispatch, and read-only candidate inspection share the release-record contract and pass drift tests. |
 
 ## PR Log
 
@@ -74,12 +74,26 @@
 ### PR #61 - Alpha preview UX and operator entry point
 
 - **PR:** [#61](https://github.com/TrentBrown/portreeve/pull/61)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P7-P8 / I-7-I-8: persistent README/Desktop alpha identity, safe
   unsigned installation and removal guidance, release-note and cask caveats,
   one script-owned operator runbook, and a project-local release skill that
   preserves the publication gate.
 - **Evidence packet:** [pr-61](pr-61/)
-- **Result:** Pending slice gates. R7 and R8 gain their user and operator
+- **Result:** Slice gates passed. R7 and R8 gain their user and operator
   surfaces; the complete hosted rehearsal and feature-final evaluation remain
   P9 / I-9.
+
+### PR #62 - Complete preview release rehearsal
+
+- **PR:** [#62](https://github.com/TrentBrown/portreeve/pull/62)
+- **Status:** in review
+- **Scope:** Feature-final P9 / I-9: read-only downloaded-candidate inspection,
+  complete hosted unsigned-preview preparation across four native targets and
+  two Desktop architectures, stable-negative coverage, and cumulative
+  acceptance/rubric evaluation.
+- **Evidence packet:** [pr-62](pr-62/)
+- **Hosted rehearsal:** [run 32039385981](https://github.com/TrentBrown/portreeve/actions/runs/32039385981)
+- **Result:** PASS. All eight rubric criteria are satisfied. Publication stayed
+  disabled, the publish job was skipped, and no tag, GitHub Release, tap, update
+  publication, or npm mutation occurred.

@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { desktopDmgName } from '../../scripts/desktop-release-lib.js';
 import { finalizeDesktopDistribution } from '../../scripts/finalize-desktop-distribution.js';
+import { inspectReleaseCandidate } from '../../scripts/inspect-release-candidate.js';
 import {
   createNativeVerification,
   mergeNativeVerifications,
@@ -30,6 +31,30 @@ afterEach(async () => {
 });
 
 describe('release publication', () => {
+  test('inspects a complete candidate without changing publication state', async () => {
+    const recordPath = await finalizedRelease();
+    const result = await inspectReleaseCandidate({ recordPath });
+    expect(result).toMatchObject({
+      status: 'ready-for-publication-review',
+      releaseVersion: '0.1.0-preview.1',
+      state: 'prepared',
+      publicationState: 'unpublished',
+      nativeTargets: ['macos-arm64', 'macos-x64', 'linux-arm64', 'linux-x64'],
+      desktopArchitectures: ['arm64', 'x64'],
+      publicMutationPerformed: false,
+    });
+    expect(result.publicationPlanSha256).toMatch(/^[a-f0-9]{64}$/u);
+    expect((await readReleaseRecord(recordPath)).state).toBe('prepared');
+  });
+
+  test('rejects a candidate whose review plan no longer matches its record', async () => {
+    const recordPath = await finalizedRelease();
+    await writeFile(join(recordPath, '..', 'publication-plan.md'), 'changed plan\n');
+    await expect(inspectReleaseCandidate({ recordPath })).rejects.toThrow(
+      'publication plan does not match',
+    );
+  });
+
   test('requires explicit confirmation before adapter preflight or mutation', async () => {
     const recordPath = await finalizedRelease();
     /** @type {string[]} */

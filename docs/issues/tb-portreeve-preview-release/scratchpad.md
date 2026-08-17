@@ -151,3 +151,24 @@ Show the warning only on the installation page - rejected because product maturi
 remain visible after installation. Treat alpha, preview, and unsigned as one state -
 rejected because they evolve independently. Recommend command-line Gatekeeper or
 quarantine bypasses - rejected because a scoped user-reviewed exception is safer.
+
+## [8] Make candidate inspection an explicit read-only release command
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Release operator workflow, downloaded workflow artifacts, final rehearsal, and publication review
+
+Add `release:inspect` as a deterministic, non-mutating consumer of a finalized release
+record. It revalidates every recorded artifact, the complete native and Desktop
+matrices, required distribution types, and the exact publication plan before reporting
+that a candidate is ready for human publication review.
+
+**Triggered by:** P9 needs a reproducible way to inspect the hosted `publish=false`
+candidate rather than relying on manual filename review
+
+**Alternatives considered:**
+Reuse `release:publish` without confirmation - rejected because inspection should not
+instantiate remote adapters or share a mutation-oriented command. Inspect files by hand
+- rejected because that would not be a deterministic operator entry point.

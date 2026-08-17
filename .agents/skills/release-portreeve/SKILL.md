@@ -29,7 +29,8 @@ gate.
 - For a local engine check, run `release:prepare`. Explain that one host stops before
   the complete native matrix.
 - For a complete candidate or rehearsal, use the manual GitHub workflow with
-  `publish=false`. Download and inspect `distribution-<version>` after it succeeds.
+  `publish=false`. Download `distribution-<version>` after it succeeds and run
+  `release:inspect` against its `release-record.json`.
 - For an interrupted candidate, resume only through the exact recovery path documented
   in `docs/releasing.md`; do not rebuild or substitute bytes downstream.
 - For a request to publish, first identify the exact finalized record and show the exact
