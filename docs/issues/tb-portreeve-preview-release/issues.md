@@ -21,7 +21,7 @@ validation, tamper detection, and unit fixtures.
 
 ## I-2 - Prepare and publish commands
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P2
 - **Rubric criteria:** R1, R3, R4, R8
@@ -69,7 +69,7 @@ explicit supervision and purge semantics.
 
 ## I-6 - Hosted release orchestration
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1.5d
 - **Plan steps:** P6
 - **Rubric criteria:** R3, R4, R5, R6
@@ -82,7 +82,7 @@ metadata.
 
 ## I-7 - Alpha preview user experience
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1d
 - **Plan steps:** P7
 - **Rubric criteria:** R7
@@ -95,7 +95,7 @@ coverage.
 
 ## I-8 - Operator runbook and release skill
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1d
 - **Plan steps:** P8
 - **Rubric criteria:** R8

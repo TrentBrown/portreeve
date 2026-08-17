@@ -260,8 +260,12 @@ async function finalizedRelease() {
     evidencePaths.push(evidencePath);
   }
   await finalizeDesktopDistribution({ recordPath, evidencePaths });
-  expect(await readFile(join(root, 'publication-plan.md'), 'utf8')).toContain(
-    'npm: deferred',
+  const publicationPlan = await readFile(join(root, 'publication-plan.md'), 'utf8');
+  expect(publicationPlan).toContain('npm: deferred');
+  expect(publicationPlan).toContain('**Alpha Preview**');
+  expect(publicationPlan).toContain('**unsigned**');
+  expect(publicationPlan).toContain(
+    'https://github.com/TrentBrown/portreeve/blob/main/docs/installation.md',
   );
   return recordPath;
 }

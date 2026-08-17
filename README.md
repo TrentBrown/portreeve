@@ -1,5 +1,12 @@
 # PortReeve
 
+> [!WARNING] **Alpha Preview** — PortReeve is evolving quickly. Breaking changes remain
+> possible, and the first macOS preview downloads will be unsigned until Apple Developer
+> ID signing and notarization are configured. No public preview has been published yet;
+> current users should build from source. See the
+> [preview installation and removal guide](docs/installation.md) before installing a
+> future preview.
+
 <p align="center">
   <img src="apps/desktop/assets/branding/portreeve-lockup.svg" width="570" alt="PortReeve, Local Port Authority">
 </p>
@@ -298,6 +305,7 @@ Installation does not require root. PortReeve uses `launchd` on macOS and
 - [JavaScript client](docs/client.md)
 - [Desktop application](docs/desktop.md)
 - [Installation and future release channels](docs/installation.md)
+- [Release operator runbook](docs/releasing.md)
 - [Stack definitions and coordination](docs/stacks.md)
 - [Project launchers](docs/launchers.md)
 - [Socket protocol](docs/protocol.md)

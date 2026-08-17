@@ -116,8 +116,6 @@ the tap, and update metadata cannot be changed atomically across repositories.
 
 **Promoted:** 2026-08-16. PR: 60.
 
----
-
 ## Bind Desktop update selection to the packaged release channel
 
 **Confidence:** HIGH
@@ -139,3 +137,27 @@ future stable app could advertise an unsigned preview. Make all apps follow
 stable - rejected because alpha preview users would receive no preview updates.
 
 **Promoted:** 2026-08-16. PR: 60.
+
+---
+
+## Keep maturity, channel, and trust visible as separate user facts
+
+**Confidence:** HIGH
+
+**Blast Radius:** README, Desktop global header, release notes, installation guidance, and Homebrew cask caveats
+
+Keep the alpha product-maturity notice visible on every Desktop view and at the top of
+the repository README. Describe preview channel and unsigned macOS trust independently,
+use only Apple's scoped Open Anyway flow for an unsigned application, and keep service
+uninstall and destructive data purge as separate explicit operations.
+
+**Triggered by:** P7 must explain an unsigned first preview without teaching unsafe
+system-wide security bypasses or implying that application removal owns service data
+
+**Alternatives considered:**
+Show the warning only on the installation page - rejected because product maturity must
+remain visible after installation. Treat alpha, preview, and unsigned as one state -
+rejected because they evolve independently. Recommend command-line Gatekeeper or
+quarantine bypasses - rejected because a scoped user-reviewed exception is safer.
+
+**Promoted:** 2026-08-16. PR: #61.

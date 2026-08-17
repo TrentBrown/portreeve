@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Release PortReeve'
+  short_description: 'Prepare and explain a PortReeve release'
+  default_prompt: 'Use $release-portreeve to prepare a new PortReeve preview release.'
