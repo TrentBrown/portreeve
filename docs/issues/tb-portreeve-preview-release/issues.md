@@ -107,12 +107,12 @@ and drift tests that keep every invocation surface aligned.
 
 ## I-9 - Full release rehearsal and final verification
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P9
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
 - **Depends on:** I-6, I-7, I-8
-- **PR:** -
+- **PR:** [#62](https://github.com/TrentBrown/portreeve/pull/62)
 
 Exercise the complete unsigned preview preparation and stable-negative paths,
 collect native CI evidence, run final rubric/judge/review gates, and stop before
