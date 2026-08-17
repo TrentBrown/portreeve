@@ -82,7 +82,7 @@ metadata.
 
 ## I-7 - Alpha preview user experience
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P7
 - **Rubric criteria:** R7
@@ -95,7 +95,7 @@ coverage.
 
 ## I-8 - Operator runbook and release skill
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P8
 - **Rubric criteria:** R8
@@ -107,7 +107,7 @@ and drift tests that keep every invocation surface aligned.
 
 ## I-9 - Full release rehearsal and final verification
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1d
 - **Plan steps:** P9
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
