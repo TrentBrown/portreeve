@@ -6,6 +6,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { resolveBundledReleaseCandidate } from '../apps/desktop/main/artifact.js';
+import { inspectExecutable } from './release-lib.js';
 
 const SMOKE_PREFIX = 'PORTREEVE_DESKTOP_SMOKE ';
 const OUTPUT_LIMIT = 64 * 1024;
@@ -146,6 +147,15 @@ export function assertPackagedDesktopContents(options) {
  */
 export async function verifyPackagedDesktop(options) {
   const resourcesRoot = resolve(options.applicationPath, 'Contents', 'Resources');
+  const executableFormat = await inspectExecutable(
+    resolve(options.applicationPath, 'Contents', 'MacOS', 'PortReeve'),
+  );
+  if (
+    executableFormat.operatingSystem !== 'macos' ||
+    executableFormat.architecture !== options.architecture
+  ) {
+    throw new Error('Packaged Desktop executable architecture is invalid.');
+  }
   const artifact = await resolveBundledReleaseCandidate({
     resourcesRoot,
     platform: 'darwin',

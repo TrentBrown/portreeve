@@ -66,6 +66,12 @@ export function assertDesktopPackageEvidence(evidence) {
   ) {
     throw new Error('Desktop package evidence release identity is invalid.');
   }
+  if (
+    candidate.runner?.operatingSystem !== 'darwin' ||
+    candidate.runner?.architecture !== candidate.target.architecture
+  ) {
+    throw new Error('Desktop package evidence runner is not target-native.');
+  }
 }
 
 /**

@@ -60,6 +60,9 @@ describe('Desktop distribution', () => {
     const unsafe = structuredClone(evidence);
     unsafe.desktop.filename = '../PortReeve.dmg';
     expect(() => assertDesktopPackageEvidence(unsafe)).toThrow('artifact identity');
+    const translated = structuredClone(evidence);
+    translated.runner.architecture = 'x64';
+    expect(() => assertDesktopPackageEvidence(translated)).toThrow('not target-native');
   });
 
   test('finalizes two exact DMGs, cask, trust state, and distribution checksums', async () => {
