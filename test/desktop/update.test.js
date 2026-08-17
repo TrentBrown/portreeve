@@ -15,11 +15,10 @@ import {
 import { timestamp } from './fixtures.js';
 
 test('ships a strict update manifest matching the public contract', async () => {
-  expect(
-    DesktopUpdateManifestSchema.parse(
-      JSON.parse(await readFile('distribution/desktop-update.json', 'utf8')),
-    ),
-  ).toEqual({ schemaVersion: 2, releases: [] });
+  const document = JSON.parse(
+    await readFile('distribution/desktop-update.json', 'utf8'),
+  );
+  expect(DesktopUpdateManifestSchema.parse(document)).toEqual(document);
   expect(() =>
     DesktopUpdateManifestSchema.parse({
       schemaVersion: 2,
