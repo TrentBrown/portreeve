@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PortReeve PR #65 - Publication PR State Machine</title>
+    <style>
+      :root {
+        --ink: #102a3b;
+        --muted: #526773;
+        --paper: #f5f1e8;
+        --card: #fffdf8;
+        --line: #c8d2ce;
+        --green: #2e7257;
+        --blue: #376f91;
+        --gold: #c79b52;
+        --red: #a94d45;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; color: var(--ink); background: var(--paper); font: 17px/1.6 system-ui, sans-serif; }
+      main { max-width: 1040px; margin: auto; padding: 36px 22px 80px; }
+      h1, h2, h3 { font-family: Georgia, serif; line-height: 1.15; }
+      h1 { font-size: clamp(2.2rem, 6vw, 4.2rem); margin-bottom: 8px; }
+      h2 { margin-top: 56px; border-bottom: 2px solid var(--line); padding-bottom: 10px; }
+      a { color: var(--blue); }
+      nav, .card, .callout, .diagram, .quiz { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+      nav ol { columns: 2; }
+      .lede { color: var(--muted); font-size: 1.2rem; max-width: 760px; }
+      .callout { border-left: 6px solid var(--gold); margin: 24px 0; }
+      .diagram { display: grid; gap: 12px; margin: 26px 0; }
+      .flow { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; }
+      .node { flex: 1 1 150px; min-height: 105px; padding: 14px; border-radius: 12px; background: #e4ede9; border: 1px solid #a9c0b5; }
+      .node strong { display: block; margin-bottom: 8px; }
+      .arrow { align-self: center; color: var(--green); font-size: 1.7rem; font-weight: bold; }
+      .state { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+      .state .card { padding: 14px; }
+      .good { border-top: 5px solid var(--green); }
+      .wait { border-top: 5px solid var(--gold); }
+      .stop { border-top: 5px solid var(--red); }
+      pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #102a3b; color: #edf4f1; border-radius: 10px; padding: 16px; }
+      code { font-family: ui-monospace, monospace; }
+      .quiz { margin: 18px 0; }
+      .quiz button { display: block; width: 100%; margin: 9px 0; padding: 11px; text-align: left; border: 1px solid var(--line); border-radius: 8px; background: white; cursor: pointer; }
+      .quiz button:hover { border-color: var(--blue); }
+      .feedback { min-height: 1.5em; font-weight: 650; }
+      @media (max-width: 620px) { nav ol { columns: 1; } .arrow { transform: rotate(90deg); flex-basis: 100%; text-align: center; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p>PR #65 · pinned head <code>61c7969</code></p>
+      <h1>A safe carrier for release references</h1>
+      <p class="lede">This first slice does not publish a release. It builds and proves the small state machine that future releases will use to carry exact generated files through ordinary GitHub pull requests.</p>
+
+      <nav aria-label="Table of contents">
+        <strong>Contents</strong>
+        <ol>
+          <li><a href="#background">Background</a></li>
+          <li><a href="#intuition">Intuition</a></li>
+          <li><a href="#states">Recovery states</a></li>
+          <li><a href="#code">Code walkthrough</a></li>
+          <li><a href="#safety">Safety boundaries</a></li>
+          <li><a href="#quiz">Quiz</a></li>
+        </ol>
+      </nav>
+
+      <section id="background">
+        <h2>Background</h2>
+        <p>A PortReeve release contains immutable binaries hosted by GitHub Releases and mutable references in two repositories: a Homebrew formula/cask and the Desktop update catalog. The first public preview proved the binary side, then exposed an awkward repository side. One adapter attempted an ordinary Git push to <code>main</code>; another wrote directly to <code>main</code> through an API.</p>
+        <div class="callout"><strong>The distinction:</strong> release assets are permanent bytes. Formulae and update catalogs are moving references to those bytes. They need audit history and branch-policy compatibility without becoming a second build.</div>
+        <p>The approved design keeps <code>main</code> as the sole integration branch and release tags as production identity. A short-lived <code>tb-*</code> branch is merely a carrier for one mechanically generated PR.</p>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <p>Think of the approved publication plan as a sealed shipping manifest. The new state machine constructs a crate whose label includes the manifest digest, source commit, destination, and checksum of every file. Before merging the crate, it checks the label, contents, route, and destination again.</p>
+        <div class="diagram">
+          <div class="flow">
+            <div class="node"><strong>Approved plan</strong>Version, source SHA, exact artifact digests</div>
+            <div class="arrow">→</div>
+            <div class="node"><strong>One generated commit</strong>Exact allowlisted files on a deterministic <code>tb-*</code> branch</div>
+            <div class="arrow">→</div>
+            <div class="node"><strong>Self-identifying PR</strong>Readable summary plus machine-verifiable marker</div>
+            <div class="arrow">→</div>
+            <div class="node"><strong>Verified merge</strong>Merge commit retained by <code>main</code>; exact destination bytes</div>
+          </div>
+        </div>
+        <p>For release <code>0.2.0-preview.1</code>, the branch name is stable and collision-resistant:</p>
+        <pre><code>tb-portreeve-release-v0.2.0-preview.1-&lt;8-character version digest&gt;</code></pre>
+        <p>The human-readable PR body is also a signed-shaped envelope: it carries no credential, but it does carry enough exact identity to reject a branch or PR that was edited between retries.</p>
+      </section>
+
+      <section id="states">
+        <h2>The recovery states</h2>
+        <div class="state">
+          <div class="card good"><h3>Absent</h3><p>Create one tree, one commit, one branch, and one PR from the current destination base.</p></div>
+          <div class="card wait"><h3>Open</h3><p>Revalidate marker, head, ancestry, paths, and bytes. Merge only when GitHub reports a clean state.</p></div>
+          <div class="card good"><h3>Merged</h3><p>Verify the merge commit remains in destination history and every destination byte still matches.</p></div>
+          <div class="card wait"><h3>Blocked</h3><p>Keep the exact PR intact and return its URL for checks or independent review.</p></div>
+          <div class="card stop"><h3>Conflicting</h3><p>Refuse changed ancestry, extra files, modified content, changed head, closed-unmerged PR, or unproven matching bytes.</p></div>
+          <div class="card wait"><h3>Cleanup pending</h3><p>If deletion fails after merge, retry verifies public content first and removes only the unchanged topic ref.</p></div>
+        </div>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <h3>1. Identity rendering</h3>
+        <p><code>publicationBranchName</code>, <code>renderPublicationPullRequestBody</code>, and its parser turn the version and approved plan into deterministic public identity. The marker is Base64URL-encoded JSON so recovery compares structured facts rather than scraping prose.</p>
+        <h3>2. Atomic branch creation</h3>
+        <p>The adapter creates a Git tree from the destination tree, then one commit with exactly one parent, then a ref. It never exposes a half-written two-file Homebrew branch and never updates <code>main</code>.</p>
+        <h3>3. Exact validation</h3>
+        <p>Validation proves the generated commit is exactly one commit ahead of its recorded base, that the base remains in destination history, that branch contents hash correctly, and that the PR reports exactly the allowed paths.</p>
+        <h3>4. Policy-aware merge</h3>
+        <p>Unknown mergeability receives a bounded wait. Only <code>mergeable=true</code> and <code>mergeable_state=clean</code> permit a merge request. Blocked checks, review, hooks, conflicts, or an outdated required branch return an actionable PR URL.</p>
+        <h3>5. Destination proof and cleanup</h3>
+        <p>After merging, the adapter proves the merge commit remains an ancestor of the destination head and rereads every file from that head. It deletes the short-lived ref only when the ref still points to the generated commit.</p>
+      </section>
+
+      <section id="safety">
+        <h2>Safety boundaries</h2>
+        <ul>
+          <li>No direct commit or push to <code>main</code>.</li>
+          <li>No force-push and no administrative branch-rule bypass.</li>
+          <li>No self-approval or automatic weakening of required review.</li>
+          <li>No acceptance of matching destination bytes without a matching publication PR.</li>
+          <li>No branch deletion after its head changes.</li>
+          <li>No live publication in this slice; GitHub responses are deterministic fakes.</li>
+        </ul>
+        <div class="callout"><strong>Why stop before wiring?</strong> The release orchestrator will coordinate an immutable Release plus two repository PRs. Reviewing this state machine first makes its invariants visible before that larger sequence depends on them.</div>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="1"><strong>1. What is the temporary branch's role?</strong><button>It becomes the production source branch for the released binaries.</button><button>It carries exact generated repository references through one auditable PR.</button><button>It replaces the immutable GitHub release tag.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="2"><strong>2. When may the adapter request a merge?</strong><button>Whenever file contents match, even if required review is pending.</button><button>After a fixed delay, regardless of GitHub's state.</button><button>Only when GitHub reports both mergeable and clean.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="0"><strong>3. Why verify the recorded base against destination history?</strong><button>An attacker could construct an exact-looking branch on an unrelated history.</button><button>GitHub cannot compare file contents across branches.</button><button>Release tags move whenever <code>main</code> advances.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="2"><strong>4. What happens when independent review is required?</strong><button>The publisher grants itself an approval using the release token.</button><button>The publisher commits directly to <code>main</code> as a fallback.</button><button>The exact PR remains open and the error reports its URL.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="1"><strong>5. What proves a merged retry is safe?</strong><button>The branch name still contains the release version.</button><button>The PR identity, merge ancestry, and destination bytes all revalidate.</button><button>The original workflow run still appears in GitHub Actions.</button><p class="feedback"></p></div>
+      </section>
+    </main>
+    <script>
+      document.querySelectorAll('.quiz').forEach((quiz) => {
+        quiz.querySelectorAll('button').forEach((button, index) => {
+          button.addEventListener('click', () => {
+            const correct = index === Number(quiz.dataset.answer);
+            const feedback = quiz.querySelector('.feedback');
+            feedback.textContent = correct ? 'Correct — that is the invariant this slice enforces.' : 'Not quite. Revisit the recovery and safety sections above.';
+            feedback.style.color = correct ? 'var(--green)' : 'var(--red)';
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
