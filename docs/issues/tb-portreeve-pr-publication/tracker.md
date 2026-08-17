@@ -21,6 +21,13 @@
 
 Append PR boundary entries here.
 
-- [#65](https://github.com/TrentBrown/portreeve/pull/65) - deterministic GitHub
-  publication PR state machine; R3 PASS, R2 remains NOT YET pending live publisher
-  wiring; full repository check 535 pass / 0 fail.
+### PR #65 - Deterministic publication PR state machine
+
+- **PR:** [#65](https://github.com/TrentBrown/portreeve/pull/65)
+- **Status:** in review
+- **Scope:** P1 / I-1: deterministic GitHub ref, exact-file commit, self-verifying
+  PR, merge-policy, destination-proof, and cleanup recovery primitive.
+- **Evidence packet:** [pr-65](pr-65/)
+- **Result:** Slice gates pass. R3 is PASS; R2 remains NOT YET until the next slice
+  supplies the exact Homebrew and Desktop-update configurations. Full repository check:
+  535 pass / 0 fail.
