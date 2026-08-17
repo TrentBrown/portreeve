@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #60 — Hosted evidence and gated publication</title>
+    <style>
+      :root { color-scheme:light; --ink:#17313a; --sea:#1d6b57; --mist:#eef5f2; --sand:#fbf7ee; --line:#c8d7d2; --warn:#fff3cd; }
+      * { box-sizing:border-box; }
+      body { margin:0; font:16px/1.6 system-ui,sans-serif; color:var(--ink); background:var(--sand); }
+      main { width:min(1000px,92vw); margin:auto; padding:2rem 0 5rem; }
+      h1 { font:700 clamp(2rem,5vw,3.5rem)/1.05 Georgia,serif; margin:.25rem 0 1rem; }
+      h2 { margin-top:3rem; padding-top:1rem; border-top:2px solid var(--line); }
+      h3 { margin-top:2rem; }
+      nav,.callout,.quiz { background:white; border:1px solid var(--line); border-radius:14px; padding:1.1rem 1.25rem; box-shadow:0 6px 20px #17313a0b; }
+      nav a { color:var(--sea); margin-right:1rem; }
+      code,pre { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+      pre { white-space:pre-wrap; background:#102c35; color:#f7fbfa; padding:1rem; border-radius:10px; overflow:auto; }
+      .eyebrow { letter-spacing:.11em; text-transform:uppercase; font-size:.78rem; color:var(--sea); font-weight:700; }
+      .muted { color:#526d74; }
+      .flow { display:grid; grid-template-columns:repeat(11,auto); gap:.35rem; align-items:center; overflow-x:auto; padding:1rem 0; }
+      .node { min-width:105px; text-align:center; padding:.7rem; border-radius:999px; background:var(--mist); border:1px solid #a7c9be; font-weight:650; }
+      .gate { background:#fff3cd; border-color:#d3a12e; }
+      .arrow { color:var(--sea); font-size:1.35rem; }
+      .matrix { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; }
+      .target { border:1px solid var(--line); border-radius:12px; padding:1rem; background:white; }
+      .target strong { display:block; color:var(--sea); }
+      .callout { border-left:5px solid var(--sea); margin:1rem 0; }
+      .warning { background:var(--warn); border-left-color:#b57c00; }
+      button.answer { display:block; width:100%; text-align:left; margin:.5rem 0; padding:.7rem; border:1px solid var(--line); border-radius:8px; background:white; cursor:pointer; }
+      button.answer:hover { background:var(--mist); }
+      .feedback { min-height:1.5em; font-weight:650; }
+      @media(max-width:700px){ .matrix{grid-template-columns:1fr}.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg);text-align:center} }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">PortReeve release pipeline · PR #60</p>
+      <h1>Move evidence across hosts without moving the authority boundary</h1>
+      <p class="muted">Pinned diff <code>f0892c1..8523b7d</code>. This page explains exactly that slice.</p>
+      <nav><a href="#background">Background</a><a href="#flow">Flow</a><a href="#publication">Publication</a><a href="#updates">Updates</a><a href="#quiz">Quiz</a></nav>
+
+      <section id="background">
+        <h2>Background</h2>
+        <p>The local engine can build all CLI targets, but only matching native hosts can prove that each executable and supervised lifecycle works. Desktop packaging has the same constraint for Apple Silicon and Intel. GitHub Actions supplies those hosts; it must not become a second release implementation.</p>
+        <div class="callout"><strong>Design rule:</strong> workflow YAML supplies runners, transport, and credentials. Versioned repository scripts continue to own policy, evidence validation, stage transitions, and publication behavior.</div>
+      </section>
+
+      <section id="flow">
+        <h2>Hosted flow</h2>
+        <div class="flow" aria-label="Hosted release sequence">
+          <div class="node">Prepare once</div><div class="arrow">→</div>
+          <div class="node">4 CLI proofs</div><div class="arrow">→</div>
+          <div class="node">Join once</div><div class="arrow">→</div>
+          <div class="node">2 DMG proofs</div><div class="arrow">→</div>
+          <div class="node">Finalize once</div><div class="arrow">→</div>
+          <div class="node gate">Human gate</div>
+        </div>
+        <p>Every job downloads the same prepared workspace. Native and Desktop jobs emit create-once fragments instead of editing shared state. One Linux join job validates the four CLI fragments; one distribution job validates the two Desktop fragments. Neither join rebuilds an artifact.</p>
+        <div class="matrix">
+          <div class="target"><strong>Preparation</strong>Safe to dispatch; creates no public reference.</div>
+          <div class="target"><strong>Evidence</strong>Parallel native hosts prove exact recorded bytes.</div>
+          <div class="target"><strong>Publication</strong>Runs only when explicitly selected and environment-approved.</div>
+        </div>
+      </section>
+
+      <section id="publication">
+        <h2>Publication is its own state transition</h2>
+        <p><code>release:publish</code> rereads the finalized record, rehashes every artifact, regenerates the plan, and requires the committed plan bytes to match. Without <code>--confirm</code> and an approver identity it stops before even calling remote preflights.</p>
+        <pre>verify record + bytes
+  → compare exact publication plan
+  → require explicit confirmation
+  → preflight GitHub, tap, and update target
+  → persist plan-bound approval
+  → publish or verify each remote target
+  → persist published evidence</pre>
+        <p>GitHub release assets are immutable by name, size, and SHA-256. The tap and update document are public moving references, so the approval plan names them explicitly. Update publication uses the repository file SHA as an optimistic concurrency guard.</p>
+        <p>If GitHub succeeds and the tap temporarily fails, the record remains <code>publication-approved</code>. A retry must reproduce the same plan digest, verifies the existing GitHub release, and resumes without rebuilding or replacing version assets.</p>
+        <div class="callout warning"><strong>No real publication occurred:</strong> tests supply fake adapters. The workflow has not been dispatched and the public token remains unused.</div>
+      </section>
+
+      <section id="updates">
+        <h2>Update metadata no longer means “one unqualified latest”</h2>
+        <p>Schema version 2 carries preview and stable entries independently. Each entry records coordinated release version, Desktop component version, product maturity, channel, trust, download page, and both architecture-specific DMG identities.</p>
+        <p>The packaged app also records and attests its selected channel. An alpha preview follows preview metadata; a future stable package follows only stable metadata. A stable entry is invalid unless maturity is stable and Desktop trust is Developer ID notarized.</p>
+        <p>npm is intentionally absent from the hosted dependency graph. The client archive remains part of prepared evidence, but npm publication stays deferred until Trusted Publishing is configured independently.</p>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="b"><strong>1. Why do matrix jobs emit fragments instead of updating the record?</strong><button class="answer" data-choice="a">JSON cannot contain six targets.</button><button class="answer" data-choice="b">Independent fragments avoid concurrent shared-state races and are joined deterministically.</button><button class="answer" data-choice="c">Fragments allow each runner to rebuild faster.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="c"><strong>2. What happens before publication approval is recorded?</strong><button class="answer" data-choice="a">A public tag is created.</button><button class="answer" data-choice="b">npm authority is checked.</button><button class="answer" data-choice="c">All bytes, the exact plan, confirmation, and every remote preflight are validated.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="a"><strong>3. How is a partial remote failure retried?</strong><button class="answer" data-choice="a">The durable approval is reused only if the exact plan digest still matches.</button><button class="answer" data-choice="b">All artifacts are rebuilt from the current branch.</button><button class="answer" data-choice="c">Existing release assets are overwritten.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="b"><strong>4. Why is the release channel embedded in the app?</strong><button class="answer" data-choice="a">To choose an available port range.</button><button class="answer" data-choice="b">To stop stable builds from following unsigned preview updates.</button><button class="answer" data-choice="c">To make one universal DMG.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="c"><strong>5. What does the publish workflow require?</strong><button class="answer" data-choice="a">A pushed version tag.</button><button class="answer" data-choice="b">An npm token.</button><button class="answer" data-choice="c">An explicit publish dispatch, environment approval, and the release token.</button><p class="feedback"></p></div>
+      </section>
+    </main>
+    <script>
+      document.querySelectorAll('.quiz').forEach((quiz) => {
+        quiz.querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
+          const correct = button.dataset.choice === quiz.dataset.answer;
+          quiz.querySelector('.feedback').textContent = correct ? 'Correct.' : 'Not quite—review the section above and try again.';
+          quiz.querySelector('.feedback').style.color = correct ? '#1d6b57' : '#9a4d00';
+        }));
+      });
+    </script>
+  </body>
+</html>
