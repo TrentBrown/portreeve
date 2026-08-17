@@ -6,12 +6,17 @@ keep a separate registry, or bypass the HTTP/JSON Unix-socket protocol. The appl
 bundles a verified CLI artifact and can install that artifact into the one managed
 per-user location used by native supervision.
 
+Desktop is currently alpha software. Its persistent header notice reports product
+maturity independently of update channel and macOS trust; a preview download may be
+unsigned without making every future preview unsigned.
+
 ## Overview and lifecycle
 
-The Overview tab reports the desktop, bundled CLI, managed CLI, running-server,
-supervisor, and socket layers independently. Lifecycle actions invoke an exact bundled
-or managed executable from the Electron main process; the renderer cannot choose an
-executable, run a shell command, or search `PATH`.
+The Overview tab explains the product model. The Service tab reports the desktop,
+bundled CLI, managed CLI, running-server, supervisor, and socket layers independently.
+Lifecycle actions invoke an exact bundled or managed executable from the Electron main
+process; the renderer cannot choose an executable, run a shell command, or search
+`PATH`.
 
 Available actions follow current evidence:
 
@@ -99,13 +104,13 @@ evidence remains visible for diagnosis but withholds stack mutation controls unt
 current evidence returns; the server revalidates every requested action as final
 authority.
 
-## Launchers
+## Integrations
 
-Launchers is the fourth primary tab, after Stacks. It is the low-friction bridge from an
-applied stack's current PortReeve allocation to project-owned lifecycle commands. The
-stack-linked browser shows configuration, exact-revision trust, integration maturity,
-fresh evidence, action availability, bounded current-session output, and the latest
-twenty safe operation records.
+Integrations follows Stacks in the primary navigation. It is the low-friction bridge
+from an applied stack's current PortReeve allocation to project-owned lifecycle
+commands. The stack-linked browser shows configuration, exact-revision trust,
+integration maturity, fresh evidence, action availability, bounded current-session
+output, and the latest twenty safe operation records.
 
 An applied stack without `portreeve.launcher.json` offers setup. The dedicated editor
 provides Execution, Commands, Endpoint environment, Advanced, and Review sections. It
@@ -118,7 +123,7 @@ The renderer holds only opaque stack, document, and session identifiers. Electro
 owns command discovery, exact-byte file replacement, trust, execution, output saving,
 and attached-process termination. External changes offer Review, explicit Overwrite, or
 Cancel; changing verified activation to command-only requires a separate downgrade
-warning. Opening Launcher never executes a command.
+warning. Opening Integrations never executes a command.
 
 Start, Stop, Restart, and Status availability follows the shared engine's current trust
 and evidence policy. Partial Start and degraded Stop require explicit confirmation;
@@ -133,7 +138,7 @@ retention, and platform boundaries.
 
 ## MCP and CLI
 
-MCP and CLI are peer primary tabs after Launchers. Each renders the same static,
+MCP and CLI are peer primary tabs after Integrations. Each renders the same static,
 version-bound guidance and complete reference as the repository's [MCP guide](mcp.md)
 and [CLI guide](cli-contract.md). Search, family and safety filters, accessible result
 counts, disclosures, stable anchors, and copy controls remain entirely local and work
@@ -146,16 +151,16 @@ and offers `portreeve status --json` as a safe first diagnostic. These facts com
 through Desktop application services; rendering the guides never invokes the CLI,
 parses Markdown, or fetches documentation from a network.
 
-## Guide
+## Overview orientation
 
-Guide is the rightmost primary tab. It is a static, offline orientation surface that
+Overview is the leftmost primary tab and the default view. It is a static, offline
+orientation surface that
 describes the installed release's stable mental model without depending on current
 server evidence. It explains that PortReeve coordinates addresses while project tools
 coordinate work, and that listener ownership does not establish application readiness.
-An always-visible **What is this?** link beneath the product name opens the Guide
-at its identity section. That opening pairs a large, legible brand mark with a plain
+Its opening pairs a large, legible brand mark with a plain
 product definition and a short explanation of the historical *portreeve* name. The link
-uses the same unsaved-editor protections as primary-tab navigation.
+from the repository README uses the same durable product model.
 The identity section also describes the motivating concurrent-development case: several
 agents running independent copies of the same stack from different Git worktrees on one
 machine, where shared default ports would otherwise collide frequently.
@@ -167,7 +172,7 @@ destination or the existing project-integration explanation.
 The Guide presents three integration paths:
 
 - **Good — Built-in driver:** configure shell commands such as `npm run dev` in
-  Launchers and let PortReeve Desktop inject resolved endpoint variables before those
+  Integrations and let PortReeve Desktop inject resolved endpoint variables before those
   commands drive the project's existing lifecycle tooling.
 - **Better — Generated launcher:** move that integration into a separate launcher
   application or library that uses the PortReeve server and invokes existing project

@@ -57,7 +57,18 @@ export function renderPublicationPlan(plan) {
         `- \`${artifact.filename}\` - ${artifact.bytes} bytes - \`${artifact.sha256}\``,
     )
     .join('\n');
+  const previewNotice = plan.prerelease
+    ? `> **Alpha Preview**
+>
+> This is alpha software and may make breaking changes. The macOS application is
+> ${plan.policy.desktopTrust === 'unsigned' ? '**unsigned** and may require a scoped Open Anyway approval' : `published with trust state \`${plan.policy.desktopTrust}\``}.
+> Verify release checksums and follow the [installation guide](https://github.com/${plan.github.repository}/blob/main/docs/installation.md).
+
+`
+    : '';
   return `# PortReeve ${plan.releaseVersion} publication plan
+
+${previewNotice}
 
 **Source:** \`${plan.source.commit}\`
 **Tag:** \`${plan.tag}\`

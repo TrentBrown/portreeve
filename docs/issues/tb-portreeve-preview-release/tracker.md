@@ -61,12 +61,25 @@
 ### PR #60 - Hosted evidence and gated publication
 
 - **PR:** [#60](https://github.com/TrentBrown/portreeve/pull/60)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P2 and P6 / I-2 and I-6: build-once hosted artifact transport,
   native and Desktop evidence joins, separately environment-gated publication,
   retry-safe remote adapters, npm decoupling, and channel-aware Desktop update
   identity bound into the packaged application.
 - **Evidence packet:** [pr-60](pr-60/)
-- **Result:** Pending slice gates. R1, R3, R4, R5, R6, and R8 gain the common
+- **Result:** Slice gates passed. R1, R3, R4, R5, R6, and R8 gain the common
   local/hosted publication engine; public mutation remains unexecuted and the
   alpha UX, operator runbook, and final hosted rehearsal remain P7-P9.
+
+### PR #61 - Alpha preview UX and operator entry point
+
+- **PR:** [#61](https://github.com/TrentBrown/portreeve/pull/61)
+- **Status:** in review
+- **Scope:** P7-P8 / I-7-I-8: persistent README/Desktop alpha identity, safe
+  unsigned installation and removal guidance, release-note and cask caveats,
+  one script-owned operator runbook, and a project-local release skill that
+  preserves the publication gate.
+- **Evidence packet:** [pr-61](pr-61/)
+- **Result:** Pending slice gates. R7 and R8 gain their user and operator
+  surfaces; the complete hosted rehearsal and feature-final evaluation remain
+  P9 / I-9.

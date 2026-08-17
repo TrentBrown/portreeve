@@ -130,11 +130,104 @@ test('public documentation does not claim Docker Sandbox integration', async () 
 });
 
 test('release documentation distinguishes build from native execution', async () => {
-  const installation = await readFile(resolve('docs', 'installation.md'), 'utf8');
-  expect(installation).toMatch(/Cross-compilation alone\s+is not/u);
-  expect(installation).toContain('npm install portreeve');
+  const [installation, releasing] = await Promise.all([
+    readFile(resolve('docs', 'installation.md'), 'utf8'),
+    readFile(resolve('docs', 'releasing.md'), 'utf8'),
+  ]);
+  expect(releasing).toContain('one host cannot honestly supply');
+  expect(installation).not.toContain('npm install portreeve');
   expect(installation).toContain('SHA256SUMS');
   expect(installation).toContain('Homebrew');
+});
+
+test('README and every Desktop view carry a persistent truthful Alpha Preview notice', async () => {
+  const [readme, desktop, styles] = await Promise.all([
+    readFile(resolve('README.md'), 'utf8'),
+    readFile(resolve('apps/desktop/renderer/index.html'), 'utf8'),
+    readFile(resolve('apps/desktop/renderer/styles.css'), 'utf8'),
+  ]);
+  const alpha = readme.indexOf('**Alpha Preview**');
+  expect(alpha).toBeGreaterThan(0);
+  expect(alpha).toBeLessThan(readme.indexOf('portreeve-lockup.svg'));
+  expect(readme).toContain('No public preview has been published yet');
+  expect(readme).toContain('macOS preview downloads will be unsigned');
+  expect(desktop).toMatch(
+    /<header class="app-header">[\s\S]*class="alpha-preview"[\s\S]*Alpha Preview[\s\S]*Product maturity is alpha[\s\S]*<\/header>/u,
+  );
+  expect(desktop.indexOf('class="alpha-preview"')).toBeLessThan(
+    desktop.indexOf('<nav aria-label="Primary">'),
+  );
+  expect(styles).toContain('.alpha-preview');
+});
+
+test('preview installation guidance is safe, scoped, and lifecycle explicit', async () => {
+  const [readme, installation, releasing, caskSource] = await Promise.all([
+    readFile(resolve('README.md'), 'utf8'),
+    readFile(resolve('docs/installation.md'), 'utf8'),
+    readFile(resolve('docs/releasing.md'), 'utf8'),
+    readFile(resolve('scripts/desktop-release-lib.js'), 'utf8'),
+  ]);
+  const combined = [readme, installation, releasing, caskSource].join('\n');
+  expect(installation).toContain('brew install --cask portreeve-app');
+  expect(installation).toContain('PortReeve-VERSION-macos-arm64.dmg');
+  expect(installation).toContain('System Settings');
+  expect(installation).toContain('Privacy & Security');
+  expect(installation).toContain('Open Anyway');
+  expect(installation).toContain('https://support.apple.com/102445');
+  expect(installation).toContain('https://docs.brew.sh/Installation');
+  expect(installation).toContain('portreeve uninstall');
+  expect(installation).toContain('portreeve purge --dry-run --json');
+  expect(installation).toContain('type `DELETE`');
+  for (const prohibited of [
+    'spctl --master-disable',
+    'spctl --global-disable',
+    'xattr -d',
+    'xattr -cr',
+    'sudo spctl',
+  ]) {
+    expect(combined).not.toContain(prohibited);
+  }
+});
+
+test('release runbook and project skill preserve one script-owned contract', async () => {
+  const [runbook, skill, skillMetadata, packageText, workflow] = await Promise.all([
+    readFile(resolve('docs/releasing.md'), 'utf8'),
+    readFile(resolve('.agents/skills/release-portreeve/SKILL.md'), 'utf8'),
+    readFile(resolve('.agents/skills/release-portreeve/agents/openai.yaml'), 'utf8'),
+    readFile(resolve('package.json'), 'utf8'),
+    readFile(resolve('.github/workflows/release.yml'), 'utf8'),
+  ]);
+  const packageJson = JSON.parse(packageText);
+  for (const marker of [
+    'Release state graph',
+    'Safe local preparation',
+    'Safe hosted preparation',
+    'Publication environment and credentials',
+    'Hosted publication gate',
+    'Rehearsal without public mutation',
+    'Recovery',
+    'Published artifact inventory',
+  ]) {
+    expect(runbook).toContain(marker);
+  }
+  for (const command of [
+    'bun run release:prepare',
+    'bun run release:publish',
+    'gh workflow run release.yml',
+    '-f publish=false',
+  ]) {
+    expect(runbook).toContain(command);
+  }
+  expect(skill).toContain('Read `docs/releasing.md` completely');
+  expect(skill).toContain('A general request to prepare');
+  expect(skill).toContain('Do not set `publish=true`');
+  expect(skill).toContain('Never bypass `--confirm`');
+  expect(skillMetadata).toContain('$release-portreeve');
+  expect(packageJson.scripts).toHaveProperty('release:prepare');
+  expect(packageJson.scripts).toHaveProperty('release:publish');
+  expect(workflow).toContain('channel:');
+  expect(workflow).toContain('version:');
+  expect(workflow).toContain('publish:');
 });
 
 test('uses PortReeve as the display name without changing stable machine identifiers', async () => {
@@ -199,8 +292,9 @@ test('public guides cover desktop and one representative mixed-stack launcher', 
     readFile(resolve('examples', 'mixed-stack', 'portreeve.stack.json'), 'utf8'),
   ]);
   expect(desktop).toContain('The Stacks tab never starts or stops a project process');
-  expect(desktop).toContain('Launchers is the fourth primary tab');
-  expect(desktop).toContain('Guide is the rightmost primary tab');
+  expect(desktop).toContain('Integrations follows Stacks');
+  expect(desktop).toContain('Desktop is currently alpha software');
+  expect(desktop).toContain('The Service tab reports');
   expect(desktop).toContain('actionable');
   expect(example).toContain('bun run stacks:verify');
   expect(example).toContain('PORTREEVE_ENDPOINTS_FILE');

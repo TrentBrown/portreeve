@@ -21,7 +21,7 @@ validation, tamper detection, and unit fixtures.
 
 ## I-2 - Prepare and publish commands
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P2
 - **Rubric criteria:** R1, R3, R4, R8
@@ -69,7 +69,7 @@ explicit supervision and purge semantics.
 
 ## I-6 - Hosted release orchestration
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1.5d
 - **Plan steps:** P6
 - **Rubric criteria:** R3, R4, R5, R6
@@ -82,12 +82,12 @@ metadata.
 
 ## I-7 - Alpha preview user experience
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P7
 - **Rubric criteria:** R7
 - **Depends on:** I-2, I-4, I-5
-- **PR:** -
+- **PR:** [#61](https://github.com/TrentBrown/portreeve/pull/61)
 
 Add README/Desktop alpha status and safe unsigned installation, service,
 uninstall, purge, release-note, and Homebrew caveat guidance with regression
@@ -95,12 +95,12 @@ coverage.
 
 ## I-8 - Operator runbook and release skill
 
-- **Status:** open
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P8
 - **Rubric criteria:** R8
 - **Depends on:** I-2, I-6
-- **PR:** -
+- **PR:** [#61](https://github.com/TrentBrown/portreeve/pull/61)
 
 Add the release runbook, project-local Codex skill, help and workflow examples,
 and drift tests that keep every invocation surface aligned.

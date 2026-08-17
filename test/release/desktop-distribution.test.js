@@ -46,6 +46,9 @@ describe('Desktop distribution', () => {
     expect(cask).toContain('cask "portreeve-app"');
     expect(cask).toContain('PortReeve-0.1.0-macos-#{arch}.dmg');
     expect(cask).toContain('/v0.1.0-preview.1/');
+    expect(cask).toContain('PortReeve is alpha software');
+    expect(cask).toContain('Privacy & Security > Open Anyway');
+    expect(cask).toContain('/blob/main/docs/installation.md');
     expect(cask).toContain('Uninstall preserves claims, history, and settings.');
     expect(cask).not.toContain('zap ');
   });

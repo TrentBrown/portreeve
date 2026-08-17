@@ -1,103 +1,184 @@
-# Installation and release channels
+# Install and remove PortReeve
 
-GitHub Release executables and their `SHA256SUMS` file are the authoritative
-PortReeve distribution artifacts. They are self-contained and require neither
-Node.js nor Bun. V1 publishes:
+> **Alpha Preview**
+>
+> PortReeve is evolving quickly and may make breaking changes. No public preview has
+> been published yet. When the first preview is published, its macOS application will
+> be unsigned until Apple Developer ID signing and notarization are configured. Product
+> maturity (`alpha`), release channel (`preview`), and macOS trust (`unsigned`) are
+> separate facts.
+
+Until a preview appears on [GitHub Releases](https://github.com/TrentBrown/portreeve/releases),
+use the [source build](#build-from-source). The commands in the download sections below
+describe the prepared public-preview paths; they are not evidence that those downloads
+already exist.
+
+## Choose an installation path
+
+| Need | Recommended path | What it installs |
+| --- | --- | --- |
+| macOS graphical application | Homebrew cask | `PortReeve.app`; service setup remains explicit in Desktop |
+| macOS graphical application without Homebrew | Architecture-specific DMG | `PortReeve.app`; service setup remains explicit in Desktop |
+| macOS or Linux terminal/MCP use | Homebrew formula on macOS or direct CLI download | One standalone `portreeve` executable |
+| Current development before the first preview | Source build | Local development CLI and Desktop |
+
+There is one PortReeve installation and one per-user registry. Desktop, CLI, MCP, and
+the JavaScript client are peer clients of the same server; installing Desktop does not
+create a second authority.
+
+## Homebrew on macOS
+
+If Homebrew is not installed, follow [Homebrew's maintained installation
+instructions](https://docs.brew.sh/Installation). Review Homebrew's installer and its
+requested filesystem changes before running it.
+
+After a PortReeve preview is published, add the personal tap and install either or both
+artifacts:
+
+```sh
+brew tap TrentBrown/portreeve
+
+# Graphical application
+brew install --cask portreeve-app
+
+# Standalone CLI and MCP bridge
+brew install portreeve
+```
+
+The cask moves `PortReeve.app` into Applications. The formula installs the CLI. Neither
+one silently installs or starts the PortReeve supervised service, and neither one
+deletes PortReeve data during routine uninstall.
+
+## Direct macOS DMG
+
+GitHub Releases provides separate images:
+
+- `PortReeve-VERSION-macos-arm64.dmg` for Apple Silicon;
+- `PortReeve-VERSION-macos-x64.dmg` for Intel Macs.
+
+Download the matching DMG and `SHA256SUMS-DISTRIBUTION`, compare the recorded checksum,
+open the DMG, and drag **PortReeve** to Applications. The DMG installs no daemon and
+runs no package script.
+
+```sh
+shasum -a 256 PortReeve-VERSION-macos-ARCH.dmg
+```
+
+Compare the complete output with the corresponding line in the downloaded checksum
+file. Do not continue when the values differ.
+
+## Opening an unsigned preview safely
+
+Try to open PortReeve normally first. An unsigned preview may be blocked because Apple
+cannot verify a Developer ID signature or notarization ticket. Only continue when the
+DMG came from the PortReeve GitHub Release and its SHA-256 matches the release checksum.
+
+If macOS blocks it:
+
+1. Attempt to open **PortReeve** once and dismiss the warning.
+2. Open **System Settings**, then **Privacy & Security**.
+3. Scroll to **Security** and choose **Open Anyway** for PortReeve.
+4. Authenticate if macOS asks, review the warning again, and choose **Open**.
+
+Apple describes this scoped exception in [Open apps safely on your
+Mac](https://support.apple.com/102445). The exception applies to that application. This
+guide intentionally does not disable Gatekeeper, change system-wide security policy, or
+remove quarantine attributes with a shell command.
+
+## Start the PortReeve service explicitly
+
+Opening Desktop does not start a hidden installer. In Desktop, open **Service**, inspect
+the bundled and managed versions, and choose **Install and Start PortReeve**. This
+installs the verified bundled CLI into PortReeve's managed per-user location and creates
+normal `launchd` supervision. Root access is not required.
+
+With the standalone CLI, the equivalent explicit sequence is:
+
+```sh
+portreeve install
+portreeve start
+portreeve status --json
+```
+
+For a temporary trial with no supervisor registration, run `portreeve serve` in a
+terminal and leave it in the foreground until you press Control-C.
+
+## Direct CLI downloads on macOS and Linux
+
+Preview releases include four self-contained executables and `SHA256SUMS`:
 
 | Operating system | Architecture | Artifact suffix |
-|---|---|---|
+| --- | --- | --- |
 | macOS | Apple Silicon ARM64 | `macos-arm64` |
 | macOS | Intel x64 | `macos-x64` |
 | Linux glibc | ARM64 | `linux-arm64` |
 | Linux glibc | x64 | `linux-x64` |
 
-Download the matching executable and verify it before making it executable:
+Verify the download before making it executable:
 
 ```sh
-shasum -a 256 -c SHA256SUMS
+shasum -a 256 portreeve-vVERSION-OS-ARCH
 chmod 755 portreeve-vVERSION-OS-ARCH
 ./portreeve-vVERSION-OS-ARCH --version
 ```
 
-On Linux, `sha256sum -c SHA256SUMS` is equivalent.
+Compare the complete digest with that artifact's line in `SHA256SUMS`. On Linux,
+`sha256sum portreeve-vVERSION-OS-ARCH` is equivalent. Linux has no Desktop application;
+the CLI, MCP bridge, and JavaScript client are the supported surfaces. `portreeve
+install` uses `systemd --user` when a per-user manager is available.
 
-## Homebrew
+## Routine uninstall preserves data
 
-The release includes a versioned `portreeve.rb` formula whose URLs and
-checksums point to the same authoritative executables:
+Remove supervision before removing the application or CLI:
 
-```sh
-brew install ./portreeve.rb
-portreeve --version
-```
+- In Desktop **Service**, choose **Uninstall service**; or
+- run `portreeve uninstall`.
 
-Installing the CLI does not install login supervision. Run `portreeve install`
-explicitly to place a managed copy behind launchd or `systemd --user`, then
-run `portreeve start`.
-
-## npm client
-
-The separately versioned protocol client is:
+This removes the per-user `launchd` or `systemd --user` definition while preserving
+claims, history, settings, and the owned data directory. Then remove the installed
+artifact:
 
 ```sh
-npm install portreeve
+brew uninstall --cask portreeve-app
+brew uninstall portreeve
 ```
 
-It does not contain or install the server executable.
+For a direct DMG installation, move `PortReeve.app` from Applications to Trash. Removing
+the app does not imply permission to remove service data.
 
-## Building a release
+## Complete reset is a separate confirmed operation
 
-The repository pins Bun 1.3.14. Supply the repository and release locations,
-then build all four executables, the npm tarball, checksums, manifest, and
-Homebrew formula:
+Use complete reset only when preserved assignments and history are intentionally no
+longer wanted. Keep Desktop or the CLI available until the reset finishes.
+
+In Desktop **Service**, expand **Uninstall or reset PortReeve**, choose **Preview
+complete reset**, inspect every path, and type `DELETE` to confirm.
+
+The CLI keeps preview and execution separate:
 
 ```sh
-PORTREEVE_HOMEPAGE_URL="https://github.com/TrentBrown/portreeve" \
-PORTREEVE_RELEASE_BASE_URL="https://github.com/TrentBrown/portreeve/releases/download" \
-bun run release:build
-
-bun run release:verify -- --native --lifecycle
-bun run release:verify -- --homebrew
-bun run stacks:verify
+portreeve purge --dry-run --json
+portreeve purge --confirm PREVIEW_TOKEN --json
 ```
 
-`stacks:verify` is a destructive-only-to-its-own-fixtures native integration smoke. It
-creates one uniquely named disposable Docker container and one temporary process
-listener, drives a mixed stack through the official JavaScript client, and removes its
-container, worktree, PortReeve home, and runtime files in `finally` cleanup. It pulls
-`node:22.17.0-bookworm` when that default image is absent. Override the trusted Docker
-CLI, image, or launcher-supplied endpoint gateway with
-`PORTREEVE_DOCKER_EXECUTABLE`, `PORTREEVE_DOCKER_SMOKE_IMAGE`, or
-`PORTREEVE_SANDBOX_GATEWAY` (the retained machine-level override name).
+Purge revalidates PortReeve's ownership marker and refuses broad or unsafe paths. After
+it succeeds, remove the cask, formula, direct application, or downloaded executable as
+appropriate.
 
-`release:verify -- --native` verifies every artifact's checksum and executable
-header, validates the formula syntax, and actually runs the artifact matching
-the current machine. Adding `--lifecycle` uses a unique temporary native
-service to verify inactive installation, start, active upgrade, restart, stop,
-uninstall, data preservation, marker-bound purge, clean reinstall, and cleanup.
+## Build from source
 
-Every advertised OS/architecture combination must pass the complete source
-gate and both native release smokes before publication. Cross-compilation alone
-is not release evidence. Native jobs require Node.js 22, Bun 1.3.14, Git,
-`lsof`, `ps`, Ruby, and a non-root login session. Linux runners must provide a
-working `systemd --user` manager. The Linux ARM64 job runs natively on GitHub's
-hosted `ubuntu-24.04-arm` image. Both Linux release jobs also run the real mixed-stack
-Docker smoke. Docker Desktop on macOS is verified manually because hosted macOS runners
-do not provide the product's Docker Desktop environment.
+Before the first public preview, macOS users can build the current source with the
+pinned Bun 1.3.14 toolchain:
 
-Development may occur while a GitHub repository is private, and branch or
-manual Actions runs still work. The PortReeve repository is public before its
-first release because private GitHub release assets require authentication and
-therefore cannot serve as public Homebrew download URLs. The release workflow
-still refuses tag publication if repository visibility becomes private.
+```sh
+git clone https://github.com/TrentBrown/portreeve.git
+cd portreeve
+bun install --frozen-lockfile
+bun run build
 
-The first npm publication requires an `NPM_TOKEN` with authority to create the
-public unscoped `portreeve` package. Release policy verifies npm identity and
-that the exact version is unpublished before either publishing job can start.
-After the package exists, configure `release.yml` as its npm trusted publisher
-and remove the long-lived publish token; subsequent GitHub-hosted publishes can
-use short-lived OIDC credentials and automatic provenance.
+PORTREEVE_DESKTOP_CLI_PATH="$PWD/dist/portreeve" bun run desktop:start
+```
 
-On macOS, the explicit `--homebrew` smoke refuses to disturb an existing
-PortReeve formula, installs a temporary checksum-pinned local formula, runs its
-executable, and uninstalls it.
+Run `bun run check` before treating a source build as a release candidate. Maintainers
+should use the deterministic [release operator runbook](releasing.md), not the legacy
+individual build commands, for release preparation.

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #61 - Alpha preview UX and release operator entry point</title>
+    <style>
+      :root { color-scheme: light; --ink: #26383f; --sea: #176b70; --fog: #edf2f3; --paper: #fff; --warn: #8b5b18; --soft: #f8ecd7; }
+      body { margin: 0; font: 16px/1.6 system-ui, sans-serif; color: var(--ink); background: var(--fog); }
+      main { max-width: 980px; margin: auto; padding: 32px 20px 70px; }
+      h1, h2 { line-height: 1.18; }
+      h1 { font-size: clamp(2rem, 5vw, 3.6rem); }
+      nav, .card, .diagram, .quiz { background: var(--paper); border: 1px solid #becbd0; border-radius: 14px; padding: 20px; margin: 20px 0; }
+      nav a { margin-right: 18px; color: var(--sea); }
+      code { background: #e1ecec; padding: 2px 5px; border-radius: 4px; }
+      pre { white-space: pre-wrap; overflow: auto; background: #15282f; color: #eaf6f5; padding: 16px; border-radius: 10px; }
+      .warning { border-left: 5px solid var(--warn); background: var(--soft); padding: 16px; }
+      .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: center; text-align: center; }
+      .flow div { padding: 14px 8px; background: #e1ecec; border-radius: 10px; }
+      .flow span { color: var(--sea); font-size: 1.5rem; }
+      button { display: block; width: 100%; text-align: left; padding: 10px; margin: 7px 0; border: 1px solid #9eafb5; border-radius: 8px; background: white; }
+      button:hover { border-color: var(--sea); }
+      .feedback { min-height: 1.5em; font-weight: 650; }
+      @media (max-width: 700px) { .flow { grid-template-columns: 1fr; } .flow span { transform: rotate(90deg); } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p>PortReeve PR #61</p>
+      <h1>Make an alpha release understandable before making it public</h1>
+      <p>This slice connects deterministic release machinery to the two people who must reason about it: the prospective user and the release operator.</p>
+      <nav><a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#quiz">Quiz</a></nav>
+
+      <section id="background">
+        <h2>Background</h2>
+        <div class="card"><h3>The beginner's model</h3><p>PortReeve has three independent labels. <strong>Alpha</strong> describes product maturity. <strong>Preview</strong> describes a distribution channel. <strong>Unsigned</strong> describes macOS trust evidence. None proves either of the others.</p></div>
+        <p>The release engine already records source, artifacts, native evidence, policy, and publication state. Before this PR, that precision was not presented consistently at the repository entrance, inside Desktop, or in the operator's normal invocation path.</p>
+        <div class="warning"><strong>Safety boundary:</strong> preparing a release candidate must never be interpreted as permission to publish it.</div>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <p>Think of the release record as a sealed shipping manifest. Several surfaces may read and explain it, but only repository scripts may advance it.</p>
+        <div class="diagram flow"><div>README and Desktop<br /><small>state maturity</small></div><span>→</span><div>Runbook and skill<br /><small>invoke scripts</small></div><span>→</span><div>Release record<br /><small>owns evidence</small></div><span>→</span><div>Human gate<br /><small>permits publication</small></div></div>
+        <p>A rehearsal uses <code>publish=false</code>. It proves the multi-platform candidate without entering the publication environment or mutating a tag, release, tap, update file, or npm package.</p>
+      </section>
+
+      <section id="code">
+        <h2>Code walkthrough</h2>
+        <div class="card"><h3>1. Persistent product truth</h3><p>The README warning appears before the logo. The Desktop indicator lives inside the global application header, before primary navigation, so changing tabs cannot hide it.</p></div>
+        <div class="card"><h3>2. Safe installation and removal</h3><p>The installation guide covers Homebrew, architecture-specific DMGs, digest comparison, Apple's scoped Open Anyway workflow, explicit service setup, routine uninstall that preserves data, and a separate confirmed purge.</p></div>
+        <div class="card"><h3>3. Generated distribution copy</h3><p>The publication plan adds the alpha and trust warning to preview release notes. The generated cask caveat points to the same maintained guide and preserves service/data lifecycle separation.</p></div>
+        <div class="card"><h3>4. One operator contract</h3><p><code>docs/releasing.md</code> is the durable runbook. The project-local skill reads it and invokes existing package scripts; it does not encode another state machine or grant itself publication authority.</p><pre>bun run release:prepare -- --channel preview --version 0.1.0-preview.1
+gh workflow run release.yml -f channel=preview -f version=0.1.0-preview.1 -f publish=false</pre></div>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <div class="quiz" data-answer="1"><p>1. What does an unsigned Desktop artifact say about the product?</p><button>It necessarily belongs to a preview channel.</button><button>Only that Developer ID/notarization trust is absent.</button><button>It was built from an unclean checkout.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="2"><p>2. Which command is the safe complete rehearsal?</p><button><code>release:publish --confirm</code></button><button>A tag push named after the preview</button><button><code>gh workflow run ... -f publish=false</code></button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="0"><p>3. Why is the alpha indicator placed in the application header?</p><button>It remains visible across every primary view.</button><button>It replaces release-channel metadata.</button><button>It permits the renderer to approve an update.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="2"><p>4. What does routine cask uninstall do to PortReeve data?</p><button>It purges claims automatically.</button><button>It migrates data into the app bundle.</button><button>Nothing; service removal and purge remain explicit.</button><p class="feedback"></p></div>
+        <div class="quiz" data-answer="1"><p>5. Why does the skill read the runbook?</p><button>To replace repository scripts with prose.</button><button>To share one maintained contract while scripts retain authority.</button><button>To bypass the GitHub environment review.</button><p class="feedback"></p></div>
+      </section>
+    </main>
+    <script>
+      document.querySelectorAll('.quiz').forEach((quiz) => {
+        quiz.querySelectorAll('button').forEach((button, index) => button.addEventListener('click', () => {
+          const ok = index === Number(quiz.dataset.answer);
+          quiz.querySelector('.feedback').textContent = ok ? 'Correct.' : 'Not quite. Revisit the section above and distinguish policy from authority.';
+          quiz.querySelector('.feedback').style.color = ok ? '#26745d' : '#9e3f3b';
+        }));
+      });
+    </script>
+  </body>
+</html>

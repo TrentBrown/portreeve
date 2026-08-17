@@ -40,6 +40,26 @@ select {
   min-width: 0;
   flex: 1;
 }
+.alpha-preview {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+  margin-top: 8px;
+  color: var(--pr-color-text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.alpha-preview strong {
+  border: 1px solid var(--pr-color-warning);
+  border-radius: 999px;
+  background: var(--pr-color-warning-soft);
+  color: var(--pr-color-warning);
+  padding: 3px 9px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .header-control-row,
 .navigation-controls {
   display: flex;

@@ -74,6 +74,7 @@ export async function createAndVerifyDesktopDmg(options) {
  */
 export function renderHomebrewCask(options) {
   const base = options.releaseBaseUrl.replace(/\/+$/u, '');
+  const homepage = options.homepageUrl.replace(/\/+$/u, '');
   return `cask "portreeve-app" do
   arch arm: "arm64", intel: "x64"
 
@@ -89,6 +90,11 @@ export function renderHomebrewCask(options) {
   app "PortReeve.app"
 
   caveats <<~EOS
+    PortReeve is alpha software. This preview may be unsigned. If macOS blocks
+    first launch, verify the release checksum and use the scoped System Settings >
+    Privacy & Security > Open Anyway flow described at:
+    ${homepage}/blob/main/docs/installation.md
+
     PortReeve Desktop and its supervised per-user service have separate lifecycles.
     Before removing the app, use its Service tab or the PortReeve CLI to uninstall
     supervision. Uninstall preserves claims, history, and settings. Purge remains
