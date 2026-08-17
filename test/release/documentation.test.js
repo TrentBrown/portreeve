@@ -213,6 +213,7 @@ test('release runbook and project skill preserve one script-owned contract', asy
   for (const command of [
     'bun run release:prepare',
     'bun run release:inspect',
+    'bun run release:homebrew-smoke',
     'bun run release:publish',
     'gh workflow run release.yml',
     '-f publish=false',
@@ -223,10 +224,12 @@ test('release runbook and project skill preserve one script-owned contract', asy
   expect(skill).toContain('A general request to prepare');
   expect(skill).toContain('Do not set `publish=true`');
   expect(skill).toContain('`release:inspect`');
+  expect(skill).toContain('`release:homebrew-smoke`');
   expect(skill).toContain('Never bypass `--confirm`');
   expect(skillMetadata).toContain('$release-portreeve');
   expect(packageJson.scripts).toHaveProperty('release:prepare');
   expect(packageJson.scripts).toHaveProperty('release:inspect');
+  expect(packageJson.scripts).toHaveProperty('release:homebrew-smoke');
   expect(packageJson.scripts).toHaveProperty('release:publish');
   expect(workflow).toContain('channel:');
   expect(workflow).toContain('version:');

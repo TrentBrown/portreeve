@@ -30,7 +30,8 @@ gate.
   the complete native matrix.
 - For a complete candidate or rehearsal, use the manual GitHub workflow with
   `publish=false`. Download `distribution-<version>` after it succeeds and run
-  `release:inspect` against its `release-record.json`.
+  `release:inspect` against its `release-record.json`, followed by the disposable
+  `release:homebrew-smoke` formula/cask installation check on macOS.
 - For an interrupted candidate, resume only through the exact recovery path documented
   in `docs/releasing.md`; do not rebuild or substitute bytes downstream.
 - For a request to publish, first identify the exact finalized record and show the exact
@@ -62,6 +63,18 @@ gh workflow run release.yml \
   -f version=0.1.0-preview.1 \
   -f publish=false
 ```
+
+After downloading the finalized distribution on macOS, keep normalized file modes out of
+the release workspace and smoke both Homebrew artifacts through disposable copies:
+
+```sh
+bun run release:homebrew-smoke -- \
+  --record distribution-0.1.0-preview.1/release-record.json
+```
+
+Use the package script, not `bun scripts/smoke-homebrew-candidate.js`, so the pinned
+toolchain check runs first. The smoke must not replace an existing formula, cask, or
+temporary tap, and must clean up without changing supervision or PortReeve data.
 
 Do not invent signing evidence for stable. Missing Developer ID, notarization, stapling,
 Gatekeeper, or native evidence must remain a failure.

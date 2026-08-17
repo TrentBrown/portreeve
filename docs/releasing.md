@@ -126,6 +126,31 @@ bun run release:inspect -- \
   --json
 ```
 
+GitHub artifact downloads normalize executable permissions. Do not change the
+downloaded candidate to compensate. Exercise the generated formula and cask through a
+disposable local tap instead:
+
+```sh
+bun run release:homebrew-smoke -- \
+  --record distribution-0.1.0-preview.1/release-record.json
+```
+
+This command revalidates the finalized record, copies candidate artifacts into a
+temporary staging directory, restores executable mode only on those disposable copies,
+installs and verifies both the formula and cask, then uninstalls them and removes the
+temporary tap. The cask uses a temporary application directory. It does not replace an
+existing Homebrew PortReeve installation, modify the candidate, install supervision, or
+delete PortReeve data.
+
+Invoke release scripts through their `bun run` entries so `toolchain:check` rejects a
+wrong Bun before release logic runs. If the shell's Bun is not the pinned native build,
+use the exact pinned package without changing project dependencies:
+
+```sh
+npx --yes bun@1.3.14 run release:homebrew-smoke -- \
+  --record distribution-0.1.0-preview.1/release-record.json
+```
+
 Inspect at least:
 
 - workflow conclusions for all six native jobs;
@@ -135,6 +160,7 @@ Inspect at least:
 - every artifact filename, byte count, SHA-256, and provenance stage;
 - `publication-plan.md`, `SHA256SUMS`, and `SHA256SUMS-DISTRIBUTION`;
 - formula/cask lifecycle caveats and `desktop-update.json` channel identity.
+- temporary local formula and cask installation/uninstallation results.
 
 ## Publication environment and credentials
 
