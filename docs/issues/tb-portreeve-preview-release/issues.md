@@ -45,7 +45,7 @@ merge native verification evidence without rebuilding.
 
 ## I-4 - Dual-architecture Desktop DMGs
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P4
 - **Rubric criteria:** R2, R3, R4, R6
@@ -57,7 +57,7 @@ verify DMGs, and add signing/notarization policy hooks plus native smokes.
 
 ## I-5 - Homebrew distribution material
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P5
 - **Rubric criteria:** R2, R6
@@ -69,7 +69,7 @@ explicit supervision and purge semantics.
 
 ## I-6 - Hosted release orchestration
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1.5d
 - **Plan steps:** P6
 - **Rubric criteria:** R3, R4, R5, R6

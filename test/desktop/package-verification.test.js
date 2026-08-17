@@ -31,13 +31,18 @@ test('requires the direct lifecycle module graph and excludes the retired CLI ad
 
 test('inspects packaged identity, direct-controller markers, and retired adapter markers', () => {
   const valid = {
-    packageDocument: JSON.stringify({ version: '0.1.0', main: 'main/index.js' }),
+    packageDocument: JSON.stringify({
+      version: '0.1.0',
+      main: 'main/index.js',
+      portreeveReleaseChannel: 'preview',
+    }),
     verificationDocument: JSON.stringify({
       schemaVersion: 1,
       controllerVersion: '0.1.0',
       artifactVersion: '0.1.0',
       artifactSha256: 'a'.repeat(64),
       architecture: 'arm64',
+      releaseChannel: 'preview',
       moduleGraph: {
         directLifecycleController: true,
         verifiedArtifactResolver: true,

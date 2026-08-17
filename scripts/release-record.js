@@ -604,6 +604,12 @@ function assertStageEvidence(record, stage, evidence) {
   if (stage === 'published') {
     requiredString(evidence.githubReleaseUrl, 'GitHub Release URL');
     requiredString(evidence.tag, 'published tag');
+    for (const field of ['homebrewCommit', 'desktopUpdateCommit']) {
+      if (!COMMIT.test(String(evidence[field] ?? ''))) {
+        throw new Error(`Published evidence ${field} must be a full Git SHA.`);
+      }
+    }
+    assertTimestamp(evidence.publishedAt, 'publication time');
   }
 }
 

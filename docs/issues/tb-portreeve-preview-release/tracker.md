@@ -48,12 +48,12 @@
 ### PR #59 - Desktop DMGs and Homebrew distribution
 
 - **PR:** [#59](https://github.com/TrentBrown/portreeve/pull/59)
-- **Status:** in review
+- **Status:** merged
 - **Scope:** P4-P5 / I-4-I-5: explicit promoted-CLI Desktop packaging,
   architecture-specific verified apps and DMGs, exact embedded-artifact
   attestation, Desktop evidence joining, unsigned-preview/stable trust policy,
   Homebrew cask rendering, and final distribution checksums.
 - **Evidence packet:** [pr-59](pr-59/)
-- **Result:** Pending slice gates. R2, R3, R4, and R6 gain the complete Desktop
+- **Result:** Slice gates passed. R2, R3, R4, and R6 gain the complete Desktop
   and direct-download distribution model; native Intel smoke and hosted
   transport remain P6/P9 evidence.

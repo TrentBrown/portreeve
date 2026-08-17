@@ -52,11 +52,13 @@ export function assertPackagedDesktopContents(options) {
   if (
     metadata.main !== 'main/index.js' ||
     metadata.version !== options.controllerVersion ||
+    !['preview', 'stable'].includes(metadata.portreeveReleaseChannel) ||
     verification.schemaVersion !== 1 ||
     verification.controllerVersion !== options.controllerVersion ||
     verification.artifactVersion !== options.artifactVersion ||
     verification.artifactSha256 !== options.artifactSha256 ||
     verification.architecture !== options.architecture ||
+    verification.releaseChannel !== metadata.portreeveReleaseChannel ||
     verification.moduleGraph?.directLifecycleController !== true ||
     verification.moduleGraph?.verifiedArtifactResolver !== true ||
     verification.moduleGraph?.mcpSetupGenerator !== true ||

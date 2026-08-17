@@ -2,40 +2,65 @@ name: release
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*'
+    inputs:
+      channel:
+        description: Release policy channel
+        required: true
+        type: choice
+        options:
+          - preview
+          - stable
+      version:
+        description: Semantic release version (preview requires a prerelease)
+        required: true
+        type: string
+      publish:
+        description: Enter the separately approved public publication job
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
+concurrency:
+  group: portreeve-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  BUN_VERSION: 1.3.14
+  NODE_VERSION: 22
+  RELEASE_ROOT: dist/releases/${{ inputs.version }}
+  PORTREEVE_HOMEPAGE_URL: ${{ github.server_url }}/${{ github.repository }}
+  PORTREEVE_RELEASE_BASE_URL:
+    ${{ github.server_url }}/${{ github.repository }}/releases/download
+
 jobs:
-  build:
+  prepare:
     runs-on: ubuntu-24.04
-    env:
-      PORTREEVE_HOMEPAGE_URL: ${{ github.server_url }}/${{ github.repository }}
-      PORTREEVE_RELEASE_BASE_URL:
-        ${{ github.server_url }}/${{ github.repository }}/releases/download
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: ${{ env.BUN_VERSION }}
       - run: bun ci
       - run: bun run check
-      - run: bun run release:build
-      - run: bun run release:verify -- --native
+      - name: Prepare exact build-once release workspace
+        run: >-
+          bun run release:prepare -- --channel "${{ inputs.channel }}" --version "${{
+          inputs.version }}"
       - uses: actions/upload-artifact@v7
         with:
-          name: portreeve-release
-          path: dist/release
+          name: prepared-${{ inputs.version }}
+          path: ${{ env.RELEASE_ROOT }}
           if-no-files-found: error
+          retention-days: 7
 
-  native-smoke:
-    needs: build
+  native-evidence:
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -49,102 +74,175 @@ jobs:
           - runner: ubuntu-24.04-arm
             platform: linux-arm64
     runs-on: ${{ matrix.runner }}
-    name: native-smoke (${{ matrix.platform }})
+    name: native evidence (${{ matrix.platform }})
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: ${{ env.BUN_VERSION }}
       - run: bun ci
-      - run: bun run check
       - uses: actions/download-artifact@v8
         with:
-          name: portreeve-release
-          path: dist/release
-      - name: Restore executable artifact modes
-        run: chmod 755 dist/release/portreeve-v*
+          name: prepared-${{ inputs.version }}
+          path: ${{ env.RELEASE_ROOT }}
+      - name: Restore promoted executable modes
+        run: chmod 755 "$RELEASE_ROOT"/artifacts/portreeve-v*
       - if: startsWith(matrix.platform, 'linux-')
         name: Verify a real mixed process and Docker stack
         run: bun run stacks:verify
-      - run: bun run release:verify -- --native --lifecycle
-      - if: startsWith(matrix.platform, 'macos-')
-        run: bun run release:verify -- --homebrew
+      - name: Execute the promoted native artifact and supervised lifecycle
+        run: >-
+          bun run release:native-evidence -- --record
+          "$RELEASE_ROOT/release-record.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: native-${{ matrix.platform }}
+          path: ${{ env.RELEASE_ROOT }}/evidence/native-${{ matrix.platform }}.json
+          if-no-files-found: error
+          retention-days: 7
 
-  release-policy:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: native-smoke
+  aggregate-native-evidence:
+    needs: native-evidence
     runs-on: ubuntu-24.04
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun ci
       - uses: actions/download-artifact@v8
         with:
-          name: portreeve-release
-          path: dist/release
-      - name: Verify tag matches manifest
-        run: |
-          version=$(jq -r .softwareVersion dist/release/manifest.json)
-          test "$GITHUB_REF_NAME" = "v$version"
-      - name: Require public repository for release distribution
-        run: test "$(gh api "repos/$GITHUB_REPOSITORY" --jq .visibility)" = "public"
-        env:
-          GH_TOKEN: ${{ github.token }}
-      - name: Require npm publishing authority
-        run: npm whoami
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Require unpublished npm version
-        run: |
-          version=$(jq -r .softwareVersion dist/release/manifest.json)
-          if output=$(npm view "portreeve@$version" version --json 2>&1); then
-            echo "portreeve@$version is already published: $output" >&2
-            exit 1
-          fi
-          if ! grep -q 'E404' <<<"$output"; then
-            echo "$output" >&2
-            exit 1
-          fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          name: prepared-${{ inputs.version }}
+          path: ${{ env.RELEASE_ROOT }}
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: native-*
+          path: ${{ env.RELEASE_ROOT }}/evidence
+          merge-multiple: true
+      - name: Join the complete four-target evidence matrix once
+        run: >-
+          bun run release:merge-native-evidence -- --record
+          "$RELEASE_ROOT/release-record.json" --evidence
+          "$RELEASE_ROOT"/evidence/native-*.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: native-verified-${{ inputs.version }}
+          path: ${{ env.RELEASE_ROOT }}
+          if-no-files-found: error
+          retention-days: 7
 
-  publish-github:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: release-policy
+  desktop-evidence:
+    needs: aggregate-native-evidence
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            architecture: arm64
+          - runner: macos-15-intel
+            architecture: x64
+    runs-on: ${{ matrix.runner }}
+    name: Desktop evidence (macos-${{ matrix.architecture }})
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun ci
+      - uses: actions/download-artifact@v8
+        with:
+          name: native-verified-${{ inputs.version }}
+          path: ${{ env.RELEASE_ROOT }}
+      - name: Restore promoted executable modes
+        run: chmod 755 "$RELEASE_ROOT"/artifacts/portreeve-v*
+      - name: Package, launch, mount, and verify the native Desktop DMG
+        run: >-
+          bun run release:package-desktop -- --record
+          "$RELEASE_ROOT/release-record.json" --arch "${{ matrix.architecture }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: desktop-${{ matrix.architecture }}
+          path: |
+            ${{ env.RELEASE_ROOT }}/artifacts/PortReeve-*-macos-${{ matrix.architecture }}.dmg
+            ${{ env.RELEASE_ROOT }}/evidence/desktop-macos-${{ matrix.architecture }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+  finalize-distribution:
+    needs: desktop-evidence
     runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun ci
+      - uses: actions/download-artifact@v8
+        with:
+          name: native-verified-${{ inputs.version }}
+          path: ${{ env.RELEASE_ROOT }}
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: desktop-*
+          path: ${{ env.RELEASE_ROOT }}
+          merge-multiple: true
+      - name: Finalize cask, checksums, update metadata, and publication plan
+        run: >-
+          bun run release:finalize-desktop -- --record
+          "$RELEASE_ROOT/release-record.json" --evidence
+          "$RELEASE_ROOT"/evidence/desktop-macos-*.json --current-update-manifest
+          distribution/desktop-update.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: distribution-${{ inputs.version }}
+          path: ${{ env.RELEASE_ROOT }}
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    if: inputs.publish
+    needs: finalize-distribution
+    runs-on: ubuntu-24.04
+    environment: release-publication
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v8
-        with:
-          name: portreeve-release
-          path: dist/release
-      - run:
-          gh release create "$GITHUB_REF_NAME" dist/release/* --verify-tag
-          --generate-notes
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-  publish-npm:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: release-policy
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      id-token: write
-    steps:
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun ci
       - uses: actions/download-artifact@v8
         with:
-          name: portreeve-release
-          path: dist/release
-      - run: npm publish dist/release/portreeve-*.tgz --access public --provenance
+          name: distribution-${{ inputs.version }}
+          path: ${{ env.RELEASE_ROOT }}
+      - name: Publish exact prepared bytes after environment approval
+        run: >-
+          bun run release:publish -- --record "$RELEASE_ROOT/release-record.json"
+          --approved-by "${{ github.actor }} via release-publication environment"
+          --confirm
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GH_TOKEN: ${{ secrets.PORTREEVE_RELEASE_TOKEN }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: published-record-${{ inputs.version }}
+          path: |
+            ${{ env.RELEASE_ROOT }}/release-record.json
+            ${{ env.RELEASE_ROOT }}/publication-complete.json
+          if-no-files-found: error
+          retention-days: 30

@@ -1,6 +1,6 @@
 // @ts-check
 
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -28,6 +28,7 @@ import { createStackDocumentService } from './stack-document.js';
 import { registerDesktopIpc } from './ipc.js';
 import { registerRendererProtocol } from './protocol.js';
 import { createUpdateAdapter } from './update.js';
+import { resolveDesktopReleaseChannel } from './release-channel.js';
 import { desktopUpdateStatePath, resolveDesktopUserDataPath } from './user-data.js';
 import { createLauncherRuntime } from '../../../src/launcher/runtime.js';
 import { resolveRuntimePaths } from '../../../src/platform/paths.js';
@@ -103,6 +104,9 @@ async function startDesktop() {
           ? { overridePath: process.env.PORTREEVE_DESKTOP_CLI_PATH }
           : {}),
       });
+  const releaseChannel = resolveDesktopReleaseChannel(
+    JSON.parse(await readFile(resolve(app.getAppPath(), 'package.json'), 'utf8')),
+  );
   diagnose('artifact-verified', artifact.filename);
   const lifecycle = createDesktopLifecycleController(artifact);
   if (desktopSmoke) {
@@ -177,6 +181,7 @@ async function startDesktop() {
     launchers,
     updates: createUpdateAdapter({
       desktopVersion: app.getVersion(),
+      channel: releaseChannel,
       statePath: desktopUpdateStatePath(app.getPath('userData')),
       openExternal: (url) => shell.openExternal(url),
     }),

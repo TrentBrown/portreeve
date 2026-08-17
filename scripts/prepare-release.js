@@ -276,6 +276,12 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
         channel: values.channel,
         version: values.version,
         resume: values.resume,
+        ...(process.env.PORTREEVE_HOMEPAGE_URL === undefined
+          ? {}
+          : { homepageUrl: process.env.PORTREEVE_HOMEPAGE_URL }),
+        ...(process.env.PORTREEVE_RELEASE_BASE_URL === undefined
+          ? {}
+          : { releaseBaseUrl: process.env.PORTREEVE_RELEASE_BASE_URL }),
       });
       console.log(result.releaseRoot);
     });

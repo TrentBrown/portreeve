@@ -161,25 +161,35 @@ test('uses PortReeve as the display name without changing stable machine identif
   expect(releaseLib).toContain('class Portreeve < Formula');
 });
 
-test('release workflow runs full and lifecycle gates on every native target', async () => {
+test('release workflow transports one record through native gates and isolated publication', async () => {
   const workflow = await readFile(resolve('.github/workflows/release.yml'), 'utf8');
 
-  expect(workflow).toContain('node-version: 22');
+  expect(workflow).toContain('NODE_VERSION: 22');
+  expect(workflow).toContain('node-version: ${{ env.NODE_VERSION }}');
   expect(workflow).toContain('actions/checkout@v7');
   expect(workflow).toContain('actions/setup-node@v7');
   expect(workflow).toContain('actions/upload-artifact@v7');
   expect(workflow).toContain('actions/download-artifact@v8');
   expect(workflow).toContain('- run: bun run check');
-  expect(workflow).toContain('- run: bun run release:verify -- --native --lifecycle');
+  expect(workflow).toContain('release:prepare');
+  expect(workflow).toContain('release:native-evidence');
+  expect(workflow).toContain('release:merge-native-evidence');
+  expect(workflow).toContain('release:package-desktop');
+  expect(workflow).toContain('release:finalize-desktop');
+  expect(workflow).toContain('release:publish');
   expect(workflow).toContain('runner: ubuntu-24.04-arm');
+  expect(workflow).toContain('runner: macos-15-intel');
   expect(workflow).not.toContain('self-hosted');
-  expect(workflow).toContain('Restore executable artifact modes');
+  expect(workflow).toContain('Restore promoted executable modes');
   expect(workflow.match(/run: bun run stacks:verify/gu)).toHaveLength(1);
   expect(workflow).toContain("if: startsWith(matrix.platform, 'linux-')");
-  expect(workflow).toContain('Require public repository for release distribution');
-  expect(workflow).toContain('Require npm publishing authority');
-  expect(workflow).toContain('Require unpublished npm version');
-  expect(workflow.match(/needs: release-policy/gu)).toHaveLength(2);
+  expect(workflow).toContain('environment: release-publication');
+  expect(workflow).toContain('if: inputs.publish');
+  expect(workflow).toContain('PORTREEVE_RELEASE_TOKEN');
+  expect(workflow).not.toContain('NPM_TOKEN');
+  expect(workflow).not.toContain('npm publish');
+  expect(workflow).not.toContain('push:\n    tags:');
+  expect(workflow).not.toContain('release:build');
 });
 
 test('public guides cover desktop and one representative mixed-stack launcher', async () => {
