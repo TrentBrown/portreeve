@@ -12,6 +12,8 @@ import { renderHomebrewFormula } from './release-lib.js';
 import { readReleaseRecord } from './release-record.js';
 
 const TAP_NAME = 'portreeve/smoke';
+export const HOMEBREW_SMOKE_FORMULA = `${TAP_NAME}/portreeve`;
+export const HOMEBREW_SMOKE_CASK = `${TAP_NAME}/portreeve-app`;
 
 /**
  * @param {{record: Record<string, any>, releaseRoot: string, stagingRoot: string}}
@@ -147,7 +149,7 @@ export async function smokeHomebrewCandidate(options) {
 
     await requireSuccess(
       run,
-      ['brew', 'install', `${TAP_NAME}/portreeve`],
+      ['brew', 'install', HOMEBREW_SMOKE_FORMULA],
       'Homebrew formula installation',
     );
     formulaInstalled = true;
@@ -175,7 +177,7 @@ export async function smokeHomebrewCandidate(options) {
         'install',
         '--cask',
         `--appdir=${applicationDirectory}`,
-        `${TAP_NAME}/portreeve-app`,
+        HOMEBREW_SMOKE_CASK,
       ],
       'Homebrew cask installation',
     );
@@ -196,7 +198,7 @@ export async function smokeHomebrewCandidate(options) {
       await collectCleanupError(
         cleanupErrors,
         run,
-        ['brew', 'uninstall', '--cask', 'portreeve-app'],
+        ['brew', 'uninstall', '--cask', HOMEBREW_SMOKE_CASK],
         'Homebrew cask cleanup',
       );
     }
@@ -204,7 +206,7 @@ export async function smokeHomebrewCandidate(options) {
       await collectCleanupError(
         cleanupErrors,
         run,
-        ['brew', 'uninstall', '--formula', 'portreeve'],
+        ['brew', 'uninstall', '--formula', HOMEBREW_SMOKE_FORMULA],
         'Homebrew formula cleanup',
       );
     }
