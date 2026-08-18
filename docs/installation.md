@@ -2,16 +2,16 @@
 
 > **Alpha Preview**
 >
-> PortReeve is evolving quickly and may make breaking changes. No public preview has
-> been published yet. When the first preview is published, its macOS application will
-> be unsigned until Apple Developer ID signing and notarization are configured. Product
-> maturity (`alpha`), release channel (`preview`), and macOS trust (`unsigned`) are
-> separate facts.
+> PortReeve is evolving quickly and may make breaking changes. The current public alpha
+> preview is available on
+> [GitHub Releases](https://github.com/TrentBrown/portreeve/releases), and its macOS
+> application is unsigned until Apple Developer ID signing and notarization are
+> configured. Product maturity (`alpha`), release channel (`preview`), and macOS trust
+> (`unsigned`) are separate facts.
 
-Until a preview appears on [GitHub Releases](https://github.com/TrentBrown/portreeve/releases),
-use the [source build](#build-from-source). The commands in the download sections below
-describe the prepared public-preview paths; they are not evidence that those downloads
-already exist.
+Use [GitHub Releases](https://github.com/TrentBrown/portreeve/releases) to identify the
+newest preview and verify its assets. The commands below install the currently published
+Homebrew, DMG, and direct-download artifacts.
 
 ## Choose an installation path
 
@@ -20,7 +20,7 @@ already exist.
 | macOS graphical application | Homebrew cask | `PortReeve.app`; service setup remains explicit in Desktop |
 | macOS graphical application without Homebrew | Architecture-specific DMG | `PortReeve.app`; service setup remains explicit in Desktop |
 | macOS or Linux terminal/MCP use | Homebrew formula on macOS or direct CLI download | One standalone `portreeve` executable |
-| Current development before the first preview | Source build | Local development CLI and Desktop |
+| Contributor development or an unreleased change | Source build | Local development CLI and Desktop |
 
 There is one PortReeve installation and one per-user registry. Desktop, CLI, MCP, and
 the JavaScript client are peer clients of the same server; installing Desktop does not
@@ -32,22 +32,28 @@ If Homebrew is not installed, follow [Homebrew's maintained installation
 instructions](https://docs.brew.sh/Installation). Review Homebrew's installer and its
 requested filesystem changes before running it.
 
-After a PortReeve preview is published, add the personal tap and install either or both
-artifacts:
+Add the personal tap, review the requested artifact, and trust only the formula or cask
+you intend to install. Current Homebrew releases require explicit trust for third-party
+taps and otherwise refuse to load PortReeve. Specific-artifact trust is narrower than
+trusting every current and future artifact in the tap.
 
 ```sh
 brew tap TrentBrown/portreeve
 
 # Graphical application
-brew install --cask portreeve-app
+brew trust --cask trentbrown/portreeve/portreeve-app
+brew install --cask trentbrown/portreeve/portreeve-app
 
 # Standalone CLI and MCP bridge
-brew install portreeve
+brew trust --formula trentbrown/portreeve/portreeve
+brew install trentbrown/portreeve/portreeve
 ```
 
 The cask moves `PortReeve.app` into Applications. The formula installs the CLI. Neither
 one silently installs or starts the PortReeve supervised service, and neither one
-deletes PortReeve data during routine uninstall.
+deletes PortReeve data during routine uninstall. See Homebrew's
+[Tap Trust](https://docs.brew.sh/Tap-Trust) documentation before choosing broader
+whole-tap trust.
 
 ## Direct macOS DMG
 
@@ -56,9 +62,10 @@ GitHub Releases provides separate images:
 - `PortReeve-VERSION-macos-arm64.dmg` for Apple Silicon;
 - `PortReeve-VERSION-macos-x64.dmg` for Intel Macs.
 
-Download the matching DMG and `SHA256SUMS-DISTRIBUTION`, compare the recorded checksum,
-open the DMG, and drag **PortReeve** to Applications. The DMG installs no daemon and
-runs no package script.
+Download the matching DMG and `SHA256SUMS-DISTRIBUTION` from the
+[GitHub Releases page](https://github.com/TrentBrown/portreeve/releases),
+compare the recorded checksum, open the DMG, and drag **PortReeve** to Applications. The
+DMG installs no daemon and runs no package script.
 
 ```sh
 shasum -a 256 PortReeve-VERSION-macos-ARCH.dmg

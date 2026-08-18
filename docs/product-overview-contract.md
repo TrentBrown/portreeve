@@ -8,8 +8,8 @@ order, diagrams, interaction, and layout to their respective surfaces.
 
 - **README** serves repository discovery and evaluation. It gives a complete
   product introduction, makes Desktop tangible, provides a truthful primary
-  path to build and open Desktop, and preserves visible CLI, MCP, and JavaScript
-  alternatives.
+  path to install and open the current Desktop preview, retains a contributor
+  source-build path, and preserves visible CLI, MCP, and JavaScript alternatives.
 - **Desktop Overview** serves in-application orientation and continued use. It
   presents the same product model through native interaction and links users to
   the installed application's client and workflow destinations.
@@ -88,9 +88,9 @@ evidence- and ownership-bound.
 ### `boundaries-next-step`
 
 State what PortReeve deliberately does not own. Continue with the
-surface-appropriate action: README truthfully builds and opens Desktop from
-source until a package exists; Desktop leads into installed workflows. Preserve
-CLI, MCP, and JavaScript alternatives on both surfaces.
+surface-appropriate action: README truthfully installs and opens the published
+Desktop preview while retaining a source-build path; Desktop leads into installed
+workflows. Preserve CLI, MCP, and JavaScript alternatives on both surfaces.
 
 - README landmark: `<!-- product-overview:boundaries-next-step -->`
 - Desktop landmark: `data-product-overview-topic="boundaries-next-step"`

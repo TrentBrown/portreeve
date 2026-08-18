@@ -96,7 +96,8 @@ test('README is a truthful product landing page for the four peer clients', asyn
   }
   expect(readme).toContain('bun install --frozen-lockfile');
   expect(readme).toContain('./dist/portreeve status --json');
-  expect(readme).toContain('has not published its first npm package');
+  expect(readme).toContain('brew install --cask trentbrown/portreeve/portreeve-app');
+  expect(readme).toContain('npm publication remains deferred');
   expect(readme).toMatch(/does not currently\s+provide Docker\s+Sandbox/u);
   expect(readme).not.toContain('npm install portreeve');
 });
@@ -149,8 +150,8 @@ test('README and every Desktop view carry a persistent truthful Alpha Preview no
   const alpha = readme.indexOf('**Alpha Preview**');
   expect(alpha).toBeGreaterThan(0);
   expect(alpha).toBeLessThan(readme.indexOf('portreeve-lockup.svg'));
-  expect(readme).toContain('No public preview has been published yet');
-  expect(readme).toContain('macOS preview downloads will be unsigned');
+  expect(readme).toContain('current macOS preview is unsigned');
+  expect(readme).toContain('current public alpha preview');
   expect(desktop).toMatch(
     /<header class="app-header">[\s\S]*class="alpha-preview"[\s\S]*Alpha Preview[\s\S]*Product maturity is alpha[\s\S]*<\/header>/u,
   );
@@ -168,7 +169,13 @@ test('preview installation guidance is safe, scoped, and lifecycle explicit', as
     readFile(resolve('scripts/desktop-release-lib.js'), 'utf8'),
   ]);
   const combined = [readme, installation, releasing, caskSource].join('\n');
-  expect(installation).toContain('brew install --cask portreeve-app');
+  expect(installation).toContain(
+    'brew trust --cask trentbrown/portreeve/portreeve-app',
+  );
+  expect(installation).toContain(
+    'brew install --cask trentbrown/portreeve/portreeve-app',
+  );
+  expect(installation).toContain('brew trust --formula trentbrown/portreeve/portreeve');
   expect(installation).toContain('PortReeve-VERSION-macos-arm64.dmg');
   expect(installation).toContain('System Settings');
   expect(installation).toContain('Privacy & Security');
