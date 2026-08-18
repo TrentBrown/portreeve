@@ -33,6 +33,8 @@ export async function packageDesktop(options = {}) {
     options.outputRoot ?? resolve(workspaceRoot, 'dist', 'desktop'),
   );
   const desktopRoot = resolve(workspaceRoot, 'apps', 'desktop');
+  const releaseChannel = options.releaseChannel ?? 'preview';
+  const osxSign = createDesktopSignOptions(releaseChannel);
   const stage = resolve(outputRoot, `stage-${architecture}`);
   const output = resolve(outputRoot, architecture);
   const resources = resolve(stage, 'release-input', 'portreeve');
@@ -94,7 +96,7 @@ export async function packageDesktop(options = {}) {
         private: true,
         type: 'module',
         main: 'main/index.js',
-        portreeveReleaseChannel: options.releaseChannel ?? 'preview',
+        portreeveReleaseChannel: releaseChannel,
       },
       null,
       2,
@@ -109,7 +111,7 @@ export async function packageDesktop(options = {}) {
         artifactVersion: artifact.version,
         artifactSha256: artifact.sha256,
         architecture,
-        releaseChannel: options.releaseChannel ?? 'preview',
+        releaseChannel,
         moduleGraph: {
           directLifecycleController: true,
           verifiedArtifactResolver: true,
@@ -142,6 +144,7 @@ export async function packageDesktop(options = {}) {
     prune: false,
     ignore: /^\/release-input(?:\/|$)/,
     extraResource: [resolve(stage, 'release-input', 'portreeve')],
+    osxSign,
   });
   if (paths.length !== 1) {
     throw new Error(`Desktop packager returned ${paths.length} output paths.`);
@@ -169,6 +172,43 @@ export async function packageDesktop(options = {}) {
     desktopVersion: metadata.version,
     artifact: packagedArtifact,
   };
+}
+
+/**
+ * Preview bundles use an ad-hoc identity so every nested executable and the final
+ * application bundle are sealed consistently. This proves bundle integrity without
+ * claiming a Developer ID identity or Gatekeeper trust. Stable packaging remains
+ * unavailable until the separate Developer ID and notarization path is configured.
+ *
+ * @param {'preview'|'stable'} releaseChannel
+ */
+export function createDesktopSignOptions(releaseChannel) {
+  if (releaseChannel !== 'preview') {
+    throw new Error(
+      'Stable Desktop packaging requires configured Developer ID signing and notarization.',
+    );
+  }
+  return {
+    identity: '-',
+    identityValidation: false,
+    continueOnError: false,
+    preAutoEntitlements: false,
+    preEmbedProvisioningProfile: false,
+    ignore: isPromotedCliResource,
+    optionsForFile: () => ({ hardenedRuntime: false, timestamp: 'none' }),
+  };
+}
+
+/**
+ * The promoted CLI must remain byte-for-byte identical to its release manifest.
+ * The application signature seals that exact resource without re-signing it.
+ *
+ * @param {string} filePath
+ */
+export function isPromotedCliResource(filePath) {
+  return /\/Contents\/Resources\/portreeve\/portreeve-v[^/]+$/u.test(
+    filePath.replaceAll('\\', '/'),
+  );
 }
 
 /** @returns {'arm64'|'x64'} */

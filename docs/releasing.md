@@ -44,6 +44,10 @@ real Developer ID signing, hardened runtime, secure timestamps, notarization, st
 Gatekeeper acceptance, and native ARM64/x64 evidence. The current workflow deliberately
 has no way to substitute synthetic evidence for those requirements.
 
+Preview Desktop bundles are ad-hoc signed and structurally verified before packaging.
+That integrity seal has no developer identity and confers no Gatekeeper trust; the
+release record therefore continues to describe preview Desktop trust as `unsigned`.
+
 ## Prerequisites
 
 All release work requires a clean checkout of the source commit to be released and the
