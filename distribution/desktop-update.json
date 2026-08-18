@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "releases": [
     {
-      "releaseVersion": "0.1.0-preview.1",
+      "releaseVersion": "0.1.0-preview.2",
       "desktopVersion": "0.1.0",
       "maturity": "alpha",
       "channel": "preview",
@@ -11,11 +11,11 @@
       "artifacts": {
         "arm64": {
           "filename": "PortReeve-0.1.0-macos-arm64.dmg",
-          "sha256": "6b41e44c7fac5a34f536b7929852e1ed206b14cad5ac140a0a26ac278fb6303d"
+          "sha256": "0a3d29a90cace6effb80d5aa9186ec1994440ba3ae12da51fa595a59a9f4d9d1"
         },
         "x64": {
           "filename": "PortReeve-0.1.0-macos-x64.dmg",
-          "sha256": "209e05be98ee0fed8dddf847dbb2f3852f87c649a41118f0bdbeeb2fb367cec1"
+          "sha256": "ec083d68d1030c4300743fd3ff68f28ee7bf387d774fbeec8f3ca6c1fe5283a7"
         }
       }
     }
