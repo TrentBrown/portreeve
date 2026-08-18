@@ -28,7 +28,10 @@ import { createStackDocumentService } from './stack-document.js';
 import { registerDesktopIpc } from './ipc.js';
 import { registerRendererProtocol } from './protocol.js';
 import { createUpdateAdapter } from './update.js';
-import { resolveDesktopReleaseChannel } from './release-channel.js';
+import {
+  resolveDesktopReleaseChannel,
+  resolveDesktopReleaseVersion,
+} from './release-channel.js';
 import { desktopUpdateStatePath, resolveDesktopUserDataPath } from './user-data.js';
 import { createLauncherRuntime } from '../../../src/launcher/runtime.js';
 import { resolveRuntimePaths } from '../../../src/platform/paths.js';
@@ -104,8 +107,13 @@ async function startDesktop() {
           ? { overridePath: process.env.PORTREEVE_DESKTOP_CLI_PATH }
           : {}),
       });
-  const releaseChannel = resolveDesktopReleaseChannel(
-    JSON.parse(await readFile(resolve(app.getAppPath(), 'package.json'), 'utf8')),
+  const desktopMetadata = JSON.parse(
+    await readFile(resolve(app.getAppPath(), 'package.json'), 'utf8'),
+  );
+  const releaseChannel = resolveDesktopReleaseChannel(desktopMetadata);
+  const desktopVersion = resolveDesktopReleaseVersion(
+    desktopMetadata,
+    app.getVersion(),
   );
   diagnose('artifact-verified', artifact.filename);
   const lifecycle = createDesktopLifecycleController(artifact);
@@ -114,7 +122,7 @@ async function startDesktop() {
     console.log(
       `PORTREEVE_DESKTOP_SMOKE ${JSON.stringify({
         schemaVersion: 1,
-        desktopVersion: app.getVersion(),
+        desktopVersion,
         controllerVersion: lifecycle.compatibility.version,
         artifactVersion: artifact.version,
         mode: status.mode,
@@ -161,7 +169,7 @@ async function startDesktop() {
   const coordinator = createStateCoordinator({
     artifact: {
       ...artifact,
-      desktopVersion: app.getVersion(),
+      desktopVersion,
       controller: lifecycle.compatibility,
     },
     lifecycle,
@@ -180,7 +188,7 @@ async function startDesktop() {
     }),
     launchers,
     updates: createUpdateAdapter({
-      desktopVersion: app.getVersion(),
+      desktopVersion,
       channel: releaseChannel,
       statePath: desktopUpdateStatePath(app.getPath('userData')),
       openExternal: (url) => shell.openExternal(url),

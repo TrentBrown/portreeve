@@ -28,6 +28,7 @@ import {
   renderHomebrewFormula,
   sha256File,
 } from './release-lib.js';
+import { assertCoordinatedReleaseVersion } from './release-version.js';
 
 const releaseDirectory = resolve(
   process.env.PORTREEVE_RELEASE_DIRECTORY ?? resolve('dist', 'release'),
@@ -37,11 +38,14 @@ const manifest = JSON.parse(
 );
 if (
   manifest.schemaVersion !== 1 ||
-  manifest.softwareVersion !== PORTREEVE_VERSION ||
+  typeof manifest.softwareVersion !== 'string' ||
   !Array.isArray(manifest.artifacts)
 ) {
   throw new Error('Release manifest identity is invalid.');
 }
+assertCoordinatedReleaseVersion(manifest.softwareVersion, {
+  server: PORTREEVE_VERSION,
+});
 
 for (const artifact of manifest.artifacts) {
   const path = resolve(releaseDirectory, artifact.filename);
@@ -93,7 +97,7 @@ if (process.argv.includes('--homebrew')) {
 }
 
 console.log(
-  `Verified ${manifest.artifacts.length} PortReeve ${PORTREEVE_VERSION} release artifacts.`,
+  `Verified ${manifest.artifacts.length} PortReeve ${manifest.softwareVersion} release artifacts.`,
 );
 
 /** @param {Record<string, any>} releaseManifest */
@@ -112,7 +116,7 @@ async function smokeNativeArtifact(releaseManifest) {
     new Response(version.stdout).text(),
     new Response(version.stderr).text(),
   ]);
-  if (versionCode !== 0 || versionOutput.trim() !== PORTREEVE_VERSION) {
+  if (versionCode !== 0 || versionOutput.trim() !== releaseManifest.softwareVersion) {
     throw new Error(
       `Native version smoke failed (${versionCode}): ${versionError.trim()}`,
     );
@@ -135,7 +139,10 @@ async function smokeNativeArtifact(releaseManifest) {
         await Bun.sleep(20);
       }
     }
-    if (health?.softwareVersion !== PORTREEVE_VERSION || health?.mode !== 'manual') {
+    if (
+      health?.softwareVersion !== releaseManifest.softwareVersion ||
+      health?.mode !== 'manual'
+    ) {
       throw new Error('Native server smoke did not reach healthy manual mode.');
     }
     await client.stopServer();
@@ -230,7 +237,7 @@ async function smokeNativeLifecycle(releaseManifest) {
     if (
       upgradeResult.operation !== 'install' ||
       upgradeResult.outcome !== 'succeeded' ||
-      upgradeResult.before.versions.managed !== PORTREEVE_VERSION ||
+      upgradeResult.before.versions.managed !== releaseManifest.softwareVersion ||
       upgradeResult.after.mode !== 'supervised'
     ) {
       throw new Error('Native lifecycle active upgrade did not remain active.');

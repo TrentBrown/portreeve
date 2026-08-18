@@ -14,6 +14,7 @@ import {
   registerReleaseArtifact,
   writeReleaseRecord,
 } from './release-record.js';
+import { assertCoordinatedReleaseVersion } from './release-version.js';
 
 const DEFAULT_HOMEPAGE = 'https://github.com/TrentBrown/portreeve';
 const DEFAULT_RELEASE_BASE = `${DEFAULT_HOMEPAGE}/releases/download`;
@@ -54,6 +55,22 @@ export async function prepareRelease(options, dependencies = {}) {
   const desktopMetadata = JSON.parse(
     await readFile(resolve(workspaceRoot, 'apps', 'desktop', 'package.json'), 'utf8'),
   );
+  const workspaceMetadata = JSON.parse(
+    await readFile(resolve(workspaceRoot, 'package.json'), 'utf8'),
+  );
+  const clientMetadata = JSON.parse(
+    await readFile(
+      resolve(workspaceRoot, 'packages', 'client', 'package.json'),
+      'utf8',
+    ),
+  );
+  assertCoordinatedReleaseVersion(options.version, {
+    server: PORTREEVE_VERSION,
+    workspace: String(workspaceMetadata.version),
+    client: PORTREEVE_CLIENT_VERSION,
+    'client package': String(clientMetadata.version),
+    'Desktop package': String(desktopMetadata.version),
+  });
   const now = dependencies.now ?? (() => new Date());
   const policy =
     options.channel === 'preview'
@@ -80,9 +97,9 @@ export async function prepareRelease(options, dependencies = {}) {
       releaseVersion: options.version,
       source: { repository: source.repository, commit: source.commit },
       versions: {
-        server: PORTREEVE_VERSION,
-        desktop: desktopMetadata.version,
-        client: PORTREEVE_CLIENT_VERSION,
+        server: options.version,
+        desktop: options.version,
+        client: options.version,
       },
       policy,
       tools: { bun: Bun.version, node: process.versions.node },

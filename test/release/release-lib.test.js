@@ -99,19 +99,23 @@ describe('release metadata', () => {
     expect(output).toContain('Syntax OK');
   });
 
-  test('separates the coordinated release tag from the installed software version', () => {
+  test('uses the coordinated release version as the installed software version', () => {
     const checksums = Object.fromEntries(
-      RELEASE_TARGETS.map((target) => [artifactName('0.1.0', target), 'a'.repeat(64)]),
+      RELEASE_TARGETS.map((target) => [
+        artifactName('0.1.0-preview.4', target),
+        'a'.repeat(64),
+      ]),
     );
     const formula = renderHomebrewFormula({
-      version: '0.1.0',
-      releaseVersion: '0.1.0-preview.1',
+      version: '0.1.0-preview.4',
       releaseBaseUrl: 'https://github.com/TrentBrown/portreeve/releases/download',
       homepageUrl: 'https://github.com/TrentBrown/portreeve',
       checksums,
     });
-    expect(formula).toContain('version "0.1.0"');
-    expect(formula).toContain('/v0.1.0-preview.1/portreeve-v0.1.0-macos-arm64');
+    expect(formula).toContain('version "0.1.0-preview.4"');
+    expect(formula).toContain(
+      '/v0.1.0-preview.4/portreeve-v0.1.0-preview.4-macos-arm64',
+    );
   });
 });
 

@@ -212,6 +212,7 @@ test('release runbook and project skill preserve one script-owned contract', asy
     'Release state graph',
     'Safe local preparation',
     'Safe hosted preparation',
+    'Coordinated release identity',
     'Publication environment and credentials',
     'Hosted publication gate',
     'Rehearsal without public mutation',
@@ -243,6 +244,10 @@ test('release runbook and project skill preserve one script-owned contract', asy
   expect(runbook).toContain('It does not require ordinary Git credentials');
   expect(runbook).toContain('leaves the PR intact');
   expect(runbook).toContain('both PR URLs and merge commits');
+  expect(runbook).toContain(
+    '0.1.0-preview.2 < 0.1.0-preview.3 < 0.1.0-preview.4 < 0.1.0',
+  );
+  expect(runbook).toContain('same semantic core');
   expect(skillMetadata).toContain('$release-portreeve');
   expect(packageJson.scripts).toHaveProperty('release:prepare');
   expect(packageJson.scripts).toHaveProperty('release:inspect');

@@ -37,14 +37,15 @@ describe('Desktop distribution', () => {
   test('renders conventional architecture-specific DMGs and a lifecycle-safe cask', () => {
     expect(desktopDmgName('0.1.0', 'arm64')).toBe('PortReeve-0.1.0-macos-arm64.dmg');
     const cask = renderHomebrewCask({
-      version: '0.1.0',
+      version: '0.1.0-preview.1',
       releaseVersion: '0.1.0-preview.1',
       releaseBaseUrl: 'https://example.com/releases/download/',
       homepageUrl: 'https://example.com',
       checksums: { arm64: 'a'.repeat(64), x64: 'b'.repeat(64) },
     });
     expect(cask).toContain('cask "portreeve-app"');
-    expect(cask).toContain('PortReeve-0.1.0-macos-#{arch}.dmg');
+    expect(cask).toContain('version "0.1.0-preview.1"');
+    expect(cask).toContain('PortReeve-0.1.0-preview.1-macos-#{arch}.dmg');
     expect(cask).toContain('/v0.1.0-preview.1/');
     expect(cask).toContain('PortReeve is alpha software');
     expect(cask).toContain('Privacy & Security > Open Anyway');
@@ -102,7 +103,7 @@ describe('Desktop distribution', () => {
         releases: [
           {
             releaseVersion: '0.1.0-preview.1',
-            desktopVersion: '0.1.0',
+            desktopVersion: '0.1.0-preview.1',
             maturity: 'alpha',
             channel: 'preview',
             desktopTrust: 'unsigned',
@@ -136,7 +137,7 @@ async function preparedRecord(channel) {
   const root = await temporaryDirectory();
   await mkdir(join(root, 'artifacts'), { recursive: true });
   const version = channel === 'preview' ? '0.1.0-preview.1' : '1.0.0';
-  const componentVersion = channel === 'preview' ? '0.1.0' : '1.0.0';
+  const componentVersion = version;
   let record = createReleaseRecord({
     releaseVersion: version,
     source: {

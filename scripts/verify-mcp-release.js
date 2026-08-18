@@ -8,11 +8,15 @@ import { PortreeveClient } from '../packages/client/src/index.js';
 import { MCP_TOOL_NAMES } from '../src/mcp/catalog.js';
 import { McpSetupResultSchema } from '../src/mcp/setup.js';
 import { PORTREEVE_VERSION } from '../src/version.js';
+import { assertCoordinatedReleaseVersion } from './release-version.js';
 
 const releaseDirectory = resolve('dist', 'release');
 const manifest = JSON.parse(
   await readFile(resolve(releaseDirectory, 'manifest.json'), 'utf8'),
 );
+assertCoordinatedReleaseVersion(manifest.softwareVersion, {
+  server: PORTREEVE_VERSION,
+});
 const native = executableArtifact(
   process.platform === 'darwin' ? 'macos' : process.platform,
   process.arch === 'x64' ? 'x64' : process.arch,
@@ -29,7 +33,7 @@ const modernMetadata = {
 /** @type {{schemaVersion: 1, softwareVersion: string, native: string, setupHosts: string[], mcpEras: string[], concurrentBridges: number, unavailableDaemon: boolean, incompatibleDaemon: boolean, linuxArtifacts: string[], hosts: string[]}} */
 const result = {
   schemaVersion: 1,
-  softwareVersion: PORTREEVE_VERSION,
+  softwareVersion: manifest.softwareVersion,
   native: `${native.operatingSystem}-${native.architecture}`,
   setupHosts: [],
   mcpEras: [],
@@ -40,7 +44,6 @@ const result = {
   hosts: [],
 };
 
-assert.equal(manifest.softwareVersion, PORTREEVE_VERSION);
 await chmod(nativeExecutable, 0o755);
 progress('native setup generation');
 await verifySetup(nativeExecutable, result.setupHosts);
@@ -174,7 +177,7 @@ async function verifyCompiledDaemonAndConcurrentBridges(executable) {
   try {
     const client = new PortreeveClient({ socketPath: socket });
     const health = await waitForHealth(client);
-    assert.equal(health.softwareVersion, PORTREEVE_VERSION);
+    assert.equal(health.softwareVersion, manifest.softwareVersion);
     const [first, second] = await Promise.all([
       runBridge(executable, socket, diagnosticRequests('compiled-first')),
       runBridge(executable, socket, diagnosticRequests('compiled-second')),
@@ -219,7 +222,7 @@ async function verifyLinuxArtifacts() {
       '--version',
     ]);
     assert.equal(version.code, 0, version.stderr);
-    assert.equal(version.stdout.trim(), PORTREEVE_VERSION);
+    assert.equal(version.stdout.trim(), manifest.softwareVersion);
     const setup = await run([
       'docker',
       'run',

@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { resolveBundledReleaseCandidate } from '../apps/desktop/main/artifact.js';
 import { inspectExecutable } from './release-lib.js';
+import { semanticVersionCore } from './release-version.js';
 
 const SMOKE_PREFIX = 'PORTREEVE_DESKTOP_SMOKE ';
 const OUTPUT_LIMIT = 64 * 1024;
@@ -51,7 +52,8 @@ export function assertPackagedDesktopContents(options) {
   const verification = JSON.parse(options.verificationDocument);
   if (
     metadata.main !== 'main/index.js' ||
-    metadata.version !== options.controllerVersion ||
+    metadata.version !== semanticVersionCore(options.controllerVersion) ||
+    metadata.portreeveReleaseVersion !== options.controllerVersion ||
     !['preview', 'stable'].includes(metadata.portreeveReleaseChannel) ||
     verification.schemaVersion !== 1 ||
     verification.controllerVersion !== options.controllerVersion ||

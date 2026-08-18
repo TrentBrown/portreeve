@@ -55,6 +55,12 @@ bun run release:prepare -- \
   --version 0.1.0-preview.1
 ```
 
+The requested version is the installed identity of every release output. Preview builds
+inject the full prerelease into the CLI, client package, Desktop metadata, formula, and
+cask while leaving checked-in package files at the matching semantic core. Never edit
+multiple package files as an operator precondition or accept a formula/cask that drops
+the prerelease suffix.
+
 For the complete hosted rehearsal:
 
 ```sh
