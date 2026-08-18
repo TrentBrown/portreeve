@@ -117,13 +117,68 @@ describe('release record', () => {
       approvedBy: 'Trent Brown',
       approvedAt: '2026-08-16T21:00:00.000Z',
       planSha256: 'a'.repeat(64),
+      transport: 'github-pull-request-v1',
     });
     expect(record.publication).toEqual({
       state: 'approved',
       approvedBy: 'Trent Brown',
       approvedAt: '2026-08-16T21:00:00.000Z',
       planSha256: 'a'.repeat(64),
+      transport: 'github-pull-request-v1',
     });
+  });
+
+  test('requires PR evidence for new transport while retaining honest legacy history', () => {
+    let modern = publicationReadyRecord();
+    modern = advanceReleaseRecord(modern, 'publication-approved', {
+      approvedBy: 'Trent Brown',
+      approvedAt: '2026-08-16T21:00:00.000Z',
+      planSha256: 'a'.repeat(64),
+      transport: 'github-pull-request-v1',
+    });
+    expect(() =>
+      advanceReleaseRecord(modern, 'published', legacyPublishedEvidence()),
+    ).toThrow('transport differs');
+    modern = advanceReleaseRecord(modern, 'published', {
+      ...legacyPublishedEvidence(),
+      transport: 'github-pull-request-v1',
+      homebrewPullRequestUrl: 'https://github.com/example/tap/pull/1',
+      desktopUpdatePullRequestUrl: 'https://github.com/example/portreeve/pull/2',
+    });
+    expect(modern.publication).toMatchObject({
+      transport: 'github-pull-request-v1',
+      homebrewPullRequestUrl: 'https://github.com/example/tap/pull/1',
+      desktopUpdatePullRequestUrl: 'https://github.com/example/portreeve/pull/2',
+    });
+
+    let legacy = publicationReadyRecord();
+    legacy = advanceReleaseRecord(legacy, 'publication-approved', {
+      approvedBy: 'Trent Brown',
+      approvedAt: '2026-08-16T21:00:00.000Z',
+      planSha256: 'b'.repeat(64),
+    });
+    legacy = advanceReleaseRecord(legacy, 'published', legacyPublishedEvidence());
+    expect(legacy.publication).not.toHaveProperty('transport');
+    expect(legacy.publication).not.toHaveProperty('homebrewPullRequestUrl');
+  });
+
+  test('reads legacy completed evidence without adding PR identity', async () => {
+    const root = await temporaryDirectory();
+    const path = join(root, 'legacy-release-record.json');
+    let legacy = publicationReadyRecord();
+    legacy = advanceReleaseRecord(legacy, 'publication-approved', {
+      approvedBy: 'Trent Brown',
+      approvedAt: '2026-08-16T21:00:00.000Z',
+      planSha256: 'b'.repeat(64),
+    });
+    legacy = advanceReleaseRecord(legacy, 'published', legacyPublishedEvidence());
+    await writeReleaseRecord(path, legacy);
+    const restored = await readReleaseRecord(path);
+    expect(restored.publication).toEqual({
+      state: 'published',
+      ...legacyPublishedEvidence(),
+    });
+    expect(restored.publication).not.toHaveProperty('homebrewPullRequestUrl');
   });
 
   test('records workspace-relative artifact identity and rejects tampering', async () => {
@@ -236,6 +291,25 @@ function stableRecord() {
     },
     tools: { bun: '1.3.14', node: '22.20.0' },
   });
+}
+
+function publicationReadyRecord() {
+  let record = advanceThroughDesktopPackaging(previewRecord());
+  record = advanceReleaseRecord(record, 'desktop-trust-verified', {
+    status: 'unsigned-preview',
+  });
+  return advanceReleaseRecord(record, 'distribution-finalized', {});
+}
+
+function legacyPublishedEvidence() {
+  return {
+    tag: 'v0.1.0-preview.1',
+    githubReleaseUrl:
+      'https://github.com/TrentBrown/portreeve/releases/tag/v0.1.0-preview.1',
+    homebrewCommit: 'a'.repeat(40),
+    desktopUpdateCommit: 'b'.repeat(40),
+    publishedAt: '2026-08-16T22:00:00.000Z',
+  };
 }
 
 /** @param {ReturnType<typeof previewRecord>} record */

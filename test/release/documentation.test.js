@@ -226,6 +226,13 @@ test('release runbook and project skill preserve one script-owned contract', asy
   expect(skill).toContain('`release:inspect`');
   expect(skill).toContain('`release:homebrew-smoke`');
   expect(skill).toContain('Never bypass `--confirm`');
+  expect(skill).toContain('deterministic merge-commit PRs');
+  expect(skill).toContain('Never write directly to destination `main`');
+  expect(skill).toContain('independent review block');
+  expect(runbook).toMatch(/Pull requests:\s+Read and write/u);
+  expect(runbook).toContain('It does not require ordinary Git credentials');
+  expect(runbook).toContain('leaves the PR intact');
+  expect(runbook).toContain('both PR URLs and merge commits');
   expect(skillMetadata).toContain('$release-portreeve');
   expect(packageJson.scripts).toHaveProperty('release:prepare');
   expect(packageJson.scripts).toHaveProperty('release:inspect');
@@ -285,6 +292,9 @@ test('release workflow transports one record through native gates and isolated p
   expect(workflow).toContain('environment: release-publication');
   expect(workflow).toContain('if: inputs.publish');
   expect(workflow).toContain('PORTREEVE_RELEASE_TOKEN');
+  expect(workflow.match(/pull-requests: write/gu)).toHaveLength(1);
+  expect(workflow.match(/contents: write/gu)).toHaveLength(1);
+  expect(workflow.match(/contents: read/gu)).toHaveLength(1);
   expect(workflow).not.toContain('NPM_TOKEN');
   expect(workflow).not.toContain('npm publish');
   expect(workflow).not.toContain('push:\n    tags:');

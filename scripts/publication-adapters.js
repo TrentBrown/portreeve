@@ -1,15 +1,28 @@
 // @ts-check
 
-import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { DesktopUpdateManifestSchema } from '../apps/desktop/shared/schemas.js';
+import {
+  preflightRepositoryPullRequest,
+  publishRepositoryFilesViaPullRequest,
+  requestGitHubApi,
+} from './github-pr-publication.js';
 
-export function createCommandPublicationAdapters() {
+/**
+ * @param {{
+ *   request?: import('./github-pr-publication.js').GitHubRequester,
+ *   publishRepository?: typeof publishRepositoryFilesViaPullRequest,
+ * }} [dependencies]
+ */
+export function createCommandPublicationAdapters(dependencies = {}) {
+  const request = dependencies.request ?? requestGitHubApi;
+  const publishRepository =
+    dependencies.publishRepository ?? publishRepositoryFilesViaPullRequest;
   return {
     github: createGitHubReleaseAdapter(),
-    homebrew: createHomebrewTapAdapter(),
-    desktopUpdate: createDesktopUpdateAdapter(),
+    homebrew: createHomebrewTapAdapter(request, publishRepository),
+    desktopUpdate: createDesktopUpdateAdapter(request, publishRepository),
   };
 }
 
@@ -56,59 +69,63 @@ function createGitHubReleaseAdapter() {
   };
 }
 
-function createHomebrewTapAdapter() {
+/**
+ * @param {import('./github-pr-publication.js').GitHubRequester} request
+ * @param {typeof publishRepositoryFilesViaPullRequest} publishRepository
+ */
+function createHomebrewTapAdapter(request, publishRepository) {
   return {
     async preflight(/** @type {Record<string, any>} */ plan) {
-      await run('gh', ['repo', 'view', plan.homebrew.repository, '--json', 'name']);
+      await preflightRepositoryPullRequest({
+        request,
+        repository: plan.homebrew.repository,
+        baseBranch: plan.homebrew.branch,
+      });
     },
     async publish(
       /** @type {Record<string, any>} */ plan,
       /** @type {string} */ releaseRoot,
+      /** @type {{planSha256: string}} */ context,
     ) {
-      const directory = await mkdtemp(join(tmpdir(), 'portreeve-tap-'));
-      try {
-        await run('gh', ['repo', 'clone', plan.homebrew.repository, directory]);
-        const formulaTarget = resolve(directory, 'Formula', 'portreeve.rb');
-        const caskTarget = resolve(directory, 'Casks', 'portreeve-app.rb');
-        await mkdir(dirname(formulaTarget), { recursive: true });
-        await mkdir(dirname(caskTarget), { recursive: true });
-        await copyFile(resolve(releaseRoot, plan.homebrew.formula.path), formulaTarget);
-        await copyFile(resolve(releaseRoot, plan.homebrew.cask.path), caskTarget);
-        const status = await run('git', ['status', '--porcelain'], directory);
-        if (status.stdout.trim() !== '') {
-          await run(
-            'git',
-            ['add', 'Formula/portreeve.rb', 'Casks/portreeve-app.rb'],
-            directory,
-          );
-          await run(
-            'git',
-            [
-              '-c',
-              'user.name=github-actions[bot]',
-              '-c',
-              'user.email=41898282+github-actions[bot]@users.noreply.github.com',
-              'commit',
-              '-m',
-              `Publish PortReeve ${plan.releaseVersion}`,
-            ],
-            directory,
-          );
-          await run('git', ['push', 'origin', 'HEAD'], directory);
-        }
-        const commit = await run('git', ['rev-parse', 'HEAD'], directory);
-        return { commit: commit.stdout.trim() };
-      } finally {
-        await rm(directory, { recursive: true, force: true });
-      }
+      return publishRepository({
+        request,
+        repository: plan.homebrew.repository,
+        baseBranch: plan.homebrew.branch,
+        releaseVersion: plan.releaseVersion,
+        sourceCommit: plan.source.commit,
+        planSha256: context.planSha256,
+        title: `Publish PortReeve ${plan.releaseVersion} Homebrew metadata`,
+        files: [
+          await publicationFile(
+            releaseRoot,
+            plan.homebrew.formula,
+            'Formula/portreeve.rb',
+          ),
+          await publicationFile(
+            releaseRoot,
+            plan.homebrew.cask,
+            'Casks/portreeve-app.rb',
+          ),
+        ],
+      });
     },
   };
 }
 
-function createDesktopUpdateAdapter() {
+/**
+ * @param {import('./github-pr-publication.js').GitHubRequester} request
+ * @param {typeof publishRepositoryFilesViaPullRequest} publishRepository
+ */
+function createDesktopUpdateAdapter(request, publishRepository) {
   return {
     async preflight(/** @type {Record<string, any>} */ plan) {
+      await preflightRepositoryPullRequest({
+        request,
+        repository: plan.desktopUpdate.repository,
+        baseBranch: plan.desktopUpdate.branch,
+      });
       const current = await readRepositoryFile(
+        request,
         plan.desktopUpdate.repository,
         plan.desktopUpdate.path,
         plan.desktopUpdate.branch,
@@ -118,47 +135,43 @@ function createDesktopUpdateAdapter() {
     async publish(
       /** @type {Record<string, any>} */ plan,
       /** @type {string} */ releaseRoot,
+      /** @type {{planSha256: string}} */ context,
     ) {
       const expected = await readFile(
         resolve(releaseRoot, plan.desktopUpdate.artifact.path),
         'utf8',
       );
       DesktopUpdateManifestSchema.parse(JSON.parse(expected));
-      const current = await readRepositoryFile(
-        plan.desktopUpdate.repository,
-        plan.desktopUpdate.path,
-        plan.desktopUpdate.branch,
-      );
-      if (current.content === expected) {
-        const commits = await runJson('gh', [
-          'api',
-          `repos/${plan.desktopUpdate.repository}/commits?path=${encodeURIComponent(plan.desktopUpdate.path)}&per_page=1`,
-        ]);
-        const commit = Array.isArray(commits) ? commits[0]?.sha : undefined;
-        if (typeof commit !== 'string') {
-          throw new Error('Unable to identify the existing Desktop update commit.');
-        }
-        return { commit };
-      }
-      const result = await runJson('gh', [
-        'api',
-        '--method',
-        'PUT',
-        `repos/${plan.desktopUpdate.repository}/contents/${plan.desktopUpdate.path}`,
-        '-f',
-        `message=Publish PortReeve ${plan.releaseVersion} Desktop update metadata`,
-        '-f',
-        `content=${Buffer.from(expected).toString('base64')}`,
-        '-f',
-        `sha=${current.sha}`,
-        '-f',
-        `branch=${plan.desktopUpdate.branch}`,
-      ]);
-      if (typeof result?.commit?.sha !== 'string') {
-        throw new Error('Desktop update publication returned no commit identity.');
-      }
-      return { commit: result.commit.sha };
+      return publishRepository({
+        request,
+        repository: plan.desktopUpdate.repository,
+        baseBranch: plan.desktopUpdate.branch,
+        releaseVersion: plan.releaseVersion,
+        sourceCommit: plan.source.commit,
+        planSha256: context.planSha256,
+        title: `Publish PortReeve ${plan.releaseVersion} Desktop update metadata`,
+        files: [
+          {
+            path: plan.desktopUpdate.path,
+            content: expected,
+            sha256: plan.desktopUpdate.artifact.sha256,
+          },
+        ],
+      });
     },
+  };
+}
+
+/**
+ * @param {string} releaseRoot
+ * @param {Record<string, any>} artifact
+ * @param {string} path
+ */
+async function publicationFile(releaseRoot, artifact, path) {
+  return {
+    path,
+    content: await readFile(resolve(releaseRoot, artifact.path), 'utf8'),
+    sha256: artifact.sha256,
   };
 }
 
@@ -197,12 +210,17 @@ function assertExistingRelease(plan, release) {
   }
 }
 
-/** @param {string} repository @param {string} path @param {string} branch */
-async function readRepositoryFile(repository, path, branch) {
-  const value = await runJson('gh', [
-    'api',
-    `repos/${repository}/contents/${path}?ref=${encodeURIComponent(branch)}`,
-  ]);
+/**
+ * @param {import('./github-pr-publication.js').GitHubRequester} request
+ * @param {string} repository
+ * @param {string} path
+ * @param {string} branch
+ */
+async function readRepositoryFile(request, repository, path, branch) {
+  const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+  const value = await request({
+    endpoint: `repos/${repository}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
+  });
   if (typeof value?.sha !== 'string' || typeof value?.content !== 'string') {
     throw new Error(`Repository file response is invalid: ${repository}/${path}`);
   }
@@ -210,12 +228,6 @@ async function readRepositoryFile(repository, path, branch) {
     sha: value.sha,
     content: Buffer.from(value.content.replaceAll('\n', ''), 'base64').toString('utf8'),
   };
-}
-
-/** @param {string} command @param {string[]} arguments_ @param {string} [cwd] */
-async function runJson(command, arguments_, cwd) {
-  const result = await run(command, arguments_, cwd);
-  return JSON.parse(result.stdout);
 }
 
 /** @param {string} command @param {string[]} arguments_ */
