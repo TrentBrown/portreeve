@@ -6,6 +6,8 @@
 **Interview:** [`interview.md`](interview.md)
 **Created:** 2026-08-18
 
+**Implementation status:** Complete in PR [#72](https://github.com/TrentBrown/portreeve/pull/72); awaiting review.
+
 ## Inputs
 
 - `spec.md` controls scope, required behavior, and rubric mapping.

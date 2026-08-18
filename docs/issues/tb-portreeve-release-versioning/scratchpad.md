@@ -8,7 +8,7 @@ entries are appended to `decisions.md`.
 
 ## [1] Inject release identity without mutating source package versions
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -28,7 +28,7 @@ that their semantic cores match before building.
 
 ## [2] Preserve numeric Apple bundle version separately
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

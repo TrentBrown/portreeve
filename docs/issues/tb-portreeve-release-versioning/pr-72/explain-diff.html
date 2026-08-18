@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR #72 - Coordinated preview release identity</title>
+    <style>
+      :root { --ink:#102a43; --muted:#52606d; --paper:#f7f3e8; --card:#fffdf7; --green:#18745a; --blue:#1f5f8b; --line:#d8d1bd; --gold:#d39b38; }
+      * { box-sizing:border-box; }
+      body { margin:0; color:var(--ink); background:var(--paper); font:17px/1.62 system-ui,-apple-system,sans-serif; }
+      main { width:min(980px,calc(100% - 32px)); margin:0 auto; padding:42px 0 80px; }
+      h1,h2,h3 { font-family:Georgia,serif; line-height:1.15; }
+      h1 { font-size:clamp(2.2rem,6vw,4.2rem); margin:.2em 0; }
+      h2 { margin-top:2.1em; font-size:2rem; border-bottom:2px solid var(--line); padding-bottom:.25em; }
+      a { color:var(--blue); }
+      nav,.card,.callout,.quiz { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; box-shadow:0 5px 18px #102a4310; }
+      nav a { margin-right:18px; white-space:nowrap; }
+      .eyebrow { color:var(--green); font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+      .lede { font-size:1.25rem; max-width:780px; }
+      .flow { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; align-items:center; margin:24px 0; }
+      .node { min-height:94px; display:grid; place-items:center; text-align:center; border:2px solid var(--blue); border-radius:12px; padding:10px; background:#eef7fb; font-weight:750; }
+      .node.release { border-color:var(--green); background:#e8f6ef; }
+      .arrow { color:var(--gold); text-align:center; font-size:1.6rem; }
+      .comparison { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+      .bad { border-top:6px solid #b44; } .good { border-top:6px solid var(--green); }
+      code { background:#ebe6d8; padding:.12em .35em; border-radius:5px; }
+      pre { white-space:pre-wrap; overflow:auto; background:#102a43; color:#f8fafc; border-radius:10px; padding:18px; }
+      .callout { border-left:7px solid var(--gold); }
+      .quiz { margin:16px 0; }
+      .quiz button { width:100%; text-align:left; margin:6px 0; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:white; cursor:pointer; color:var(--ink); }
+      .quiz button:hover { border-color:var(--green); }
+      .feedback { min-height:1.5em; font-weight:700; }
+      .correct { color:var(--green); } .incorrect { color:#a33; }
+      @media (max-width:760px) { .flow { grid-template-columns:1fr; } .arrow { transform:rotate(90deg); } .comparison { grid-template-columns:1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">PortReeve pull request #72</div>
+      <h1>One release, one identity</h1>
+      <p class="lede">Preview.3 was a preview in GitHub but looked like plain 0.1.0 after installation. This change makes the operator's requested semantic version the identity users and update systems actually observe.</p>
+      <nav aria-label="Table of contents">
+        <a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#quiz">Quiz</a>
+      </nav>
+
+      <h2 id="background">Background</h2>
+      <p>A software release has several names hiding inside it: the Git tag, executable filename, CLI <code>--version</code>, package version, Homebrew formula version, Desktop update version, and macOS bundle version. PortReeve's first previews used <code>0.1.0-preview.3</code> for the release tag but left distributed components at the checked-in development version, <code>0.1.0</code>.</p>
+      <div class="comparison">
+        <section class="card bad"><h3>Before</h3><p>GitHub knew about preview.2 and preview.3. Homebrew and Desktop saw both as the same 0.1.0 product. A newer preview therefore had no reliable upgrade identity.</p></section>
+        <section class="card good"><h3>After</h3><p>Every PortReeve release output says preview.4. The source still says 0.1.0, so ordinary development remains simple and the clean-source release gate remains meaningful.</p></section>
+      </div>
+      <div class="callout"><strong>Why not edit every package first?</strong> Release preparation requires a clean, pinned source tree. Mutating several package files as ceremony creates drift and makes it easier for one component to be forgotten. The build now derives all release identity from one approved input.</div>
+
+      <h2 id="intuition">Intuition</h2>
+      <p>Think of <code>0.1.0</code> as the source's compatibility base and <code>0.1.0-preview.4</code> as the immutable shipment label. The release engine first proves that the shipment belongs to that base, then stamps the full label into every artifact.</p>
+      <div class="flow" aria-label="Coordinated release flow">
+        <div class="node">Source base<br />0.1.0</div><div class="arrow">→</div><div class="node release">Requested release<br />0.1.0-preview.4</div><div class="arrow">→</div><div class="node">CLI · client · Desktop · Homebrew<br />preview.4</div>
+      </div>
+      <pre>semantic core: 0.1.0-preview.4 → 0.1.0
+source bases:  server 0.1.0 · client 0.1.0 · Desktop 0.1.0
+result:        build allowed
+
+requested:     0.2.0-preview.1
+source base:   0.1.0
+result:        fail before release preparation</pre>
+      <p>macOS adds one wrinkle. Apple's conventional application version remains numeric <code>0.1.0</code>. PortReeve embeds a separate <code>portreeveReleaseVersion</code> with the full prerelease and uses that for its own reporting and update comparison.</p>
+
+      <h2 id="code">Code walkthrough</h2>
+      <h3>1. A single coordination rule</h3>
+      <p><code>scripts/release-version.js</code> validates the requested semantic version, extracts its core, and checks every source package against that core. Its Bun plugin replaces only PortReeve's two version modules while immutable binaries are compiled.</p>
+      <h3>2. Artifacts inherit the release identity</h3>
+      <p><code>scripts/release-build.js</code> uses the full release version for native filenames, compiled CLI behavior, the client archive, formula, and manifest. The client is copied to a unique temporary directory before its package metadata is rewritten, then that directory is removed in a <code>finally</code> block.</p>
+      <h3>3. Desktop separates product and Apple identities</h3>
+      <p><code>scripts/package-desktop.js</code> injects the coordinated version into the main-process bundle, generated guide attestation, verification record, and packaged metadata. Electron reads that metadata at startup. Packaging still passes the numeric base to Apple's bundle field.</p>
+      <h3>4. Verification follows the manifest</h3>
+      <p>The release and MCP verifiers now compare runtime behavior to the coordinated manifest identity. They still enforce checksums, executable format, executable permission, lifecycle behavior, Desktop contents, and update compatibility.</p>
+      <div class="callout"><strong>Deliberate non-change:</strong> preview.3 remains immutable. The fix starts with the next release; it does not rewrite a public tag or its assets.</div>
+
+      <h2 id="quiz">Check your understanding</h2>
+      <div class="quiz" data-answer="1"><h3>1. What does 0.1.0 mean after this change?</h3><button>It is always the public preview identity.</button><button>It is the checked-in compatibility base from which matching previews may be built.</button><button>It is only the Homebrew formula revision.</button><p class="feedback"></p></div>
+      <div class="quiz" data-answer="2"><h3>2. Why is 0.2.0-preview.1 rejected from current sources?</h3><button>Homebrew forbids preview suffixes.</button><button>Electron cannot read prerelease versions.</button><button>Its semantic core differs from the checked-in 0.1.0 base.</button><p class="feedback"></p></div>
+      <div class="quiz" data-answer="0"><h3>3. How is the client package versioned safely?</h3><button>It is copied to temporary staging, rewritten there, packed, verified, and removed.</button><button>The source package.json is edited and then reverted.</button><button>npm infers the version from the Git tag.</button><p class="feedback"></p></div>
+      <div class="quiz" data-answer="1"><h3>4. Why does the macOS bundle still say 0.1.0?</h3><button>Desktop previews remain intentionally indistinguishable.</button><button>Apple-facing numeric metadata is separate; PortReeve metadata carries preview.4.</button><button>The Desktop updater reads the GitHub tag directly.</button><p class="feedback"></p></div>
+      <div class="quiz" data-answer="2"><h3>5. What happens to preview.3?</h3><button>Its assets are overwritten with corrected binaries.</button><button>Its Homebrew formula receives a hidden revision.</button><button>Nothing; it stays immutable and the fix applies to later releases.</button><p class="feedback"></p></div>
+    </main>
+    <script>
+      document.querySelectorAll('.quiz').forEach((quiz) => {
+        quiz.querySelectorAll('button').forEach((button, index) => button.addEventListener('click', () => {
+          const correct = index === Number(quiz.dataset.answer);
+          const feedback = quiz.querySelector('.feedback');
+          feedback.className = `feedback ${correct ? 'correct' : 'incorrect'}`;
+          feedback.textContent = correct ? 'Correct.' : 'Not quite. Revisit the background and intuition sections.';
+        }));
+      });
+    </script>
+  </body>
+</html>
