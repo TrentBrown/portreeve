@@ -221,7 +221,9 @@ describe('release publication', () => {
 
   test('does not publish terminal evidence when an adapter omits PR provenance', async () => {
     const recordPath = await finalizedRelease();
-    const adapters = fakeAdapters([]);
+    /** @type {string[]} */
+    const calls = [];
+    const adapters = fakeAdapters(calls);
     // @ts-expect-error The malformed adapter result is the refusal under test.
     adapters.homebrew.publish = async () => ({ commit: 'a'.repeat(40) });
     await expect(
@@ -231,6 +233,7 @@ describe('release publication', () => {
       ),
     ).rejects.toThrow('Homebrew pull request URL is missing');
     expect((await readReleaseRecord(recordPath)).state).toBe('publication-approved');
+    expect(calls).not.toContain('desktopUpdate:publish');
   });
 });
 

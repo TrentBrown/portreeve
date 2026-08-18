@@ -82,15 +82,32 @@ export async function publishPreparedRelease(options, adapters) {
 
   const publicationContext = { planSha256 };
   const github = await adapters.github.publish(plan, releaseRoot, publicationContext);
+  const githubReleaseUrl = requiredResult(github, 'url', 'GitHub release URL');
   const homebrew = await adapters.homebrew.publish(
     plan,
     releaseRoot,
     publicationContext,
   );
+  const homebrewPullRequestUrl = requiredResult(
+    homebrew,
+    'pullRequestUrl',
+    'Homebrew pull request URL',
+  );
+  const homebrewCommit = requiredResult(homebrew, 'commit', 'Homebrew tap commit');
   const desktopUpdate = await adapters.desktopUpdate.publish(
     plan,
     releaseRoot,
     publicationContext,
+  );
+  const desktopUpdatePullRequestUrl = requiredResult(
+    desktopUpdate,
+    'pullRequestUrl',
+    'Desktop update pull request URL',
+  );
+  const desktopUpdateCommit = requiredResult(
+    desktopUpdate,
+    'commit',
+    'Desktop update commit',
   );
   const now = options.now ?? (() => new Date());
   record = advanceReleaseRecord(
@@ -98,24 +115,12 @@ export async function publishPreparedRelease(options, adapters) {
     'published',
     {
       tag: plan.tag,
-      githubReleaseUrl: requiredResult(github, 'url', 'GitHub release URL'),
+      githubReleaseUrl,
       transport: PUBLICATION_TRANSPORT,
-      homebrewPullRequestUrl: requiredResult(
-        homebrew,
-        'pullRequestUrl',
-        'Homebrew pull request URL',
-      ),
-      homebrewCommit: requiredResult(homebrew, 'commit', 'Homebrew tap commit'),
-      desktopUpdatePullRequestUrl: requiredResult(
-        desktopUpdate,
-        'pullRequestUrl',
-        'Desktop update pull request URL',
-      ),
-      desktopUpdateCommit: requiredResult(
-        desktopUpdate,
-        'commit',
-        'Desktop update commit',
-      ),
+      homebrewPullRequestUrl,
+      homebrewCommit,
+      desktopUpdatePullRequestUrl,
+      desktopUpdateCommit,
       publishedAt: now().toISOString(),
     },
     now,
