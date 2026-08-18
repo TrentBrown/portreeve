@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PR #66 — Audited release publication</title>
+<style>
+:root{--ink:#142b36;--muted:#587078;--paper:#f7f3e8;--card:#fffdf7;--line:#c9d3cf;--sea:#0f5f4a;--sky:#dbeaf0;--sand:#eee2c5;--warn:#fff0c7;--ok:#d8efe3;--bad:#f4d8d3}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.58 system-ui,-apple-system,sans-serif}
+header{background:linear-gradient(135deg,#082f49,#0f5f4a);color:white;padding:4rem max(6vw,1.5rem) 3rem}header p{max-width:70ch;color:#e1f2ee}
+main{max-width:1120px;margin:auto;padding:2rem max(3vw,1rem) 5rem}nav{background:var(--card);border:1px solid var(--line);padding:1rem 1.25rem;border-radius:14px;margin:-2.8rem 0 2rem;position:relative}nav a{color:var(--sea);margin-right:1rem}
+h2{margin-top:3.5rem;border-bottom:2px solid var(--line);padding-bottom:.35rem}h3{margin-top:2rem}
+.card,.callout,.quiz{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:1.25rem;margin:1rem 0}
+.callout{border-left:6px solid var(--sea)}.warn{background:var(--warn);border-left-color:#ad6b00}
+.flow{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:.55rem;align-items:center;margin:1.5rem 0;overflow:auto;padding-bottom:.5rem}
+.node{min-width:110px;padding:.75rem;border-radius:12px;background:var(--sky);border:1px solid #9cb9c5;text-align:center;font-weight:700}.node.audit{background:var(--sand)}.node.final{background:var(--ok)}
+.arrow{text-align:center;color:var(--sea);font-size:1.5rem}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.before{border-top:5px solid #9b4b40}.after{border-top:5px solid var(--sea)}
+.state{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.8rem}.state div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem}
+code,pre{font-family:ui-monospace,SFMono-Regular,monospace}code{background:#e8ece8;padding:.1rem .3rem;border-radius:4px}pre{white-space:pre-wrap;background:#102a35;color:#e8f5f1;padding:1rem;border-radius:12px;overflow:auto}
+button{display:block;width:100%;text-align:left;margin:.5rem 0;padding:.75rem;border:1px solid var(--line);border-radius:9px;background:white;color:var(--ink);cursor:pointer}button:hover{border-color:var(--sea)}button.correct{background:var(--ok)}button.wrong{background:var(--bad)}
+.feedback{min-height:1.5rem;color:var(--muted);font-weight:600}.small{color:var(--muted);font-size:.92rem}
+@media(max-width:760px){.compare{grid-template-columns:1fr}.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}}
+</style>
+</head>
+<body>
+<header>
+<p class="small">PortReeve • Pull request #66 • pinned slice</p>
+<h1>Release metadata now travels through audited pull requests</h1>
+<p>This explanation covers exactly <code>95a221670e19f859ae872aab3aa895341ce2e0d0..6d304b9d9c5adeeef6927f2f5ac3919bccd3d404</code>. It explains the final slice that connects the already-reviewed GitHub PR state machine to real PortReeve publication.</p>
+</header>
+<main>
+<nav><strong>Contents:</strong> <a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#recovery">Recovery</a><a href="#quiz">Quiz</a></nav>
+
+<section id="background">
+<h2>Background</h2>
+<h3>The release is more than a downloadable file</h3>
+<p>A PortReeve preview publishes immutable executables and disk images in a GitHub Release. It also updates two mutable discovery surfaces: the Homebrew tap tells <code>brew</code> which checksummed artifacts to install, while <code>distribution/desktop-update.json</code> tells the Desktop application which preview is available.</p>
+<div class="flow">
+<div class="node">Approved candidate</div><div class="arrow">→</div>
+<div class="node">GitHub Release</div><div class="arrow">→</div>
+<div class="node audit">Homebrew metadata</div><div class="arrow">→</div>
+<div class="node audit">Desktop metadata</div>
+</div>
+<p>The old adapters updated those mutable repositories in two different ways. Homebrew cloned a repository and pushed Git directly. Desktop metadata called the GitHub contents API against <code>main</code>. Both could work, but neither left the same reviewable, policy-governed record as ordinary development.</p>
+<div class="compare">
+<div class="card before"><h3>Before</h3><ul><li>Homebrew: clone, commit, push</li><li>Desktop: contents API PUT to <code>main</code></li><li>Two credential and mutation models</li><li>Only commit SHAs in terminal evidence</li></ul></div>
+<div class="card after"><h3>After</h3><ul><li>Both: exact GitHub API branch + PR</li><li>Merge commit only when policy permits</li><li>One fine-grained token model</li><li>PR URLs and merge SHAs in evidence</li></ul></div>
+</div>
+<div class="callout"><strong>Important boundary:</strong> The release-environment approval still authorizes the exact publication plan. Generated PRs are audit and transport records; they do not silently weaken repository checks or invent a second PortReeve approval system.</div>
+</section>
+
+<section id="intuition">
+<h2>Intuition</h2>
+<p>Think of the approved publication plan as a sealed shipping manifest. The GitHub Release unloads the immutable cargo first. Each mutable repository then receives its own tamper-evident delivery note: a deterministic branch and a PR whose hidden marker names the source commit, plan digest, destination, generated commit, base commit, file paths, and file checksums.</p>
+<pre>{
+  "releaseVersion": "0.2.0-preview.1",
+  "sourceCommit": "abc…",
+  "planSha256": "def…",
+  "files": [
+    {"path": "Formula/portreeve.rb", "sha256": "123…"}
+  ]
+}</pre>
+<p>A retry does not ask “did something probably happen?” It asks “does the exact branch or PR identified by this sealed manifest exist, and do its ancestry and bytes still match?” That turns partial publication from an improvised repair into a deterministic state machine.</p>
+<div class="state">
+<div><strong>Absent</strong><br>Create exact branch, commit, and PR.</div>
+<div><strong>Open and clean</strong><br>Verify identity, then merge.</div>
+<div><strong>Open and blocked</strong><br>Leave intact; report the URL.</div>
+<div><strong>Already merged</strong><br>Verify destination and reuse.</div>
+<div><strong>Conflicting</strong><br>Fail closed; never force-push.</div>
+</div>
+</section>
+
+<section id="code">
+<h2>Code walkthrough</h2>
+<h3>1. Repository adapters become configurations</h3>
+<p><code>scripts/publication-adapters.js</code> no longer contains a Homebrew clone/push or a Desktop contents-PUT path. It reads the finalized candidate bytes and supplies the shared PR publisher with an exact repository, <code>main</code> branch, title, source commit, plan digest, and allowlisted files.</p>
+<ul><li>Homebrew may change only <code>Formula/portreeve.rb</code> and <code>Casks/portreeve-app.rb</code>.</li><li>PortReeve may change only <code>distribution/desktop-update.json</code>.</li></ul>
+
+<h3>2. Orchestration validates each result before continuing</h3>
+<div class="flow">
+<div class="node">Release URL</div><div class="arrow">→</div>
+<div class="node">Tap PR + merge SHA</div><div class="arrow">→</div>
+<div class="node">Desktop PR + merge SHA</div><div class="arrow">→</div>
+<div class="node final">Published record</div>
+</div>
+<p><code>scripts/publish-release.js</code> passes the exact plan digest into both PRs. It validates each surface's returned evidence immediately, so malformed Homebrew provenance cannot allow Desktop publication to begin. The record remains <code>publication-approved</code> until every surface has succeeded.</p>
+
+<h3>3. Terminal evidence distinguishes new transport from real history</h3>
+<p>New approvals carry <code>transport: github-pull-request-v1</code>. That discriminator makes PR URLs mandatory for new completion evidence while allowing the already-completed first preview to remain exactly as it happened.</p>
+<div class="callout warn"><strong>No invented history:</strong> a completed legacy record without PR URLs remains readable. A partially approved legacy record cannot silently resume through the new transport; the operator must prepare a new candidate.</div>
+<p>The new <code>publication-complete.json</code> uses schema version 2 and includes the release URL, tag, both PR URLs, both merge commits, plan digest, and publication time. Release-record validation also requires the summary publication object to be deeply equal to its terminal stage evidence.</p>
+
+<h3>4. Hosted authority and operator guidance match</h3>
+<p>The workflow remains globally read-only. Only the <code>release-publication</code> job declares <code>contents: write</code> and <code>pull-requests: write</code>, and only that job receives the fine-grained token. The runbook and project skill now explain automatic merge, independent-review fallback, safe retry, branch cleanup, and the absence of ordinary Git credentials.</p>
+</section>
+
+<section id="recovery">
+<h2>What recovery looks like</h2>
+<p>Suppose the GitHub Release and Homebrew PR merge successfully, but Desktop publication is interrupted. The local record remains approved rather than published. On retry:</p>
+<ol><li>The immutable GitHub Release is byte-verified and reused.</li><li>The deterministic Homebrew PR is found, its merge commit and destination bytes are verified, and no duplicate PR is created.</li><li>The Desktop PR is created or recovered and merged when policy permits.</li><li>Only then are complete terminal evidence and the completion document written.</li></ol>
+<p>If checks or an independent reviewer are required, the publisher returns an actionable error containing the exact PR URL. It does not self-approve, bypass protection, close the PR, or delete its branch.</p>
+</section>
+
+<section id="quiz">
+<h2>Quiz</h2>
+<p>Choose one answer for each question.</p>
+<div class="quiz" data-answer="1"><strong>1. What is the normal human authorization for publication?</strong>
+<button>The generated Homebrew PR approval</button><button>The release-publication environment approval of the exact plan</button><button>The Desktop metadata PR merge</button><p class="feedback"></p></div>
+<div class="quiz" data-answer="2"><strong>2. When may the publisher merge a generated PR automatically?</strong>
+<button>Whenever its branch name starts with tb-</button><button>After the GitHub Release exists, regardless of checks</button><button>Only when GitHub reports the exact PR clean and mergeable</button><p class="feedback"></p></div>
+<div class="quiz" data-answer="0"><strong>3. Why does the approval record contain a transport discriminator?</strong>
+<button>To require PR provenance for new releases without fabricating it for legacy history</button><button>To select between GitHub and GitLab dynamically</button><button>To choose preview versus stable update channels</button><p class="feedback"></p></div>
+<div class="quiz" data-answer="1"><strong>4. What happens if Homebrew succeeds and Desktop publication fails?</strong>
+<button>The release is marked published with Desktop pending</button><button>The record stays publication-approved and the exact state is reused on retry</button><button>The Homebrew merge is reverted automatically</button><p class="feedback"></p></div>
+<div class="quiz" data-answer="2"><strong>5. Which write authority is available during hosted preparation?</strong>
+<button>Contents write only</button><button>Pull requests write only</button><button>Neither; preparation remains contents-read and receives no publication secret</button><p class="feedback"></p></div>
+</section>
+</main>
+<script>
+document.querySelectorAll('.quiz').forEach(q=>{q.querySelectorAll('button').forEach((b,i)=>b.addEventListener('click',()=>{const correct=Number(q.dataset.answer);q.querySelectorAll('button').forEach((x,j)=>x.className=j===correct?'correct':j===i?'wrong':'');q.querySelector('.feedback').textContent=i===correct?'Correct — that matches the exact-plan, policy-preserving model.':'Not quite. Review the approval, recovery, and authority sections above.'}))})
+</script>
+</body>
+</html>
