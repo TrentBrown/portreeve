@@ -6,7 +6,7 @@ supplies native runners, artifact transport, environment approval, and credentia
 does not implement a second release process.
 
 No command in the preparation sections creates a public tag, GitHub Release, Homebrew
-commit, update-metadata commit, or npm publication.
+pull request, Desktop update pull request, or npm publication.
 
 ## Release state graph
 
@@ -164,17 +164,26 @@ Inspect at least:
 
 ## Publication environment and credentials
 
-Before the first real publication, configure the GitHub environment named
+For every publication, use the GitHub environment named
 `release-publication` with required human reviewers. Store
 `PORTREEVE_RELEASE_TOKEN` as an environment secret, not a preparation-job secret. It
-must have only the repository-content authority needed to:
+must be a fine-grained token scoped only to `TrentBrown/portreeve` and
+`TrentBrown/homebrew-portreeve`, with **Contents: Read and write** and **Pull requests:
+Read and write**. Those permissions allow it to:
 
 - create a release and tag in `TrentBrown/portreeve`;
-- update `distribution/desktop-update.json` on `main`;
-- clone and push `Formula/portreeve.rb` and `Casks/portreeve-app.rb` in
-  `TrentBrown/homebrew-portreeve`.
+- create one exact generated branch and merge-commit PR for
+  `distribution/desktop-update.json`;
+- create one exact generated branch and merge-commit PR for
+  `Formula/portreeve.rb` and `Casks/portreeve-app.rb`.
 
-Test repository access without publishing before beginning the first release. npm is
+Do not grant Administration permission or a branch-protection bypass. GitHub Actions
+declares `contents: write` and `pull-requests: write` only on the environment-gated
+publish job; every preparation job inherits repository-level `contents: read` and has
+no publication secret. The publisher uses the GitHub API for refs, generated commits,
+PRs, merges, and verification. It does not require ordinary Git credentials.
+
+Test repository access without publishing before beginning a release. npm is
 not in this credential or dependency graph. Configure npm Trusted Publishing later as
 an independent initiative.
 
@@ -196,8 +205,20 @@ run's prepared bytes, not to a version name in the abstract.
 
 After environment approval, `release:publish` performs every read-only remote preflight
 before recording publication approval. It then creates or verifies the exact GitHub
-release, updates the personal tap, updates channel-aware Desktop metadata, and records
-the returned identities. It never invokes a build command.
+release first. Next it creates or recovers a deterministic `tb-portreeve-release-*`
+branch and PR in the Homebrew tap, followed by the equivalent PR for Desktop metadata.
+Each PR names the release, source commit, plan digest, and exact generated-file
+checksums. The publisher uses a merge commit only after GitHub reports the PR clean and
+mergeable, verifies the destination bytes, deletes the unchanged generated branch, and
+records both PR URLs and merge commits. It never invokes a build command or writes
+directly to `main`.
+
+The environment approval of the exact plan is the normal human authorization. The two
+generated PRs are transport and audit records rather than duplicate approval prompts.
+If repository policy still requires checks or an independent reviewer, publication
+stops with the exact PR URL and leaves the PR intact. Satisfy that repository policy,
+merge the exact PR if automation cannot, and rerun the same approved record; the
+publisher verifies and reuses the merged result before continuing.
 
 ## Direct publication command
 
@@ -258,8 +279,17 @@ change.
   candidate.
 - **One remote publication succeeds and a later one fails:** the record remains
   `publication-approved`. Retry the exact record and plan. The GitHub adapter verifies
-  existing asset names, sizes, and SHA-256 values; update publication uses optimistic
-  repository-file identity.
+  existing asset names, sizes, and SHA-256 values; repository publication recovers the
+  deterministic absent, open, or merged PR and verifies exact destination bytes.
+- **A generated PR needs checks or independent review:** use the URL in the error,
+  satisfy the repository's normal policy without bypass, and retry the exact approved
+  record. Do not close, edit, retarget, or add files to the generated PR.
+- **Generated-branch cleanup failed after merge:** retry the exact record. The publisher
+  verifies the retained merge and destination bytes, then deletes the branch only if
+  its head is still the generated commit.
+- **A legacy partial approval predates PR transport:** do not assign it invented PR
+  identities. Prepare a new candidate version. Already completed first-preview records
+  remain valid historical evidence and are not rewritten.
 - **A public version is wrong:** never replace its assets. Correct the source and use a
   new preview version.
 

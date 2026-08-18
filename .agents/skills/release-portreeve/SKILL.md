@@ -82,8 +82,8 @@ Gatekeeper, or native evidence must remain a failure.
 ## Preserve the publication boundary
 
 Do not set `publish=true`, call `release:publish`, create or move a tag, create a GitHub
-Release, push the Homebrew tap, update public Desktop metadata, or publish npm unless
-the user explicitly requests those public mutations after the exact plan is available.
+Release, create or merge a Homebrew/desktop-metadata PR, or publish npm unless the user
+explicitly requests those public mutations after the exact plan is available.
 
 When publication is explicitly requested:
 
@@ -94,7 +94,13 @@ When publication is explicitly requested:
 4. Use the normal `release-publication` environment or the documented direct command.
 5. Never bypass `--confirm`, remote preflight, environment review, or immutable-version
    refusal.
-6. Keep npm deferred; npm Trusted Publishing is independent of this pipeline.
+6. Expect GitHub Release publication first, followed by deterministic merge-commit PRs
+   for the tap and Desktop update metadata. Never write directly to destination `main`.
+7. If checks or independent review block a generated PR, report its exact URL, leave it
+   unchanged, and retry the same approved record after normal repository policy is met.
+8. On retry, verify and reuse exact open or merged PR state; never force-push, retarget,
+   add unrelated files, bypass protection, or invent PR provenance for legacy evidence.
+9. Keep npm deferred; npm Trusted Publishing is independent of this pipeline.
 
 ## Report the outcome
 
@@ -106,6 +112,7 @@ Separate:
 - generated artifact names and digests;
 - preview/stable, maturity, and Desktop trust;
 - public mutations performed, or an explicit statement that none occurred;
+- generated Homebrew and Desktop PR URLs plus verified merge commits when published;
 - exact recovery or next command.
 
 Never describe a cross-compiled file as natively verified, an unsigned preview as

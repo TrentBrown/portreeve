@@ -17,6 +17,14 @@ afterEach(async () => {
 });
 
 describe('command publication adapters', () => {
+  test('contains no direct-main Git or contents-API mutation path', async () => {
+    const source = await readFile('scripts/publication-adapters.js', 'utf8');
+    expect(source).not.toContain("['repo', 'clone'");
+    expect(source).not.toContain("['git', 'push'");
+    expect(source).not.toContain("method: 'PUT'");
+    expect(source).toContain('publishRepositoryFilesViaPullRequest');
+  });
+
   test('routes Homebrew and Desktop candidate bytes through exact PR publications', async () => {
     const releaseRoot = await mkdtemp(join(tmpdir(), 'portreeve-adapters-'));
     directories.push(releaseRoot);

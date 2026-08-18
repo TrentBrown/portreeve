@@ -3,6 +3,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { sha256File } from './release-lib.js';
 
 export const RELEASE_RECORD_SCHEMA_VERSION = 1;
@@ -196,6 +197,7 @@ export function advanceReleaseRecord(record, stage, evidence, now = () => new Da
       approvedBy: evidence.approvedBy,
       approvedAt: evidence.approvedAt,
       planSha256: evidence.planSha256,
+      ...(evidence.transport === undefined ? {} : { transport: evidence.transport }),
     };
   }
   if (stage === 'published') {
@@ -474,6 +476,24 @@ export function assertReleaseRecord(record) {
   if (candidate.publication.state !== expectedPublicationState) {
     throw new Error('Release publication state does not match its completed stages.');
   }
+  const terminalEvidence = candidate.stages.at(-1)?.evidence;
+  const expectedPublication =
+    lastStage === 'published'
+      ? { state: 'published', ...terminalEvidence }
+      : lastStage === 'publication-approved'
+        ? {
+            state: 'approved',
+            approvedBy: terminalEvidence?.approvedBy,
+            approvedAt: terminalEvidence?.approvedAt,
+            planSha256: terminalEvidence?.planSha256,
+            ...(terminalEvidence?.transport === undefined
+              ? {}
+              : { transport: terminalEvidence.transport }),
+          }
+        : { state: 'unpublished' };
+  if (!isDeepStrictEqual(candidate.publication, expectedPublication)) {
+    throw new Error('Release publication evidence differs from its terminal stage.');
+  }
 }
 
 /** @param {unknown} verification @returns {asserts verification is NativeVerification} */
@@ -600,6 +620,12 @@ function assertStageEvidence(record, stage, evidence) {
     if (!SHA256.test(String(evidence.planSha256 ?? ''))) {
       throw new Error('Publication approval requires the exact plan digest.');
     }
+    if (
+      evidence.transport !== undefined &&
+      evidence.transport !== 'github-pull-request-v1'
+    ) {
+      throw new Error('Publication approval transport is unsupported.');
+    }
   }
   if (stage === 'published') {
     requiredString(evidence.githubReleaseUrl, 'GitHub Release URL');
@@ -608,6 +634,29 @@ function assertStageEvidence(record, stage, evidence) {
       if (!COMMIT.test(String(evidence[field] ?? ''))) {
         throw new Error(`Published evidence ${field} must be a full Git SHA.`);
       }
+    }
+    const approval = record.stages.find(
+      ({ name }) => name === 'publication-approved',
+    )?.evidence;
+    const transport = approval?.transport;
+    if (transport !== undefined) {
+      if (transport !== 'github-pull-request-v1' || evidence.transport !== transport) {
+        throw new Error('Published evidence transport differs from its approval.');
+      }
+      assertGitHubPullRequestUrl(
+        evidence.homebrewPullRequestUrl,
+        'Homebrew pull request URL',
+      );
+      assertGitHubPullRequestUrl(
+        evidence.desktopUpdatePullRequestUrl,
+        'Desktop update pull request URL',
+      );
+    } else if (
+      evidence.transport !== undefined ||
+      evidence.homebrewPullRequestUrl !== undefined ||
+      evidence.desktopUpdatePullRequestUrl !== undefined
+    ) {
+      throw new Error('Legacy published evidence cannot claim pull request transport.');
     }
     assertTimestamp(evidence.publishedAt, 'publication time');
   }
@@ -625,6 +674,14 @@ function stateAfter(stage) {
 function requiredString(value, label) {
   if (typeof value !== 'string' || value.trim() === '') {
     throw new Error(`${label} is required.`);
+  }
+}
+
+/** @param {unknown} value @param {string} label */
+function assertGitHubPullRequestUrl(value, label) {
+  requiredString(value, label);
+  if (!/^https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+$/u.test(String(value))) {
+    throw new Error(`${label} must be a GitHub pull request URL.`);
   }
 }
 

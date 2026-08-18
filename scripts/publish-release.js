@@ -14,6 +14,8 @@ import {
   writeReleaseRecord,
 } from './release-record.js';
 
+const PUBLICATION_TRANSPORT = 'github-pull-request-v1';
+
 /**
  * @typedef {{
  *   preflight(plan: ReturnType<typeof createPublicationPlan>, releaseRoot: string): Promise<void>,
@@ -62,12 +64,20 @@ export async function publishPreparedRelease(options, adapters) {
         approvedBy: options.approvedBy,
         approvedAt: now().toISOString(),
         planSha256,
+        transport: PUBLICATION_TRANSPORT,
       },
       now,
     );
     await writeReleaseRecord(recordPath, record);
-  } else if (record.publication.planSha256 !== planSha256) {
-    throw new Error('Recorded publication approval does not match this exact plan.');
+  } else {
+    if (record.publication.planSha256 !== planSha256) {
+      throw new Error('Recorded publication approval does not match this exact plan.');
+    }
+    if (record.publication.transport !== PUBLICATION_TRANSPORT) {
+      throw new Error(
+        'Legacy publication approval cannot be resumed through PR transport; prepare a new release candidate.',
+      );
+    }
   }
 
   const publicationContext = { planSha256 };
@@ -89,7 +99,18 @@ export async function publishPreparedRelease(options, adapters) {
     {
       tag: plan.tag,
       githubReleaseUrl: requiredResult(github, 'url', 'GitHub release URL'),
+      transport: PUBLICATION_TRANSPORT,
+      homebrewPullRequestUrl: requiredResult(
+        homebrew,
+        'pullRequestUrl',
+        'Homebrew pull request URL',
+      ),
       homebrewCommit: requiredResult(homebrew, 'commit', 'Homebrew tap commit'),
+      desktopUpdatePullRequestUrl: requiredResult(
+        desktopUpdate,
+        'pullRequestUrl',
+        'Desktop update pull request URL',
+      ),
       desktopUpdateCommit: requiredResult(
         desktopUpdate,
         'commit',
@@ -101,6 +122,22 @@ export async function publishPreparedRelease(options, adapters) {
   );
   await writeReleaseRecord(recordPath, record);
   return { recordPath, record, planSha256 };
+}
+
+/** @param {{record: Record<string, any>, planSha256: string}} result */
+export function createPublicationCompletion(result) {
+  if (
+    result.record.state !== 'published' ||
+    result.record.publication?.transport !== PUBLICATION_TRANSPORT
+  ) {
+    throw new Error('Publication completion requires a PR-published release record.');
+  }
+  return {
+    schemaVersion: 2,
+    releaseId: result.record.releaseId,
+    planSha256: result.planSha256,
+    publication: result.record.publication,
+  };
 }
 
 /** @param {Record<string, any>} record */
@@ -140,16 +177,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       );
       await writeFile(
         resolve(dirname(result.recordPath), 'publication-complete.json'),
-        JSON.stringify(
-          {
-            schemaVersion: 1,
-            releaseId: result.record.releaseId,
-            planSha256: result.planSha256,
-            publication: result.record.publication,
-          },
-          null,
-          2,
-        ).concat('\n'),
+        JSON.stringify(createPublicationCompletion(result), null, 2).concat('\n'),
         { encoding: 'utf8', flag: 'wx' },
       );
       console.log(result.recordPath);

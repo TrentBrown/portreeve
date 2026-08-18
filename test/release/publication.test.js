@@ -11,7 +11,10 @@ import {
   createNativeVerification,
   mergeNativeVerifications,
 } from '../../scripts/native-release-evidence.js';
-import { publishPreparedRelease } from '../../scripts/publish-release.js';
+import {
+  createPublicationCompletion,
+  publishPreparedRelease,
+} from '../../scripts/publish-release.js';
 import { RELEASE_TARGETS, sha256File } from '../../scripts/release-lib.js';
 import {
   advanceReleaseRecord,
@@ -96,11 +99,24 @@ describe('release publication', () => {
         state: 'published',
         tag: 'v0.1.0-preview.1',
         githubReleaseUrl: 'https://example.com/release',
+        transport: 'github-pull-request-v1',
+        homebrewPullRequestUrl: 'https://github.com/example/tap/pull/1',
         homebrewCommit: 'a'.repeat(40),
+        desktopUpdatePullRequestUrl: 'https://github.com/example/portreeve/pull/2',
         desktopUpdateCommit: 'b'.repeat(40),
       },
     });
     expect(result.planSha256).toMatch(/^[a-f0-9]{64}$/u);
+    expect(createPublicationCompletion(result)).toMatchObject({
+      schemaVersion: 2,
+      releaseId: 'portreeve-v0.1.0-preview.1',
+      planSha256: result.planSha256,
+      publication: {
+        transport: 'github-pull-request-v1',
+        homebrewPullRequestUrl: 'https://github.com/example/tap/pull/1',
+        desktopUpdatePullRequestUrl: 'https://github.com/example/portreeve/pull/2',
+      },
+    });
   });
 
   test('persists approval for safe retry after a partial adapter failure', async () => {
@@ -128,6 +144,63 @@ describe('release publication', () => {
     ).resolves.toMatchObject({ record: { state: 'published' } });
   });
 
+  test('keeps a release approved when Desktop publication fails after Homebrew', async () => {
+    const recordPath = await finalizedRelease();
+    /** @type {string[]} */
+    const calls = [];
+    const partial = fakeAdapters(calls);
+    partial.desktopUpdate.publish = async () => {
+      calls.push('desktopUpdate:publish');
+      throw new Error('simulated Desktop metadata outage');
+    };
+    await expect(
+      publishPreparedRelease(
+        { recordPath, confirm: true, approvedBy: 'Trent Brown' },
+        partial,
+      ),
+    ).rejects.toThrow('simulated Desktop metadata outage');
+    expect(await readReleaseRecord(recordPath)).toMatchObject({
+      state: 'publication-approved',
+      publication: {
+        state: 'approved',
+        transport: 'github-pull-request-v1',
+      },
+    });
+    calls.length = 0;
+    await expect(
+      publishPreparedRelease(
+        { recordPath, confirm: true, approvedBy: 'Trent Brown' },
+        fakeAdapters(calls),
+      ),
+    ).resolves.toMatchObject({ record: { state: 'published' } });
+    expect(calls).toEqual([
+      'github:preflight',
+      'homebrew:preflight',
+      'desktopUpdate:preflight',
+      'github:publish',
+      'homebrew:publish',
+      'desktopUpdate:publish',
+    ]);
+  });
+
+  test('refuses to invent PR provenance for a legacy partial approval', async () => {
+    const recordPath = await finalizedRelease();
+    let record = await readReleaseRecord(recordPath);
+    record = advanceReleaseRecord(record, 'publication-approved', {
+      approvedBy: 'Trent Brown',
+      approvedAt: '2026-08-16T21:00:00.000Z',
+      planSha256: await sha256File(join(recordPath, '..', 'publication-plan.md')),
+    });
+    await writeReleaseRecord(recordPath, record);
+    await expect(
+      publishPreparedRelease(
+        { recordPath, confirm: true, approvedBy: 'Trent Brown' },
+        fakeAdapters([]),
+      ),
+    ).rejects.toThrow('Legacy publication approval');
+    expect((await readReleaseRecord(recordPath)).state).toBe('publication-approved');
+  });
+
   test('fails before approval when any publication target rejects preflight', async () => {
     const recordPath = await finalizedRelease();
     /** @type {string[]} */
@@ -144,6 +217,20 @@ describe('release publication', () => {
       ),
     ).rejects.toThrow('tap authority unavailable');
     expect((await readReleaseRecord(recordPath)).state).toBe('prepared');
+  });
+
+  test('does not publish terminal evidence when an adapter omits PR provenance', async () => {
+    const recordPath = await finalizedRelease();
+    const adapters = fakeAdapters([]);
+    // @ts-expect-error The malformed adapter result is the refusal under test.
+    adapters.homebrew.publish = async () => ({ commit: 'a'.repeat(40) });
+    await expect(
+      publishPreparedRelease(
+        { recordPath, confirm: true, approvedBy: 'Trent Brown' },
+        adapters,
+      ),
+    ).rejects.toThrow('Homebrew pull request URL is missing');
+    expect((await readReleaseRecord(recordPath)).state).toBe('publication-approved');
   });
 });
 
@@ -165,7 +252,10 @@ function fakeAdapters(calls) {
       },
       async publish() {
         calls.push('homebrew:publish');
-        return { commit: 'a'.repeat(40) };
+        return {
+          commit: 'a'.repeat(40),
+          pullRequestUrl: 'https://github.com/example/tap/pull/1',
+        };
       },
     },
     desktopUpdate: {
@@ -174,7 +264,10 @@ function fakeAdapters(calls) {
       },
       async publish() {
         calls.push('desktopUpdate:publish');
-        return { commit: 'b'.repeat(40) };
+        return {
+          commit: 'b'.repeat(40),
+          pullRequestUrl: 'https://github.com/example/portreeve/pull/2',
+        };
       },
     },
   };
@@ -292,6 +385,8 @@ async function finalizedRelease() {
   expect(publicationPlan).toContain(
     'https://github.com/TrentBrown/portreeve/blob/main/docs/installation.md',
   );
+  expect(publicationPlan).toContain('deterministic pull requests');
+  expect(publicationPlan).toContain('independent review remains open for recovery');
   return recordPath;
 }
 

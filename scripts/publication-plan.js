@@ -93,7 +93,7 @@ ${assets}
 
 ## Approval boundary
 
-Publishing creates or verifies the exact GitHub ${plan.prerelease ? 'prerelease' : 'release'}, updates the personal Homebrew tap, and updates channel-aware Desktop metadata. It never rebuilds an artifact. The command requires explicit confirmation and binds approval to the SHA-256 of this exact plan.
+Publishing creates or verifies the exact GitHub ${plan.prerelease ? 'prerelease' : 'release'} first. It then opens or recovers deterministic pull requests for the Homebrew tap and channel-aware Desktop metadata, merges them with merge commits only when repository policy permits, and verifies the exact destination bytes. A PR that still needs checks or independent review remains open for recovery. Publication never rebuilds an artifact. The command requires explicit confirmation and binds approval to the SHA-256 of this exact plan.
 `;
 }
 
