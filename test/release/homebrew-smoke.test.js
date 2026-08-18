@@ -4,7 +4,11 @@ import { afterEach, expect, test } from 'bun:test';
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { stageHomebrewCandidate } from '../../scripts/smoke-homebrew-candidate.js';
+import {
+  HOMEBREW_SMOKE_CASK,
+  HOMEBREW_SMOKE_FORMULA,
+  stageHomebrewCandidate,
+} from '../../scripts/smoke-homebrew-candidate.js';
 import { desktopDmgName } from '../../scripts/desktop-release-lib.js';
 import {
   artifactName,
@@ -90,6 +94,11 @@ test('requires the complete formula and cask artifact set', async () => {
       stagingRoot,
     }),
   ).rejects.toThrow('exactly four native executables');
+});
+
+test('fully qualifies disposable formula and cask names', () => {
+  expect(HOMEBREW_SMOKE_FORMULA).toBe('portreeve/smoke/portreeve');
+  expect(HOMEBREW_SMOKE_CASK).toBe('portreeve/smoke/portreeve-app');
 });
 
 async function temporaryDirectory() {
