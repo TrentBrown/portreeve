@@ -101,8 +101,9 @@ test('README keeps truthful Desktop and peer-client continuation paths', async (
   ]) {
     expect(readme).toContain(command);
   }
-  expect(readme).toContain('packaged macOS download yet');
-  expect(readme).not.toContain('Download PortReeve for macOS');
+  expect(readme).toContain('Install the alpha preview');
+  expect(readme).toContain('brew install --cask trentbrown/portreeve/portreeve-app');
+  expect(readme).toContain('current public alpha preview');
   expect(readme).not.toContain('npm install portreeve');
   for (const client of ['Desktop', 'MCP', 'CLI', 'JavaScript client']) {
     expect(readme).toContain(client);

@@ -3,15 +3,37 @@
 > [!WARNING]
 >
 > **Alpha Preview** — PortReeve is evolving quickly. Breaking changes remain possible,
-> and the first macOS preview downloads will be unsigned until Apple Developer ID
-> signing and notarization are configured. No public preview has been published yet;
-> current users should build from source. See the
-> [preview installation and removal guide](docs/installation.md) before installing a
-> future preview.
+> and the current macOS preview is unsigned until Apple Developer ID signing and
+> notarization are configured. Review the
+> [installation and removal guide](docs/installation.md), including the scoped macOS
+> **Open Anyway** procedure, before installing it.
 
 <p align="center">
   <img src="apps/desktop/assets/branding/portreeve-lockup.svg" width="570" alt="PortReeve, Local Port Authority">
 </p>
+
+## Install the alpha preview
+
+The current public alpha preview is available on
+[GitHub Releases](https://github.com/TrentBrown/portreeve/releases). On macOS, install
+the graphical application with Homebrew after reviewing and narrowly trusting its cask:
+
+```sh
+brew tap TrentBrown/portreeve
+brew trust --cask trentbrown/portreeve/portreeve-app
+brew install --cask trentbrown/portreeve/portreeve-app
+```
+
+For terminal and MCP use, install the standalone CLI independently:
+
+```sh
+brew trust --formula trentbrown/portreeve/portreeve
+brew install trentbrown/portreeve/portreeve
+```
+
+Homebrew does not silently install or start the supervised service. Direct macOS DMGs,
+Linux executables, checksum verification, unsigned-app guidance, and removal procedures
+are covered in the [installation guide](docs/installation.md).
 
 <!-- product-overview:identity-problem -->
 
@@ -29,10 +51,9 @@ copy naturally reaches for the same ports.
 PortReeve replaces duplicated startup-time probing and remapping with one shared,
 inspectable source of truth.
 
-> **Want to try it?**
-> [Build and open PortReeve Desktop](#build-and-open-portreeve-desktop). Desktop is the
-> primary visual experience; CLI, MCP, and JavaScript clients remain independent
-> first-class ways to use the same authority.
+> **Want to try it?** [Install the alpha preview](#install-the-alpha-preview) and open
+> PortReeve from Applications. Desktop is the primary visual experience; CLI, MCP, and
+> JavaScript clients remain independent first-class ways to use the same authority.
 
 ![PortReeve Desktop open to Overview, showing the product header and “What is PortReeve?” introduction](docs/assets/portreeve-desktop-overview.png)
 
@@ -262,11 +283,18 @@ Sandbox orchestration or integration.
 
 PortReeve sends no telemetry and does not load project `.env` files.
 
-### Build and open PortReeve Desktop
+### Open PortReeve Desktop
 
-PortReeve has not published its first npm package, Homebrew release, GitHub Release, or
-packaged macOS download yet. Until then, build on macOS from the public source
-repository with the pinned Bun 1.3.14 toolchain:
+Install the current preview through [Homebrew](#install-the-alpha-preview) or download
+the architecture-specific DMG from the
+[GitHub Releases page](https://github.com/TrentBrown/portreeve/releases), then open
+**PortReeve** from Applications. In Desktop, open **Service** and choose **Install and
+Start PortReeve** to place the verified bundled CLI in its managed per-user location and
+configure `launchd`. Then use **Quick Start** to try one existing project or
+**Integrations** to connect a stack.
+
+To build Desktop from source instead, use the public repository and pinned Bun 1.3.14
+toolchain:
 
 ```sh
 git clone https://github.com/TrentBrown/portreeve.git
@@ -277,28 +305,29 @@ bun run build
 PORTREEVE_DESKTOP_CLI_PATH="$PWD/dist/portreeve" bun run desktop:start
 ```
 
-In Desktop, open **Service** and choose **Install and Start PortReeve** to place the
-verified executable in its managed per-user location and configure `launchd`. Then use
-**Quick Start** to try one existing project or **Integrations** to connect a stack.
-
 ### Use PortReeve without Desktop
 
-The same build provides a foreground server and the complete CLI:
+The Homebrew formula, direct macOS/Linux downloads, and source build all provide the
+same complete CLI. Run a temporary foreground server with:
 
 ```sh
-./dist/portreeve serve
+portreeve serve
 ```
 
 Or install the supervised per-user service directly:
 
 ```sh
-./dist/portreeve install
-./dist/portreeve start
-./dist/portreeve status --json
+portreeve install
+portreeve start
+portreeve status --json
 ```
 
+For a source build, substitute `./dist/portreeve`; for example,
+`./dist/portreeve status --json`.
+
 Installation does not require root. PortReeve uses `launchd` on macOS and
-`systemd --user` on Linux.
+`systemd --user` on Linux. The JavaScript client archive is retained in the release
+evidence, but npm publication remains deferred.
 
 ## Documentation
 
