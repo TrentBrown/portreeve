@@ -177,9 +177,12 @@ test('preview installation guidance is safe, scoped, and lifecycle explicit', as
   );
   expect(installation).toContain('brew trust --formula trentbrown/portreeve/portreeve');
   expect(installation).toContain('PortReeve-VERSION-macos-arm64.dmg');
+  expect(installation).toContain('ad-hoc signed');
+  expect(installation).toMatch(/carries no verified\s+developer identity/u);
   expect(installation).toContain('System Settings');
   expect(installation).toContain('Privacy & Security');
   expect(installation).toContain('Open Anyway');
+  expect(installation).not.toContain('Before the first public preview');
   expect(installation).toContain('https://support.apple.com/102445');
   expect(installation).toContain('https://docs.brew.sh/Installation');
   expect(installation).toContain('portreeve uninstall');

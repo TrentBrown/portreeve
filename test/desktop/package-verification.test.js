@@ -5,7 +5,12 @@ import {
   assertDesktopModuleGraph,
   assertDesktopPackageIdentity,
   assertPackagedDesktopContents,
+  verifyPackagedDesktopSignature,
 } from '../../scripts/desktop-package-lib.js';
+import {
+  createDesktopSignOptions,
+  isPromotedCliResource,
+} from '../../scripts/package-desktop.js';
 import { verifyDesktopRuntimeContract } from './runtime-contract.js';
 
 test('requires exact controller and artifact identity before packaging', () => {
@@ -13,6 +18,59 @@ test('requires exact controller and artifact identity before packaging', () => {
   expect(() => assertDesktopPackageIdentity('0.1.0', '0.2.0')).toThrow(
     'does not match release artifact',
   );
+});
+
+test('ad-hoc signs preview bundles without implying Developer ID trust', () => {
+  const options = createDesktopSignOptions('preview');
+  expect(options).toMatchObject({
+    identity: '-',
+    identityValidation: false,
+    continueOnError: false,
+    preAutoEntitlements: false,
+    preEmbedProvisioningProfile: false,
+  });
+  expect(options.optionsForFile()).toEqual({
+    hardenedRuntime: false,
+    timestamp: 'none',
+  });
+  expect(
+    isPromotedCliResource(
+      '/tmp/PortReeve.app/Contents/Resources/portreeve/portreeve-v0.1.0-macos-arm64',
+    ),
+  ).toBe(true);
+  expect(
+    isPromotedCliResource(
+      '/tmp/PortReeve.app/Contents/Frameworks/PortReeve Helper.app',
+    ),
+  ).toBe(false);
+  expect(() => createDesktopSignOptions('stable')).toThrow(
+    'requires configured Developer ID signing and notarization',
+  );
+});
+
+test('rejects a structurally invalid packaged application signature', async () => {
+  /** @type {[string, string[]][]} */
+  const calls = [];
+  await verifyPackagedDesktopSignature(
+    '/tmp/PortReeve.app',
+    async (executable, arguments_) => {
+      calls.push([executable, arguments_]);
+      return { stdout: '', stderr: '', exitCode: 0 };
+    },
+  );
+  expect(calls).toEqual([
+    [
+      'codesign',
+      ['--verify', '--deep', '--strict', '--verbose=4', '/tmp/PortReeve.app'],
+    ],
+  ]);
+  await expect(
+    verifyPackagedDesktopSignature('/tmp/PortReeve.app', async () => ({
+      stdout: '',
+      stderr: 'code has no resources',
+      exitCode: 1,
+    })),
+  ).rejects.toThrow('code has no resources');
 });
 
 test('requires the direct lifecycle module graph and excludes the retired CLI adapter', () => {

@@ -148,6 +148,7 @@ export function assertPackagedDesktopContents(options) {
  * @param {{applicationPath: string, controllerVersion: string, architecture: 'arm64'|'x64'}} options
  */
 export async function verifyPackagedDesktop(options) {
+  await verifyPackagedDesktopSignature(options.applicationPath);
   const resourcesRoot = resolve(options.applicationPath, 'Contents', 'Resources');
   const executableFormat = await inspectExecutable(
     resolve(options.applicationPath, 'Contents', 'MacOS', 'PortReeve'),
@@ -204,6 +205,31 @@ export async function verifyPackagedDesktop(options) {
     architecture: options.architecture,
   });
   return artifact;
+}
+
+/**
+ * Reject a bundle whose nested code or sealed resources do not match its signature.
+ * An ad-hoc preview passes this structural check but remains untrusted by Gatekeeper.
+ *
+ * @param {string} applicationPath
+ * @param {(executable: string, arguments_: string[]) => Promise<{stdout: string, stderr: string, exitCode: number}>} [run]
+ */
+export async function verifyPackagedDesktopSignature(
+  applicationPath,
+  run = runCommand,
+) {
+  const result = await run('codesign', [
+    '--verify',
+    '--deep',
+    '--strict',
+    '--verbose=4',
+    applicationPath,
+  ]);
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `Packaged Desktop bundle signature is invalid: ${result.stderr.trim() || result.stdout.trim()}`,
+    );
+  }
 }
 
 /**
@@ -312,6 +338,30 @@ function runBounded(executable, environment, timeoutMilliseconds) {
         reject(new Error('Packaged Desktop smoke exceeded its output limit.'));
         return;
       }
+      resolvePromise({ stdout, stderr, exitCode: exitCode ?? 70 });
+    });
+  });
+}
+
+/** @param {string} executable @param {string[]} arguments_ @returns {Promise<{stdout: string, stderr: string, exitCode: number}>} */
+function runCommand(executable, arguments_) {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(executable, arguments_, {
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => {
+      stdout = (stdout + chunk).slice(0, OUTPUT_LIMIT);
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr = (stderr + chunk).slice(0, OUTPUT_LIMIT);
+    });
+    child.once('error', reject);
+    child.once('close', (exitCode) => {
       resolvePromise({ stdout, stderr, exitCode: exitCode ?? 70 });
     });
   });

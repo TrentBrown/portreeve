@@ -9,6 +9,11 @@
 > configured. Product maturity (`alpha`), release channel (`preview`), and macOS trust
 > (`unsigned`) are separate facts.
 
+The preview is ad-hoc signed so macOS can verify that the assembled application bundle
+and its nested executables have not changed. An ad-hoc signature carries no verified
+developer identity and is not notarization, so Gatekeeper may still require the scoped
+**Open Anyway** procedure below.
+
 Use [GitHub Releases](https://github.com/TrentBrown/portreeve/releases) to identify the
 newest preview and verify its assets. The commands below install the currently published
 Homebrew, DMG, and direct-download artifacts.
@@ -174,7 +179,7 @@ appropriate.
 
 ## Build from source
 
-Before the first public preview, macOS users can build the current source with the
+Contributors and users testing unreleased changes can build the current source with the
 pinned Bun 1.3.14 toolchain:
 
 ```sh
