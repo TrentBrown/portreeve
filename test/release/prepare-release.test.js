@@ -37,6 +37,11 @@ describe('release preparation', () => {
     );
     expect(result.record).toMatchObject({
       releaseVersion: '0.1.0-preview.1',
+      versions: {
+        server: '0.1.0-preview.1',
+        desktop: '0.1.0-preview.1',
+        client: '0.1.0-preview.1',
+      },
       state: 'preparing',
       policy: { maturity: 'alpha', channel: 'preview', desktopTrust: 'unsigned' },
       publication: { state: 'unpublished' },
@@ -48,7 +53,7 @@ describe('release preparation', () => {
       'artifact-digests-established',
     ]);
     expect(result.record.artifacts.map(({ filename }) => filename)).toEqual([
-      'portreeve-v0.1.0-macos-arm64',
+      'portreeve-v0.1.0-preview.1-macos-arm64',
       'portreeve.rb',
       'manifest.json',
       'SHA256SUMS',
@@ -86,6 +91,30 @@ describe('release preparation', () => {
       ),
     ).rejects.toThrow('requires a clean source checkout');
     expect(built).toBe(false);
+  });
+
+  test('refuses a release whose semantic core differs from source packages', async () => {
+    const outputRoot = await temporaryDirectory();
+    await expect(
+      prepareRelease(
+        {
+          channel: 'preview',
+          version: '0.2.0-preview.1',
+          workspaceRoot: process.cwd(),
+          outputRoot,
+        },
+        {
+          sourceIdentity: async () => ({
+            repository: 'https://github.com/TrentBrown/portreeve',
+            commit: '4'.repeat(40),
+            clean: true,
+          }),
+          build: fakeBuild,
+        },
+      ),
+    ).rejects.toThrow(
+      'Release 0.2.0-preview.1 requires server source version 0.2.0; found 0.1.0.',
+    );
   });
 
   test('refuses to replace an existing release identity', async () => {
@@ -155,7 +184,7 @@ describe('release preparation', () => {
 
 /** @param {{destination: string, releaseVersion: string}} options */
 async function fakeBuild(options) {
-  const executable = 'portreeve-v0.1.0-macos-arm64';
+  const executable = `portreeve-v${options.releaseVersion}-macos-arm64`;
   await mkdir(options.destination, { recursive: true });
   await Bun.write(join(options.destination, executable), 'native bytes');
   await Bun.write(join(options.destination, 'portreeve.rb'), 'formula');

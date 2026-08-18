@@ -48,6 +48,28 @@ Preview Desktop bundles are ad-hoc signed and structurally verified before packa
 That integrity seal has no developer identity and confers no Gatekeeper trust; the
 release record therefore continues to describe preview Desktop trust as `unsigned`.
 
+## Coordinated release identity
+
+The `--version` supplied to release preparation is the installed product identity, not
+only a GitHub tag label. For `0.1.0-preview.4`, the compiled CLI, packed client, release
+record component versions, native filenames, Desktop release metadata and DMG names,
+Homebrew formula, and Homebrew cask all use `0.1.0-preview.4`. This allows Homebrew and
+Desktop update comparison to order successive previews naturally:
+
+```text
+0.1.0-preview.2 < 0.1.0-preview.3 < 0.1.0-preview.4 < 0.1.0
+```
+
+Checked-in package files retain the base development version (`0.1.0` in this example).
+The release engine validates that the requested release has the same semantic core and
+injects the coordinated identity into immutable outputs. Do not edit several package
+files as a release precondition. A request such as `0.2.0-preview.1` fails until the
+checked-in server, client, and Desktop bases have intentionally moved to `0.2.0`.
+
+On macOS, Apple bundle fields that require a numeric application version retain the
+semantic core. PortReeve's packaged metadata carries the full coordinated prerelease,
+which is what Desktop reports and uses for update comparison.
+
 ## Prerequisites
 
 All release work requires a clean checkout of the source commit to be released and the
@@ -83,6 +105,9 @@ dist/releases/0.1.0-preview.1/
   release-record.json
   publication-plan.md
 ```
+
+Preparation does not modify checked-in package versions. The requested coordinated
+version is bound into the release workspace and compiled/package outputs.
 
 On one machine it stops after establishing the build artifact digests. That is expected:
 one host cannot honestly supply all four native CLI/lifecycle fragments and both native

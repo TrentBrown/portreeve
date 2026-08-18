@@ -686,7 +686,7 @@ function assertGitHubPullRequestUrl(value, label) {
 }
 
 /** @param {string} value @param {string} label */
-function assertSemanticVersion(value, label) {
+export function assertSemanticVersion(value, label) {
   if (typeof value !== 'string') {
     throw new Error(`${label} must be a semantic version.`);
   }

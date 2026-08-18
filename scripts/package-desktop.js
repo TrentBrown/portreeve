@@ -13,9 +13,13 @@ import {
   smokePackagedDesktop,
   verifyPackagedDesktop,
 } from './desktop-package-lib.js';
+import {
+  assertCoordinatedReleaseVersion,
+  coordinatedReleaseVersionPlugin,
+} from './release-version.js';
 
 /**
- * @param {{workspaceRoot?: string, releaseDirectory?: string, outputRoot?: string, architecture?: 'arm64'|'x64', releaseChannel?: 'preview'|'stable', smoke?: boolean}} [options]
+ * @param {{workspaceRoot?: string, releaseDirectory?: string, outputRoot?: string, architecture?: 'arm64'|'x64', releaseChannel?: 'preview'|'stable', releaseVersion?: string, smoke?: boolean}} [options]
  */
 export async function packageDesktop(options = {}) {
   if (process.platform !== 'darwin') {
@@ -41,6 +45,11 @@ export async function packageDesktop(options = {}) {
   const metadata = JSON.parse(
     await readFile(resolve(desktopRoot, 'package.json'), 'utf8'),
   );
+  const releaseVersion = options.releaseVersion ?? String(metadata.version);
+  assertCoordinatedReleaseVersion(releaseVersion, {
+    server: PORTREEVE_VERSION,
+    'Desktop package': String(metadata.version),
+  });
 
   await rm(stage, { recursive: true, force: true });
   await rm(output, { recursive: true, force: true });
@@ -55,6 +64,20 @@ export async function packageDesktop(options = {}) {
   await cp(resolve(desktopRoot, 'assets'), resolve(stage, 'assets'), {
     recursive: true,
   });
+  const guideBundlePath = resolve(stage, 'renderer', 'generated', 'client-guides.js');
+  const guideBundle = await readFile(guideBundlePath, 'utf8');
+  const sourceVersionMarker = `generatedForVersion: '${PORTREEVE_VERSION}'`;
+  if (guideBundle.split(sourceVersionMarker).length !== 3) {
+    throw new Error('Desktop client guide source-version attestation is invalid.');
+  }
+  await writeFile(
+    guideBundlePath,
+    guideBundle.replaceAll(
+      sourceVersionMarker,
+      `generatedForVersion: '${releaseVersion}'`,
+    ),
+    'utf8',
+  );
 
   const build = await Bun.build({
     entrypoints: [resolve(desktopRoot, 'main', 'index.js')],
@@ -65,6 +88,7 @@ export async function packageDesktop(options = {}) {
     minify: true,
     naming: 'index.js',
     metafile: true,
+    plugins: [coordinatedReleaseVersionPlugin({ workspaceRoot, releaseVersion })],
   });
   if (!build.success) {
     throw new Error(
@@ -84,7 +108,7 @@ export async function packageDesktop(options = {}) {
     architecture,
   });
   assertDesktopPackageIdentity(PORTREEVE_VERSION, metadata.version);
-  assertDesktopPackageIdentity(PORTREEVE_VERSION, artifact.version);
+  assertDesktopPackageIdentity(releaseVersion, artifact.version);
 
   await writeFile(
     resolve(stage, 'package.json'),
@@ -97,6 +121,7 @@ export async function packageDesktop(options = {}) {
         type: 'module',
         main: 'main/index.js',
         portreeveReleaseChannel: releaseChannel,
+        portreeveReleaseVersion: releaseVersion,
       },
       null,
       2,
@@ -107,7 +132,7 @@ export async function packageDesktop(options = {}) {
     JSON.stringify(
       {
         schemaVersion: 1,
-        controllerVersion: PORTREEVE_VERSION,
+        controllerVersion: releaseVersion,
         artifactVersion: artifact.version,
         artifactSha256: artifact.sha256,
         architecture,
@@ -156,20 +181,20 @@ export async function packageDesktop(options = {}) {
   const applicationPath = resolve(packageDirectory, 'PortReeve.app');
   const packagedArtifact = await verifyPackagedDesktop({
     applicationPath,
-    controllerVersion: PORTREEVE_VERSION,
+    controllerVersion: releaseVersion,
     architecture,
   });
   if (options.smoke ?? architecture === nativeArchitecture()) {
     await smokePackagedDesktop({
       applicationPath,
-      controllerVersion: PORTREEVE_VERSION,
+      controllerVersion: releaseVersion,
       artifactVersion: packagedArtifact.version,
     });
   }
   return {
     applicationPath,
     architecture,
-    desktopVersion: metadata.version,
+    desktopVersion: releaseVersion,
     artifact: packagedArtifact,
   };
 }

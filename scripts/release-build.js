@@ -1,7 +1,17 @@
 // @ts-check
 
-import { chmod, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import {
+  chmod,
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { PORTREEVE_CLIENT_VERSION } from '../packages/client/src/version.js';
 import { PORTREEVE_VERSION } from '../src/version.js';
 import {
@@ -12,6 +22,10 @@ import {
   renderHomebrewFormula,
   sha256File,
 } from './release-lib.js';
+import {
+  assertCoordinatedReleaseVersion,
+  coordinatedReleaseVersionPlugin,
+} from './release-version.js';
 
 /**
  * @param {{
@@ -34,6 +48,9 @@ export async function buildReleaseArtifacts(options) {
       'utf8',
     ),
   );
+  const desktopMetadata = JSON.parse(
+    await readFile(resolve(workspaceRoot, 'apps', 'desktop', 'package.json'), 'utf8'),
+  );
   if (
     workspaceMetadata.version !== PORTREEVE_VERSION ||
     packageMetadata.version !== PORTREEVE_CLIENT_VERSION
@@ -46,6 +63,13 @@ export async function buildReleaseArtifacts(options) {
       )}.`,
     );
   }
+  assertCoordinatedReleaseVersion(options.releaseVersion, {
+    server: PORTREEVE_VERSION,
+    workspace: String(workspaceMetadata.version),
+    client: PORTREEVE_CLIENT_VERSION,
+    'client package': String(packageMetadata.version),
+    'Desktop package': String(desktopMetadata.version),
+  });
 
   await rm(releaseDirectory, { recursive: true, force: true });
   await mkdir(releaseDirectory, { recursive: true });
@@ -53,7 +77,7 @@ export async function buildReleaseArtifacts(options) {
   /** @type {Array<Record<string, unknown> & {filename: string, sha256: string}>} */
   const artifacts = [];
   for (const target of RELEASE_TARGETS) {
-    const filename = artifactName(PORTREEVE_VERSION, target);
+    const filename = artifactName(options.releaseVersion, target);
     const outfile = resolve(releaseDirectory, filename);
     const result = await Bun.build({
       entrypoints: [resolve(workspaceRoot, 'src', 'cli', 'main.js')],
@@ -65,6 +89,12 @@ export async function buildReleaseArtifacts(options) {
         target: /** @type {Bun.Build.CompileTarget} */ (target.bunTarget),
       },
       minify: true,
+      plugins: [
+        coordinatedReleaseVersionPlugin({
+          workspaceRoot,
+          releaseVersion: options.releaseVersion,
+        }),
+      ],
     });
     if (!result.success) {
       throw new Error(
@@ -94,14 +124,18 @@ export async function buildReleaseArtifacts(options) {
     });
   }
 
-  const packedClient = await packClient(workspaceRoot, releaseDirectory);
+  const packedClient = await packReleaseClient(
+    workspaceRoot,
+    releaseDirectory,
+    options.releaseVersion,
+  );
   artifacts.push({
     type: 'npm-package',
-    filename: packedClient,
-    package: packageMetadata.name,
-    version: PORTREEVE_CLIENT_VERSION,
-    bytes: (await stat(resolve(releaseDirectory, packedClient))).size,
-    sha256: await sha256File(resolve(releaseDirectory, packedClient)),
+    filename: packedClient.filename,
+    package: packedClient.package,
+    version: packedClient.version,
+    bytes: (await stat(resolve(releaseDirectory, packedClient.filename))).size,
+    sha256: await sha256File(resolve(releaseDirectory, packedClient.filename)),
   });
 
   const executableChecksums = Object.fromEntries(
@@ -112,8 +146,7 @@ export async function buildReleaseArtifacts(options) {
   await writeFile(
     resolve(releaseDirectory, 'portreeve.rb'),
     renderHomebrewFormula({
-      version: PORTREEVE_VERSION,
-      releaseVersion: options.releaseVersion,
+      version: options.releaseVersion,
       releaseBaseUrl: options.releaseBaseUrl,
       homepageUrl: options.homepageUrl,
       checksums: executableChecksums,
@@ -135,8 +168,8 @@ export async function buildReleaseArtifacts(options) {
   const manifest = {
     schemaVersion: 1,
     releaseVersion: options.releaseVersion,
-    softwareVersion: PORTREEVE_VERSION,
-    clientVersion: PORTREEVE_CLIENT_VERSION,
+    softwareVersion: options.releaseVersion,
+    clientVersion: options.releaseVersion,
     protocolVersion: 1,
     generatedAt: new Date().toISOString(),
     artifacts,
@@ -152,31 +185,53 @@ export async function buildReleaseArtifacts(options) {
   return { releaseDirectory, manifest };
 }
 
-/** @param {string} workspaceRoot @param {string} destination */
-async function packClient(workspaceRoot, destination) {
-  const child = Bun.spawn(
-    [
-      'npm',
-      'pack',
-      resolve(workspaceRoot, 'packages', 'client'),
-      '--json',
-      '--pack-destination',
-      destination,
-    ],
-    { stdout: 'pipe', stderr: 'pipe' },
-  );
-  const [code, output, error] = await Promise.all([
-    child.exited,
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-  ]);
-  if (code !== 0) {
-    throw new Error(`npm pack failed (${code}): ${error.trim()}`);
+/** @param {string} workspaceRoot @param {string} destination @param {string} releaseVersion */
+export async function packReleaseClient(workspaceRoot, destination, releaseVersion) {
+  const stagingRoot = await mkdtemp(join(tmpdir(), 'portreeve-client-release-'));
+  const packageRoot = resolve(stagingRoot, 'package');
+  try {
+    await cp(resolve(workspaceRoot, 'packages', 'client'), packageRoot, {
+      recursive: true,
+    });
+    const metadataPath = resolve(packageRoot, 'package.json');
+    const metadata = JSON.parse(await readFile(metadataPath, 'utf8'));
+    metadata.version = releaseVersion;
+    await writeFile(
+      metadataPath,
+      JSON.stringify(metadata, null, 2).concat('\n'),
+      'utf8',
+    );
+    await writeFile(
+      resolve(packageRoot, 'src', 'version.js'),
+      `// Generated for an immutable PortReeve release package.\n\nexport const PORTREEVE_CLIENT_VERSION = ${JSON.stringify(releaseVersion)};\n`,
+      'utf8',
+    );
+    const child = Bun.spawn(
+      ['npm', 'pack', packageRoot, '--json', '--pack-destination', destination],
+      { stdout: 'pipe', stderr: 'pipe' },
+    );
+    const [code, output, error] = await Promise.all([
+      child.exited,
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+    ]);
+    if (code !== 0) {
+      throw new Error(`npm pack failed (${code}): ${error.trim()}`);
+    }
+    const result = JSON.parse(output)?.[0];
+    if (
+      typeof result?.filename !== 'string' ||
+      result.version !== releaseVersion ||
+      typeof result.name !== 'string'
+    ) {
+      throw new Error(`npm pack returned an invalid release identity: ${output}`);
+    }
+    return {
+      filename: result.filename,
+      package: result.name,
+      version: result.version,
+    };
+  } finally {
+    await rm(stagingRoot, { recursive: true, force: true });
   }
-  const result = JSON.parse(output);
-  const filename = result?.[0]?.filename;
-  if (typeof filename !== 'string') {
-    throw new Error(`npm pack returned an invalid result: ${output}`);
-  }
-  return filename;
 }
