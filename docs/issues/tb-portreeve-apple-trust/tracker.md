@@ -12,10 +12,10 @@
 | R1 | Public-channel trust policy | PASS | #74 | P1 contract and tests complete; P6-P8 must preserve it |
 | R2 | Schema lifecycle and compatibility | PASS | #74 | P1 schema-v2 lifecycle and read-only v1 dispatch complete |
 | R3 | CLI byte and bundle authority | NOT YET | #74, #75, #76 | Signed transformation and metadata authority are enforced; live protected byte proof remains P8 |
-| R4 | Protected production and credential custody | NOT YET | #74, #75, #76, #77 | Preview.6 proved accepted notarization and exact recovery continuity; the Gatekeeper parser correction must land before complete protected execution |
-| R5 | Native Apple verification | NOT YET | #75, #76 | Preview.6 reached real ARM64 Gatekeeper acceptance but parser compatibility stopped the matrix before current ARM64/Intel documents were emitted |
+| R4 | Protected production and credential custody | NOT YET | #74, #75, #76, #77, #78 | Preview.7 again proved accepted notarization and exact recovery continuity; optional Gatekeeper display metadata must be handled before complete protected execution |
+| R5 | Native Apple verification | NOT YET | #75, #76, #78 | Preview.7 reached real ARM64 Gatekeeper acceptance without an `origin` display line, but parser compatibility stopped the matrix before current ARM64/Intel documents were emitted |
 | R6 | Finalization and publication separation | PASS | #76 | Final metadata consumes aggregated trust, seals the plan digest, and keeps trust/publication authority disjoint |
-| R7 | Failure, recovery, and immutability | NOT YET | #74, #75, #76, #77 | Preview.6 preserved exact request-bound bytes and sanitized history; a complete protected rerun after the Gatekeeper parser correction remains required |
+| R7 | Failure, recovery, and immutability | NOT YET | #74, #75, #76, #77, #78 | Preview.7 preserved exact request-bound bytes and sanitized history; a complete protected rerun after the optional-origin correction remains required |
 | R8 | Protected nonpublishing rehearsal | NOT YET | - | Planned for P8 / I-8 |
 
 ## PR Log
@@ -112,16 +112,37 @@ Append PR boundary entries here.
 - **Public state:** unchanged; `.6` has no tag or release, and publication was
   skipped.
 
+## Protected rehearsal attempt - `0.1.0-preview.7`
+
+- **Run:** [33272715923](https://github.com/TrentBrown/portreeve/actions/runs/33272715923)
+- **Source:** reviewed `main` commit
+  `de43dae24f2629748b1c1a3376c478e183e0ec33`
+- **Outcome:** preparation, four native CLI jobs, qualification, and protected
+  approval passed. Apple accepted request
+  `2e9f8382-58d1-4d8e-a2d6-5ad32d6ce4aa` for the exact ARM64 candidate.
+  Gatekeeper returned exit zero, a path-prefixed accepted status, and the
+  notarized Developer ID source, but omitted the optional `origin=` display
+  line; the parser rejected that otherwise valid assessment.
+- **Recovery:** artifact `trusted-recovery-0.1.0-preview.7-1` preserves the
+  request-bound DMG at SHA-256
+  `02e11e0bec065bff8dc9d546cbf44316b29b784dc7793f5d121d5debd6890a3b`
+  plus sanitized request history.
+- **Identity:** `.7` is retained failed-attempt evidence and will not be reused;
+  the next complete protected attempt must use `.8` after the correction lands.
+- **Public state:** unchanged; `.7` has no tag or release, and PortReeve,
+  Homebrew, formula, cask, and Desktop-update authorities match the baseline.
+
 ## Active Slice
 
-### Slice 8 - Corrected live acceptance and feature closeout
+### Slice 9 - Gatekeeper optional origin correction
 
-- **Branch:** `tb-portreeve-apple-trust-08-live-acceptance`
-- **Plan steps:** P8
-- **Issues:** I-8
-- **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7, R8
-- **Status:** GateReeve `IMPLEMENTING`; preview `.7` will run from reviewed
-  `main` commit `de43dae24f2629748b1c1a3376c478e183e0ec33` with
-  `trust=true` and `publish=false`. Separate architecture-specific DMGs,
-  main-only trust approval, strict Developer ID facts, and zero publication
-  authority remain mandatory.
+- **Branch:** `tb-portreeve-apple-trust-09-gatekeeper-origin`
+- **Plan steps:** P2, P5, P8
+- **Issues:** I-11
+- **Rubric in scope:** R4, R5, R7, R8
+- **Status:** GateReeve `IMPLEMENTING`; change
+  `chg-gatekeeper-optional-origin-display` is validated against live preview
+  `.7` evidence and the complete test suite. Slice 8 was abandoned after the
+  failed acceptance attempt. The correction keeps independent exact codesign
+  identity and Team ID facts, rejects every present wrong Gatekeeper origin,
+  and adds no publication authority.

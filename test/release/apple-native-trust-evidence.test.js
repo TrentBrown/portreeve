@@ -60,6 +60,17 @@ describe('Apple native trust evidence', () => {
     expect(() => assertAppleNativeTrustEvidence(forgedIdentity)).toThrow(
       'identity checks',
     );
+    const omittedGatekeeperOrigin = /** @type {Record<string, any>} */ (
+      structuredClone(valid)
+    );
+    delete omittedGatekeeperOrigin.dmg.gatekeeper.origin;
+    expect(() => assertAppleNativeTrustEvidence(omittedGatekeeperOrigin)).not.toThrow();
+    const forgedGatekeeperOrigin = structuredClone(valid);
+    forgedGatekeeperOrigin.dmg.gatekeeper.origin =
+      'Developer ID Application: Somebody Else (AAAAAAAAAA)';
+    expect(() => assertAppleNativeTrustEvidence(forgedGatekeeperOrigin)).toThrow(
+      'identity checks',
+    );
     const missingRuntime = structuredClone(valid);
     missingRuntime.application.codesign.hardenedRuntime = false;
     expect(() => assertAppleNativeTrustEvidence(missingRuntime)).toThrow(

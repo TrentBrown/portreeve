@@ -148,3 +148,20 @@ of the real `<assessed path>: accepted` status line. Preserve every existing
 exit-status, source, and exact-origin requirement; add positive real-shape and
 negative rejected-shape coverage; land the correction on `main` before the
 next protected attempt.
+
+## I-11 - Accept omitted Gatekeeper origin display metadata
+
+- **Status:** in-progress
+- **Estimate:** 0.5d
+- **Plan steps:** P2, P5, P8
+- **Rubric criteria:** R4, R5, R7, R8
+- **Depends on:** I-10
+- **PR:** -
+
+Correct the second live Gatekeeper compatibility defect observed in hosted run
+`33272715923`: Apple accepted the exact request-bound DMG and `spctl` returned
+exit zero, a path-prefixed `accepted` line, and
+`source=Notarized Developer ID`, but omitted the optional `origin=` display
+line. Permit that field to be absent while rejecting any present wrong origin;
+retain exact Developer ID and Team ID authority through the independently
+required `codesign` facts.

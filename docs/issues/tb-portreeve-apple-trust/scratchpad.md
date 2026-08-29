@@ -87,3 +87,26 @@ Treat either a bare 'accepted' status line or spctl's real '<assessed path>: acc
 
 **Alternatives considered:**
 Strip the path before parsing - rejected because the parser should validate the complete command result contract in one place. Accept any occurrence of the word accepted - rejected because unrelated diagnostic text could create a false positive. Replace Gatekeeper with notarization status alone - rejected because the approved design requires both independent facts.
+
+## [6] Treat Gatekeeper origin as optional display metadata
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Protected producer and both native Apple trust evidence collectors
+
+Require Gatekeeper exit zero, an exact accepted status line, and
+`source=Notarized Developer ID`. If `spctl` emits `origin=`, require the exact
+PortReeve Developer ID identity; if it omits that display field, retain the
+successful assessment without inventing an origin. Exact Developer ID identity,
+Team ID, hardened runtime, and secure timestamp remain independently mandatory
+through `codesign` facts for every CLI, application, and DMG.
+
+**Triggered by:** Live preview.7 run 33272715923 returned a valid accepted primary-signature assessment without an `origin=` line
+
+**Alternatives considered:**
+
+- Continue requiring `origin=` - rejected because live `spctl` can omit it from an accepted notarized assessment.
+- Synthesize the expected origin when absent - rejected because evidence must not invent command output.
+- Drop exact identity verification - rejected because the approved design requires independent Developer ID and Team ID authority.

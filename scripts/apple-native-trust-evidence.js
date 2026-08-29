@@ -229,7 +229,8 @@ export function assertAppleNativeTrustEvidence(value) {
       subject.codesign?.secureTimestamp !== true ||
       subject.gatekeeper?.accepted !== true ||
       subject.gatekeeper?.source !== 'Notarized Developer ID' ||
-      subject.gatekeeper?.origin !== APPLE_SIGNING_IDENTITY
+      (subject.gatekeeper?.origin !== undefined &&
+        subject.gatekeeper.origin !== APPLE_SIGNING_IDENTITY)
     ) {
       throw new Error('Apple native trust identity checks are incomplete.');
     }
