@@ -227,10 +227,14 @@ Append PR boundary entries here.
 - **Plan steps:** P5, P7, P8
 - **Issues:** I-13
 - **Rubric in scope:** R4, R5, R7, R8
-- **Status:** GateReeve `PLANNED`. Preview.9 is preserved failed acceptance
-  evidence, spec change `chg-cli-gatekeeper-surface-alignment` is validated,
-  and implementation authority is current. Start this intermediate correction
-  from clean `origin/main`, land it before a preview.10 rehearsal, and keep
-  publication disabled. Additional physical-machine or cross-architecture
-  installation remains optional. No `development*` branch was merged or
-  rebased.
+- **Status:** GateReeve `IMPLEMENTING`. The collector no longer applies app
+  policy to a bare CLI; it creates an exact quarantined copy, verifies the
+  quarantine attribute and versioned execution, requires that check in native
+  evidence, and retains DMG/app Gatekeeper checks. Pinned Bun 1.3.14 focused
+  tests pass 4/4 and the full repository passes 581 tests with 3,040
+  assertions. The corrected collector also completed against exact preview.9
+  ARM64 producer bytes when the separately hosted-proven native lifecycle
+  callback was isolated from this machine's launchd timeout. Land this
+  intermediate correction before preview.10; publication remains disabled.
+  Additional physical-machine or cross-architecture installation remains
+  optional. No `development*` branch was merged or rebased.

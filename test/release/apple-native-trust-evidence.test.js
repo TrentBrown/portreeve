@@ -1,9 +1,13 @@
 // @ts-check
 
 import { describe, expect, test } from 'bun:test';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   aggregateAppleNativeTrustEvidence,
   assertAppleNativeTrustEvidence,
+  verifyQuarantinedNativeCli,
 } from '../../scripts/apple-native-trust-evidence.js';
 import {
   APPLE_SIGNING_IDENTITY,
@@ -60,6 +64,14 @@ describe('Apple native trust evidence', () => {
     expect(() => assertAppleNativeTrustEvidence(forgedIdentity)).toThrow(
       'identity checks',
     );
+    expect(valid.cli.gatekeeper).toBeUndefined();
+    const missingQuarantineSmoke = /** @type {Record<string, any>} */ (
+      structuredClone(valid)
+    );
+    delete missingQuarantineSmoke.checks.quarantinedCliSmoke;
+    expect(() => assertAppleNativeTrustEvidence(missingQuarantineSmoke)).toThrow(
+      'quarantinedCliSmoke',
+    );
     const omittedGatekeeperOrigin = /** @type {Record<string, any>} */ (
       structuredClone(valid)
     );
@@ -96,6 +108,69 @@ describe('Apple native trust evidence', () => {
         nativeEvidence(record, producer, 'x64'),
       ]),
     ).toThrow('stale');
+  });
+
+  test('executes an exact quarantined CLI probe without app-policy assessment', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'portreeve-quarantine-test-'));
+    const cliPath = join(root, 'portreeve-v0.1.0-preview.10-macos-arm64');
+    await writeFile(cliPath, 'fixture');
+    /** @type {string[][]} */
+    const commands = [];
+    try {
+      await verifyQuarantinedNativeCli({
+        cliPath,
+        releaseVersion: '0.1.0-preview.10',
+        run: async (command, args) => {
+          commands.push([command, ...args]);
+          if (command === 'xattr' && args[0] === '-p') {
+            return {
+              exitCode: 0,
+              stdout: '0081;00000000;PortReeve;00000000-0000-0000-0000-000000000000\n',
+              stderr: '',
+            };
+          }
+          if (command === 'xattr') {
+            return { exitCode: 0, stdout: '', stderr: '' };
+          }
+          return { exitCode: 0, stdout: '0.1.0-preview.10\n', stderr: '' };
+        },
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+    expect(commands.some(([command]) => command === 'spctl')).toBe(false);
+    expect(commands.filter(([command]) => command === 'xattr')).toHaveLength(2);
+    expect(commands.at(-1)?.at(-1)).toBe('--version');
+  });
+
+  test('rejects a quarantined CLI probe with the wrong release identity', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'portreeve-quarantine-test-'));
+    const cliPath = join(root, 'portreeve-v0.1.0-preview.10-macos-arm64');
+    await writeFile(cliPath, 'fixture');
+    try {
+      await expect(
+        verifyQuarantinedNativeCli({
+          cliPath,
+          releaseVersion: '0.1.0-preview.10',
+          run: async (command, args) => {
+            if (command === 'xattr' && args[0] === '-p') {
+              return {
+                exitCode: 0,
+                stdout:
+                  '0081;00000000;PortReeve;00000000-0000-0000-0000-000000000000\n',
+                stderr: '',
+              };
+            }
+            if (command === 'xattr') {
+              return { exitCode: 0, stdout: '', stderr: '' };
+            }
+            return { exitCode: 0, stdout: '0.1.0-preview.9\n', stderr: '' };
+          },
+        }),
+      ).rejects.toThrow('unexpected release version');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });
 
@@ -228,7 +303,6 @@ function nativeEvidence(record, producer, architecture) {
       filename: transformation.filename,
       ...transformation.signed,
       codesign: codesign(),
-      gatekeeper: gatekeeper(),
     },
     application: {
       filename: 'PortReeve.app',
@@ -249,6 +323,7 @@ function nativeEvidence(record, producer, architecture) {
       deepStrictSignature: true,
       embeddedCliEqual: true,
       nativeCliSmoke: true,
+      quarantinedCliSmoke: true,
       applicationSmoke: true,
       lifecycleSmoke: true,
     },
