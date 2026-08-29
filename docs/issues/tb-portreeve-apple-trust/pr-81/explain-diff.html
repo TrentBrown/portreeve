@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PR #81 · Apple CLI trust-surface alignment</title>
+  <style>
+    :root { color-scheme: light dark; --ink:#17212b; --paper:#f7f4ed; --card:#fffdf8; --accent:#8d3f24; --blue:#1f5a78; --line:#d8d0c2; --good:#23653b; }
+    * { box-sizing:border-box; }
+    body { margin:0; font:17px/1.62 ui-serif, Georgia, serif; color:var(--ink); background:var(--paper); }
+    main { width:min(980px, calc(100% - 32px)); margin:auto; padding:48px 0 80px; }
+    header, section { margin-bottom:52px; }
+    h1 { font-size:clamp(2rem, 6vw, 4.7rem); line-height:1.02; margin:.15em 0; letter-spacing:-.04em; }
+    h2 { margin-top:0; font-size:2rem; border-bottom:1px solid var(--line); padding-bottom:.25em; }
+    h3 { color:var(--blue); }
+    .eyebrow { text-transform:uppercase; letter-spacing:.12em; color:var(--accent); font:700 .78rem ui-sans-serif, system-ui; }
+    .lede { font-size:1.24rem; max-width:760px; }
+    nav, .callout, .diagram, .quiz { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px 24px; box-shadow:0 8px 24px #3322110d; }
+    nav a { margin-right:1em; color:var(--blue); }
+    code, pre { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; }
+    code { background:#7f6f5520; padding:.08em .28em; border-radius:4px; }
+    pre { white-space:pre-wrap; overflow:auto; background:#19232d; color:#f6f1e7; border-radius:10px; padding:18px; }
+    .flow { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; align-items:stretch; }
+    .node { display:grid; place-items:center; min-height:92px; text-align:center; border:2px solid var(--blue); border-radius:10px; padding:10px; background:#edf6f8; }
+    .node.changed { border-color:var(--accent); background:#fff0e9; }
+    .arrow { text-align:center; font:700 1.4rem ui-sans-serif,system-ui; color:var(--accent); display:none; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .good { color:var(--good); font-weight:700; }
+    button { display:block; width:100%; text-align:left; margin:8px 0; padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:inherit; cursor:pointer; }
+    button:hover { border-color:var(--blue); }
+    .feedback { min-height:1.6em; font-weight:700; }
+    @media (max-width:760px) { .flow,.two { grid-template-columns:1fr; } main { padding-top:24px; } }
+    @media (prefers-color-scheme:dark) { :root { --ink:#eee8dc; --paper:#111820; --card:#19232d; --line:#394550; } .node { background:#173544; } .node.changed { background:#4a291f; } }
+  </style>
+</head>
+<body><main>
+  <header>
+    <div class="eyebrow">PortReeve · PR #81 · pinned source 8957c03</div>
+    <h1>Trust the CLI as a CLI</h1>
+    <p class="lede">This correction removes one false question from Apple evidence—“does Gatekeeper consider this bare executable an app?”—and replaces it with a direct, fail-closed test of the thing users actually receive: the exact signed CLI, quarantined and executed at the exact release version.</p>
+  </header>
+  <nav aria-label="Table of contents">
+    <a href="#background">Background</a><a href="#intuition">Intuition</a><a href="#code">Code</a><a href="#quiz">Quiz</a>
+  </nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <h3>The beginner's map</h3>
+    <p>A macOS release has several nested delivery surfaces. PortReeve ships a standalone command-line executable and separate ARM64 and Intel DMGs. Each DMG contains an application, and that application embeds the same architecture's CLI under <code>Contents/Helpers</code>.</p>
+    <div class="diagram flow" aria-label="Release trust surfaces">
+      <div class="node">Protected producer<br><small>signs exact bytes</small></div>
+      <div class="node changed">Standalone CLI<br><small>codesign + quarantine run</small></div>
+      <div class="node">Mounted app<br><small>codesign + Gatekeeper</small></div>
+      <div class="node">DMG<br><small>notary + staple + Gatekeeper</small></div>
+      <div class="node">Immutable evidence<br><small>one per architecture</small></div>
+    </div>
+    <p>Apple's tools answer different questions. <code>codesign</code> reports who signed code, the Team ID, hardened runtime, and timestamp. <code>notarytool</code> and <code>stapler</code> establish Apple's notarization decision and attach it to the DMG. <code>spctl</code> applies Gatekeeper policy to application-like delivery surfaces.</p>
+    <div class="callout"><strong>The observed defect.</strong> Preview.9's exact signed CLI was valid code, but <code>spctl --type execute</code> rejected it because it “does not seem to be an app.” Both DMGs passed Gatekeeper; the mounted app passed; its embedded helper matched the standalone CLI byte-for-byte; and a quarantined CLI copy ran successfully.</div>
+    <h3>The narrow contract</h3>
+    <p>GateReeve already assesses its app and DMG with Gatekeeper, not a bare CLI. The approved PortReeve amendment adopts that same boundary without changing PortReeve's separate-DMG topology. Historical preview.9 evidence remains immutable; preview.10 must prove the corrected contract from reviewed <code>main</code>.</p>
+  </section>
+
+  <section id="intuition">
+    <h2>Intuition</h2>
+    <div class="two">
+      <div class="callout"><h3>Before</h3><p>The collector asked an application-policy tool to accept three things: CLI, app, and DMG. The CLI failed because it was the wrong category, even though its signature and behavior were valid.</p></div>
+      <div class="callout"><h3>After</h3><p>The collector asks each tool a question it can answer truthfully: codesign for every surface, Gatekeeper for app and DMG, and quarantine-plus-execution for the standalone CLI.</p></div>
+    </div>
+    <h3>A toy example</h3>
+    <pre>releaseVersion = "0.1.0-preview.10"
+signedCli.sha256 = "abc123…"
+
+1. Copy those exact bytes to a private temporary directory.
+2. Write com.apple.quarantine to the copy.
+3. Read the attribute back and require the exact value.
+4. Execute the copy with --version.
+5. Require exactly "0.1.0-preview.10".
+6. Remove the temporary directory, success or failure.</pre>
+    <p>This does not weaken trust. It removes an invalid classification check while retaining identity, timestamp, runtime, byte equality, native lifecycle, and create-once evidence. The new check also fails on a missing attribute, failed execution, wrong version, or timeout.</p>
+  </section>
+
+  <section id="code">
+    <h2>Code walkthrough</h2>
+    <h3>1. Collect evidence by surface</h3>
+    <p><code>collectAppleNativeTrustEvidence</code> no longer calls <code>inspectGatekeeper</code> on <code>cliPath</code>. It still inspects CLI codesign, DMG codesign/Gatekeeper/staple, native lifecycle behavior, the mounted application's exact helper and seal, app codesign/Gatekeeper, and app smoke. The quarantine probe runs before evidence construction.</p>
+    <h3>2. Make schema assertions precise</h3>
+    <p>The assertion loop still requires the expected Developer ID, Team ID, and secure timestamp for CLI, app, and DMG. A separate loop requires accepted Notarized Developer ID Gatekeeper facts only for app and DMG. <code>quarantinedCliSmoke</code> joins the required immutable check list.</p>
+    <h3>3. Probe an exact quarantined copy</h3>
+    <p><code>verifyQuarantinedNativeCli</code> creates a private temporary directory, copies the already identity-checked CLI, restores executable mode, round-trips one deterministic quarantine value, runs <code>--version</code>, and cleans up in <code>finally</code>. External commands use the existing bounded runner.</p>
+    <h3>4. Test the category boundary</h3>
+    <p>The tests explicitly assert that no <code>spctl</code> command occurs, exactly two <code>xattr</code> calls occur, and the final command asks the probe for its version. A second test demonstrates fail-closed behavior when preview.9 bytes claim to be preview.10.</p>
+    <div class="callout"><strong>Deliberately unchanged:</strong> two architecture-specific DMGs, exact embedded-helper equality, native ARM64 and Intel evidence, main-only protected signing, separate publication approval, and optional physical-machine installation.</div>
+  </section>
+
+  <section id="quiz">
+    <h2>Quiz</h2>
+    <div class="quiz" data-answer="1"><h3>1. Why was preview.9 rejected?</h3><button>Its Developer ID signature was invalid.</button><button>Gatekeeper was asked to classify a bare CLI as an app.</button><button>Its DMG was not notarized.</button><p class="feedback"></p></div>
+    <div class="quiz" data-answer="2"><h3>2. Which surfaces still require Gatekeeper?</h3><button>Only the standalone CLI.</button><button>The CLI and Homebrew formula.</button><button>The mounted app and notarized DMG.</button><p class="feedback"></p></div>
+    <div class="quiz" data-answer="0"><h3>3. What makes the quarantine probe fail closed?</h3><button>It requires the exact attribute and exact release version, with bounded commands.</button><button>It accepts any executable that returns zero.</button><button>It treats a missing attribute as platform variance.</button><p class="feedback"></p></div>
+    <div class="quiz" data-answer="2"><h3>4. What does this PR change about installer topology?</h3><button>It creates one universal DMG.</button><button>It removes the Intel DMG.</button><button>Nothing; ARM64 and x64 DMGs remain separate.</button><p class="feedback"></p></div>
+    <div class="quiz" data-answer="1"><h3>5. What remains before feature completion?</h3><button>Publishing preview.9.</button><button>A fresh preview.10 nonpublishing run from reviewed main with both native evidence documents.</button><button>A mandatory second physical Mac installation.</button><p class="feedback"></p></div>
+  </section>
+  <footer><p class="eyebrow">Pinned diff bfa64a9…8957c03 · publication disabled</p></footer>
+</main>
+<script>
+  document.querySelectorAll('.quiz').forEach((quiz) => {
+    quiz.querySelectorAll('button').forEach((button, index) => {
+      button.addEventListener('click', () => {
+        const correct = index === Number(quiz.dataset.answer);
+        quiz.querySelector('.feedback').textContent = correct
+          ? 'Correct — that preserves truthful evidence at each delivery surface.'
+          : 'Not quite. Revisit the trust-surface distinction above.';
+        quiz.querySelector('.feedback').className = 'feedback ' + (correct ? 'good' : '');
+      });
+    });
+  });
+</script>
+</body>
+</html>

@@ -186,12 +186,12 @@ activation or Apple submission.
 
 ## I-13 - Align CLI trust evidence with GateReeve delivery surfaces
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 0.5d
 - **Plan steps:** P5, P7, P8
 - **Rubric criteria:** R4, R5, R7, R8
 - **Depends on:** I-12
-- **PR:** -
+- **PR:** [#81](https://github.com/TrentBrown/portreeve/pull/81)
 
 Correct the approved trust-surface assumption exposed by hosted run
 `33279682396`: both independent native runners rejected `spctl --type execute`

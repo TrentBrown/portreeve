@@ -101,6 +101,16 @@ Append PR boundary entries here.
   `1337a4a953e760c29ebc4d6ec283b00629d93101`; merged as
   `bfa64a9d930154ce0509c67b23a81ee1aa601221`.
 
+### PR #81 - CLI trust-surface alignment
+
+- **Slice:** `slice-13-cli-trust-surface`
+- **Plan steps:** P5, P7, P8
+- **Issues:** I-13
+- **Rubric in scope:** R4, R5, R7, R8
+- **Boundary packet:** [`pr-81/`](pr-81/)
+- **Status:** Evaluated source
+  `8957c037b6a8e0c71e3e8ef34108bd0cfc93b548`; formal boundary in progress.
+
 ## Protected rehearsal attempt - `0.1.0-preview.5`
 
 - **Run:** [33267482516](https://github.com/TrentBrown/portreeve/actions/runs/33267482516)
@@ -227,7 +237,8 @@ Append PR boundary entries here.
 - **Plan steps:** P5, P7, P8
 - **Issues:** I-13
 - **Rubric in scope:** R4, R5, R7, R8
-- **Status:** GateReeve `IMPLEMENTING`. The collector no longer applies app
+- **Status:** GateReeve `PR_BOUNDARY`; draft PR
+  [#81](https://github.com/TrentBrown/portreeve/pull/81). The collector no longer applies app
   policy to a bare CLI; it creates an exact quarantined copy, verifies the
   quarantine attribute and versioned execution, requires that check in native
   evidence, and retains DMG/app Gatekeeper checks. Pinned Bun 1.3.14 focused

@@ -138,7 +138,7 @@ bytes.
 
 ## [8] Assess Gatekeeper only on app and DMG delivery surfaces
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
