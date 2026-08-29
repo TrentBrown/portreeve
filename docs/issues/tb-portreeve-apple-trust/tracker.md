@@ -61,7 +61,8 @@ Append PR boundary entries here.
 - **Rubric in scope:** R4, R7, R8
 - **Boundary packet:** [`pr-77/`](pr-77/)
 - **Status:** In review at evaluated source
-  `32bdaaa12acdf6efb8a9a1d8baf41039598135ce`.
+  `048bee8901d13780a47ef19237c1bdf06ab4e3ed` after remediation of the
+  pre-staple recovery-byte finding.
 
 ## Protected rehearsal attempt - `0.1.0-preview.5`
 
@@ -88,7 +89,8 @@ Append PR boundary entries here.
 - **Rubric in scope:** R4, R7, R8
 - **Status:** GateReeve `PR_BOUNDARY`; changes
   `chg-notary-submit-response-recovery` and
-  `chg-notary-failure-evidence-upload` are validated. PR #77 is pinned at
-  `32bdaaa12acdf6efb8a9a1d8baf41039598135ce`. The correction preserves
+  `chg-notary-failure-evidence-upload` and
+  `chg-preserve-submitted-dmg-bytes` are validated. PR #77 is pinned at
+  `048bee8901d13780a47ef19237c1bdf06ab4e3ed`. The correction preserves
   the approved explicit polling design, separate architecture-specific DMGs,
   main-only trust approval, and zero publication authority.
