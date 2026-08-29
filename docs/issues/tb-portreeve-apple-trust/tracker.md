@@ -96,8 +96,10 @@ Append PR boundary entries here.
 - **Issues:** I-12
 - **Rubric in scope:** R3, R4, R6, R7, R8
 - **Boundary packet:** [`pr-80/`](pr-80/)
-- **Status:** Draft review of pinned source
-  `181028b2a0e8d2bfc75b70799dea9440b7b958c8`.
+- **Status:** Evaluated source
+  `181028b2a0e8d2bfc75b70799dea9440b7b958c8`; reviewed evidence head
+  `1337a4a953e760c29ebc4d6ec283b00629d93101`; merged as
+  `bfa64a9d930154ce0509c67b23a81ee1aa601221`.
 
 ## Protected rehearsal attempt - `0.1.0-preview.5`
 
@@ -184,15 +186,16 @@ Append PR boundary entries here.
 
 ## Active Slice
 
-### Slice 11 - Post-notarization finalization and recovery correction
+### Slice 12 - Final live acceptance and feature closeout
 
-- **Branch:** `tb-portreeve-apple-trust-11-post-notary-finalization`
-- **Plan steps:** P2, P4, P7, P8
-- **Issues:** I-12
-- **Rubric in scope:** R3, R4, R6, R7, R8
-- **Status:** GateReeve `PR_BOUNDARY` for draft PR #80 after validating
-  `chg-post-notary-finalization-atomicity`. The correction performs one
-  authoritative predecessor-to-signed rewrite, retains exact request-bound
-  candidates until producer evidence is durable, and rejects
-  `GITHUB_RUN_ATTEMPT > 1` before credential activation. No `development*`
-  branch was merged or rebased, and publication remains out of scope.
+- **Branch:** `tb-portreeve-apple-trust-12-live-acceptance`
+- **Plan steps:** P8
+- **Issues:** I-8
+- **Rubric in scope:** R1-R8
+- **Status:** GateReeve `IMPLEMENTING` from clean `origin/main` merge commit
+  `bfa64a9d930154ce0509c67b23a81ee1aa601221`. Dispatch the unused
+  `0.1.0-preview.9` candidate with `trust=true` and `publish=false`, preserve
+  complete hosted evidence, inspect the sealed distribution, run the local
+  Homebrew smoke check, and prepare the feature-final PR for the user's final
+  approval. Additional physical-machine or cross-architecture installation
+  remains optional. No `development*` branch was merged or rebased.

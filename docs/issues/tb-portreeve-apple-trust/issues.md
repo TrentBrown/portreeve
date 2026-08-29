@@ -168,7 +168,7 @@ required `codesign` facts.
 
 ## I-12 - Make post-notarization finalization atomic and rerun-safe
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P2, P4, P7, P8
 - **Rubric criteria:** R3, R4, R6, R7, R8
