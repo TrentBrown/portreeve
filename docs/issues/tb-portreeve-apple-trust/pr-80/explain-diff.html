@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PR #80 — Atomic Apple Trust Finalization</title>
+  <style>
+    :root { color-scheme: dark; --bg:#09101d; --panel:#111b2d; --panel2:#18253a; --ink:#e9f0fb; --muted:#a9b7cc; --line:#30415e; --blue:#65a9ff; --green:#63d69a; --amber:#ffd166; --red:#ff7b86; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:linear-gradient(135deg,#09101d,#0d1728 55%,#10192b); color:var(--ink); font:16px/1.6 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    a { color:var(--blue); }
+    code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    header,main { width:min(1120px,calc(100% - 32px)); margin:auto; }
+    header { padding:54px 0 28px; }
+    h1 { margin:0 0 12px; font-size:clamp(2rem,5vw,4rem); line-height:1.04; letter-spacing:-.04em; }
+    h2 { margin:0 0 16px; font-size:1.6rem; }
+    h3 { margin:22px 0 8px; }
+    p { max-width:78ch; }
+    .eyebrow { color:var(--green); font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+    .lede { font-size:1.18rem; color:var(--muted); }
+    .meta,.grid,.flow { display:grid; gap:14px; }
+    .meta { grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); margin-top:24px; }
+    .card,section,nav { background:rgba(17,27,45,.92); border:1px solid var(--line); border-radius:16px; }
+    .card { padding:16px; }
+    .card strong { display:block; color:var(--muted); font-size:.78rem; letter-spacing:.08em; text-transform:uppercase; }
+    .card code { overflow-wrap:anywhere; }
+    nav { padding:18px 22px; margin-bottom:18px; }
+    nav ol { columns:2; margin:8px 0 0; padding-left:24px; }
+    section { padding:clamp(20px,4vw,36px); margin:18px 0; }
+    .callout { border-left:4px solid var(--amber); padding:12px 16px; background:#231e18; border-radius:0 10px 10px 0; }
+    .good { border-left-color:var(--green); background:#10251f; }
+    .bad { border-left-color:var(--red); background:#29171e; }
+    .flow { grid-template-columns:repeat(5,1fr); align-items:stretch; margin:24px 0; }
+    .step { position:relative; padding:18px 14px; background:var(--panel2); border:1px solid var(--line); border-radius:12px; text-align:center; }
+    .step:not(:last-child)::after { content:"→"; position:absolute; right:-17px; top:42%; color:var(--blue); font-weight:800; z-index:2; }
+    .step small { display:block; color:var(--muted); }
+    .step.fail { border-color:var(--red); box-shadow:0 0 0 2px rgba(255,123,134,.12); }
+    .step.new { border-color:var(--green); box-shadow:0 0 0 2px rgba(99,214,154,.12); }
+    pre { white-space:pre-wrap; overflow-wrap:anywhere; background:#070c15; color:#dbe9ff; border:1px solid #263650; padding:16px; border-radius:12px; }
+    .diff-add { color:var(--green); }
+    .diff-del { color:var(--red); }
+    table { width:100%; border-collapse:collapse; }
+    th,td { text-align:left; vertical-align:top; padding:12px; border-bottom:1px solid var(--line); }
+    th { color:var(--muted); }
+    .quiz { margin:20px 0; padding:18px; background:var(--panel2); border-radius:12px; }
+    .quiz label { display:block; margin:8px 0; cursor:pointer; }
+    button { appearance:none; border:0; border-radius:9px; padding:9px 14px; margin-top:8px; background:var(--blue); color:#04101f; font-weight:800; cursor:pointer; }
+    .feedback { min-height:1.6em; margin:8px 0 0; font-weight:700; }
+    footer { color:var(--muted); padding:12px 0 48px; }
+    @media (max-width:820px) { .flow { grid-template-columns:1fr; } .step:not(:last-child)::after { content:"↓"; right:auto; left:49%; top:auto; bottom:-20px; } nav ol { columns:1; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">PortReeve · governed slice 11 · PR #80</div>
+    <h1>Make Apple trust finalization atomic</h1>
+    <p class="lede">This correction addresses the preview.8 failure after Apple had accepted both architecture-specific DMGs. It makes trusted metadata a single authoritative transformation, preserves recovery material until evidence is durable, and prevents GitHub job reruns from creating another protected attempt.</p>
+    <div class="meta">
+      <div class="card"><strong>Diff base</strong><code>2042850b8f8573e6b1b77c4c41ead68677cebae9</code></div>
+      <div class="card"><strong>Diff head</strong><code>181028b2a0e8d2bfc75b70799dea9440b7b958c8</code></div>
+      <div class="card"><strong>Scope</strong>10 files · 416 additions · 82 deletions</div>
+      <div class="card"><strong>Public mutation</strong>None; preview.8 remains unpublished and burned</div>
+    </div>
+  </header>
+  <main>
+    <nav aria-label="Table of contents">
+      <strong>Walkthrough</strong>
+      <ol>
+        <li><a href="#background">Background</a></li>
+        <li><a href="#intuition">Intuition</a></li>
+        <li><a href="#code">Code walkthrough</a></li>
+        <li><a href="#safety">Safety properties</a></li>
+        <li><a href="#tests">Verification</a></li>
+        <li><a href="#quiz">Reviewer check</a></li>
+      </ol>
+    </nav>
+
+    <section id="background">
+      <h2>1. Background</h2>
+      <p>The protected producer starts from a credential-free, qualified release record. Inside one short-lived Apple credential scope it signs both macOS CLIs, packages and signs both desktop applications, creates architecture-specific DMGs, submits each exact DMG to Apple, waits for acceptance, staples the ticket, and produces a trusted release workspace.</p>
+      <p>For <code>0.1.0-preview.8</code>, Apple accepted four submissions: ARM64 and x64 in the original workflow attempt, then both architectures again after GitHub’s “Re-run jobs” action. Both workflow attempts subsequently failed with <code>Trusted manifest predecessor identity is invalid.</code></p>
+      <div class="callout bad"><strong>The cause:</strong> the producer copied an already-signed manifest into the output and then asked the authoritative rewrite to find the original unsigned predecessor identities. Those identities were no longer present, so its safety check correctly rejected the workspace.</div>
+      <p>The public GitHub release and Homebrew state did not change. The preview identifier is treated as consumed because protected production occurred and the recovery uploads did not retain the submitted DMG bytes.</p>
+    </section>
+
+    <section id="intuition">
+      <h2>2. Intuition</h2>
+      <h3>Previous ordering</h3>
+      <div class="flow" aria-label="Previous failing data flow">
+        <div class="step">Qualified set<small>unsigned manifest</small></div>
+        <div class="step">Sign CLIs<small>signed side manifest</small></div>
+        <div class="step">Copy signed manifest<small>predecessor lost</small></div>
+        <div class="step fail">Rewrite again<small>identity mismatch</small></div>
+        <div class="step fail">Abort<small>after Apple accepted</small></div>
+      </div>
+      <h3>Corrected ordering</h3>
+      <div class="flow" aria-label="Corrected atomic data flow">
+        <div class="step">Qualified set<small>untouched source</small></div>
+        <div class="step">Copy once<small>predecessor manifest</small></div>
+        <div class="step">Overlay bytes<small>signed CLIs + DMGs</small></div>
+        <div class="step new">Rewrite once<small>all identities agree</small></div>
+        <div class="step new">Durable evidence<small>then delete candidates</small></div>
+      </div>
+      <p>The key invariant is simple: the metadata rewrite must receive exactly the predecessor identities in the qualified set and must be the only operation that changes those identities to the signed values.</p>
+    </section>
+
+    <section id="code">
+      <h2>3. Code walkthrough</h2>
+      <h3>A. Reject protected reruns up front</h3>
+      <p><code>GITHUB_RUN_ATTEMPT</code> now joins the protected-context proof. Any defined value other than <code>1</code> is rejected before credential setup and before any Apple submission.</p>
+      <pre><span class="diff-add">+ const githubRunAttempt = options.githubRunAttempt ?? process.env.GITHUB_RUN_ATTEMPT;</span>
+...
+<span class="diff-add">+ if (context.githubRunAttempt !== undefined &amp;&amp; context.githubRunAttempt !== '1') {</span>
+<span class="diff-add">+   throw new Error(</span>
+<span class="diff-add">+     'Apple trusted-artifact production cannot be rerun after a protected attempt; dispatch the next unused preview version.',</span>
+<span class="diff-add">+   );</span>
+<span class="diff-add">+ }</span></pre>
+      <h3>B. Centralize staging and metadata transformation</h3>
+      <p>The new exported <code>stageTrustedReleaseArtifacts</code> function owns the entire transition from qualified bytes to a trusted staging workspace:</p>
+      <table>
+        <thead><tr><th>Operation</th><th>Why it is ordered here</th></tr></thead>
+        <tbody>
+          <tr><td>Copy qualified <code>artifacts/</code></td><td>Creates one independent output whose manifest still names predecessor bytes.</td></tr>
+          <tr><td>Overlay signed CLIs and DMGs</td><td>Installs transformed payloads without mutating the qualified source workspace.</td></tr>
+          <tr><td>Clone and reconcile release record</td><td>Verifies every CLI predecessor tuple before accepting its signed tuple.</td></tr>
+          <tr><td>Call <code>rewriteTrustedReleaseMetadata</code> once</td><td>Updates manifest, formula, checksums, and release-record identities as one authoritative operation.</td></tr>
+        </tbody>
+      </table>
+      <pre><span class="diff-del">- await cp(resolve(signedArtifacts, 'manifest.json'), resolve(artifactsRoot, 'manifest.json'));</span>
+<span class="diff-del">- await rewriteTrustedReleaseMetadata(...);</span>
+<span class="diff-add">+ const { evidenceRoot, stateRoot, trustedRecord } =</span>
+<span class="diff-add">+   await stageTrustedReleaseArtifacts({</span>
+<span class="diff-add">+     releaseRoot, outputRoot, signedArtifacts, dmgRoot,</span>
+<span class="diff-add">+     record, packages, transformations,</span>
+<span class="diff-add">+   });</span></pre>
+      <h3>C. Retain recovery candidates to the durable boundary</h3>
+      <p>Exact request-bound DMG candidates are no longer removed immediately after copying artifacts. Cleanup moves past release record, release state, Apple evidence, and producer evidence persistence. If a failure occurs earlier, the outer recovery path can still upload the exact submitted bytes.</p>
+      <div class="callout good"><strong>Recovery rule:</strong> an Apple request ID is meaningful only when it remains bound to the exact bytes submitted. A filename or regenerated DMG is not enough.</div>
+      <h3>D. Align operator guidance</h3>
+      <p>The release runbook and repository-owned release skill now say not to use GitHub Actions “Re-run jobs” once protected production has begun. The ordinary recovery is to preserve evidence and dispatch the next unused preview version. Exact-byte recovery remains available only where the retained candidate and request history support it.</p>
+    </section>
+
+    <section id="safety">
+      <h2>4. Safety properties</h2>
+      <table>
+        <thead><tr><th>Property</th><th>Enforcement</th></tr></thead>
+        <tbody>
+          <tr><td>Qualified source is immutable</td><td>Staging copies the source tree and the test re-reads the original predecessor manifest.</td></tr>
+          <tr><td>Metadata has one authority</td><td>Only <code>rewriteTrustedReleaseMetadata</code> changes manifest, formula, checksums, and record identities.</td></tr>
+          <tr><td>No accidental second Apple attempt</td><td>Protected context rejects workflow attempt 2+ before credential activation.</td></tr>
+          <tr><td>Request-bound recovery survives failure</td><td>Candidate cleanup occurs only after producer evidence is written.</td></tr>
+          <tr><td>No publication expansion</td><td>This slice changes producer staging and documentation only; publication remains independently approval-gated.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="tests">
+      <h2>5. Verification</h2>
+      <p>The pinned slice passed the repository’s complete check: toolchain validation, generated-document checks, type checking, ESLint, Prettier, and <strong>579 tests across 118 files with 3,034 expectations</strong>. The focused Apple producer suite passed 25 tests with 303 expectations.</p>
+      <ul>
+        <li>Attempt 1 is accepted and attempt 2 is rejected.</li>
+        <li>The staging test begins with one predecessor manifest, produces signed identities, and proves the source manifest remains untouched.</li>
+        <li>A source-order assertion prevents candidate deletion from moving before durable producer evidence.</li>
+        <li>Pattern review, spec evaluation, independent judge review, and code review all passed with no findings.</li>
+      </ul>
+      <div class="callout"><strong>Remaining live proof:</strong> preview.9 must exercise Apple signing, notarization, stapling, finalization, artifact inspection, and publication preflight without public mutation. That belongs to the final acceptance slice, not this correction PR.</div>
+    </section>
+
+    <section id="quiz">
+      <h2>6. Reviewer check</h2>
+      <p>Choose the best answer for each question. Feedback appears immediately.</p>
+      <div class="quiz" data-answer="b" data-explain="The rewrite’s predecessor validation expects the original qualified identities; copying the signed manifest first removed them.">
+        <strong>1. Why did preview.8 fail after Apple accepted the DMGs?</strong>
+        <label><input type="radio" name="q1" value="a"> Apple rejected one architecture during stapling.</label>
+        <label><input type="radio" name="q1" value="b"> The finalizer received an already-rewritten manifest and could not validate predecessor identities.</label>
+        <label><input type="radio" name="q1" value="c"> GitHub Releases rejected duplicate public assets.</label>
+        <button type="button">Check answer</button><p class="feedback" aria-live="polite"></p>
+      </div>
+      <div class="quiz" data-answer="c" data-explain="The corrected staging function copies predecessor metadata, overlays payloads, and then performs exactly one authoritative rewrite.">
+        <strong>2. What establishes the atomicity of the corrected path?</strong>
+        <label><input type="radio" name="q2" value="a"> A second workflow attempt verifies the first.</label>
+        <label><input type="radio" name="q2" value="b"> The signed side manifest replaces every metadata file.</label>
+        <label><input type="radio" name="q2" value="c"> One staging owner performs one predecessor-to-signed metadata rewrite.</label>
+        <button type="button">Check answer</button><p class="feedback" aria-live="polite"></p>
+      </div>
+      <div class="quiz" data-answer="a" data-explain="The guard is evaluated in protected-context validation before credential setup and Apple calls.">
+        <strong>3. When is a GitHub job rerun rejected?</strong>
+        <label><input type="radio" name="q3" value="a"> Before credentials are activated or Apple is contacted.</label>
+        <label><input type="radio" name="q3" value="b"> After notarization but before stapling.</label>
+        <label><input type="radio" name="q3" value="c"> Only when publication starts.</label>
+        <button type="button">Check answer</button><p class="feedback" aria-live="polite"></p>
+      </div>
+      <div class="quiz" data-answer="c" data-explain="A request ID alone cannot prove which bytes Apple evaluated; retained exact bytes preserve that binding.">
+        <strong>4. Why retain the submitted DMG candidate until producer evidence is durable?</strong>
+        <label><input type="radio" name="q4" value="a"> To reduce the GitHub artifact size.</label>
+        <label><input type="radio" name="q4" value="b"> To permit rebuilding the same preview later.</label>
+        <label><input type="radio" name="q4" value="c"> To bind the Apple request history to the exact submitted bytes during recovery.</label>
+        <button type="button">Check answer</button><p class="feedback" aria-live="polite"></p>
+      </div>
+      <div class="quiz" data-answer="b" data-explain="Protected production consumed preview.8, while the public state stayed unchanged. The next safe candidate is preview.9.">
+        <strong>5. What should happen after this correction lands?</strong>
+        <label><input type="radio" name="q5" value="a"> Rerun preview.8 until finalization succeeds.</label>
+        <label><input type="radio" name="q5" value="b"> Dispatch preview.9 as a nonpublishing live acceptance run.</label>
+        <label><input type="radio" name="q5" value="c"> Publish the accepted preview.8 DMGs manually.</label>
+        <button type="button">Check answer</button><p class="feedback" aria-live="polite"></p>
+      </div>
+    </section>
+    <footer>Generated from the pinned PR #80 diff. Historical preview.8 events are evidence, not approval for preview.9 or publication.</footer>
+  </main>
+  <script>
+    document.querySelectorAll('.quiz').forEach((quiz) => {
+      quiz.querySelector('button').addEventListener('click', () => {
+        const selected = quiz.querySelector('input:checked');
+        const feedback = quiz.querySelector('.feedback');
+        if (!selected) { feedback.textContent = 'Choose an answer first.'; feedback.style.color = 'var(--amber)'; return; }
+        const correct = selected.value === quiz.dataset.answer;
+        feedback.textContent = `${correct ? 'Correct. ' : 'Not quite. '}${quiz.dataset.explain}`;
+        feedback.style.color = correct ? 'var(--green)' : 'var(--red)';
+      });
+    });
+  </script>
+</body>
+</html>

@@ -168,12 +168,12 @@ required `codesign` facts.
 
 ## I-12 - Make post-notarization finalization atomic and rerun-safe
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P2, P4, P7, P8
 - **Rubric criteria:** R3, R4, R6, R7, R8
 - **Depends on:** I-11
-- **PR:** -
+- **PR:** [#80](https://github.com/TrentBrown/portreeve/pull/80)
 
 Correct the deterministic finalization failure observed in both attempts of
 hosted run `33276106920`: both architecture-specific DMGs reached accepted

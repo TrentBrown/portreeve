@@ -113,7 +113,7 @@ through `codesign` facts for every CLI, application, and DMG.
 
 ## [7] Make protected producer completion atomic and single-attempt
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

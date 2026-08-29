@@ -89,6 +89,16 @@ Append PR boundary entries here.
   `b7ff766a6d373a92b5ea2cf7db577c61f6b5058d`; merged as
   `2042850b8f8573e6b1b77c4c41ead68677cebae9`.
 
+### PR #80 - Post-notarization finalization and recovery correction
+
+- **Slice:** `slice-11-post-notary-finalization`
+- **Plan steps:** P2, P4, P7, P8
+- **Issues:** I-12
+- **Rubric in scope:** R3, R4, R6, R7, R8
+- **Boundary packet:** [`pr-80/`](pr-80/)
+- **Status:** Draft review of pinned source
+  `181028b2a0e8d2bfc75b70799dea9440b7b958c8`.
+
 ## Protected rehearsal attempt - `0.1.0-preview.5`
 
 - **Run:** [33267482516](https://github.com/TrentBrown/portreeve/actions/runs/33267482516)
@@ -180,7 +190,7 @@ Append PR boundary entries here.
 - **Plan steps:** P2, P4, P7, P8
 - **Issues:** I-12
 - **Rubric in scope:** R3, R4, R6, R7, R8
-- **Status:** GateReeve `IMPLEMENTING` after validating
+- **Status:** GateReeve `PR_BOUNDARY` for draft PR #80 after validating
   `chg-post-notary-finalization-atomicity`. The correction performs one
   authoritative predecessor-to-signed rewrite, retains exact request-bound
   candidates until producer evidence is durable, and rejects
