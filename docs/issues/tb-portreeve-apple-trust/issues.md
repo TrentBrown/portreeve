@@ -134,12 +134,12 @@ continuity with producer-level tests before another protected attempt.
 
 ## I-10 - Accept real Gatekeeper assessment output
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 0.5d
 - **Plan steps:** P2, P8
 - **Rubric criteria:** R4, R5, R7, R8
 - **Depends on:** I-9
-- **PR:** -
+- **PR:** [#78](https://github.com/TrentBrown/portreeve/pull/78)
 
 Correct the parser defect observed in hosted run `33269593936`: Apple accepted
 the exact preserved ARM64 candidate, and `spctl` accepted the notarized

@@ -75,7 +75,7 @@ Treat successful notarytool submit output as request creation even when status i
 
 ## [5] Parse Gatekeeper's real path-prefixed assessment
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

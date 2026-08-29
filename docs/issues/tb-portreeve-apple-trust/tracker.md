@@ -65,6 +65,16 @@ Append PR boundary entries here.
   `4f92350fb3a35993601caa36bd563d500cbba1b1`; merged as
   `0a28b89c23ddd553467eae0fe8bb89a84ac78ddc`.
 
+### PR #78 - Gatekeeper assessment parser correction
+
+- **Slice:** `slice-07-gatekeeper-parser`
+- **Plan steps:** P2, P8
+- **Issues:** I-10
+- **Rubric in scope:** R4, R5, R7, R8
+- **Boundary packet:** [`pr-78/`](pr-78/)
+- **Status:** Boundary evaluation pinned at source
+  `bc2bf1d7b33573666c749b5eeb2e12327433cbab`.
+
 ## Protected rehearsal attempt - `0.1.0-preview.5`
 
 - **Run:** [33267482516](https://github.com/TrentBrown/portreeve/actions/runs/33267482516)
@@ -108,7 +118,7 @@ Append PR boundary entries here.
 - **Plan steps:** P2, P8
 - **Issues:** I-10
 - **Rubric in scope:** R4, R5, R7, R8
-- **Status:** GateReeve `IMPLEMENTING`; change
+- **Status:** GateReeve `PR_BOUNDARY`; change
   `chg-gatekeeper-path-prefixed-acceptance` is validated against the exact
   tested source. Slice 6 was abandoned after the failed preview.6 acceptance
   attempt. This intermediate correction preserves separate architecture-specific

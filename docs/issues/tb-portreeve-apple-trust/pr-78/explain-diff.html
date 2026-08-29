@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PR #78 - Gatekeeper parser correction</title>
+  <style>
+    :root { color-scheme: light dark; --accent:#0a7a68; --card:#ffffff12; --border:#7f8c8d55; }
+    body { font: 16px/1.55 system-ui, sans-serif; max-width: 960px; margin: 0 auto; padding: 2rem; }
+    h1,h2 { line-height:1.2; } h1 { color:var(--accent); }
+    section { border:1px solid var(--border); background:var(--card); border-radius:12px; padding:1.1rem 1.3rem; margin:1rem 0; }
+    code,pre { font-family:ui-monospace, monospace; } pre { overflow:auto; padding:1rem; border-radius:8px; background:#111; color:#eee; }
+    .flow { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.6rem; text-align:center; }
+    .flow div { padding:.8rem; border:1px solid var(--border); border-radius:8px; }
+    .good { color:#17a673; font-weight:700; } .pending { color:#d89500; font-weight:700; }
+    .quiz label { display:block; margin:.45rem 0; } button { padding:.5rem .8rem; cursor:pointer; }
+    .answer { min-height:1.5rem; font-weight:700; }
+  </style>
+</head>
+<body>
+  <h1>PR #78: accept Gatekeeper's real status line</h1>
+  <p><strong>Pinned source:</strong> <code>bc2bf1d7b33573666c749b5eeb2e12327433cbab</code></p>
+  <p>This correction removes one false rejection in PortReeve's Apple trust producer. It does not loosen the signing identity, notarization source, exit status, architecture, or publication boundaries.</p>
+
+  <section>
+    <h2>What happened</h2>
+    <div class="flow">
+      <div>Apple notarized preview .6</div><div><code>spctl</code> accepted it</div><div>Output named the assessed path</div><div>Parser expected a bare word</div><div>Producer stopped safely</div>
+    </div>
+    <p>The real command emitted:</p>
+    <pre>/tmp/PortReeve-0.1.0-preview.6-macos-arm64.dmg: accepted
+source=Notarized Developer ID
+origin=Developer ID Application: Trent Brown (PMWYD5A82A)</pre>
+  </section>
+
+  <section>
+    <h2>The code change</h2>
+    <pre>- !/^accepted$/mu.test(output)
++ !/^(?:.+: )?accepted$/mu.test(output)</pre>
+    <p>The optional prefix is restricted to the same complete line and must end in <code>: accepted</code>. The existing bare form remains valid for deterministic fixtures.</p>
+  </section>
+
+  <section>
+    <h2>What remains mandatory</h2>
+    <ul>
+      <li>the command exits with status zero;</li>
+      <li>the status line is exactly bare or path-prefixed <code>accepted</code>;</li>
+      <li>the source is exactly <code>Notarized Developer ID</code>;</li>
+      <li>the origin is exactly PortReeve's expected Developer ID identity.</li>
+    </ul>
+    <p>A path-prefixed <code>rejected</code> status has an explicit regression test and still throws.</p>
+  </section>
+
+  <section>
+    <h2>Scope and evidence</h2>
+    <p class="good">Slice checks pass: 577 repository tests, 3021 assertions, zero failures.</p>
+    <p>The recovered preview .6 DMG independently produced the real accepted shape locally, binding this correction to observed platform behavior. No credentials, permissions, release bytes, channels, update metadata, or publication code changed.</p>
+    <p class="pending">Feature completion is still pending.</p>
+    <p>After merge, preview .7 must run from reviewed <code>main</code>, produce both native architecture evidence documents and the sealed packet, and prove that public state did not change.</p>
+  </section>
+
+  <section class="quiz">
+    <h2>Review check</h2>
+    <form id="quiz">
+      <div data-answer="b"><p>1. Why did preview .6 stop?</p><label><input type="radio" name="q1" value="a"> Apple rejected it</label><label><input type="radio" name="q1" value="b"> The parser rejected a path-prefixed accepted line</label></div>
+      <div data-answer="a"><p>2. Does the change accept a rejected status?</p><label><input type="radio" name="q2" value="a"> No</label><label><input type="radio" name="q2" value="b"> Yes, if the origin matches</label></div>
+      <div data-answer="b"><p>3. Which trust fact still must match exactly?</p><label><input type="radio" name="q3" value="a"> The temporary file path</label><label><input type="radio" name="q3" value="b"> The Developer ID origin</label></div>
+      <div data-answer="a"><p>4. Does this PR publish a release?</p><label><input type="radio" name="q4" value="a"> No</label><label><input type="radio" name="q4" value="b"> Yes</label></div>
+      <div data-answer="b"><p>5. What proves the feature complete?</p><label><input type="radio" name="q5" value="a"> This unit test alone</label><label><input type="radio" name="q5" value="b"> A corrected main-pinned two-architecture nonpublishing rehearsal</label></div>
+      <p><button type="button" id="grade">Grade</button></p><p class="answer" id="result" aria-live="polite"></p>
+    </form>
+  </section>
+  <script>
+    document.getElementById('grade').addEventListener('click', () => {
+      const items=[...document.querySelectorAll('[data-answer]')];
+      const score=items.filter((item,i)=>document.querySelector(`input[name=q${i+1}]:checked`)?.value===item.dataset.answer).length;
+      document.getElementById('result').textContent=`${score} / ${items.length} correct`;
+    });
+  </script>
+</body>
+</html>
