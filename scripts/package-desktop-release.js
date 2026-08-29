@@ -21,6 +21,7 @@ export async function packageDesktopRelease(options) {
   }
   await verifyReleaseArtifacts(record, releaseRoot);
   const outputRoot = resolve(releaseRoot, 'desktop-work', options.architecture);
+  const signingIdentity = process.env.PORTREEVE_APPLE_SIGNING_IDENTITY;
   const packaged = await packageDesktop({
     workspaceRoot,
     releaseDirectory: resolve(releaseRoot, 'artifacts'),
@@ -28,6 +29,11 @@ export async function packageDesktopRelease(options) {
     architecture: options.architecture,
     releaseChannel: record.policy.channel,
     releaseVersion: record.releaseVersion,
+    desktopTrust: record.policy.desktopTrust,
+    ...(record.policy.desktopTrust === 'developer-id-notarized' &&
+    signingIdentity !== undefined
+      ? { signingIdentity }
+      : {}),
     ...(options.smoke === undefined ? {} : { smoke: options.smoke }),
   });
   const dmgPath = resolve(
@@ -50,6 +56,11 @@ export async function packageDesktopRelease(options) {
   );
   if (cliArtifact === undefined) {
     throw new Error(`Missing promoted macOS ${options.architecture} executable.`);
+  }
+  if (packaged.artifact.sha256 !== cliArtifact.sha256) {
+    throw new Error(
+      'Desktop packaging changed the standalone CLI identity; trusted distribution requires the protected producer.',
+    );
   }
   const evidence = {
     schemaVersion: 1,

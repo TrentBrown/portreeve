@@ -1,6 +1,9 @@
 // @ts-check
 
 import { expect, test } from 'bun:test';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   assertDesktopModuleGraph,
   assertDesktopPackageIdentity,
@@ -9,6 +12,7 @@ import {
 } from '../../scripts/desktop-package-lib.js';
 import {
   createDesktopSignOptions,
+  installPromotedCliHelper,
   isPromotedCliResource,
 } from '../../scripts/package-desktop.js';
 import { verifyDesktopRuntimeContract } from './runtime-contract.js';
@@ -21,7 +25,10 @@ test('requires exact controller and artifact identity before packaging', () => {
 });
 
 test('ad-hoc signs preview bundles without implying Developer ID trust', () => {
-  const options = createDesktopSignOptions('preview');
+  const filename = 'portreeve-v0.1.0-macos-arm64';
+  const options = createDesktopSignOptions('unsigned', {
+    promotedCliFilename: filename,
+  });
   expect(options).toMatchObject({
     identity: '-',
     identityValidation: false,
@@ -34,18 +41,67 @@ test('ad-hoc signs preview bundles without implying Developer ID trust', () => {
     timestamp: 'none',
   });
   expect(
-    isPromotedCliResource(
-      '/tmp/PortReeve.app/Contents/Resources/portreeve/portreeve-v0.1.0-macos-arm64',
-    ),
+    isPromotedCliResource(`/tmp/PortReeve.app/Contents/Helpers/${filename}`, filename),
   ).toBe(true);
+  expect(
+    isPromotedCliResource(
+      `/tmp/PortReeve.app/Contents/Resources/portreeve/${filename}`,
+      filename,
+    ),
+  ).toBe(false);
+  expect(
+    isPromotedCliResource(
+      '/tmp/PortReeve.app/Contents/Helpers/portreeve-v0.1.0-macos-x64',
+      filename,
+    ),
+  ).toBe(false);
   expect(
     isPromotedCliResource(
       '/tmp/PortReeve.app/Contents/Frameworks/PortReeve Helper.app',
     ),
   ).toBe(false);
-  expect(() => createDesktopSignOptions('stable')).toThrow(
-    'requires configured Developer ID signing and notarization',
+  expect(() => createDesktopSignOptions('developer-id-notarized')).toThrow(
+    'requires a Developer ID identity',
   );
+});
+
+test('configures trusted application signing without re-signing its exact CLI', () => {
+  const filename = 'portreeve-v1.0.0-macos-x64';
+  const options = createDesktopSignOptions('developer-id-notarized', {
+    identity: 'Developer ID Application: Trent Brown (PMWYD5A82A)',
+    promotedCliFilename: filename,
+  });
+  expect(options).toMatchObject({
+    identity: 'Developer ID Application: Trent Brown (PMWYD5A82A)',
+    identityValidation: true,
+  });
+  expect(options.optionsForFile()).toEqual({
+    hardenedRuntime: true,
+    timestamp: 'http://timestamp.apple.com/ts01',
+  });
+  expect(options.ignore(`/tmp/PortReeve.app/Contents/Helpers/${filename}`)).toBe(true);
+});
+
+test('copies the authoritative CLI unchanged into flat Contents/Helpers', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'portreeve-helper-layout-'));
+  try {
+    const filename = 'portreeve-v1.0.0-macos-arm64';
+    const sourcePath = join(root, 'signed-cli');
+    const content = Buffer.from('authoritative-signed-cli-bytes');
+    await writeFile(sourcePath, content, { mode: 0o755 });
+    const destination = await installPromotedCliHelper({
+      applicationPath: join(root, 'PortReeve.app'),
+      sourcePath,
+      filename,
+    });
+    expect(destination).toBe(
+      join(root, 'PortReeve.app', 'Contents', 'Helpers', filename),
+    );
+    expect(await readFile(destination)).toEqual(content);
+    expect((await stat(destination)).mode & 0o111).toBe(0o111);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test('rejects a structurally invalid packaged application signature', async () => {

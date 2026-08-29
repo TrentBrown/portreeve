@@ -27,6 +27,7 @@ const DEFAULT_RELEASE_BASE = `${DEFAULT_HOMEPAGE}/releases/download`;
  *   outputRoot?: string,
  *   homepageUrl?: string,
  *   releaseBaseUrl?: string,
+ *   trusted?: boolean,
  *   resume?: boolean,
  * }} options
  * @param {{
@@ -77,7 +78,8 @@ export async function prepareRelease(options, dependencies = {}) {
       ? /** @type {const} */ ({
           maturity: 'alpha',
           channel: 'preview',
-          desktopTrust: 'unsigned',
+          desktopTrust:
+            options.trusted === true ? 'developer-id-notarized' : 'unsigned',
         })
       : /** @type {const} */ ({
           maturity: 'stable',
@@ -290,6 +292,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     .description('Prepare a non-publishing PortReeve release workspace')
     .requiredOption('--channel <channel>', 'preview or stable')
     .requiredOption('--version <version>', 'coordinated semantic release version')
+    .option('--trusted', 'require Developer ID and notarization for this candidate')
     .option('--resume', 'resume an interrupted build from its exact recorded source')
     .action(async (values) => {
       if (!['preview', 'stable'].includes(values.channel)) {
@@ -298,6 +301,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       const result = await prepareRelease({
         channel: values.channel,
         version: values.version,
+        trusted: values.trusted,
         resume: values.resume,
         ...(process.env.PORTREEVE_HOMEPAGE_URL === undefined
           ? {}

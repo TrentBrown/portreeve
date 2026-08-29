@@ -14,6 +14,11 @@ on:
         description: Semantic release version (preview requires a prerelease)
         required: true
         type: string
+      trust:
+        description: Produce Developer ID-signed and notarized Apple artifacts
+        required: true
+        default: true
+        type: boolean
       publish:
         description: Enter the separately approved public publication job
         required: true
@@ -51,7 +56,7 @@ jobs:
       - name: Prepare exact build-once release workspace
         run: >-
           bun run release:prepare -- --channel "${{ inputs.channel }}" --version "${{
-          inputs.version }}"
+          inputs.version }}" ${{ inputs.trust && '--trusted' || '' }}
       - uses: actions/upload-artifact@v7
         with:
           name: prepared-${{ inputs.version }}
@@ -105,6 +110,7 @@ jobs:
           retention-days: 7
 
   aggregate-native-evidence:
+    if: ${{ !inputs.trust }}
     needs: native-evidence
     runs-on: ubuntu-24.04
     steps:
@@ -134,6 +140,87 @@ jobs:
         with:
           name: native-verified-${{ inputs.version }}
           path: ${{ env.RELEASE_ROOT }}
+          if-no-files-found: error
+          retention-days: 7
+
+  qualify-trust:
+    if: inputs.trust
+    needs: native-evidence
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun ci
+      - uses: actions/download-artifact@v8
+        with:
+          name: prepared-${{ inputs.version }}
+          path: ${{ env.RELEASE_ROOT }}
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: native-*
+          path: ${{ env.RELEASE_ROOT }}/evidence
+          merge-multiple: true
+      - name: Qualify all native candidates without credential access
+        run: >-
+          bun run release:qualify-trust -- --record "$RELEASE_ROOT/release-record.json"
+          --evidence "$RELEASE_ROOT"/evidence/native-*.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: trust-qualified-${{ inputs.version }}
+          path: ${{ env.RELEASE_ROOT }}
+          if-no-files-found: error
+          retention-days: 7
+
+  release-trust:
+    if: inputs.trust && github.ref == 'refs/heads/main'
+    needs: qualify-trust
+    runs-on: macos-15
+    environment: release-trust
+    permissions:
+      contents: read
+    env:
+      TRUSTED_OUTPUT_ROOT: dist/trusted/${{ inputs.version }}
+      PORTREEVE_APPLE_SIGNING_IDENTITY: ${{ vars.PORTREEVE_APPLE_SIGNING_IDENTITY }}
+      PORTREEVE_APPLE_TEAM_ID: ${{ vars.PORTREEVE_APPLE_TEAM_ID }}
+      PORTREEVE_APPLE_NOTARY_KEY_ID: ${{ vars.PORTREEVE_APPLE_NOTARY_KEY_ID }}
+      PORTREEVE_APPLE_NOTARY_ISSUER_ID: ${{ vars.PORTREEVE_APPLE_NOTARY_ISSUER_ID }}
+      PORTREEVE_APPLE_NOTARY_KEY_NAME: ${{ vars.PORTREEVE_APPLE_NOTARY_KEY_NAME }}
+      PORTREEVE_APPLE_CERTIFICATE_P12_BASE64:
+        ${{ secrets.PORTREEVE_APPLE_CERTIFICATE_P12_BASE64 }}
+      PORTREEVE_APPLE_CERTIFICATE_PASSWORD:
+        ${{ secrets.PORTREEVE_APPLE_CERTIFICATE_PASSWORD }}
+      PORTREEVE_APPLE_NOTARY_KEY_P8_BASE64:
+        ${{ secrets.PORTREEVE_APPLE_NOTARY_KEY_P8_BASE64 }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun ci
+      - uses: actions/download-artifact@v8
+        with:
+          name: trust-qualified-${{ inputs.version }}
+          path: ${{ env.RELEASE_ROOT }}
+      - name: Produce both trusted macOS artifact sets without publishing
+        run: >-
+          bun run release:produce-apple-trust -- --record
+          "$RELEASE_ROOT/release-record.json" --qualification
+          "$RELEASE_ROOT/evidence/trust-qualification.json" --output
+          "$TRUSTED_OUTPUT_ROOT"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: trusted-${{ inputs.version }}
+          path: ${{ env.TRUSTED_OUTPUT_ROOT }}
           if-no-files-found: error
           retention-days: 7
 

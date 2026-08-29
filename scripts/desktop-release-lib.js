@@ -41,7 +41,26 @@ export async function createAndVerifyDesktopDmg(options) {
   } finally {
     await rm(imageSource, { recursive: true, force: true });
   }
-  await run(['hdiutil', 'verify', options.outputPath]);
+  await verifyDesktopDmg({
+    dmgPath: options.outputPath,
+    controllerVersion: options.controllerVersion,
+    architecture: options.architecture,
+  });
+  return {
+    filename: basename(options.outputPath),
+    bytes: (await stat(options.outputPath)).size,
+    sha256: await sha256File(options.outputPath),
+  };
+}
+
+/**
+ * Mount the exact final DMG and re-run application, signature, architecture,
+ * and embedded authoritative-CLI verification against its mounted contents.
+ *
+ * @param {{dmgPath: string, architecture: 'arm64'|'x64', controllerVersion: string, verifyApplication?: (applicationPath: string) => Promise<void>}} options
+ */
+export async function verifyDesktopDmg(options) {
+  await run(['hdiutil', 'verify', options.dmgPath]);
   const mountRoot = await mkdtemp(join(tmpdir(), 'portreeve-dmg-'));
   try {
     await run([
@@ -51,22 +70,19 @@ export async function createAndVerifyDesktopDmg(options) {
       '-nobrowse',
       '-mountpoint',
       mountRoot,
-      options.outputPath,
+      options.dmgPath,
     ]);
+    const applicationPath = resolve(mountRoot, 'PortReeve.app');
     await verifyPackagedDesktop({
-      applicationPath: resolve(mountRoot, 'PortReeve.app'),
+      applicationPath,
       controllerVersion: options.controllerVersion,
       architecture: options.architecture,
     });
+    await options.verifyApplication?.(applicationPath);
   } finally {
     await run(['hdiutil', 'detach', mountRoot], true);
     await rm(mountRoot, { recursive: true, force: true });
   }
-  return {
-    filename: basename(options.outputPath),
-    bytes: (await stat(options.outputPath)).size,
-    sha256: await sha256File(options.outputPath),
-  };
 }
 
 /**

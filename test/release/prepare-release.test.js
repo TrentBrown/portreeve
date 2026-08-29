@@ -97,6 +97,32 @@ describe('release preparation', () => {
     expect(built).toBe(false);
   });
 
+  test('prepares a trusted preview without conflating channel and trust', async () => {
+    const outputRoot = await temporaryDirectory();
+    const result = await prepareRelease(
+      {
+        channel: 'preview',
+        version: '0.1.0-preview.5',
+        trusted: true,
+        workspaceRoot: process.cwd(),
+        outputRoot,
+      },
+      {
+        sourceIdentity: async () => ({
+          repository: 'https://github.com/TrentBrown/portreeve',
+          commit: '9'.repeat(40),
+          clean: true,
+        }),
+        build: fakeBuild,
+      },
+    );
+    expect(result.record.policy).toEqual({
+      maturity: 'alpha',
+      channel: 'preview',
+      desktopTrust: 'developer-id-notarized',
+    });
+  });
+
   test('refuses a release whose semantic core differs from source packages', async () => {
     const outputRoot = await temporaryDirectory();
     await expect(

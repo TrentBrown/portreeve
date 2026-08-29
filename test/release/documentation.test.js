@@ -309,11 +309,34 @@ test('release workflow transports one record through native gates and isolated p
   expect(workflow).toContain('PORTREEVE_RELEASE_TOKEN');
   expect(workflow.match(/pull-requests: write/gu)).toHaveLength(1);
   expect(workflow.match(/contents: write/gu)).toHaveLength(1);
-  expect(workflow.match(/contents: read/gu)).toHaveLength(1);
+  expect(workflow.match(/contents: read/gu)).toHaveLength(3);
   expect(workflow).not.toContain('NPM_TOKEN');
   expect(workflow).not.toContain('npm publish');
   expect(workflow).not.toContain('push:\n    tags:');
   expect(workflow).not.toContain('release:build');
+});
+
+test('release workflow qualifies before one main-only nonpublishing trust producer', async () => {
+  const workflow = await readFile(resolve('.github/workflows/release.yml'), 'utf8');
+  const trustJob = workflow.slice(
+    workflow.indexOf('  release-trust:'),
+    workflow.indexOf('  desktop-evidence:'),
+  );
+  expect(workflow.indexOf('  qualify-trust:')).toBeLessThan(
+    workflow.indexOf('  release-trust:'),
+  );
+  expect(trustJob).toContain("github.ref == 'refs/heads/main'");
+  expect(trustJob).toContain('needs: qualify-trust');
+  expect(trustJob).toContain('runs-on: macos-15');
+  expect(trustJob).toContain('environment: release-trust');
+  expect(trustJob).toContain('permissions:\n      contents: read');
+  expect(trustJob).toContain('release:produce-apple-trust');
+  expect(trustJob).toContain('path: ${{ env.TRUSTED_OUTPUT_ROOT }}');
+  expect(trustJob).toContain('PORTREEVE_APPLE_NOTARY_KEY_P8_BASE64');
+  expect(trustJob).not.toContain('PORTREEVE_RELEASE_TOKEN');
+  expect(trustJob).not.toContain('contents: write');
+  expect(trustJob).not.toContain('pull-requests: write');
+  expect(trustJob.match(/actions\/upload-artifact@v7/gu)).toHaveLength(1);
 });
 
 test('public guides cover desktop and one representative mixed-stack launcher', async () => {

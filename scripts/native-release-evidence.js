@@ -94,6 +94,34 @@ export function mergeNativeVerifications(
   verifications,
   now = () => new Date(),
 ) {
+  const ordered = assertNativeVerificationMatrix(record, verifications);
+  if (record.policy.desktopTrust !== 'unsigned') {
+    throw new Error(
+      'Trusted macOS CLI authority must be established by the protected signing producer.',
+    );
+  }
+  return advanceReleaseRecord(
+    record,
+    'macos-cli-authority-established',
+    {
+      mode: 'unsigned-internal',
+      architectures: ['arm64', 'x64'],
+      targets: RELEASE_TARGETS.map(targetKey),
+      verificationCount: ordered.length,
+      verifications: ordered,
+    },
+    now,
+  );
+}
+
+/**
+ * Validate credential-free native qualification without claiming macOS signing
+ * authority. The protected producer consumes this exact ordered matrix.
+ *
+ * @param {import('./release-record.js').ReleaseRecord} record
+ * @param {unknown[]} verifications
+ */
+export function assertNativeVerificationMatrix(record, verifications) {
   assertReleaseRecord(record);
   if (record.stages.at(-1)?.name !== 'candidate-qualified') {
     throw new Error('Native verification aggregation requires a qualified candidate.');
@@ -143,23 +171,7 @@ export function mergeNativeVerifications(
       `Native verification matrix is incomplete (missing: ${missing.join(', ') || 'none'}; unexpected: ${unexpected.join(', ') || 'none'}).`,
     );
   }
-  if (record.policy.desktopTrust !== 'unsigned') {
-    throw new Error(
-      'Trusted macOS CLI authority must be established by the protected signing producer.',
-    );
-  }
-  return advanceReleaseRecord(
-    record,
-    'macos-cli-authority-established',
-    {
-      mode: 'unsigned-internal',
-      architectures: ['arm64', 'x64'],
-      targets: required,
-      verificationCount: required.length,
-      verifications: required.map((key) => byTarget.get(key)),
-    },
-    now,
-  );
+  return required.map((key) => byTarget.get(key));
 }
 
 /** @param {string} path @param {unknown} verification */

@@ -2,7 +2,7 @@
 
 import { packager } from '@electron/packager';
 import { Command } from 'commander';
-import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveLocalReleaseCandidate } from '../apps/desktop/main/artifact.js';
@@ -17,9 +17,10 @@ import {
   assertCoordinatedReleaseVersion,
   coordinatedReleaseVersionPlugin,
 } from './release-version.js';
+import { sha256File } from './release-lib.js';
 
 /**
- * @param {{workspaceRoot?: string, releaseDirectory?: string, outputRoot?: string, architecture?: 'arm64'|'x64', releaseChannel?: 'preview'|'stable', releaseVersion?: string, smoke?: boolean}} [options]
+ * @param {{workspaceRoot?: string, releaseDirectory?: string, outputRoot?: string, architecture?: 'arm64'|'x64', releaseChannel?: 'preview'|'stable', releaseVersion?: string, desktopTrust?: 'unsigned'|'developer-id-notarized', signingIdentity?: string, smoke?: boolean}} [options]
  */
 export async function packageDesktop(options = {}) {
   if (process.platform !== 'darwin') {
@@ -38,7 +39,7 @@ export async function packageDesktop(options = {}) {
   );
   const desktopRoot = resolve(workspaceRoot, 'apps', 'desktop');
   const releaseChannel = options.releaseChannel ?? 'preview';
-  const osxSign = createDesktopSignOptions(releaseChannel);
+  const desktopTrust = options.desktopTrust ?? 'unsigned';
   const stage = resolve(outputRoot, `stage-${architecture}`);
   const output = resolve(outputRoot, architecture);
   const resources = resolve(stage, 'release-input', 'portreeve');
@@ -109,6 +110,34 @@ export async function packageDesktop(options = {}) {
   });
   assertDesktopPackageIdentity(PORTREEVE_VERSION, metadata.version);
   assertDesktopPackageIdentity(releaseVersion, artifact.version);
+  const osxSign = createDesktopSignOptions(desktopTrust, {
+    ...(options.signingIdentity === undefined
+      ? {}
+      : { identity: options.signingIdentity }),
+    promotedCliFilename: artifact.filename,
+  });
+  const helperSource = resolve(stage, 'release-input', 'helpers', artifact.filename);
+  await mkdir(resolve(helperSource, '..'), { recursive: true });
+  await cp(artifact.executablePath, helperSource);
+  await chmod(helperSource, 0o755);
+  if (desktopTrust === 'unsigned') {
+    await adHocSignPromotedCli(helperSource);
+  }
+  const packagedArtifactSha256 = await sha256File(helperSource);
+  const packagedManifest = JSON.parse(
+    await readFile(resolve(releaseDirectory, 'manifest.json'), 'utf8'),
+  );
+  const packagedManifestArtifact = packagedManifest.artifacts?.find(
+    (/** @type {Record<string, unknown>} */ entry) =>
+      entry.type === 'executable' &&
+      entry.operatingSystem === 'macos' &&
+      entry.architecture === architecture &&
+      entry.filename === artifact.filename,
+  );
+  if (packagedManifestArtifact === undefined) {
+    throw new Error('Desktop manifest does not contain its exact macOS CLI.');
+  }
+  packagedManifestArtifact.sha256 = packagedArtifactSha256;
 
   await writeFile(
     resolve(stage, 'package.json'),
@@ -134,7 +163,7 @@ export async function packageDesktop(options = {}) {
         schemaVersion: 1,
         controllerVersion: releaseVersion,
         artifactVersion: artifact.version,
-        artifactSha256: artifact.sha256,
+        artifactSha256: packagedArtifactSha256,
         architecture,
         releaseChannel,
         moduleGraph: {
@@ -148,11 +177,10 @@ export async function packageDesktop(options = {}) {
       2,
     ).concat('\n'),
   );
-  await cp(
-    resolve(releaseDirectory, 'manifest.json'),
+  await writeFile(
     resolve(resources, 'manifest.json'),
+    JSON.stringify(packagedManifest, null, 2).concat('\n'),
   );
-  await cp(artifact.executablePath, resolve(resources, artifact.filename));
 
   const paths = await packager({
     dir: stage,
@@ -169,6 +197,15 @@ export async function packageDesktop(options = {}) {
     prune: false,
     ignore: /^\/release-input(?:\/|$)/,
     extraResource: [resolve(stage, 'release-input', 'portreeve')],
+    afterCopyExtraResources: [
+      async ({ buildPath }) => {
+        await installPromotedCliHelper({
+          applicationPath: resolve(buildPath, 'PortReeve.app'),
+          sourcePath: helperSource,
+          filename: artifact.filename,
+        });
+      },
+    ],
     osxSign,
   });
   if (paths.length !== 1) {
@@ -200,27 +237,41 @@ export async function packageDesktop(options = {}) {
 }
 
 /**
- * Preview bundles use an ad-hoc identity so every nested executable and the final
- * application bundle are sealed consistently. This proves bundle integrity without
- * claiming a Developer ID identity or Gatekeeper trust. Stable packaging remains
- * unavailable until the separate Developer ID and notarization path is configured.
+ * Unsigned internal bundles use an ad-hoc identity. Trusted bundles use the
+ * validated Developer ID identity supplied by the protected producer. In both
+ * cases the authoritative CLI is already final and is skipped by child signing;
+ * the enclosing application is sealed last.
  *
- * @param {'preview'|'stable'} releaseChannel
+ * @param {'unsigned'|'developer-id-notarized'} desktopTrust
+ * @param {{identity?: string, promotedCliFilename?: string}} [options]
  */
-export function createDesktopSignOptions(releaseChannel) {
-  if (releaseChannel !== 'preview') {
-    throw new Error(
-      'Stable Desktop packaging requires configured Developer ID signing and notarization.',
-    );
+export function createDesktopSignOptions(desktopTrust, options = {}) {
+  if (!['unsigned', 'developer-id-notarized'].includes(desktopTrust)) {
+    throw new Error(`Unsupported Desktop trust policy: ${desktopTrust}`);
   }
+  if (
+    desktopTrust === 'developer-id-notarized' &&
+    (options.identity === undefined || options.identity.trim() === '')
+  ) {
+    throw new Error('Trusted Desktop packaging requires a Developer ID identity.');
+  }
+  const trusted = desktopTrust === 'developer-id-notarized';
+  const identity = trusted ? /** @type {string} */ (options.identity) : '-';
   return {
-    identity: '-',
-    identityValidation: false,
+    identity,
+    identityValidation: trusted,
     continueOnError: false,
     preAutoEntitlements: false,
     preEmbedProvisioningProfile: false,
-    ignore: isPromotedCliResource,
-    optionsForFile: () => ({ hardenedRuntime: false, timestamp: 'none' }),
+    ignore: (/** @type {string} */ filePath) =>
+      isPromotedCliResource(filePath, options.promotedCliFilename),
+    optionsForFile: () =>
+      trusted
+        ? {
+            hardenedRuntime: true,
+            timestamp: 'http://timestamp.apple.com/ts01',
+          }
+        : { hardenedRuntime: false, timestamp: 'none' },
   };
 }
 
@@ -229,11 +280,48 @@ export function createDesktopSignOptions(releaseChannel) {
  * The application signature seals that exact resource without re-signing it.
  *
  * @param {string} filePath
+ * @param {string} [expectedFilename]
  */
-export function isPromotedCliResource(filePath) {
-  return /\/Contents\/Resources\/portreeve\/portreeve-v[^/]+$/u.test(
-    filePath.replaceAll('\\', '/'),
+export function isPromotedCliResource(filePath, expectedFilename) {
+  const normalized = filePath.replaceAll('\\', '/');
+  const filename = normalized.slice(normalized.lastIndexOf('/') + 1);
+  return (
+    /\/Contents\/Helpers\/portreeve-v[^/]+$/u.test(normalized) &&
+    (expectedFilename === undefined || filename === expectedFilename)
   );
+}
+
+/**
+ * @param {{applicationPath: string, sourcePath: string, filename: string}} options
+ */
+export async function installPromotedCliHelper(options) {
+  if (options.filename.includes('/') || options.filename.includes('\\')) {
+    throw new Error('Promoted CLI helper filename is unsafe.');
+  }
+  const helpers = resolve(options.applicationPath, 'Contents', 'Helpers');
+  await mkdir(helpers, { recursive: true });
+  const destination = resolve(helpers, options.filename);
+  await cp(options.sourcePath, destination);
+  await chmod(destination, 0o755);
+  return destination;
+}
+
+/** @param {string} path */
+async function adHocSignPromotedCli(path) {
+  const child = Bun.spawn(['codesign', '--force', '--sign', '-', path], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const [exitCode, stdout, stderr] = await Promise.all([
+    child.exited,
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+  ]);
+  if (exitCode !== 0) {
+    throw new Error(
+      `Ad-hoc CLI signing failed (${exitCode}): ${stderr.trim() || stdout.trim()}`,
+    );
+  }
 }
 
 /** @returns {'arm64'|'x64'} */
