@@ -29,7 +29,8 @@ gate.
 - For a local engine check, run `release:prepare`. Explain that one host stops before
   the complete native matrix.
 - For a complete candidate or rehearsal, use the manual GitHub workflow with
-  `publish=false`. Download `distribution-<version>` after it succeeds and run
+  `trust=true` and `publish=false`. Approval of `release-trust` authorizes only the
+  nonpublic Apple producer. Download `distribution-<version>` after it succeeds and run
   `release:inspect` against its `release-record.json`, followed by the disposable
   `release:homebrew-smoke` formula/cask installation check on macOS.
 - For an interrupted candidate, resume only through the exact recovery path documented
@@ -67,6 +68,7 @@ For the complete hosted rehearsal:
 gh workflow run release.yml \
   -f channel=preview \
   -f version=0.1.0-preview.1 \
+  -f trust=true \
   -f publish=false
 ```
 
@@ -85,6 +87,11 @@ temporary tap, and must clean up without changing supervision or PortReeve data.
 Do not invent signing evidence for stable. Missing Developer ID, notarization, stapling,
 Gatekeeper, or native evidence must remain a failure.
 
+Require the protected producer plus one current native ARM64 and one current native
+Intel Apple trust document for every new public preview as well as stable. A personal
+manual-install check on another architecture is optional; hosted native evidence is not.
+Historical previews through `0.1.0-preview.4` remain immutable unsigned history.
+
 ## Preserve the publication boundary
 
 Do not set `publish=true`, call `release:publish`, create or move a tag, create a GitHub
@@ -94,7 +101,8 @@ explicitly requests those public mutations after the exact plan is available.
 When publication is explicitly requested:
 
 1. Revalidate the completed record and every artifact digest.
-2. Present the plan path and SHA-256 plus GitHub, tap, and update-metadata targets.
+2. Require `publication-plan.sha256` to match the exact plan, then present the plan path
+   and SHA-256 plus GitHub, tap, and update-metadata targets.
 3. Obtain the user's explicit approval for that exact candidate if it has not already
    been given.
 4. Use the normal `release-publication` environment or the documented direct command.
@@ -118,6 +126,7 @@ Separate:
 - generated artifact names and digests;
 - preview/stable, maturity, and Desktop trust;
 - public mutations performed, or an explicit statement that none occurred;
+- protected trust approval and publication approval as separate facts;
 - generated Homebrew and Desktop PR URLs plus verified merge commits when published;
 - exact recovery or next command.
 

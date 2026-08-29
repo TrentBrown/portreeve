@@ -7,6 +7,7 @@ import {
   cp,
   mkdir,
   mkdtemp,
+  readdir,
   readFile,
   rm,
   stat,
@@ -33,8 +34,17 @@ import {
   verifyDesktopDmg,
 } from './desktop-release-lib.js';
 import { packageDesktop } from './package-desktop.js';
-import { sha256File } from './release-lib.js';
-import { readReleaseRecord, verifyReleaseArtifacts } from './release-record.js';
+import {
+  assertNativeVerificationMatrix,
+  readNativeVerification,
+} from './native-release-evidence.js';
+import { renderChecksumFile, sha256File } from './release-lib.js';
+import {
+  advanceReleaseRecord,
+  readReleaseRecord,
+  verifyReleaseArtifacts,
+  writeReleaseRecord,
+} from './release-record.js';
 
 const COMMAND_TIMEOUT_MS = 5 * 60 * 1000;
 const NOTARIZATION_DEADLINE_MS = 30 * 60 * 1000;
@@ -144,6 +154,7 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
             if (manifestArtifact === undefined) {
               throw new Error(`Release manifest lacks macOS ${architecture}.`);
             }
+            manifestArtifact.bytes = signed.bytes;
             manifestArtifact.sha256 = signed.sha256;
             transformations.push({
               architecture,
@@ -276,6 +287,14 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
               cliSha256: transformation.signed.sha256,
               application: {
                 filename: basename(packaged.applicationPath),
+                seal: await fileIdentity(
+                  resolve(
+                    packaged.applicationPath,
+                    'Contents',
+                    '_CodeSignature',
+                    'CodeResources',
+                  ),
+                ),
                 codesign: await inspectCodesign(run, packaged.applicationPath),
               },
               dmg: {
@@ -292,8 +311,10 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
           const artifactsRoot = resolve(outputRoot, 'artifacts');
           const evidenceRoot = resolve(outputRoot, 'evidence');
           const stateRoot = resolve(outputRoot, 'release-state');
+          await cp(resolve(releaseRoot, 'artifacts'), artifactsRoot, {
+            recursive: true,
+          });
           await Promise.all([
-            mkdir(artifactsRoot, { recursive: true }),
             mkdir(evidenceRoot, { recursive: true }),
             mkdir(stateRoot, { recursive: true }),
           ]);
@@ -309,8 +330,70 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
               resolve(artifactsRoot, entry.dmg.filename),
             );
           }
+          await cp(
+            resolve(signedArtifacts, 'manifest.json'),
+            resolve(artifactsRoot, 'manifest.json'),
+          );
+          const preliminaryVerifications = assertNativeVerificationMatrix(
+            record,
+            await readPreliminaryVerifications(releaseRoot),
+          );
+          const trustedRecord = structuredClone(record);
+          for (const transformation of transformations) {
+            const artifact = trustedRecord.artifacts.find(
+              (entry) =>
+                entry.type === 'executable' &&
+                entry.operatingSystem === 'macos' &&
+                entry.architecture === transformation.architecture,
+            );
+            if (
+              artifact === undefined ||
+              artifact.filename !== transformation.filename ||
+              artifact.bytes !== transformation.predecessor.bytes ||
+              artifact.sha256 !== transformation.predecessor.sha256
+            ) {
+              throw new Error(
+                'Signed CLI predecessor differs from the qualified release record.',
+              );
+            }
+            artifact.bytes = transformation.signed.bytes;
+            artifact.sha256 = transformation.signed.sha256;
+          }
+          await rewriteTrustedReleaseMetadata({
+            releaseRoot: outputRoot,
+            record: trustedRecord,
+            transformations,
+          });
+          const authoritativeRecord = advanceReleaseRecord(
+            trustedRecord,
+            'macos-cli-authority-established',
+            {
+              mode: 'developer-id-signed',
+              architectures: ['arm64', 'x64'],
+              targets: ['macos-arm64', 'macos-x64', 'linux-arm64', 'linux-x64'],
+              verificationCount: preliminaryVerifications.length,
+              verifications: preliminaryVerifications,
+              transformations: transformations.map(
+                ({ architecture, filename, predecessor, signed }) => ({
+                  architecture,
+                  filename,
+                  predecessor,
+                  signed,
+                }),
+              ),
+            },
+            now,
+          );
+          await verifyReleaseArtifacts(authoritativeRecord, outputRoot);
+          await writeReleaseRecord(
+            resolve(outputRoot, 'release-record.json'),
+            authoritativeRecord,
+          );
           await Promise.all([
-            cp(recordPath, resolve(stateRoot, 'release-record.json')),
+            writeReleaseRecord(
+              resolve(stateRoot, 'release-record.json'),
+              authoritativeRecord,
+            ),
             cp(
               options.qualificationPath,
               resolve(stateRoot, 'trust-qualification.json'),
@@ -356,6 +439,82 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
     await rm(outputRoot, { recursive: true, force: true });
     throw error;
   }
+}
+
+/**
+ * Rewrite the metadata that names transformed macOS CLI bytes and synchronize
+ * the corresponding release-record artifact identities.
+ *
+ * @param {{releaseRoot: string, record: Record<string, any>, transformations: Array<Record<string, any>>}} options
+ */
+export async function rewriteTrustedReleaseMetadata(options) {
+  const artifactsRoot = resolve(options.releaseRoot, 'artifacts');
+  const manifestPath = resolve(artifactsRoot, 'manifest.json');
+  const formulaPath = resolve(artifactsRoot, 'portreeve.rb');
+  const checksumsPath = resolve(artifactsRoot, 'SHA256SUMS');
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  let formula = await readFile(formulaPath, 'utf8');
+  for (const transformation of options.transformations) {
+    const manifestArtifact = manifest.artifacts?.find(
+      (/** @type {Record<string, any>} */ entry) =>
+        entry.type === 'executable' &&
+        entry.operatingSystem === 'macos' &&
+        entry.architecture === transformation.architecture &&
+        entry.filename === transformation.filename,
+    );
+    if (
+      manifestArtifact === undefined ||
+      manifestArtifact.bytes !== transformation.predecessor.bytes ||
+      manifestArtifact.sha256 !== transformation.predecessor.sha256
+    ) {
+      throw new Error('Trusted manifest predecessor identity is invalid.');
+    }
+    const occurrences = formula.split(transformation.predecessor.sha256).length - 1;
+    if (occurrences !== 1) {
+      throw new Error('Trusted formula predecessor checksum is invalid.');
+    }
+    manifestArtifact.bytes = transformation.signed.bytes;
+    manifestArtifact.sha256 = transformation.signed.sha256;
+    formula = formula.replace(
+      transformation.predecessor.sha256,
+      transformation.signed.sha256,
+    );
+  }
+  await writeFile(formulaPath, formula, 'utf8');
+  const formulaIdentity = await fileIdentity(formulaPath);
+  const manifestFormula = manifest.artifacts?.find(
+    (/** @type {Record<string, any>} */ entry) =>
+      entry.type === 'homebrew-formula' && entry.filename === 'portreeve.rb',
+  );
+  if (manifestFormula === undefined) {
+    throw new Error('Trusted manifest lacks its Homebrew formula.');
+  }
+  manifestFormula.bytes = formulaIdentity.bytes;
+  manifestFormula.sha256 = formulaIdentity.sha256;
+  await writeFile(manifestPath, JSON.stringify(manifest, null, 2).concat('\n'), 'utf8');
+  await writeFile(checksumsPath, renderChecksumFile(manifest.artifacts), 'utf8');
+  for (const filename of ['portreeve.rb', 'manifest.json', 'SHA256SUMS']) {
+    const artifact = options.record.artifacts.find(
+      (/** @type {Record<string, any>} */ entry) => entry.filename === filename,
+    );
+    if (artifact === undefined) {
+      throw new Error(`Trusted release record lacks ${filename}.`);
+    }
+    const identity = await fileIdentity(resolve(artifactsRoot, filename));
+    artifact.bytes = identity.bytes;
+    artifact.sha256 = identity.sha256;
+  }
+}
+
+/** @param {string} releaseRoot */
+async function readPreliminaryVerifications(releaseRoot) {
+  const evidenceRoot = resolve(releaseRoot, 'evidence');
+  const names = (await readdir(evidenceRoot))
+    .filter((name) => /^native-(?:macos|linux)-(?:arm64|x64)\.json$/u.test(name))
+    .sort();
+  return Promise.all(
+    names.map((name) => readNativeVerification(resolve(evidenceRoot, name))),
+  );
 }
 
 /** @param {{githubRef?: string, githubSha?: string, sourceCommit: string, desktopTrust: string, lastStage?: string}} context */

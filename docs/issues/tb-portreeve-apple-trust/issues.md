@@ -36,7 +36,7 @@ failure-injection tests. No live credential use belongs in this issue.
 
 ## I-3 - Establish canonical signed-CLI Desktop packaging
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P3
 - **Rubric criteria:** R3, R5, R7
@@ -50,7 +50,7 @@ retaining separate ARM64/x64 artifacts.
 
 ## I-4 - Add qualification and the protected trust producer
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P4
 - **Rubric criteria:** R4, R7
@@ -64,7 +64,7 @@ unconditional cleanup.
 
 ## I-5 - Produce and aggregate native trust evidence
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P5
 - **Rubric criteria:** R3, R5, R7
@@ -77,7 +77,7 @@ aggregation require one current document for each native architecture.
 
 ## I-6 - Seal finalization and publication boundaries
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P6
 - **Rubric criteria:** R1, R2, R6, R7
@@ -90,7 +90,7 @@ recovery and disjoint Apple/publication authority.
 
 ## I-7 - Complete operator documentation and regression suites
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1d
 - **Plan steps:** P7
 - **Rubric criteria:** R1, R3, R4, R5, R6, R7

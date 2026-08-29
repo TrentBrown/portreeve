@@ -197,6 +197,9 @@ export function advanceReleaseRecord(record, stage, evidence, now = () => new Da
           architectures: evidence.architectures,
           targets: evidence.targets,
           verificationCount: evidence.verificationCount,
+          ...(evidence.transformations === undefined
+            ? {}
+            : { transformations: evidence.transformations }),
         }
       : evidence;
   if (stage === 'macos-cli-authority-established') {
@@ -464,12 +467,27 @@ export function assertReleaseRecord(record) {
         entry.operatingSystem === verification.target.operatingSystem &&
         entry.architecture === verification.target.architecture,
     );
-    if (
-      artifact === undefined ||
-      artifact.filename !== verification.artifact.filename ||
-      artifact.bytes !== verification.artifact.bytes ||
-      artifact.sha256 !== verification.artifact.sha256
-    ) {
+    const authority = candidate.stages.find(
+      ({ name }) => name === 'macos-cli-authority-established',
+    )?.evidence;
+    const predecessor = Array.isArray(authority?.transformations)
+      ? authority.transformations.find(
+          (/** @type {Record<string, any>} */ entry) =>
+            entry?.architecture === verification.target.architecture &&
+            verification.target.operatingSystem === 'macos',
+        )?.predecessor
+      : undefined;
+    const matchesCurrent =
+      artifact !== undefined &&
+      artifact.filename === verification.artifact.filename &&
+      artifact.bytes === verification.artifact.bytes &&
+      artifact.sha256 === verification.artifact.sha256;
+    const matchesTrustedPredecessor =
+      candidate.policy.desktopTrust === 'developer-id-notarized' &&
+      predecessor?.bytes === verification.artifact.bytes &&
+      predecessor?.sha256 === verification.artifact.sha256 &&
+      artifact?.filename === verification.artifact.filename;
+    if (!matchesCurrent && !matchesTrustedPredecessor) {
       throw new Error('Native verification artifact identity is invalid.');
     }
     verificationKeys.push(
@@ -688,6 +706,52 @@ function assertStageEvidence(record, stage, evidence) {
       throw new Error(
         `macOS CLI authority evidence must use ${expectedMode} for the selected policy.`,
       );
+    }
+    if (record.policy.desktopTrust === 'developer-id-notarized') {
+      const transformations = evidence.transformations;
+      if (
+        transformations !== undefined &&
+        (!Array.isArray(transformations) ||
+          transformations.length !== 2 ||
+          transformations.map((entry) => entry?.architecture).join(',') !== 'arm64,x64')
+      ) {
+        throw new Error(
+          'Trusted macOS CLI authority requires both signed transformations.',
+        );
+      }
+      for (const transformation of Array.isArray(transformations)
+        ? transformations
+        : []) {
+        if (
+          typeof transformation.filename !== 'string' ||
+          basename(transformation.filename) !== transformation.filename ||
+          !Number.isSafeInteger(transformation.predecessor?.bytes) ||
+          !SHA256.test(String(transformation.predecessor?.sha256 ?? '')) ||
+          !Number.isSafeInteger(transformation.signed?.bytes) ||
+          !SHA256.test(String(transformation.signed?.sha256 ?? '')) ||
+          transformation.predecessor.sha256 === transformation.signed.sha256
+        ) {
+          throw new Error('Trusted macOS CLI transformation identity is invalid.');
+        }
+        const artifact = record.artifacts.find(
+          (entry) =>
+            entry.type === 'executable' &&
+            entry.operatingSystem === 'macos' &&
+            entry.architecture === transformation.architecture,
+        );
+        if (
+          artifact === undefined ||
+          artifact.filename !== transformation.filename ||
+          artifact.bytes !== transformation.signed.bytes ||
+          artifact.sha256 !== transformation.signed.sha256
+        ) {
+          throw new Error(
+            'Trusted macOS CLI transformation differs from recorded authority.',
+          );
+        }
+      }
+    } else if (evidence.transformations !== undefined) {
+      throw new Error('Unsigned macOS authority cannot claim signed transformations.');
     }
   }
   if (stage === 'authoritative-native-verified') {

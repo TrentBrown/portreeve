@@ -2,17 +2,18 @@
 
 > **Alpha Preview**
 >
-> PortReeve is evolving quickly and may make breaking changes. The current public alpha
-> preview is available on
-> [GitHub Releases](https://github.com/TrentBrown/portreeve/releases), and its macOS
-> application is unsigned until Apple Developer ID signing and notarization are
-> configured. Product maturity (`alpha`), release channel (`preview`), and macOS trust
-> (`unsigned`) are separate facts.
+> PortReeve is evolving quickly and may make breaking changes. Public alpha previews are
+> available on [GitHub Releases](https://github.com/TrentBrown/portreeve/releases).
+> Published previews through `0.1.0-preview.4` are immutable unsigned history; every new
+> public preview requires Apple Developer ID signing and notarization. Product maturity
+> (`alpha`), release channel (`preview`), and macOS trust are separate facts.
 
-The preview is ad-hoc signed so macOS can verify that the assembled application bundle
-and its nested executables have not changed. An ad-hoc signature carries no verified
-developer identity and is not notarization, so Gatekeeper may still require the scoped
-**Open Anyway** procedure below.
+Historical previews through `0.1.0-preview.4` are ad-hoc signed so macOS can verify that
+the assembled application bundle and its nested executables have not changed. An ad-hoc
+signature carries no verified developer identity and is not notarization, so Gatekeeper
+may still require the scoped **Open Anyway** procedure below. Newer public previews fail
+closed unless they are Developer ID-signed, notarized, stapled, accepted by Gatekeeper,
+and independently verified on native Apple Silicon and Intel runners.
 
 Use [GitHub Releases](https://github.com/TrentBrown/portreeve/releases) to identify the
 newest preview and verify its assets. The commands below install the currently published
@@ -79,9 +80,10 @@ shasum -a 256 PortReeve-VERSION-macos-ARCH.dmg
 Compare the complete output with the corresponding line in the downloaded checksum
 file. Do not continue when the values differ.
 
-## Opening an unsigned preview safely
+## Opening a historical unsigned preview safely
 
-Try to open PortReeve normally first. An unsigned preview may be blocked because Apple
+This exception applies only to immutable previews through `0.1.0-preview.4`. Try to open
+PortReeve normally first. A historical unsigned preview may be blocked because Apple
 cannot verify a Developer ID signature or notarization ticket. Only continue when the
 DMG came from the PortReeve GitHub Release and its SHA-256 matches the release checksum.
 

@@ -38,16 +38,17 @@ Append PR boundary entries here.
 - **Issues:** I-3, I-4
 - **Rubric in scope:** R3, R4, R5, R7
 - **Boundary packet:** [`pr-75/`](pr-75/)
-- **Status:** Draft boundary evaluation at pinned source
-  `f12b1241b9cb7f0aac609b36bc130821106766b6`.
+- **Status:** Evaluated source
+  `f12b1241b9cb7f0aac609b36bc130821106766b6`; merged as
+  `d54fdc0056109a5b0e8442da74332f593f9fe5ed`.
 
 ## Active Slice
 
-### Slice 2 - Trusted artifact construction
+### Slice 3 - Verification and sealed distribution
 
-- **Branch:** `tb-portreeve-apple-trust-02-trusted-artifact-construction`
-- **Plan steps:** P3, P4
-- **Issues:** I-3, I-4
-- **Rubric in scope:** R3, R4, R5, R7
-- **Status:** GateReeve `PR_BOUNDARY` for draft PR
-  [#75](https://github.com/TrentBrown/portreeve/pull/75).
+- **Branch:** `tb-portreeve-apple-trust-03-verification-sealed-distribution`
+- **Plan steps:** P5, P6, P7
+- **Issues:** I-5, I-6, I-7
+- **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7
+- **Status:** GateReeve `IMPLEMENTING` from merged `origin/main` at
+  `d54fdc0056109a5b0e8442da74332f593f9fe5ed`.

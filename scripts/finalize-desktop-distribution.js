@@ -9,7 +9,11 @@ import {
   createDesktopUpdateManifest,
   renderDesktopUpdateManifest,
 } from './desktop-update-manifest.js';
-import { renderChecksumFile, sha256File } from './release-lib.js';
+import {
+  renderChecksumFile,
+  renderHomebrewFormula,
+  sha256File,
+} from './release-lib.js';
 import {
   advanceReleaseRecord,
   readReleaseRecord,
@@ -18,6 +22,7 @@ import {
   writeReleaseRecord,
 } from './release-record.js';
 import { createPublicationPlan, renderPublicationPlan } from './publication-plan.js';
+import { aggregateAppleNativeTrustEvidence } from './apple-native-trust-evidence.js';
 
 const DEFAULT_HOMEPAGE = 'https://github.com/TrentBrown/portreeve';
 const DEFAULT_RELEASE_BASE = `${DEFAULT_HOMEPAGE}/releases/download`;
@@ -81,7 +86,7 @@ export function assertDesktopPackageEvidence(evidence) {
 }
 
 /**
- * @param {{recordPath: string, evidencePaths: string[], releaseBaseUrl?: string, homepageUrl?: string, trustEvidencePath?: string, currentUpdateManifestPath?: string}} options
+ * @param {{recordPath: string, evidencePaths?: string[], appleEvidencePaths?: string[], producerEvidencePath?: string, trustEvidencePath?: string, releaseBaseUrl?: string, homepageUrl?: string, currentUpdateManifestPath?: string}} options
  */
 export async function finalizeDesktopDistribution(options) {
   const recordPath = resolve(options.recordPath);
@@ -96,43 +101,87 @@ export async function finalizeDesktopDistribution(options) {
     verificationCount: NATIVE_TARGETS.length + 2,
   };
   let trustEvidence;
+  let evidencePaths = options.evidencePaths ?? [];
   if (record.policy.desktopTrust === 'unsigned') {
     trustEvidence = { status: 'unsigned-internal' };
   } else {
-    if (options.trustEvidencePath === undefined) {
-      throw new Error('Stable Desktop finalization requires Apple trust evidence.');
+    if (
+      options.trustEvidencePath !== undefined &&
+      options.producerEvidencePath === undefined &&
+      options.appleEvidencePaths === undefined
+    ) {
+      trustEvidence = JSON.parse(
+        await readFile(resolve(options.trustEvidencePath), 'utf8'),
+      );
+    } else {
+      if (
+        options.producerEvidencePath === undefined ||
+        options.appleEvidencePaths === undefined
+      ) {
+        throw new Error(
+          'Trusted Desktop finalization requires Apple trust evidence from the producer and native runners.',
+        );
+      }
+      const producer = JSON.parse(
+        await readFile(resolve(options.producerEvidencePath), 'utf8'),
+      );
+      const appleEvidence = await Promise.all(
+        options.appleEvidencePaths.map(async (path) =>
+          JSON.parse(await readFile(resolve(path), 'utf8')),
+        ),
+      );
+      const aggregated = aggregateAppleNativeTrustEvidence(
+        record,
+        producer,
+        appleEvidence,
+      );
+      trustEvidence = aggregated.trustEvidence;
+      evidencePaths = [];
+      for (const entry of aggregated.ordered) {
+        const path = resolve(
+          releaseRoot,
+          'evidence',
+          `desktop-from-apple-${entry.target.architecture}.json`,
+        );
+        const desktopEvidence = {
+          schemaVersion: 1,
+          kind: 'desktop-package-verification',
+          releaseId: entry.releaseId,
+          releaseVersion: entry.releaseVersion,
+          source: entry.source,
+          target: entry.target,
+          cliArtifact: {
+            filename: entry.cli.filename,
+            bytes: entry.cli.bytes,
+            sha256: entry.cli.sha256,
+          },
+          desktop: {
+            version: entry.releaseVersion,
+            filename: entry.dmg.filename,
+            bytes: entry.dmg.bytes,
+            sha256: entry.dmg.sha256,
+          },
+          checks: {
+            exactCliEmbedded: true,
+            packageInspected: true,
+            dmgVerified: true,
+            dmgMounted: true,
+            nativeSmoke: true,
+          },
+          runner: entry.runner,
+          verifiedAt: entry.verifiedAt,
+        };
+        await writeImmutableFile(
+          path,
+          JSON.stringify(desktopEvidence, null, 2).concat('\n'),
+        );
+        evidencePaths.push(path);
+      }
     }
-    trustEvidence = JSON.parse(
-      await readFile(resolve(options.trustEvidencePath), 'utf8'),
-    );
-    advanceReleaseRecord(
-      advanceReleaseRecord(
-        advanceReleaseRecord(record, 'desktop-packaged', {
-          packages: [
-            {
-              architecture: 'arm64',
-              filename: desktopDmgName(record.versions.desktop, 'arm64'),
-              sha256: '0'.repeat(64),
-              cliSha256: '1'.repeat(64),
-            },
-            {
-              architecture: 'x64',
-              filename: desktopDmgName(record.versions.desktop, 'x64'),
-              sha256: '2'.repeat(64),
-              cliSha256: '3'.repeat(64),
-            },
-          ],
-        }),
-        'authoritative-native-verified',
-        authoritativeNativeEvidence,
-      ),
-      'desktop-trust-verified',
-      trustEvidence,
-    );
   }
   await verifyReleaseArtifacts(record, releaseRoot);
   const evidence = await Promise.all(
-    options.evidencePaths.map(async (path) => {
+    evidencePaths.map(async (path) => {
       const value = JSON.parse(await readFile(resolve(path), 'utf8'));
       assertDesktopPackageEvidence(value);
       return value;
@@ -193,6 +242,7 @@ export async function finalizeDesktopDistribution(options) {
       releaseBaseUrl: options.releaseBaseUrl ?? DEFAULT_RELEASE_BASE,
       homepageUrl: options.homepageUrl ?? DEFAULT_HOMEPAGE,
       checksums: { arm64: arm.desktop.sha256, x64: intel.desktop.sha256 },
+      desktopTrust: record.policy.desktopTrust,
     }),
   );
   await verifyRuby(caskPath);
@@ -233,6 +283,60 @@ export async function finalizeDesktopDistribution(options) {
     authoritativeNativeEvidence,
   );
   record = advanceReleaseRecord(record, 'desktop-trust-verified', trustEvidence);
+  if (
+    record.policy.desktopTrust === 'developer-id-notarized' &&
+    options.producerEvidencePath !== undefined
+  ) {
+    const formulaPath = resolve(releaseRoot, 'artifacts', 'portreeve.rb');
+    const formula = record.artifacts.find(
+      (artifact) => artifact.type === 'homebrew-formula',
+    );
+    if (formula === undefined) {
+      throw new Error('Trusted finalization requires its Homebrew formula.');
+    }
+    const checksums = Object.fromEntries(
+      record.artifacts
+        .filter((artifact) => artifact.type === 'executable')
+        .map((artifact) => [artifact.filename, artifact.sha256]),
+    );
+    await writeFile(
+      formulaPath,
+      renderHomebrewFormula({
+        version: record.releaseVersion,
+        releaseBaseUrl: options.releaseBaseUrl ?? DEFAULT_RELEASE_BASE,
+        homepageUrl: options.homepageUrl ?? DEFAULT_HOMEPAGE,
+        checksums,
+      }),
+      'utf8',
+    );
+    formula.bytes = (await stat(formulaPath)).size;
+    formula.sha256 = await sha256File(formulaPath);
+    const manifestPath = resolve(releaseRoot, 'artifacts', 'manifest.json');
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    for (const artifact of manifest.artifacts ?? []) {
+      const authoritative = record.artifacts.find(
+        (entry) => entry.filename === artifact.filename,
+      );
+      if (authoritative !== undefined) {
+        artifact.bytes = authoritative.bytes;
+        artifact.sha256 = authoritative.sha256;
+      }
+    }
+    await writeFile(
+      manifestPath,
+      JSON.stringify(manifest, null, 2).concat('\n'),
+      'utf8',
+    );
+    await writeFile(
+      resolve(releaseRoot, 'artifacts', 'SHA256SUMS'),
+      renderChecksumFile(
+        record.artifacts.filter((artifact) =>
+          ['executable', 'npm-package', 'homebrew-formula'].includes(artifact.type),
+        ),
+      ),
+      'utf8',
+    );
+  }
   const updateManifestPath = resolve(releaseRoot, 'artifacts', 'desktop-update.json');
   const currentUpdateManifest = JSON.parse(
     await readFile(
@@ -267,10 +371,14 @@ export async function finalizeDesktopDistribution(options) {
     provenanceStage: 'distribution-finalized',
   });
   await verifyReleaseArtifacts(record, releaseRoot);
-  await writeFile(
-    resolve(releaseRoot, 'publication-plan.md'),
+  const publicationPlanPath = resolve(releaseRoot, 'publication-plan.md');
+  await writeImmutableFile(
+    publicationPlanPath,
     renderPublicationPlan(createPublicationPlan(record)),
-    'utf8',
+  );
+  await writeImmutableFile(
+    resolve(releaseRoot, 'publication-plan.sha256'),
+    `${await sha256File(publicationPlanPath)}  publication-plan.md\n`,
   );
   await writeReleaseRecord(recordPath, record);
   return { recordPath, record, caskPath, checksumsPath, updateManifestPath };
@@ -314,8 +422,9 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     .name('release:finalize-desktop')
     .description('Finalize both Desktop DMGs, Homebrew cask, and distribution state')
     .requiredOption('--record <path>', 'prepared release-record.json path')
-    .requiredOption('--evidence <paths...>', 'arm64 and x64 Desktop evidence paths')
-    .option('--trust-evidence <path>', 'Developer ID and notarization evidence')
+    .option('--evidence <paths...>', 'arm64 and x64 unsigned Desktop evidence')
+    .option('--apple-evidence <paths...>', 'ARM64 and Intel Apple trust evidence')
+    .option('--producer-evidence <path>', 'protected producer evidence')
     .option(
       '--current-update-manifest <path>',
       'current channel-aware Desktop update manifest',
@@ -325,7 +434,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       const result = await finalizeDesktopDistribution({
         recordPath: values.record,
         evidencePaths: values.evidence,
-        trustEvidencePath: values.trustEvidence,
+        appleEvidencePaths: values.appleEvidence,
+        producerEvidencePath: values.producerEvidence,
         currentUpdateManifestPath: values.currentUpdateManifest,
       });
       console.log(result.recordPath);
