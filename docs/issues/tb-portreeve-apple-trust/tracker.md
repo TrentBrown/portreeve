@@ -29,6 +29,15 @@ Append PR boundary entries here.
 - **Issues:** I-1, I-2
 - **Rubric in scope:** R1, R2, R3, R4, R7
 - **Boundary packet:** [`pr-74/`](pr-74/)
-- **Status:** GateReeve boundary packet valid and human review accepted for
-  remediated pinned source
-  `cb4ad905a7cd7f141dec4af662aecebbdb74908b`; landing pending.
+- **Status:** Merged as `0de186b584be0ef4318c34cba5169dc1c5a76dd1`.
+
+## Active Slice
+
+### Slice 2 - Trusted artifact construction
+
+- **Branch:** `tb-portreeve-apple-trust-02-trusted-artifact-construction`
+- **Plan steps:** P3, P4
+- **Issues:** I-3, I-4
+- **Rubric in scope:** R3, R4, R5, R7
+- **Status:** GateReeve `IMPLEMENTING` from merged `origin/main` at
+  `0de186b584be0ef4318c34cba5169dc1c5a76dd1`.

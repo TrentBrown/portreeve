@@ -40,6 +40,8 @@
     "release:package-desktop": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/package-desktop-release.js",
     "release:prepare": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/prepare-release.js",
     "release:publish": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/publish-release.js",
+    "release:qualify-trust": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/qualify-trusted-release.js",
+    "release:produce-apple-trust": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/produce-apple-trusted-artifacts.js",
     "release:verify": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/verify-release.js",
     "runtime:spike": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" test test/runtime/compiled-runtime.test.js",
     "stacks:verify": "\"$npm_execpath\" run toolchain:check && \"$npm_execpath\" scripts/verify-stack-feature.js",

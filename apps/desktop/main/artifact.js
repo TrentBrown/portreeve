@@ -45,11 +45,14 @@ export async function resolveLocalReleaseCandidate(options) {
 }
 
 /**
- * @param {{resourcesRoot: string, platform?: NodeJS.Platform, architecture?: string}} options
+ * @param {{resourcesRoot: string, helpersRoot?: string, platform?: NodeJS.Platform, architecture?: string}} options
  */
 export function resolveBundledReleaseCandidate(options) {
   return resolveReleaseCandidate({
     releaseDirectory: resolve(options.resourcesRoot, 'portreeve'),
+    executableDirectory: resolve(
+      options.helpersRoot ?? resolve(options.resourcesRoot, '..', 'Helpers'),
+    ),
     platform: options.platform ?? process.platform,
     architecture: options.architecture ?? process.arch,
     source: 'local-release-candidate',
@@ -57,7 +60,7 @@ export function resolveBundledReleaseCandidate(options) {
 }
 
 /**
- * @param {{releaseDirectory: string, platform: NodeJS.Platform, architecture: string, source: 'local-release-candidate'|'published', overridePath?: string}} options
+ * @param {{releaseDirectory: string, executableDirectory?: string, platform: NodeJS.Platform, architecture: string, source: 'local-release-candidate'|'published', overridePath?: string}} options
  */
 async function resolveReleaseCandidate(options) {
   const operatingSystem = options.platform === 'darwin' ? 'macos' : options.platform;
@@ -81,7 +84,11 @@ async function resolveReleaseCandidate(options) {
     throw new Error('The provisional PortReeve artifact filename is unsafe.');
   }
   const candidate = await realpath(
-    options.overridePath ?? resolve(options.releaseDirectory, artifact.filename),
+    options.overridePath ??
+      resolve(
+        options.executableDirectory ?? options.releaseDirectory,
+        artifact.filename,
+      ),
   );
   if (basename(candidate) !== artifact.filename) {
     throw new Error('The provisional PortReeve artifact filename is unexpected.');

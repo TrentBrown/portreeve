@@ -9,7 +9,7 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Version the release lifecycle and public trust policy
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R2, R7
@@ -23,7 +23,7 @@ historical preview facts.
 
 ## I-2 - Build Apple trust and recovery primitives
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R3, R4, R7
@@ -36,7 +36,7 @@ failure-injection tests. No live credential use belongs in this issue.
 
 ## I-3 - Establish canonical signed-CLI Desktop packaging
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P3
 - **Rubric criteria:** R3, R5, R7
@@ -50,7 +50,7 @@ retaining separate ARM64/x64 artifacts.
 
 ## I-4 - Add qualification and the protected trust producer
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 2d
 - **Plan steps:** P4
 - **Rubric criteria:** R4, R7

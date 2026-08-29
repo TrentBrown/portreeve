@@ -151,12 +151,12 @@ export async function runBoundedAppleCommand(command, args, options) {
  * Run protected work inside a lifecycle that always restores captured state.
  * Configuration is validated before any private material may be prepared.
  *
- * @template TScope, TResult
+ * @template TCaptured, TScope, TResult
  * @param {Parameters<typeof assertAppleSigningConfiguration>[0]} configuration
  * @param {{
- *   capture: () => Promise<unknown>,
- *   prepare: (configuration: ReturnType<typeof assertAppleSigningConfiguration>, captured: unknown) => Promise<TScope>,
- *   cleanup: (scope: TScope|undefined, captured: unknown) => Promise<void>,
+ *   capture: () => Promise<TCaptured>,
+ *   prepare: (configuration: ReturnType<typeof assertAppleSigningConfiguration>, captured: TCaptured) => Promise<TScope>,
+ *   cleanup: (scope: TScope|undefined, captured: TCaptured) => Promise<void>,
  * }} lifecycle
  * @param {(scope: TScope, configuration: ReturnType<typeof assertAppleSigningConfiguration>) => Promise<TResult>} action
  */
