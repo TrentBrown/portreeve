@@ -21,6 +21,8 @@ import {
 import {
   assertProtectedProducerContext,
   createCredentialLifecycle,
+  notarizeDmg,
+  preserveNotarizationCandidate,
   rewriteTrustedReleaseMetadata,
 } from '../../scripts/produce-apple-trusted-artifacts.js';
 import { renderChecksumFile, sha256File } from '../../scripts/release-lib.js';
@@ -217,7 +219,212 @@ describe('Apple trust producer', () => {
       );
     }
   });
+
+  test('records an asynchronous submit response and polls exactly one request', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'portreeve-notary-producer-'));
+    directories.push(root);
+    const dmgPath = join(root, 'PortReeve-test.dmg');
+    await writeFile(dmgPath, 'signed candidate');
+    /** @type {Array<{command: string, args: string[]}>} */
+    const calls = [];
+    /** @type {Array<Record<string, any>>} */
+    const recoveries = [];
+    let infoCalls = 0;
+    const result = await notarizeDmg({
+      dmgPath,
+      releaseId: 'portreeve-v0.1.0-preview.6',
+      scope: { notaryKey: '/private/AuthKey_TEST.p8' },
+      configuration: configuration(),
+      run: async (command, args) => {
+        calls.push({ command, args });
+        if (args[1] === 'submit') {
+          return {
+            stdout: JSON.stringify({
+              id: '11111111-2222-4333-8444-555555555555',
+              message: 'Successfully uploaded file',
+            }),
+            stderr: '',
+            exitCode: 0,
+          };
+        }
+        infoCalls += 1;
+        return {
+          stdout: JSON.stringify({
+            id: '11111111-2222-4333-8444-555555555555',
+            status: infoCalls === 1 ? 'In Progress' : 'Accepted',
+          }),
+          stderr: '',
+          exitCode: 0,
+        };
+      },
+      now: tickingClock('2026-08-29T18:00:00.000Z'),
+      sleep: async () => undefined,
+      persistRecovery: async (recovery) => {
+        recoveries.push(structuredClone(recovery));
+      },
+    });
+    const submissions = calls.filter(({ args }) => args[1] === 'submit');
+    const polls = calls.filter(({ args }) => args[1] === 'info');
+    expect(submissions).toHaveLength(1);
+    expect(polls).toHaveLength(2);
+    expect(polls.every(({ args }) => args[2] === result.requestId)).toBe(true);
+    expect(result).toMatchObject({
+      requestId: '11111111-2222-4333-8444-555555555555',
+      status: 'Accepted',
+      recovery: {
+        status: 'accepted',
+        uploadAttempts: 1,
+        currentRequestId: '11111111-2222-4333-8444-555555555555',
+      },
+    });
+    expect(recoveries.map(({ status }) => status)).toEqual([
+      'awaiting-upload',
+      'awaiting-poll',
+      'awaiting-poll',
+      'accepted',
+    ]);
+  });
+
+  test('preserves submitted DMG bytes when the working copy is later mutated', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'portreeve-notary-candidate-'));
+    directories.push(root);
+    const workingPath = join(root, 'work', 'PortReeve-test.dmg');
+    const recoveryRoot = join(root, 'recovery', 'candidates');
+    await mkdir(join(root, 'work'));
+    await writeFile(workingPath, 'signed pre-staple bytes');
+    const submittedPath = await preserveNotarizationCandidate({
+      sourcePath: workingPath,
+      recoveryCandidatesRoot: recoveryRoot,
+    });
+    const submittedSha256 = await sha256File(submittedPath);
+
+    await writeFile(workingPath, 'signed pre-staple bytes plus staple ticket');
+
+    expect(await sha256File(submittedPath)).toBe(submittedSha256);
+    expect(await sha256File(workingPath)).not.toBe(submittedSha256);
+    expect(await readFile(submittedPath, 'utf8')).toBe('signed pre-staple bytes');
+  });
+
+  test('keeps info status strict while preserving the known request', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'portreeve-notary-producer-'));
+    directories.push(root);
+    const dmgPath = join(root, 'PortReeve-test.dmg');
+    const recoveryPath = join(root, 'recovery', 'notarization-arm64.json');
+    await writeFile(dmgPath, 'signed candidate');
+    await expect(
+      notarizeDmg({
+        dmgPath,
+        releaseId: 'portreeve-v0.1.0-preview.6',
+        recoveryPath,
+        scope: { notaryKey: '/private/AuthKey_TEST.p8' },
+        configuration: configuration(),
+        run: async (_command, args) => ({
+          stdout: JSON.stringify(
+            args[1] === 'submit'
+              ? {
+                  id: '11111111-2222-4333-8444-555555555555',
+                  message: 'Successfully uploaded file',
+                }
+              : { id: '11111111-2222-4333-8444-555555555555' },
+          ),
+          stderr: '',
+          exitCode: 0,
+        }),
+        now: tickingClock('2026-08-29T18:00:00.000Z'),
+        sleep: async () => undefined,
+      }),
+    ).rejects.toThrow('status must be a non-empty string');
+    const recovery = JSON.parse(await readFile(recoveryPath, 'utf8'));
+    expect(recovery).toMatchObject({
+      status: 'awaiting-poll',
+      uploadAttempts: 1,
+      currentRequestId: '11111111-2222-4333-8444-555555555555',
+      candidate: {
+        releaseId: 'portreeve-v0.1.0-preview.6',
+        sha256: await sha256File(dmgPath),
+      },
+      history: [{ kind: 'request-created' }, { kind: 'poll-indeterminate' }],
+    });
+    /** @type {string[]} */
+    const resumedActions = [];
+    const resumed = await notarizeDmg({
+      dmgPath,
+      releaseId: 'portreeve-v0.1.0-preview.6',
+      recovery,
+      scope: { notaryKey: '/private/AuthKey_TEST.p8' },
+      configuration: configuration(),
+      run: async (_command, args) => {
+        resumedActions.push(String(args[1]));
+        return {
+          stdout: JSON.stringify({
+            id: '11111111-2222-4333-8444-555555555555',
+            status: 'Accepted',
+          }),
+          stderr: '',
+          exitCode: 0,
+        };
+      },
+      now: tickingClock('2026-08-29T18:05:00.000Z'),
+      sleep: async () => undefined,
+      persistRecovery: async () => undefined,
+    });
+    expect(resumedActions).toEqual(['info']);
+    expect(resumed).toMatchObject({
+      requestId: '11111111-2222-4333-8444-555555555555',
+      status: 'Accepted',
+      recovery: { uploadAttempts: 1, status: 'accepted' },
+    });
+  });
+
+  test('preserves a machine-readable request ID even when submit exits nonzero', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'portreeve-notary-producer-'));
+    directories.push(root);
+    const dmgPath = join(root, 'PortReeve-test.dmg');
+    await writeFile(dmgPath, 'signed candidate');
+    /** @type {Array<Record<string, any>>} */
+    const recoveries = [];
+    await expect(
+      notarizeDmg({
+        dmgPath,
+        releaseId: 'portreeve-v0.1.0-preview.6',
+        scope: { notaryKey: '/private/AuthKey_TEST.p8' },
+        configuration: configuration(),
+        run: async () => ({
+          stdout: JSON.stringify({
+            id: '11111111-2222-4333-8444-555555555555',
+          }),
+          stderr: '',
+          exitCode: 1,
+        }),
+        now: tickingClock('2026-08-29T18:00:00.000Z'),
+        persistRecovery: async (recovery) => {
+          recoveries.push(structuredClone(recovery));
+        },
+      }),
+    ).rejects.toThrow('submission failed with exit 1');
+    expect(recoveries.at(-1)).toMatchObject({
+      status: 'awaiting-poll',
+      uploadAttempts: 1,
+      currentRequestId: '11111111-2222-4333-8444-555555555555',
+      history: [
+        {
+          kind: 'request-created',
+          diagnostic: 'notarytool submit exited 1; request ID preserved',
+        },
+      ],
+    });
+  });
 });
+
+/** @param {string} initial */
+function tickingClock(initial) {
+  let current = Date.parse(initial);
+  return () => {
+    const value = new Date(current);
+    current += 1_000;
+    return value;
+  };
+}
 
 /** @param {'arm64'|'x64'} architecture @param {string} before @param {string} after @param {number} beforeBytes @param {number} afterBytes */
 function transformation(architecture, before, after, beforeBytes, afterBytes) {

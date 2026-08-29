@@ -64,7 +64,7 @@ unconditional cleanup.
 
 ## I-5 - Produce and aggregate native trust evidence
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P5
 - **Rubric criteria:** R3, R5, R7
@@ -77,7 +77,7 @@ aggregation require one current document for each native architecture.
 
 ## I-6 - Seal finalization and publication boundaries
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P6
 - **Rubric criteria:** R1, R2, R6, R7
@@ -90,7 +90,7 @@ recovery and disjoint Apple/publication authority.
 
 ## I-7 - Complete operator documentation and regression suites
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P7
 - **Rubric criteria:** R1, R3, R4, R5, R6, R7
@@ -103,7 +103,7 @@ the focused and broad verification matrices.
 
 ## I-8 - Run protected rehearsal and complete verification
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1d
 - **Plan steps:** P8
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
@@ -114,3 +114,20 @@ From reviewed code pinned on `main`, produce and inspect the complete trusted
 preview packet with both native authorities and publication disabled. Preserve
 zero-public-mutation evidence; route defects through fresh sequential slices
 before full feature evaluation and close-out.
+
+## I-9 - Correct asynchronous notarization submission recovery
+
+- **Status:** in-review
+- **Estimate:** 1d
+- **Plan steps:** P2, P8
+- **Rubric criteria:** R4, R7, R8
+- **Depends on:** I-2, I-4, I-8
+- **PR:** [#77](https://github.com/TrentBrown/portreeve/pull/77)
+
+Correct the protected producer defect observed in hosted run
+`33267482516`: asynchronous `notarytool submit` returned a valid request ID
+without a status, but the producer required status before beginning its poll
+loop. Integrate the existing bounded recovery state machine into the real
+producer, preserve exact signed candidates and non-secret request history on
+failure, add failure-only workflow upload, and prove one-submit request
+continuity with producer-level tests before another protected attempt.

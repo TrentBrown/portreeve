@@ -9,6 +9,7 @@ import {
   mkdtemp,
   readdir,
   readFile,
+  rename,
   rm,
   stat,
   writeFile,
@@ -20,11 +21,16 @@ import {
   APPLE_NOTARY_KEY_NAME,
   APPLE_SIGNING_IDENTITY,
   APPLE_TEAM_ID,
+  assertNotarizationCandidate,
   assertAppleSigningConfiguration,
+  createNotarizationRecovery,
+  nextNotarizationAction,
   parseCodesignFacts,
   parseGatekeeperFacts,
   parseNotarytoolFacts,
+  parseNotarytoolSubmissionFacts,
   parseStaplerFacts,
+  recordNotarizationObservation,
   runBoundedAppleCommand,
   withAppleCredentialScope,
 } from './apple-trust-contract.js';
@@ -111,6 +117,8 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
           const transformations = [];
           /** @type {Array<Record<string, any>>} */
           const packages = [];
+          const recoveryRoot = resolve(outputRoot, 'recovery');
+          const recoveryCandidatesRoot = resolve(recoveryRoot, 'candidates');
           for (const architecture of /** @type {const} */ (['arm64', 'x64'])) {
             const recorded = record.artifacts.find(
               (artifact) =>
@@ -207,26 +215,38 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
                 'Embedded CLI Developer ID facts changed during packaging.',
               );
             }
-            const dmgPath = resolve(
+            const temporaryDmgPath = resolve(
               workRoot,
               'dmgs',
               desktopDmgName(record.releaseVersion, architecture),
             );
             await createDmg({
               applicationPath: packaged.applicationPath,
-              outputPath: dmgPath,
+              outputPath: temporaryDmgPath,
               architecture,
               controllerVersion: record.releaseVersion,
             });
             await requireSuccess(
               run,
               'codesign',
-              ['--force', '--timestamp', '--sign', validated.identity, dmgPath],
+              [
+                '--force',
+                '--timestamp',
+                '--sign',
+                validated.identity,
+                temporaryDmgPath,
+              ],
               'DMG signing',
             );
-            const dmgCodesign = await inspectCodesign(run, dmgPath, false);
+            const dmgCodesign = await inspectCodesign(run, temporaryDmgPath, false);
+            const submittedDmgPath = await preserveNotarizationCandidate({
+              sourcePath: temporaryDmgPath,
+              recoveryCandidatesRoot,
+            });
             const notarization = await notarizeDmg({
-              dmgPath,
+              dmgPath: submittedDmgPath,
+              releaseId: record.releaseId,
+              recoveryPath: resolve(recoveryRoot, `notarization-${architecture}.json`),
               scope,
               configuration: validated,
               run,
@@ -235,13 +255,13 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
             await requireSuccess(
               run,
               'xcrun',
-              ['stapler', 'staple', dmgPath],
+              ['stapler', 'staple', temporaryDmgPath],
               'stapling',
             );
             const staplerResult = await runBounded(run, 'xcrun', [
               'stapler',
               'validate',
-              dmgPath,
+              temporaryDmgPath,
             ]);
             const stapler = parseStaplerFacts(staplerResult);
             const gatekeeperResult = await runBounded(run, 'spctl', [
@@ -251,11 +271,11 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
               '--context',
               'context:primary-signature',
               '--verbose=4',
-              dmgPath,
+              temporaryDmgPath,
             ]);
             const gatekeeper = parseGatekeeperFacts(gatekeeperResult);
             await verifyDmg({
-              dmgPath,
+              dmgPath: temporaryDmgPath,
               architecture,
               controllerVersion: record.releaseVersion,
               verifyApplication: async (mountedApplicationPath) => {
@@ -298,8 +318,8 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
                 codesign: await inspectCodesign(run, packaged.applicationPath),
               },
               dmg: {
-                filename: basename(dmgPath),
-                ...(await fileIdentity(dmgPath)),
+                filename: basename(temporaryDmgPath),
+                ...(await fileIdentity(temporaryDmgPath)),
                 codesign: dmgCodesign,
                 notarization,
                 stapler,
@@ -330,6 +350,7 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
               resolve(artifactsRoot, entry.dmg.filename),
             );
           }
+          await rm(recoveryCandidatesRoot, { recursive: true, force: true });
           await cp(
             resolve(signedArtifacts, 'manifest.json'),
             resolve(artifactsRoot, 'manifest.json'),
@@ -436,9 +457,32 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
       },
     );
   } catch (error) {
-    await rm(outputRoot, { recursive: true, force: true });
+    const recoveryEntries = await readdir(resolve(outputRoot, 'recovery')).catch(
+      () => [],
+    );
+    if (recoveryEntries.length === 0) {
+      await rm(outputRoot, { recursive: true, force: true });
+    }
     throw error;
   }
+}
+
+/**
+ * Preserve the exact pre-staple bytes submitted to Apple independently from
+ * the working DMG that stapling and later verification may mutate.
+ * @param {{sourcePath: string, recoveryCandidatesRoot: string}} options
+ */
+export async function preserveNotarizationCandidate(options) {
+  await mkdir(options.recoveryCandidatesRoot, { recursive: true });
+  const submittedPath = resolve(
+    options.recoveryCandidatesRoot,
+    basename(options.sourcePath),
+  );
+  await cp(options.sourcePath, submittedPath, {
+    errorOnExist: true,
+    force: false,
+  });
+  return submittedPath;
 }
 
 /**
@@ -703,40 +747,75 @@ async function inspectCodesign(run, path, requireRuntime = true) {
   return parseCodesignFacts(`${result.stdout}\n${result.stderr}`, { requireRuntime });
 }
 
-/** @param {{dmgPath: string, scope: {notaryKey: string}, configuration: ReturnType<typeof assertAppleSigningConfiguration>, run: typeof runCommand, now: () => Date}} options */
-async function notarizeDmg(options) {
-  const started = options.now().getTime();
-  const submit = await requireSuccess(
-    options.run,
-    'xcrun',
-    [
-      'notarytool',
-      'submit',
-      options.dmgPath,
-      '--key',
-      options.scope.notaryKey,
-      '--key-id',
-      options.configuration.keyId,
-      '--issuer',
-      options.configuration.issuerId,
-      '--output-format',
-      'json',
-    ],
-    'notarization submission',
-  );
-  let facts = parseNotarytoolFacts(submit.stdout);
-  while (facts.status === 'In Progress') {
-    if (options.now().getTime() - started > NOTARIZATION_DEADLINE_MS) {
-      throw new Error('Apple notarization deadline expired.');
+/**
+ * @param {{
+ *   dmgPath: string,
+ *   releaseId: string,
+ *   recoveryPath?: string,
+ *   recovery?: ReturnType<typeof createNotarizationRecovery>,
+ *   persistRecovery?: (recovery: ReturnType<typeof createNotarizationRecovery>) => Promise<void>,
+ *   scope: {notaryKey: string},
+ *   configuration: ReturnType<typeof assertAppleSigningConfiguration>,
+ *   run: typeof runCommand,
+ *   now: () => Date,
+ *   sleep?: (milliseconds: number) => Promise<void>,
+ * }} options
+ */
+export async function notarizeDmg(options) {
+  const candidate = {
+    releaseId: options.releaseId,
+    sha256: await sha256File(options.dmgPath),
+  };
+  const startedAt = options.now().toISOString();
+  /** @type {ReturnType<typeof createNotarizationRecovery>} */
+  let recovery =
+    options.recovery ??
+    createNotarizationRecovery({
+      ...candidate,
+      startedAt,
+      deadlineAt: new Date(
+        Date.parse(startedAt) + NOTARIZATION_DEADLINE_MS,
+      ).toISOString(),
+    });
+  assertNotarizationCandidate(recovery, candidate);
+  const recoveryPath = options.recoveryPath;
+  const persistRecovery =
+    options.persistRecovery ??
+    (recoveryPath === undefined
+      ? undefined
+      : async (value) => persistRecoveryEvidence(recoveryPath, value));
+  if (persistRecovery === undefined) {
+    throw new Error('Notarization recovery persistence is required.');
+  }
+  const sleep =
+    options.sleep ??
+    ((milliseconds) =>
+      new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds)));
+  await persistRecovery(recovery);
+
+  while (true) {
+    const now = options.now().toISOString();
+    const nextAction = nextNotarizationAction(recovery, now);
+    if (nextAction.action === 'accepted') {
+      return {
+        requestId: recovery.currentRequestId,
+        status: 'Accepted',
+        recovery,
+      };
     }
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, 15_000));
-    const poll = await requireSuccess(
-      options.run,
-      'xcrun',
-      [
+    if (nextAction.action === 'blocked') {
+      const lastStatus = recovery.history.at(-1)?.status;
+      const reason =
+        typeof lastStatus === 'string'
+          ? `status ${lastStatus}`
+          : (nextAction.reason ?? 'indeterminate state');
+      throw new Error(`Apple notarization blocked: ${reason}.`);
+    }
+    if (nextAction.action === 'submit') {
+      const submit = await runBounded(options.run, 'xcrun', [
         'notarytool',
-        'info',
-        facts.requestId,
+        'submit',
+        options.dmgPath,
         '--key',
         options.scope.notaryKey,
         '--key-id',
@@ -745,19 +824,134 @@ async function notarizeDmg(options) {
         options.configuration.issuerId,
         '--output-format',
         'json',
-      ],
-      'notarization polling',
-    );
-    const next = parseNotarytoolFacts(poll.stdout);
-    if (next.requestId !== facts.requestId) {
-      throw new Error('Apple notarization polling changed request identity.');
+      ]);
+      let submitted;
+      let parseError;
+      try {
+        submitted = parseNotarytoolSubmissionFacts(submit.stdout);
+      } catch (error) {
+        parseError = error;
+        const requestId = salvageNotarizationRequestId(submit.stdout);
+        if (requestId !== null) submitted = { requestId };
+      }
+      const observedAt = options.now().toISOString();
+      if (submitted === undefined) {
+        recovery = recordNotarizationObservation(
+          recovery,
+          {
+            kind: 'submission-indeterminate',
+            diagnostic:
+              submit.exitCode === 0
+                ? 'notarytool submit returned malformed success output without a recoverable request ID'
+                : `notarytool submit exited ${submit.exitCode} without a recoverable request ID`,
+          },
+          observedAt,
+        );
+      } else {
+        recovery = recordNotarizationObservation(
+          recovery,
+          {
+            kind: 'request-created',
+            requestId: submitted.requestId,
+            ...(submitted.status === undefined ? {} : { status: submitted.status }),
+            ...(submit.exitCode === 0 && parseError === undefined
+              ? {}
+              : {
+                  diagnostic:
+                    submit.exitCode === 0
+                      ? 'notarytool submit returned an unsupported status; request ID preserved'
+                      : `notarytool submit exited ${submit.exitCode}; request ID preserved`,
+                }),
+          },
+          observedAt,
+        );
+      }
+      await persistRecovery(recovery);
+      if (submit.exitCode !== 0) {
+        throw new Error(`notarization submission failed with exit ${submit.exitCode}.`);
+      }
+      if (parseError !== undefined) throw parseError;
+      continue;
     }
-    facts = next;
+
+    await sleep(15_000);
+    const pollAt = options.now().toISOString();
+    if (Date.parse(pollAt) > Date.parse(recovery.deadlineAt)) {
+      throw new Error('Apple notarization deadline expired.');
+    }
+    const poll = await runBounded(options.run, 'xcrun', [
+      'notarytool',
+      'info',
+      nextAction.requestId,
+      '--key',
+      options.scope.notaryKey,
+      '--key-id',
+      options.configuration.keyId,
+      '--issuer',
+      options.configuration.issuerId,
+      '--output-format',
+      'json',
+    ]);
+    if (poll.exitCode !== 0) {
+      recovery = recordNotarizationObservation(
+        recovery,
+        {
+          kind: 'poll-indeterminate',
+          requestId: nextAction.requestId,
+          diagnostic: `notarytool info exited ${poll.exitCode}`,
+        },
+        pollAt,
+      );
+      await persistRecovery(recovery);
+      throw new Error(`notarization polling failed with exit ${poll.exitCode}.`);
+    }
+    let polled;
+    try {
+      polled = parseNotarytoolFacts(poll.stdout);
+    } catch (error) {
+      recovery = recordNotarizationObservation(
+        recovery,
+        {
+          kind: 'poll-indeterminate',
+          requestId: nextAction.requestId,
+          diagnostic: 'notarytool info returned malformed output',
+        },
+        pollAt,
+      );
+      await persistRecovery(recovery);
+      throw error;
+    }
+    recovery = recordNotarizationObservation(
+      recovery,
+      {
+        kind: 'poll',
+        requestId: polled.requestId,
+        status: polled.status,
+      },
+      pollAt,
+    );
+    await persistRecovery(recovery);
   }
-  if (facts.status !== 'Accepted') {
-    throw new Error(`Apple notarization ended with ${facts.status}.`);
+}
+
+/** @param {string} output */
+function salvageNotarizationRequestId(output) {
+  try {
+    const value = JSON.parse(output);
+    return parseNotarytoolSubmissionFacts(JSON.stringify({ id: value?.id })).requestId;
+  } catch {
+    return null;
   }
-  return facts;
+}
+
+/** @param {string} path @param {ReturnType<typeof createNotarizationRecovery>} recovery */
+async function persistRecoveryEvidence(path, recovery) {
+  await mkdir(dirname(path), { recursive: true });
+  const temporaryPath = `${path}.${randomUUID()}.tmp`;
+  await writeFile(temporaryPath, JSON.stringify(recovery, null, 2).concat('\n'), {
+    flag: 'wx',
+  });
+  await rename(temporaryPath, path);
 }
 
 /** @param {string} path */

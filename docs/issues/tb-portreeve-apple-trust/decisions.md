@@ -59,3 +59,22 @@ When the protected producer transforms either macOS CLI, it must rewrite the cor
 Defer metadata repair until finalization - rejected because native verification must consume a self-consistent protected output. Keep separate unsigned and signed manifests - rejected because multiple authorities would make downstream selection ambiguous. Rebuild metadata independently in each native job - rejected because read-only verifiers must not mutate the producer output.
 
 **Promoted:** 2026-08-29. PR: https://github.com/TrentBrown/portreeve/pull/76.
+
+---
+
+## Persist notarization continuity at the producer boundary
+
+**Confidence:** HIGH
+
+**Blast Radius:** Protected Apple producer, failure artifacts, exact signed DMG retention, workflow uploads, and notarization evidence
+
+Treat successful notarytool submit output as request creation even when status is absent, while keeping info responses strict. Drive the real producer through the existing finite recovery state machine, persist every non-secret state transition beside the exact signed DMG before and after Apple calls, and upload only that recovery directory when the protected job fails. Once a request ID exists, all continuation targets that ID; no new submission is allowed. Successful candidates retain the recovery history but move the authoritative DMG into the normal trusted artifact set.
+
+**Triggered by:** Live run 33267482516 returned a valid Apple request ID without status, then the producer rejected the response and deleted its output
+
+**Alternatives considered:**
+- Add `notarytool --wait` - rejected because it bypasses the approved explicit polling and continuity model.
+- Default missing status without recording the request lifecycle - rejected because a later failure would again erase continuity.
+- Keep deleting output on failure - rejected because exact signed bytes and failed-attempt evidence would disappear.
+
+**Promoted:** 2026-08-29. PR: https://github.com/TrentBrown/portreeve/pull/77.

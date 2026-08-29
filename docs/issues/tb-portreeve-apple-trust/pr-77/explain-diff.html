@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PR 77 - Notarization Recovery</title>
+  <style>
+    :root { color-scheme: light; --ink:#172033; --muted:#586174; --line:#d8deea; --blue:#3157d5; --green:#177554; --amber:#9a5b00; --paper:#f7f9fc; }
+    * { box-sizing:border-box; }
+    body { margin:0; font:16px/1.62 system-ui,-apple-system,sans-serif; color:var(--ink); background:white; }
+    main { width:min(980px,calc(100% - 32px)); margin:0 auto; padding:44px 0 72px; }
+    h1 { font-size:clamp(2rem,5vw,3.4rem); line-height:1.05; margin:.2rem 0 1rem; }
+    h2 { margin-top:3rem; border-top:1px solid var(--line); padding-top:1.4rem; }
+    h3 { margin-top:1.8rem; }
+    a { color:var(--blue); }
+    code,pre { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    code { background:#eef1f7; padding:.1rem .3rem; border-radius:4px; }
+    pre { white-space:pre-wrap; overflow-wrap:anywhere; background:#111827; color:#eef2ff; padding:18px; border-radius:12px; }
+    nav { background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:16px 20px; }
+    nav ol { columns:2; padding-left:1.3rem; }
+    .lede { font-size:1.2rem; color:var(--muted); max-width:760px; }
+    .meta { color:var(--muted); font-size:.9rem; }
+    .callout { border-left:5px solid var(--blue); background:#eef3ff; padding:14px 18px; margin:1.4rem 0; border-radius:0 10px 10px 0; }
+    .warning { border-left-color:var(--amber); background:#fff7e8; }
+    .flow { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; align-items:stretch; margin:1.5rem 0; }
+    .node { border:1px solid var(--line); border-radius:12px; padding:12px; text-align:center; background:var(--paper); }
+    .node strong { display:block; margin-bottom:4px; }
+    .node.good { border-color:#8cc8b0; background:#eefaf5; }
+    .split { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:1.5rem 0; }
+    .card { border:1px solid var(--line); border-radius:14px; padding:18px; }
+    .tag { display:inline-block; border-radius:999px; padding:3px 9px; background:#e8edff; color:#2445ae; font-size:.82rem; font-weight:700; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid var(--line); padding:10px; text-align:left; vertical-align:top; }
+    th { background:var(--paper); }
+    .quiz { border:1px solid var(--line); border-radius:14px; padding:18px; margin:18px 0; }
+    .answers { display:grid; gap:8px; }
+    button { text-align:left; border:1px solid #b8c2d8; background:white; border-radius:9px; padding:10px 12px; cursor:pointer; font:inherit; }
+    button:hover { border-color:var(--blue); }
+    button.correct { background:#e8f8f1; border-color:var(--green); }
+    button.incorrect { background:#fff0ed; border-color:#b84632; }
+    .feedback { min-height:1.5em; color:var(--muted); margin-top:8px; }
+    @media (max-width:760px) { .flow { grid-template-columns:1fr; } .split { grid-template-columns:1fr; } nav ol { columns:1; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="tag">PortReeve PR #77</p>
+  <h1>Keeping one Apple request attached to one exact DMG</h1>
+  <p class="lede">This correction teaches the protected release producer to treat notarization as a durable conversation: submit once, remember the UUID, poll that UUID, and preserve the exact bytes Apple received if anything later fails.</p>
+  <p class="meta">Pinned diff: <code>4f4610f27639a09ba53692757971ea0ce7af7061..048bee8901d13780a47ef19237c1bdf06ab4e3ed</code></p>
+
+  <nav aria-label="Table of contents">
+    <strong>Contents</strong>
+    <ol>
+      <li><a href="#background">Background</a></li>
+      <li><a href="#failure">The observed failure</a></li>
+      <li><a href="#intuition">Core intuition</a></li>
+      <li><a href="#states">Recovery states</a></li>
+      <li><a href="#code">Code walkthrough</a></li>
+      <li><a href="#safety">Safety boundaries</a></li>
+      <li><a href="#quiz">Quiz</a></li>
+    </ol>
+  </nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <h3>The broad picture</h3>
+    <p>macOS distribution outside the App Store usually combines three distinct operations. Developer ID signing identifies who produced the application. Notarization sends a finished artifact to Apple for automated analysis. Stapling attaches Apple's accepted ticket to a distributable copy so Gatekeeper can verify it without relying solely on a network lookup.</p>
+    <p>Those operations do not have the same byte behavior. Submission reads a fixed DMG. Stapling later mutates a copy of that DMG by adding the ticket. A safe release system therefore needs to distinguish <em>the bytes submitted to Apple</em> from <em>the final stapled bytes delivered to users</em>.</p>
+    <h3>The PortReeve boundary</h3>
+    <p>PortReeve builds separate ARM64 and Intel DMGs. Only a protected, main-only job receives Apple credentials. That job cannot publish. Native verification and public publication happen later, under separate authority. PR 77 keeps those boundaries intact; it changes only how the protected producer records and survives notarization.</p>
+  </section>
+
+  <section id="failure">
+    <h2>The observed failure</h2>
+    <p>Preview <code>0.1.0-preview.5</code> reached Apple's service. The asynchronous submit response contained a valid request UUID and a success message, but no <code>status</code>. The producer required both fields immediately, threw an error, and deleted its temporary output before polling.</p>
+    <div class="flow" role="img" aria-label="Old failing flow">
+      <div class="node"><strong>Signed DMG</strong>candidate bytes</div>
+      <div class="node"><strong>Submit</strong>Apple returns UUID</div>
+      <div class="node"><strong>Strict parser</strong>status missing</div>
+      <div class="node"><strong>Failure</strong>poll never starts</div>
+      <div class="node"><strong>Cleanup</strong>UUID and bytes lost</div>
+    </div>
+    <div class="callout warning"><strong>Why preview .5 is burned:</strong> the old job did not retain enough evidence to prove which exact signed bytes belong to the request. Recreating and signing a DMG may produce different bytes, so reusing the version would weaken immutability.</div>
+  </section>
+
+  <section id="intuition">
+    <h2>Core intuition</h2>
+    <p>A submit response and an info response answer different questions. Submit establishes request identity. Info establishes current status. PR 77 gives each parser the strictness appropriate to its role.</p>
+    <div class="split">
+      <div class="card"><span class="tag">Submit</span><h3>Identity first</h3><p>A valid UUID is enough to record request creation. Status may be absent because processing is asynchronous.</p><pre>{
+  "id": "11111111-2222-4333-8444-555555555555",
+  "message": "Successfully uploaded file"
+}</pre></div>
+      <div class="card"><span class="tag">Info</span><h3>Status authority</h3><p>Polling must contain both the same UUID and one supported status. Missing or malformed status stops safely.</p><pre>{
+  "id": "11111111-2222-4333-8444-555555555555",
+  "status": "Accepted"
+}</pre></div>
+    </div>
+    <p>The governing invariant is simple: once <code>currentRequestId</code> is non-null, the only legal network action is <code>notarytool info</code> for that exact value. A retry cannot silently create a second Apple request.</p>
+  </section>
+
+  <section id="states">
+    <h2>Recovery states</h2>
+    <table>
+      <thead><tr><th>State</th><th>Meaning</th><th>Next legal action</th></tr></thead>
+      <tbody>
+        <tr><td><code>awaiting-upload</code></td><td>No request is known and the candidate identity is fixed.</td><td>Submit, within finite attempt and time limits.</td></tr>
+        <tr><td><code>awaiting-poll</code></td><td>Apple created a known UUID.</td><td>Poll that UUID only.</td></tr>
+        <tr><td><code>accepted</code></td><td>Strict info output reported <code>Accepted</code>.</td><td>Staple and verify a separate working copy.</td></tr>
+        <tr><td><code>blocked</code></td><td>Rejected, indeterminate submission, exhausted bounds, or expired deadline.</td><td>No automatic advance.</td></tr>
+      </tbody>
+    </table>
+    <p>Each persisted record is bound to <code>{releaseId, sha256}</code>. A changed SHA cannot borrow an old UUID or preview identity.</p>
+  </section>
+
+  <section id="code">
+    <h2>Code walkthrough</h2>
+    <h3>1. Parse submit and info separately</h3>
+    <p><code>parseNotarytoolSubmissionFacts</code> accepts a valid UUID before status exists. <code>parseNotarytoolFacts</code> remains strict for info. Unsupported values do not become guessed defaults.</p>
+    <h3>2. Drive the real producer through recovery state</h3>
+    <p><code>notarizeDmg</code> now creates or receives candidate-bound recovery state, persists it atomically, submits at most once, and loops through explicit actions. If a command exits nonzero but returned a valid machine-readable UUID, that UUID is salvaged and stored before the function fails.</p>
+    <div class="flow" role="img" aria-label="New durable flow">
+      <div class="node good"><strong>Persist</strong>candidate identity</div>
+      <div class="node good"><strong>Submit once</strong>record UUID</div>
+      <div class="node good"><strong>Poll</strong>same UUID</div>
+      <div class="node good"><strong>Accepted</strong>persist result</div>
+      <div class="node good"><strong>Staple copy</strong>verify final bytes</div>
+    </div>
+    <h3>3. Preserve submitted and delivered bytes distinctly</h3>
+    <p>The producer copies the signed pre-staple DMG into <code>recovery/candidates</code> and submits that immutable copy. Stapling, Gatekeeper assessment, mounted verification, and final staging operate on the working DMG. If later work fails, the recovery artifact still contains the exact SHA named by the request record.</p>
+    <h3>4. Retain evidence only on failure</h3>
+    <p>The workflow uploads <code>trusted-recovery-&lt;version&gt;-&lt;attempt&gt;</code> only when the protected job fails. It has seven-day retention and contains candidate DMGs plus sanitized JSON—not the P12, P8, certificate password, keychain, or publication token.</p>
+    <h3>5. Prove the negative paths</h3>
+    <p>The tests cover a UUID-only submit response, two polls of one UUID, malformed info, recovery without resubmission, UUID salvage after a nonzero submit exit, and the pre-staple/post-staple byte split. The pinned repository gate passes 577 tests.</p>
+  </section>
+
+  <section id="safety">
+    <h2>Safety boundaries that do not change</h2>
+    <ul>
+      <li>Apple credentials remain in the protected <code>release-trust</code> job.</li>
+      <li>The producer still runs only from a reviewed commit on <code>main</code>.</li>
+      <li>The trust job has no authority to publish a release or update Homebrew.</li>
+      <li>ARM64 and Intel remain separate DMGs and separate native evidence authorities.</li>
+      <li>A changed artifact consumes the next unused preview version.</li>
+      <li>Preview .5 remains a recorded failed attempt; it is not rewritten into success.</li>
+    </ul>
+    <div class="callout"><strong>Next proof:</strong> after PR 77 merges, preview <code>0.1.0-preview.6</code> must run with <code>trust=true</code> and <code>publish=false</code>. Only that protected run can supply the remaining live Apple and native evidence.</div>
+  </section>
+
+  <section id="quiz">
+    <h2>Quiz</h2>
+    <div class="quiz" data-answer="1"><h3>1. Why may submit omit status without being malformed?</h3><div class="answers"><button>Because PortReeve invents In Progress for all missing fields.</button><button>Because asynchronous submit establishes request identity, while info is the status authority.</button><button>Because status is read from the stapled ticket instead.</button></div><p class="feedback"></p></div>
+    <div class="quiz" data-answer="2"><h3>2. What may happen after a request UUID is recorded?</h3><div class="answers"><button>Submit the same version again if the first poll times out.</button><button>Submit another architecture under the same recovery record.</button><button>Poll only that UUID until acceptance or a bounded stop.</button></div><p class="feedback"></p></div>
+    <div class="quiz" data-answer="0"><h3>3. Why are two DMG copies needed after notarization?</h3><div class="answers"><button>Stapling mutates the working DMG, while recovery must retain the exact submitted bytes.</button><button>Apple requires duplicate uploads for each request.</button><button>One copy is universal and the other architecture-specific.</button></div><p class="feedback"></p></div>
+    <div class="quiz" data-answer="1"><h3>4. What does the failure-only artifact intentionally exclude?</h3><div class="answers"><button>The signed candidate and request UUID.</button><button>Private keys, passwords, keychains, and publication authority.</button><button>The candidate SHA-256 and sanitized diagnostics.</button></div><p class="feedback"></p></div>
+    <div class="quiz" data-answer="2"><h3>5. What is still required after this PR passes?</h3><div class="answers"><button>Publish preview .5 to prove its failed request was harmless.</button><button>Merge a development branch to acquire native evidence.</button><button>Run a nonpublishing protected preview .6 rehearsal from reviewed main.</button></div><p class="feedback"></p></div>
+  </section>
+</main>
+<script>
+  document.querySelectorAll('.quiz').forEach((quiz) => {
+    const correct = Number(quiz.dataset.answer);
+    const buttons = [...quiz.querySelectorAll('button')];
+    const feedback = quiz.querySelector('.feedback');
+    buttons.forEach((button, index) => button.addEventListener('click', () => {
+      buttons.forEach((item) => item.classList.remove('correct', 'incorrect'));
+      button.classList.add(index === correct ? 'correct' : 'incorrect');
+      buttons[correct].classList.add('correct');
+      feedback.textContent = index === correct ? 'Correct. That preserves the request, byte, and authority boundaries.' : 'Not quite. Review the recovery-state and byte-separation sections above.';
+    }));
+  });
+</script>
+</body>
+</html>
