@@ -12,10 +12,10 @@
 | R1 | Public-channel trust policy | PASS | #74 | P1 contract and tests complete; P6-P8 must preserve it |
 | R2 | Schema lifecycle and compatibility | PASS | #74 | P1 schema-v2 lifecycle and read-only v1 dispatch complete |
 | R3 | CLI byte and bundle authority | NOT YET | #74, #75, #76 | Signed transformation and metadata authority are enforced; live protected byte proof remains P8 |
-| R4 | Protected production and credential custody | NOT YET | #74, #75, #76 | Main-only producer isolation and cleanup are tested; protected execution remains P8 |
-| R5 | Native Apple verification | NOT YET | #75, #76 | Strict ARM64/Intel collectors and aggregation are complete; current hosted documents remain P8 |
+| R4 | Protected production and credential custody | NOT YET | #74, #75, #76, #77 | Preview.6 proved accepted notarization and exact recovery continuity; the Gatekeeper parser correction must land before complete protected execution |
+| R5 | Native Apple verification | NOT YET | #75, #76 | Preview.6 reached real ARM64 Gatekeeper acceptance but parser compatibility stopped the matrix before current ARM64/Intel documents were emitted |
 | R6 | Finalization and publication separation | PASS | #76 | Final metadata consumes aggregated trust, seals the plan digest, and keeps trust/publication authority disjoint |
-| R7 | Failure, recovery, and immutability | NOT YET | #74, #75, #76, #77 | PR #77 corrects the asynchronous-submit recovery path; a protected rerun from reviewed `main` remains required |
+| R7 | Failure, recovery, and immutability | NOT YET | #74, #75, #76, #77 | Preview.6 preserved exact request-bound bytes and sanitized history; a complete protected rerun after the Gatekeeper parser correction remains required |
 | R8 | Protected nonpublishing rehearsal | NOT YET | - | Planned for P8 / I-8 |
 
 ## PR Log
@@ -60,9 +60,10 @@ Append PR boundary entries here.
 - **Issues:** I-9
 - **Rubric in scope:** R4, R7, R8
 - **Boundary packet:** [`pr-77/`](pr-77/)
-- **Status:** In review at evaluated source
-  `048bee8901d13780a47ef19237c1bdf06ab4e3ed` after remediation of the
-  pre-staple recovery-byte finding.
+- **Status:** Evaluated source
+  `048bee8901d13780a47ef19237c1bdf06ab4e3ed`; reviewed evidence head
+  `4f92350fb3a35993601caa36bd563d500cbba1b1`; merged as
+  `0a28b89c23ddd553467eae0fe8bb89a84ac78ddc`.
 
 ## Protected rehearsal attempt - `0.1.0-preview.5`
 
@@ -79,18 +80,37 @@ Append PR boundary entries here.
   PortReeve, Homebrew, formula, cask, and Desktop-update authorities still
   match the preflight baseline.
 
+## Protected rehearsal attempt - `0.1.0-preview.6`
+
+- **Run:** [33269593936](https://github.com/TrentBrown/portreeve/actions/runs/33269593936)
+- **Source:** reviewed `main` commit
+  `0a28b89c23ddd553467eae0fe8bb89a84ac78ddc`
+- **Outcome:** preparation, four native CLI jobs, qualification, and protected
+  approval passed. Apple accepted request
+  `237759d8-5496-404a-ad71-4e9304591973` for the exact ARM64 candidate, but
+  the producer rejected Gatekeeper's real path-prefixed acceptance line before
+  producing the x64 trusted set.
+- **Recovery:** artifact `trusted-recovery-0.1.0-preview.6-1` preserves the
+  request-bound DMG at SHA-256
+  `f647f01868e116e73940e421202d7d680751141d2b5b69823c30f6a2574ffb1b`
+  plus sanitized history. Local `spctl` independently accepted its notarized
+  Developer ID source and exact Trent Brown origin.
+- **Identity:** `.6` is retained failed-attempt evidence and will not be reused;
+  the next complete protected attempt must use `.7` after the correction lands.
+- **Public state:** unchanged; `.6` has no tag or release, and publication was
+  skipped.
+
 ## Active Slice
 
-### Slice 5 - Notarization submit recovery correction
+### Slice 7 - Gatekeeper assessment parser correction
 
-- **Branch:** `tb-portreeve-apple-trust-05-notarization-submit-recovery`
+- **Branch:** `tb-portreeve-apple-trust-07-gatekeeper-parser`
 - **Plan steps:** P2, P8
-- **Issues:** I-9
-- **Rubric in scope:** R4, R7, R8
-- **Status:** GateReeve `PR_BOUNDARY`; changes
-  `chg-notary-submit-response-recovery` and
-  `chg-notary-failure-evidence-upload` and
-  `chg-preserve-submitted-dmg-bytes` are validated. PR #77 is pinned at
-  `048bee8901d13780a47ef19237c1bdf06ab4e3ed`. The correction preserves
-  the approved explicit polling design, separate architecture-specific DMGs,
-  main-only trust approval, and zero publication authority.
+- **Issues:** I-10
+- **Rubric in scope:** R4, R5, R7, R8
+- **Status:** GateReeve `IMPLEMENTING`; change
+  `chg-gatekeeper-path-prefixed-acceptance` is validated against the exact
+  tested source. Slice 6 was abandoned after the failed preview.6 acceptance
+  attempt. This intermediate correction preserves separate architecture-specific
+  DMGs, main-only trust approval, strict Developer ID facts, and zero
+  publication authority.

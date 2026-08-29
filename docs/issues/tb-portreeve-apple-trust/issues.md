@@ -117,7 +117,7 @@ before full feature evaluation and close-out.
 
 ## I-9 - Correct asynchronous notarization submission recovery
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P2, P8
 - **Rubric criteria:** R4, R7, R8
@@ -131,3 +131,20 @@ loop. Integrate the existing bounded recovery state machine into the real
 producer, preserve exact signed candidates and non-secret request history on
 failure, add failure-only workflow upload, and prove one-submit request
 continuity with producer-level tests before another protected attempt.
+
+## I-10 - Accept real Gatekeeper assessment output
+
+- **Status:** in-progress
+- **Estimate:** 0.5d
+- **Plan steps:** P2, P8
+- **Rubric criteria:** R4, R5, R7, R8
+- **Depends on:** I-9
+- **PR:** -
+
+Correct the parser defect observed in hosted run `33269593936`: Apple accepted
+the exact preserved ARM64 candidate, and `spctl` accepted the notarized
+Developer ID identity, but the parser expected a bare `accepted` line instead
+of the real `<assessed path>: accepted` status line. Preserve every existing
+exit-status, source, and exact-origin requirement; add positive real-shape and
+negative rejected-shape coverage; land the correction on `main` before the
+next protected attempt.

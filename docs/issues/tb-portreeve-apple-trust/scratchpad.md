@@ -72,3 +72,18 @@ Treat successful notarytool submit output as request creation even when status i
 - Add `notarytool --wait` - rejected because it bypasses the approved explicit polling and continuity model.
 - Default missing status without recording the request lifecycle - rejected because a later failure would again erase continuity.
 - Keep deleting output on failure - rejected because exact signed bytes and failed-attempt evidence would disappear.
+
+## [5] Parse Gatekeeper's real path-prefixed assessment
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Protected producer and both native Apple trust evidence collectors
+
+Treat either a bare 'accepted' status line or spctl's real '<assessed path>: accepted' status line as the acceptance fact. Continue to require exit code zero, source=Notarized Developer ID, and the exact PortReeve Developer ID origin. This preserves fail-closed identity checks while making the parser compatible with the platform command it invokes.
+
+**Triggered by:** Live preview.6 run 33269593936 reached accepted Apple notarization, then rejected real spctl output whose status line was '<path>: accepted'
+
+**Alternatives considered:**
+Strip the path before parsing - rejected because the parser should validate the complete command result contract in one place. Accept any occurrence of the word accepted - rejected because unrelated diagnostic text could create a false positive. Replace Gatekeeper with notarization status alone - rejected because the approved design requires both independent facts.
