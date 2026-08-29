@@ -117,11 +117,12 @@ export function parseStaplerFacts(result) {
 /** @param {{exitCode: number, stdout?: string, stderr?: string}} result */
 export function parseGatekeeperFacts(result) {
   const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
+  const accepted = /^(?:.+: )?accepted$/mu.test(output);
   const source = output.match(/^source=(.+)$/mu)?.[1];
   const origin = output.match(/^origin=(.+)$/mu)?.[1];
   if (
     result.exitCode !== 0 ||
-    !/^accepted$/mu.test(output) ||
+    !accepted ||
     source !== 'Notarized Developer ID' ||
     origin !== APPLE_SIGNING_IDENTITY
   ) {

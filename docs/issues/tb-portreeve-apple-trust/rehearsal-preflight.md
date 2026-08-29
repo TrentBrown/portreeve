@@ -1,11 +1,13 @@
 # Protected Rehearsal Attempt
 
-**Checked:** 2026-08-29T15:37:10Z
-**Planned release:** `0.1.0-preview.5`
+**Checked:** 2026-08-29T19:51:48Z
+**First attempted release:** `0.1.0-preview.5`
+**Second attempted release:** `0.1.0-preview.6`
+**Next planned release:** `0.1.0-preview.7`
 **Required dispatch:** `channel=preview`, `trust=true`, `publish=false`
-**Pinned source:** `4f4610f27639a09ba53692757971ea0ce7af7061` on `main`
-**Run:** [33267482516](https://github.com/TrentBrown/portreeve/actions/runs/33267482516)
-**Status:** FAILED IN PROTECTED PRODUCER; CORRECTION REQUIRED
+**Latest pinned source:** `0a28b89c23ddd553467eae0fe8bb89a84ac78ddc` on `main`
+**Runs:** [preview.5](https://github.com/TrentBrown/portreeve/actions/runs/33267482516), [preview.6](https://github.com/TrentBrown/portreeve/actions/runs/33269593936)
+**Status:** PREVIEW.6 PRESERVED; GATEKEEPER PARSER CORRECTION REQUIRED
 
 ## Passed checks
 
@@ -93,3 +95,36 @@ real producer through the finite recovery state machine, retains exact signed
 candidate bytes with sanitized non-secret request history, and uploads that
 recovery directory only when the protected producer fails. No `development*`
 branch is merged or rebased into the correction branch.
+
+## Corrected attempt outcome - `0.1.0-preview.6`
+
+PR #77 merged to `main` as
+`0a28b89c23ddd553467eae0fe8bb89a84ac78ddc`. Hosted run
+[33269593936](https://github.com/TrentBrown/portreeve/actions/runs/33269593936)
+then repeated the nonpublishing protected rehearsal with `trust=true` and
+`publish=false`.
+
+- `prepare`, all four native CLI evidence jobs, and `qualify-trust` passed.
+- The protected reviewer approved only `release-trust`; publication remained
+  disabled and `release-publication` was never entered.
+- Apple accepted notarization request
+  `237759d8-5496-404a-ad71-4e9304591973` for the ARM64 signed DMG.
+- Failure recovery uploaded `trusted-recovery-0.1.0-preview.6-1`, containing
+  the exact pre-staple DMG and sanitized request history. Its recorded and
+  observed SHA-256 both equal
+  `f647f01868e116e73940e421202d7d680751141d2b5b69823c30f6a2574ffb1b`.
+- Local assessment of those preserved bytes produced the real `spctl` shape
+  `<path>: accepted`, `source=Notarized Developer ID`, and
+  `origin=Developer ID Application: Trent Brown (PMWYD5A82A)`.
+- `parseGatekeeperFacts` required a bare `accepted` line and rejected the
+  valid assessment before the x64 trusted set was produced. Downstream native
+  Apple evidence and finalization were therefore skipped.
+
+GateReeve recorded and validated
+`chg-gatekeeper-path-prefixed-acceptance`, abandoned final slice 6, and started
+intermediate `slice-07-gatekeeper-parser` on branch
+`tb-portreeve-apple-trust-07-gatekeeper-parser`. The correction accepts only
+the bare or real path-prefixed acceptance status while continuing to require
+exit code zero, `Notarized Developer ID`, and the exact signing origin. The
+next hosted rehearsal must use the unused `.7` identity after this change
+lands on reviewed `main`. No `development*` branch was merged or rebased.
