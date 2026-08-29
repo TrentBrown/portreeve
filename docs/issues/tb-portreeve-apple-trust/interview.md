@@ -240,6 +240,9 @@ and recovery decision.
 
 ## D10 - Require Gatekeeper acceptance for every macOS entry point
 
+> Superseded by D17 after live preview.9 proved that macOS does not classify a
+> bare command-line executable as an app for `spctl --type execute` assessment.
+
 **Question:** Should architecture-specific release evidence require native
 Gatekeeper acceptance for the signed standalone CLI, final DMG, and mounted
 application rather than assessing only the DMG and app?
@@ -376,6 +379,28 @@ cost and stability of duplication are known.
 **Classification:** Dependency boundary, cross-project architecture,
 conformance, and sequencing decision.
 
+## D17 - Align Gatekeeper checks with GateReeve's actual delivery surfaces
+
+**Question:** After both preview.9 native runners reported that the exact
+Developer ID-signed standalone CLI "does not seem to be an app," should
+PortReeve continue requiring an app-policy `spctl` result for that bare tool?
+
+**Answer:** No. Match GateReeve's established trust boundary.
+
+**Decision:** Native ARM64 and Intel evidence requires Gatekeeper execution
+acceptance for the mounted application and primary-signature open acceptance
+for the notarized, stapled DMG. The standalone CLI instead requires the exact
+Developer ID Application identity and Team ID, hardened runtime, secure
+timestamp, strict signature validity, byte equality across standalone,
+Homebrew, and embedded-helper surfaces, native lifecycle smoke, and successful
+execution from a quarantined copy. A bare executable is not represented as a
+Gatekeeper-accepted app fact, and aggregation must reject any evidence that
+omits its replacement CLI checks. This supersedes D10 without changing the
+separate ARM64/x64 DMG shape or weakening app and DMG Gatekeeper requirements.
+
+**Classification:** Apple trust evidence, GateReeve alignment, command-line
+distribution safety, native verification, and release-gate correction.
+
 ## Interview closing summary
 
 ### Solid
@@ -394,9 +419,9 @@ conformance, and sequencing decision.
   publisher is recovery-only.
 - PortReeve uses a product-specific notarization key while reusing the
   team-wide Developer ID Application certificate.
-- Trust evidence is architecture-bound and fail-closed, including native
-  execution and Gatekeeper assessment of the standalone CLI, DMG, and mounted
-  app.
+- Trust evidence is architecture-bound and fail-closed: the signed standalone
+  CLI passes strict identity, byte-equality, native lifecycle, and quarantined
+  execution checks, while the DMG and mounted app pass Gatekeeper assessment.
 - New candidates use release-record schema version 2; valid version-1 records
   remain truthful read-only history.
 - Candidate versions are immutable once live Apple work begins. Bounded

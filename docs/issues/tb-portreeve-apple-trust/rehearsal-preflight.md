@@ -226,3 +226,45 @@ request-bound candidates until durable producer evidence, and rejects
 must not be used after protected trust begins. After this correction is
 reviewed and merged, the next nonpublishing rehearsal must dispatch the unused
 `0.1.0-preview.9` identity from reviewed `main`.
+
+## Preview.9 outcome
+
+Run [33279682396](https://github.com/TrentBrown/portreeve/actions/runs/33279682396)
+used reviewed `main` commit
+`bfa64a9d930154ce0509c67b23a81ee1aa601221`, `trust=true`, and
+`publish=false`. Preparation, all four preliminary native jobs,
+qualification, protected approval, signing, notarization, stapling, and atomic
+trusted staging passed for both separate architecture-specific sets. Apple
+accepted ARM64 request `9757340b-aa28-4af7-980a-0fc41c520ae6` and x64 request
+`3bb773dd-b6ea-4944-af47-d4acd83317f0`. Trusted artifact `9722728731`
+preserves the exact producer output and sanitized request histories.
+
+Both independent native jobs then failed at the first standalone-CLI
+`spctl --assess --type execute` call. ARM64 job `99173799416` and x64 job
+`99173799405` each received exit 3 and "the code is valid but does not seem to
+be an app." Downloaded producer bytes reproduce that result for both CLIs,
+while both DMGs return exit zero with `source=Notarized Developer ID`. The
+mounted ARM64 application passes deep strict signature verification and
+Gatekeeper execution assessment; its embedded helper SHA-256 exactly matches
+the standalone CLI; a quarantined copy of the signed CLI executes and reports
+`0.1.0-preview.9`.
+
+This is a trust-surface specification error, not an Apple credential,
+notarization, signature, or installer failure. GateReeve assesses Gatekeeper on
+its app and DMG and validates executable code through signing and runtime
+checks. GateReeve change `chg-cli-gatekeeper-surface-alignment` therefore
+supersedes interview decision D10: PortReeve retains DMG/app Gatekeeper checks
+and replaces the invalid bare-CLI app assessment with exact signing identity,
+hardened runtime, secure timestamp, byte equality, native lifecycle smoke, and
+quarantined execution. Production code remains unchanged until the corrected
+spec and plan are reauthorized.
+
+Read-only after-state checks found no `.9` tag or release; the latest public
+release remains `.4`; Desktop update blob
+`95374af5de460b0865aaab2a7732db8e1bdd5203`, Homebrew `main`
+`23be9c4a5897807bb29a64076d1c84a3bcff2ea5`, formula blob
+`759d2635fd84ab7ce2969c7ca51edad09ece3228`, and cask blob
+`fadae00919d8bc43fe7a7dcd9973b2c9b10d7541` remain unchanged. Publication and
+all dependent jobs were skipped. Preview.9 is consumed evidence and must not be
+reused; the next protected attempt uses preview.10 only after the correction
+lands on reviewed `main`.

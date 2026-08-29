@@ -147,6 +147,14 @@ The workflow:
 7. seals the plan with `publication-plan.sha256`, uploads
    `distribution-<version>`, and stops.
 
+The native Apple documents follow the same trust surfaces as GateReeve: the
+notarized DMG passes Gatekeeper primary-signature assessment and the mounted
+application passes Gatekeeper execution assessment. A bare CLI is not an app
+bundle, so it is validated by exact Developer ID identity and Team ID,
+hardened runtime, secure timestamp, strict signature validity, byte equality,
+native lifecycle smoke, and execution from a quarantined copy rather than an
+invalid app-policy `spctl` assertion.
+
 Find the run and download the candidate:
 
 ```sh

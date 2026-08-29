@@ -208,7 +208,7 @@ Each native evidence document binds at least:
 - notarization request ID and final `Accepted` status;
 - staple validation and deep strict signature verification;
 - exact embedded-CLI equality;
-- Gatekeeper execution acceptance of the standalone CLI;
+- strict signature and quarantined native execution of the standalone CLI;
 - Gatekeeper primary-signature open acceptance of the DMG;
 - Gatekeeper execution acceptance of the mounted application; and
 - native standalone CLI, application launch, and lifecycle smoke results.

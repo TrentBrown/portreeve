@@ -135,3 +135,28 @@ bytes.
 - Rewrite the already signed manifest again - rejected because the rewrite contract intentionally requires predecessor identities and must remain fail-closed.
 - Delete candidate bytes immediately after Apple acceptance - rejected because later producer failure would leave request history without the exact submitted bytes.
 - Permit GitHub job reruns for convenience - rejected because a rerun reconstructs and resubmits protected artifacts instead of continuing the exact request-bound recovery record.
+
+## [8] Assess Gatekeeper only on app and DMG delivery surfaces
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Approved trust spec, native Apple evidence schema and collector, aggregation, release guidance, and final live rehearsal
+
+Match GateReeve's established boundary: require Gatekeeper execution
+acceptance for the mounted app and primary-signature open acceptance for the
+notarized, stapled DMG. For the exact standalone CLI, require Developer ID and
+Team ID facts, hardened runtime, secure timestamp, strict signature validity,
+cross-surface byte equality, native lifecycle smoke, and successful execution
+from a quarantined copy. Do not represent a bare CLI as a Gatekeeper-accepted
+app because current macOS rejects that `spctl --type execute` category with
+"the code is valid but does not seem to be an app."
+
+**Triggered by:** Preview.9 run 33279682396 produced both trusted architecture sets, then both independent native jobs failed the same bare-CLI `spctl` assessment while both DMGs, the mounted app, strict signatures, exact helper bytes, and quarantined CLI execution passed
+
+**Alternatives considered:**
+
+- Keep requiring bare-CLI `spctl` acceptance - rejected because it is not the GateReeve contract and live ARM64/x64 macOS runners classify the bare executable as not-an-app.
+- Treat the rejected `spctl` output as acceptance - rejected because exit 3 is not an accepted assessment and evidence must remain truthful.
+- Drop CLI trust checks - rejected because direct CLI distribution still requires exact signing identity, hardened runtime, timestamp, byte authority, quarantine execution, and native lifecycle behavior.
