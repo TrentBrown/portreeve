@@ -109,7 +109,9 @@ Append PR boundary entries here.
 - **Rubric in scope:** R4, R5, R7, R8
 - **Boundary packet:** [`pr-81/`](pr-81/)
 - **Status:** Evaluated source
-  `8957c037b6a8e0c71e3e8ef34108bd0cfc93b548`; formal boundary in progress.
+  `8957c037b6a8e0c71e3e8ef34108bd0cfc93b548`; reviewed evidence head
+  `555db3cb545726537c428f00578dfec30ac85e34`; merged as
+  `1da97cb2a1983fe416f6abab763e6b4b06222c9f`.
 
 ## Protected rehearsal attempt - `0.1.0-preview.5`
 
@@ -231,21 +233,18 @@ Append PR boundary entries here.
 
 ## Active Slice
 
-### Slice 13 - CLI trust-surface alignment
+### Slice 14 - Final preview.10 live acceptance and feature closeout
 
-- **Branch:** `tb-portreeve-apple-trust-13-cli-trust-surface`
-- **Plan steps:** P5, P7, P8
-- **Issues:** I-13
-- **Rubric in scope:** R4, R5, R7, R8
-- **Status:** GateReeve `PR_BOUNDARY`; draft PR
-  [#81](https://github.com/TrentBrown/portreeve/pull/81). The collector no longer applies app
-  policy to a bare CLI; it creates an exact quarantined copy, verifies the
-  quarantine attribute and versioned execution, requires that check in native
-  evidence, and retains DMG/app Gatekeeper checks. Pinned Bun 1.3.14 focused
-  tests pass 4/4 and the full repository passes 581 tests with 3,040
-  assertions. The corrected collector also completed against exact preview.9
-  ARM64 producer bytes when the separately hosted-proven native lifecycle
-  callback was isolated from this machine's launchd timeout. Land this
-  intermediate correction before preview.10; publication remains disabled.
-  Additional physical-machine or cross-architecture installation remains
-  optional. No `development*` branch was merged or rebased.
+- **Branch:** `tb-portreeve-apple-trust-14-live-acceptance`
+- **Plan steps:** P8
+- **Issues:** I-8
+- **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7, R8
+- **Status:** GateReeve `IMPLEMENTING`. PR #81 merged the approved CLI
+  trust-surface correction to reviewed `main` as
+  `1da97cb2a1983fe416f6abab763e6b4b06222c9f`. Dispatch the unused
+  `0.1.0-preview.10` identity with `trust=true` and `publish=false`, require
+  complete protected producer, native ARM64/Intel, finalization, sealed-plan,
+  and zero-public-mutation evidence, then prepare the feature-final PR for the
+  user's explicit approval. Additional physical-machine or cross-architecture
+  installation remains optional. No `development*` branch was merged or
+  rebased.

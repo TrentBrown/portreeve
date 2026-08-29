@@ -186,7 +186,7 @@ activation or Apple submission.
 
 ## I-13 - Align CLI trust evidence with GateReeve delivery surfaces
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 0.5d
 - **Plan steps:** P5, P7, P8
 - **Rubric criteria:** R4, R5, R7, R8
