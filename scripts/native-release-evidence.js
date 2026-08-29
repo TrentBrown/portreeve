@@ -45,10 +45,8 @@ export function createNativeVerification(
   now = () => new Date(),
 ) {
   assertReleaseRecord(record);
-  if (record.stages.at(-1)?.name !== 'artifact-digests-established') {
-    throw new Error(
-      'Native verification requires a record at artifact-digests-established.',
-    );
+  if (record.stages.at(-1)?.name !== 'candidate-qualified') {
+    throw new Error('Preliminary native verification requires a qualified candidate.');
   }
   const artifact = record.artifacts.find(
     (entry) =>
@@ -97,10 +95,8 @@ export function mergeNativeVerifications(
   now = () => new Date(),
 ) {
   assertReleaseRecord(record);
-  if (record.stages.at(-1)?.name !== 'artifact-digests-established') {
-    throw new Error(
-      'Native verification aggregation requires artifact-digests-established.',
-    );
+  if (record.stages.at(-1)?.name !== 'candidate-qualified') {
+    throw new Error('Native verification aggregation requires a qualified candidate.');
   }
   if (record.verifications.length !== 0) {
     throw new Error('Native verification evidence has already been aggregated.');
@@ -147,10 +143,17 @@ export function mergeNativeVerifications(
       `Native verification matrix is incomplete (missing: ${missing.join(', ') || 'none'}; unexpected: ${unexpected.join(', ') || 'none'}).`,
     );
   }
+  if (record.policy.desktopTrust !== 'unsigned') {
+    throw new Error(
+      'Trusted macOS CLI authority must be established by the protected signing producer.',
+    );
+  }
   return advanceReleaseRecord(
     record,
-    'native-cli-verified',
+    'macos-cli-authority-established',
     {
+      mode: 'unsigned-internal',
+      architectures: ['arm64', 'x64'],
       targets: required,
       verificationCount: required.length,
       verifications: required.map((key) => byTarget.get(key)),

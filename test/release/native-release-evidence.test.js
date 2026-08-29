@@ -53,7 +53,7 @@ describe('native release evidence', () => {
       () => new Date('2026-08-16T21:00:00.000Z'),
     );
     expect(merged.stages.at(-1)).toMatchObject({
-      name: 'native-cli-verified',
+      name: 'macos-cli-authority-established',
       evidence: { verificationCount: 4 },
     });
     expect(
@@ -64,7 +64,7 @@ describe('native release evidence', () => {
       ),
     ).toEqual(['macos-arm64', 'macos-x64', 'linux-arm64', 'linux-x64']);
     expect(() => mergeNativeVerifications(merged, evidence)).toThrow(
-      'requires artifact-digests-established',
+      'requires a qualified candidate',
     );
     const missing = structuredClone(merged);
     missing.verifications = [];
@@ -158,7 +158,7 @@ describe('native release evidence', () => {
     const before = await readFile(join(root, 'artifacts', artifact.filename));
     const result = await mergeNativeReleaseEvidence({ recordPath, evidencePaths });
     const after = await readFile(join(root, 'artifacts', artifact.filename));
-    expect(result.record.stages.at(-1)?.name).toBe('native-cli-verified');
+    expect(result.record.stages.at(-1)?.name).toBe('macos-cli-authority-established');
     expect(after).toEqual(before);
   });
 });
@@ -193,7 +193,13 @@ async function preparedRecord() {
       architecture: target.architecture,
     });
   }
-  record = advanceReleaseRecord(record, 'artifact-digests-established', {});
+  record = advanceReleaseRecord(record, 'artifact-digests-established', {
+    artifactCount: record.artifacts.length,
+  });
+  record = advanceReleaseRecord(record, 'candidate-qualified', {
+    artifactCount: record.artifacts.length,
+    credentialAccess: false,
+  });
   return { root, record };
 }
 

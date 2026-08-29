@@ -21,6 +21,7 @@ import { createPublicationPlan, renderPublicationPlan } from './publication-plan
 
 const DEFAULT_HOMEPAGE = 'https://github.com/TrentBrown/portreeve';
 const DEFAULT_RELEASE_BASE = `${DEFAULT_HOMEPAGE}/releases/download`;
+const NATIVE_TARGETS = ['macos-arm64', 'macos-x64', 'linux-arm64', 'linux-x64'];
 
 /** @param {unknown} evidence @returns {asserts evidence is Record<string, any>} */
 export function assertDesktopPackageEvidence(evidence) {
@@ -86,12 +87,17 @@ export async function finalizeDesktopDistribution(options) {
   const recordPath = resolve(options.recordPath);
   const releaseRoot = dirname(recordPath);
   let record = await readReleaseRecord(recordPath);
-  if (record.stages.at(-1)?.name !== 'native-cli-verified') {
-    throw new Error('Desktop finalization requires native-cli-verified.');
+  if (record.stages.at(-1)?.name !== 'macos-cli-authority-established') {
+    throw new Error('Desktop finalization requires established macOS CLI authority.');
   }
+  const authoritativeNativeEvidence = {
+    targets: NATIVE_TARGETS,
+    desktopArchitectures: ['arm64', 'x64'],
+    verificationCount: NATIVE_TARGETS.length + 2,
+  };
   let trustEvidence;
   if (record.policy.desktopTrust === 'unsigned') {
-    trustEvidence = { status: 'unsigned-preview' };
+    trustEvidence = { status: 'unsigned-internal' };
   } else {
     if (options.trustEvidencePath === undefined) {
       throw new Error('Stable Desktop finalization requires Apple trust evidence.');
@@ -100,22 +106,26 @@ export async function finalizeDesktopDistribution(options) {
       await readFile(resolve(options.trustEvidencePath), 'utf8'),
     );
     advanceReleaseRecord(
-      advanceReleaseRecord(record, 'desktop-packaged', {
-        packages: [
-          {
-            architecture: 'arm64',
-            filename: desktopDmgName(record.versions.desktop, 'arm64'),
-            sha256: '0'.repeat(64),
-            cliSha256: '1'.repeat(64),
-          },
-          {
-            architecture: 'x64',
-            filename: desktopDmgName(record.versions.desktop, 'x64'),
-            sha256: '2'.repeat(64),
-            cliSha256: '3'.repeat(64),
-          },
-        ],
-      }),
+      advanceReleaseRecord(
+        advanceReleaseRecord(record, 'desktop-packaged', {
+          packages: [
+            {
+              architecture: 'arm64',
+              filename: desktopDmgName(record.versions.desktop, 'arm64'),
+              sha256: '0'.repeat(64),
+              cliSha256: '1'.repeat(64),
+            },
+            {
+              architecture: 'x64',
+              filename: desktopDmgName(record.versions.desktop, 'x64'),
+              sha256: '2'.repeat(64),
+              cliSha256: '3'.repeat(64),
+            },
+          ],
+        }),
+        'authoritative-native-verified',
+        authoritativeNativeEvidence,
+      ),
       'desktop-trust-verified',
       trustEvidence,
     );
@@ -217,6 +227,11 @@ export async function finalizeDesktopDistribution(options) {
     type: 'homebrew-cask',
     provenanceStage: 'desktop-packaged',
   });
+  record = advanceReleaseRecord(
+    record,
+    'authoritative-native-verified',
+    authoritativeNativeEvidence,
+  );
   record = advanceReleaseRecord(record, 'desktop-trust-verified', trustEvidence);
   const updateManifestPath = resolve(releaseRoot, 'artifacts', 'desktop-update.json');
   const currentUpdateManifest = JSON.parse(

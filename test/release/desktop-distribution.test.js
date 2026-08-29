@@ -88,8 +88,9 @@ describe('Desktop distribution', () => {
       homepageUrl: 'https://example.com',
     });
     expect(result.record.state).toBe('prepared');
-    expect(result.record.stages.slice(-3).map(({ name }) => name)).toEqual([
+    expect(result.record.stages.slice(-4).map(({ name }) => name)).toEqual([
       'desktop-packaged',
+      'authoritative-native-verified',
       'desktop-trust-verified',
       'distribution-finalized',
     ]);
@@ -186,17 +187,32 @@ async function preparedRecord(channel) {
     type: 'homebrew-formula',
     provenanceStage: 'native-cli-built',
   });
-  record = advanceReleaseRecord(record, 'artifact-digests-established', {});
-  record = mergeNativeVerifications(
-    record,
-    RELEASE_TARGETS.map((target) =>
-      createNativeVerification(record, target, {
-        name: 'fixture',
-        operatingSystem: target.operatingSystem,
-        architecture: target.architecture,
-      }),
-    ),
+  record = advanceReleaseRecord(record, 'artifact-digests-established', {
+    artifactCount: record.artifacts.length,
+  });
+  record = advanceReleaseRecord(record, 'candidate-qualified', {
+    artifactCount: record.artifacts.length,
+    credentialAccess: false,
+  });
+  const verifications = RELEASE_TARGETS.map((target) =>
+    createNativeVerification(record, target, {
+      name: 'fixture',
+      operatingSystem: target.operatingSystem,
+      architecture: target.architecture,
+    }),
   );
+  record =
+    channel === 'preview'
+      ? mergeNativeVerifications(record, verifications)
+      : advanceReleaseRecord(record, 'macos-cli-authority-established', {
+          mode: 'developer-id-signed',
+          architectures: ['arm64', 'x64'],
+          targets: RELEASE_TARGETS.map(
+            ({ operatingSystem, architecture }) => `${operatingSystem}-${architecture}`,
+          ),
+          verificationCount: verifications.length,
+          verifications,
+        });
   return { root, record };
 }
 
