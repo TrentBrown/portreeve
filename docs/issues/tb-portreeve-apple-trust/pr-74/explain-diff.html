@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PR #74: PortReeve Apple trust contract foundation</title>
+  <style>
+    :root { color-scheme: light dark; --ink:#17202a; --paper:#fbfaf7; --card:#fff; --muted:#5d6873; --line:#d8dde3; --accent:#2855a6; --ok:#18794e; --warn:#9a6700; }
+    * { box-sizing:border-box; }
+    body { margin:0; font:17px/1.6 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:var(--paper); }
+    main { width:min(980px,calc(100% - 32px)); margin:auto; padding:42px 0 80px; }
+    h1,h2,h3 { line-height:1.18; letter-spacing:-.02em; }
+    h1 { font-size:clamp(2.1rem,6vw,4.3rem); margin:.2em 0; }
+    h2 { font-size:2rem; margin-top:2.8em; border-bottom:1px solid var(--line); padding-bottom:.25em; }
+    h3 { margin-top:2em; }
+    .eyebrow { color:var(--accent); font-weight:800; text-transform:uppercase; letter-spacing:.1em; font-size:.75rem; }
+    .lede { font-size:1.25rem; max-width:760px; }
+    .meta,.callout,.diagram,.quiz { border:1px solid var(--line); border-radius:14px; background:var(--card); padding:20px; margin:20px 0; }
+    .meta code { overflow-wrap:anywhere; }
+    nav { columns:2; }
+    nav a { color:var(--accent); }
+    .flow { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; align-items:stretch; }
+    .flow div { border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; background:color-mix(in srgb,var(--card) 90%,var(--accent)); }
+    .flow .now { border:2px solid var(--accent); }
+    .stage-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; counter-reset:stage; }
+    .stage-grid div { counter-increment:stage; border-left:4px solid var(--accent); background:var(--card); padding:9px; }
+    .stage-grid div::before { content:counter(stage) ". "; font-weight:800; }
+    .callout strong { color:var(--accent); }
+    .warning { border-left:6px solid var(--warn); }
+    pre { white-space:pre-wrap; overflow:auto; background:#111827; color:#f3f4f6; border-radius:10px; padding:16px; font-size:.9rem; }
+    table { border-collapse:collapse; width:100%; }
+    th,td { border-bottom:1px solid var(--line); text-align:left; padding:10px; vertical-align:top; }
+    button { display:block; width:100%; text-align:left; padding:12px; margin:8px 0; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink); cursor:pointer; }
+    button:hover { border-color:var(--accent); }
+    button.correct { border-color:var(--ok); background:color-mix(in srgb,var(--card) 80%,#b7f7d8); }
+    button.incorrect { border-color:#cf222e; background:color-mix(in srgb,var(--card) 83%,#ffccd1); }
+    .feedback { min-height:1.6em; font-weight:650; }
+    @media (max-width:720px) { nav { columns:1; } .flow,.stage-grid { grid-template-columns:1fr; } main { width:min(100% - 22px,980px); } }
+    @media (prefers-color-scheme:dark) { :root { --ink:#edf2f7; --paper:#0d1117; --card:#161b22; --muted:#9aa6b2; --line:#30363d; --accent:#79a8ff; --ok:#56d394; --warn:#e3b341; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">PortReeve · PR #74 · Slice 1</p>
+  <h1>Making Apple trust a state machine, not a hopeful shell script</h1>
+  <p class="lede">This change lays the contract foundation for signed and notarized PortReeve releases. It does not yet produce public Apple artifacts. Instead, it makes the later producer prove exactly what it did, in the right order, against immutable bytes.</p>
+  <div class="meta"><strong>Pinned review diff</strong><br><code>9c126fb4074072fb1a74039313072256c89d7f72..cb4ad905a7cd7f141dec4af662aecebbdb74908b</code><br>24 changed files · plan steps P1-P2 · governed Slice 1</div>
+
+  <h2>Contents</h2>
+  <nav><ol><li><a href="#background">Background</a></li><li><a href="#intuition">Intuition</a></li><li><a href="#code">Code walkthrough</a></li><li><a href="#safety">Safety properties</a></li><li><a href="#next">What remains</a></li><li><a href="#quiz">Quiz</a></li></ol></nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <h3>The beginner's version: signatures, notarization, and trust</h3>
+    <p>A checksum answers “are these the bytes I expected?” A Developer ID signature answers “did the holder of this Apple-issued identity authorize these bytes?” Notarization adds Apple's malware-analysis result. Stapling attaches that accepted result to the distributed package, and Gatekeeper evaluates the artifact when a user opens it.</p>
+    <p>These facts are related, but none substitutes for another. A perfectly checksummed unsigned binary is still unsigned. A signed application whose embedded CLI differs from the standalone CLI is two products wearing one version number. A notarization request that timed out is not an acceptance.</p>
+    <div class="diagram flow" aria-label="Trust flow">
+      <div>Source<br><small>commit</small></div><div>Authoritative bytes<br><small>digests</small></div><div>Apple trust<br><small>sign + notarize</small></div><div>Distribution<br><small>exact final bytes</small></div>
+    </div>
+    <h3>The existing PortReeve system</h3>
+    <p>PortReeve already uses a release record to advance a candidate through named stages. Preparation establishes native CLI artifacts; later scripts package Desktop applications, gather evidence, finalize distribution metadata, approve publication, and publish. The important design rule is “build once”: downstream work must consume already-authoritative bytes rather than quietly rebuilding them.</p>
+    <p>The previous schema described an unsigned release world. This PR preserves those historical records, but creates a new schema for releases that must distinguish internal unsigned candidates from publicly trusted Apple output.</p>
+  </section>
+
+  <section id="intuition">
+    <h2>Intuition</h2>
+    <p>The core move is to turn trust into evidence-bound transitions. A release cannot merely say “signing happened.” It must be in the right prior state, use the mode demanded by policy, refer to the exact artifacts already recorded, and carry facts that later stages can independently check.</p>
+    <div class="callout"><strong>Toy example.</strong> Suppose a record begins with four CLI artifacts: macOS ARM64, macOS x64, Linux ARM64, and Linux x64. The qualification transition must report exactly four artifacts and those exact executable targets. Claiming five, omitting Linux x64, or supplying an unrelated tarball fails before credentials are touched.</div>
+    <h3>The new twelve-stage vocabulary</h3>
+    <div class="stage-grid">
+      <div>source-pinned</div><div>policy-resolved</div><div>native-cli-built</div><div>artifact-digests-established</div><div>candidate-qualified</div><div>macos-cli-authority-established</div><div>desktop-packaged</div><div>authoritative-native-verified</div><div>desktop-trust-verified</div><div>distribution-finalized</div><div>publication-approved</div><div>published</div>
+    </div>
+    <p>Notice the separation between trust and publication. Signing credentials live in one protected environment. Publication credentials live in another. Approval to create trusted artifacts does not authorize publishing them.</p>
+    <div class="callout warning"><strong>No silent compatibility trick.</strong> Schema version 1 stays readable under its original ten-stage vocabulary, but mutation APIs reject it. The code neither upgrades history in place nor pretends old unsigned previews carried new evidence.</div>
+  </section>
+
+  <section id="code">
+    <h2>Code walkthrough</h2>
+    <h3>1. Release-record schema dispatch</h3>
+    <p><code>scripts/release-record.js</code> now dispatches validation by schema version. New records use version 2 and the twelve stages. Legacy records retain their old vocabulary for inspection only. Every v2 transition verifies its immediate predecessor and stage-specific evidence.</p>
+    <pre>policy.desktopTrust === "developer-id-notarized"
+  ? authority.mode must equal "developer-id-signed"
+  : authority.mode must equal "unsigned-internal"</pre>
+    <p>This binding closes an important loophole found during review: a trusted policy can no longer advance by claiming unsigned authority.</p>
+    <h3>2. Artifact qualification is derived, not asserted</h3>
+    <p>Qualification now calculates the initial artifact set from the record. The submitted count must equal that set, and the executable members must form the exact four-target matrix. An evidence document cannot invent coverage by placing a plausible number in a field.</p>
+    <pre>required targets = {
+  darwin-arm64, darwin-x64,
+  linux-arm64,  linux-x64
+}
+reported artifactCount = actual initial artifact count</pre>
+    <h3>3. Apple trust contract</h3>
+    <p><code>scripts/apple-trust-contract.js</code> centralizes the exact PortReeve Developer ID identity, Team ID, and product-specific notary profile. It parses machine-readable or stable command output into explicit facts for codesign, notarytool, stapler, and Gatekeeper rather than treating exit status alone as proof.</p>
+    <p>Its injected command runner has finite timeouts. Credential preparation records the keychain state it changed and cleanup runs after success, action failure, or preparation failure. If both the main operation and cleanup fail, an aggregate error preserves both causes.</p>
+    <h3>4. Immutable notarization recovery</h3>
+    <p>A notarization attempt carries a byte digest, release version, deadline, upload-attempt count, and—once Apple creates it—the request ID. A known request is polled. It is never resubmitted. Upload may be retried only when evidence proves no request exists.</p>
+    <div class="diagram flow" aria-label="Notarization recovery flow">
+      <div>Same bytes<br><small>same version</small></div><div>Submit once<br><small>bounded</small></div><div class="now">Request ID<br><small>poll only</small></div><div>Accepted<br><small>advance</small></div>
+    </div>
+    <h3>5. Pipeline callers and tests</h3>
+    <p>Preparation, native evidence, Desktop packaging, finalization, and publication callers now speak the v2 stage vocabulary. Tests cover successful progression as well as malformed Apple output, rejection, indeterminate status, timeout, cleanup failure, detached artifact evidence, policy mismatch, stage skipping, and attempted legacy mutation.</p>
+  </section>
+
+  <section id="safety">
+    <h2>Safety properties established here</h2>
+    <table><thead><tr><th>Risk</th><th>Contract response</th></tr></thead><tbody>
+      <tr><td>Public unsigned fallback</td><td>Publication approval requires the trusted policy and Developer ID-notarized Desktop evidence.</td></tr>
+      <tr><td>Historical evidence rewritten</td><td>Version 1 is readable but immutable; version 2 owns the new vocabulary.</td></tr>
+      <tr><td>Fabricated coverage</td><td>Qualification evidence is checked against the record's exact initial artifacts and target matrix.</td></tr>
+      <tr><td>Duplicate Apple submissions</td><td>A recorded request ID changes recovery to poll-only.</td></tr>
+      <tr><td>Credential residue</td><td>Temporary files and keychain state use unconditional cleanup, preserving cleanup failures.</td></tr>
+      <tr><td>Infinite automation</td><td>Commands, polling, and upload attempts are finite.</td></tr>
+    </tbody></table>
+  </section>
+
+  <section id="next">
+    <h2>What remains after this slice</h2>
+    <p>This PR provides the grammar and invariants, not the final Apple release. Later governed slices must produce signed per-architecture CLI bytes, wire the protected main-only producer, embed the same bytes in architecture-specific applications and DMGs, collect native ARM64 and Intel evidence, finalize every distribution surface from those bytes, and run a nonpublishing protected rehearsal.</p>
+    <p>That boundary matters: passing this PR means “the foundation is safe to build upon,” not “PortReeve is now shipping notarized releases.”</p>
+  </section>
+
+  <section id="quiz">
+    <h2>Quiz</h2>
+    <p>Select an answer. Feedback appears immediately.</p>
+    <div class="quiz" data-answer="1"><h3>1. Why are schema-version-1 records not automatically upgraded?</h3><button>Because Apple rejects records created before notarization.</button><button>Because synthesizing v2 stages would rewrite historical evidence that never existed.</button><button>Because v1 and v2 use different JSON parsers that cannot coexist.</button><p class="feedback"></p></div>
+    <div class="quiz" data-answer="2"><h3>2. What authority mode is valid for a trusted v2 policy?</h3><button>Either mode, provided Desktop is notarized later.</button><button><code>unsigned-internal</code>, followed by a signed DMG.</button><button><code>developer-id-signed</code>, because authority is bound to policy at that stage.</button><p class="feedback"></p></div>
+    <div class="quiz" data-answer="0"><h3>3. When may notarization submission be retried?</h3><button>Only when durable evidence proves Apple created no request.</button><button>Whenever the client-side command times out before printing Accepted.</button><button>After each polling deadline, while the artifact digest is unchanged.</button><p class="feedback"></p></div>
+    <div class="quiz" data-answer="1"><h3>4. What did the artifact-binding remediation change?</h3><button>It raised the minimum artifact count from two to four.</button><button>It derives count and executable targets from the record instead of trusting a plausible evidence claim.</button><button>It requires every artifact, including DMGs, to exist before candidate qualification.</button><p class="feedback"></p></div>
+    <div class="quiz" data-answer="2"><h3>5. What does PASS for this slice establish?</h3><button>Both public preview and stable releases may now be published.</button><button>The protected Apple workflow has completed on ARM64 and Intel runners.</button><button>The lifecycle and trust contracts are sound; live artifact production and native evidence remain later governed work.</button><p class="feedback"></p></div>
+  </section>
+</main>
+<script>
+  document.querySelectorAll('.quiz').forEach((quiz) => {
+    const answer = Number(quiz.dataset.answer);
+    const buttons = [...quiz.querySelectorAll('button')];
+    const feedback = quiz.querySelector('.feedback');
+    buttons.forEach((button, index) => button.addEventListener('click', () => {
+      buttons.forEach((item) => item.classList.remove('correct', 'incorrect'));
+      button.classList.add(index === answer ? 'correct' : 'incorrect');
+      buttons[answer].classList.add('correct');
+      feedback.textContent = index === answer ? 'Correct — that is the invariant this slice establishes.' : 'Not quite. The highlighted answer best matches the implemented contract.';
+    }));
+  });
+</script>
+</body>
+</html>

@@ -1,30 +1,28 @@
 # Code Review - PR #74
 
 **Pinned diff:**
-`9c126fb4074072fb1a74039313072256c89d7f72..2d367ae3e8bf715aa98bc2fe12902a629b9c499e`
+`9c126fb4074072fb1a74039313072256c89d7f72..cb4ad905a7cd7f141dec4af662aecebbdb74908b`
 
-**Verdict:** FAIL - remediation required
+**Verdict:** PASS
 
 ## Findings
 
-### [P1] Bind macOS CLI authority mode to the selected trust policy
+No actionable findings remain at the remediated pinned source.
 
-`scripts/release-record.js:648` accepts either `unsigned-internal` or
-`developer-id-signed` for every schema-version-2 record. A record whose policy
-requires `developer-id-notarized` can therefore advance through
-`macos-cli-authority-established` with unsigned CLI authority. Later stages
-could no longer prove that the trusted policy began from Developer ID-signed
-CLI bytes. Require `unsigned-internal` only for unsigned policy and
-`developer-id-signed` only for trusted policy, with negative tests.
+## Remediation verified
 
-### [P1] Bind candidate qualification to recorded initial artifacts
+- `macos-cli-authority-established` now derives the only accepted authority
+  mode from the selected trust policy: `developer-id-signed` for trusted
+  policy and `unsigned-internal` otherwise. Negative tests cover both mismatch
+  directions.
+- `artifact-digests-established` and `candidate-qualified` now bind
+  `artifactCount` to the actual initial release-record artifacts.
+  Qualification also requires exactly the four executable platform targets
+  with no credential access. Tamper fixtures cover missing and detached
+  artifact claims.
 
-`scripts/release-record.js:635` accepts any integer artifact count of at least
-four. The value is not checked against the record's initial artifact set or
-its four required executable targets, so hand-edited evidence can claim a
-qualified candidate even when the recorded artifact matrix is incomplete.
-Bind schema-version-2 candidate qualification to the actual pre-qualification
-artifacts and exact four executable targets, with tamper fixtures.
+The remediated focused suite passed with 41 tests and 194 assertions, and the
+full repository check passed with 560 tests and 2924 assertions.
 
 ## Residual risks
 

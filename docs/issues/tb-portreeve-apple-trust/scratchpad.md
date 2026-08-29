@@ -8,7 +8,7 @@ entries are appended to `decisions.md`.
 
 ## [1] Version the release record with read-only legacy dispatch
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 
@@ -25,7 +25,7 @@ New records use schema version 2 and the twelve ordered stages from the approved
 
 ## [2] Make Apple trust recovery explicit, finite, and product-scoped
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

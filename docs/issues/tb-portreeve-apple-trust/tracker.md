@@ -9,13 +9,13 @@
 
 | # | Criterion (short) | Status | PR | Notes |
 |---|-------------------|--------|----|-------|
-| R1 | Public-channel trust policy | NOT YET | - | Planned for P1, P6-P8 / I-1, I-6-I-8 |
-| R2 | Schema lifecycle and compatibility | NOT YET | - | Planned for P1, P6, P8 / I-1, I-6, I-8 |
-| R3 | CLI byte and bundle authority | NOT YET | - | Planned for P2-P3, P5, P7-P8 / I-2, I-3, I-5, I-7, I-8 |
-| R4 | Protected production and credential custody | NOT YET | - | Planned for P2, P4, P7-P8 / I-2, I-4, I-7, I-8 |
+| R1 | Public-channel trust policy | PASS | #74 | P1 contract and tests complete; P6-P8 must preserve it |
+| R2 | Schema lifecycle and compatibility | PASS | #74 | P1 schema-v2 lifecycle and read-only v1 dispatch complete |
+| R3 | CLI byte and bundle authority | NOT YET | #74 | P2 foundation complete; live signed-byte proof remains P3/P5/P7-P8 |
+| R4 | Protected production and credential custody | NOT YET | #74 | P2 primitives complete; protected producer remains P4/P7-P8 |
 | R5 | Native Apple verification | NOT YET | - | Planned for P3, P5, P7-P8 / I-3, I-5, I-7, I-8 |
 | R6 | Finalization and publication separation | NOT YET | - | Planned for P6-P8 / I-6-I-8 |
-| R7 | Failure, recovery, and immutability | NOT YET | - | Planned for P1-P8 / I-1-I-8 |
+| R7 | Failure, recovery, and immutability | NOT YET | #74 | P1-P2 fail-closed contract complete; later boundaries remain |
 | R8 | Protected nonpublishing rehearsal | NOT YET | - | Planned for P8 / I-8 |
 
 ## PR Log
@@ -29,5 +29,6 @@ Append PR boundary entries here.
 - **Issues:** I-1, I-2
 - **Rubric in scope:** R1, R2, R3, R4, R7
 - **Boundary packet:** [`pr-74/`](pr-74/)
-- **Status:** GateReeve boundary evaluation in progress at pinned source
-  `2d367ae3e8bf715aa98bc2fe12902a629b9c499e`.
+- **Status:** GateReeve boundary packet valid and human review accepted for
+  remediated pinned source
+  `cb4ad905a7cd7f141dec4af662aecebbdb74908b`; landing pending.
