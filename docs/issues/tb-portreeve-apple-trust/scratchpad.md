@@ -90,7 +90,7 @@ Strip the path before parsing - rejected because the parser should validate the 
 
 ## [6] Treat Gatekeeper origin as optional display metadata
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

@@ -77,6 +77,16 @@ Append PR boundary entries here.
   `0ec83fd9d2ae831e2fe90f091c33360139405de2`; merged as
   `de43dae24f2629748b1c1a3376c478e183e0ec33`.
 
+### PR #79 - Gatekeeper optional origin correction
+
+- **Slice:** `slice-09-gatekeeper-origin`
+- **Plan steps:** P2, P5, P8
+- **Issues:** I-11
+- **Rubric in scope:** R4, R5, R7, R8
+- **Boundary packet:** [`pr-79/`](pr-79/)
+- **Status:** Boundary evaluation pinned at source
+  `31da295f7359c25347b96a9d979421bed565671b`.
+
 ## Protected rehearsal attempt - `0.1.0-preview.5`
 
 - **Run:** [33267482516](https://github.com/TrentBrown/portreeve/actions/runs/33267482516)
@@ -140,7 +150,7 @@ Append PR boundary entries here.
 - **Plan steps:** P2, P5, P8
 - **Issues:** I-11
 - **Rubric in scope:** R4, R5, R7, R8
-- **Status:** GateReeve `IMPLEMENTING`; change
+- **Status:** GateReeve `PR_BOUNDARY`; change
   `chg-gatekeeper-optional-origin-display` is validated against live preview
   `.7` evidence and the complete test suite. Slice 8 was abandoned after the
   failed acceptance attempt. The correction keeps independent exact codesign

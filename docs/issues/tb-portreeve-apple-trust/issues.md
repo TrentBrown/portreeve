@@ -151,12 +151,12 @@ next protected attempt.
 
 ## I-11 - Accept omitted Gatekeeper origin display metadata
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 0.5d
 - **Plan steps:** P2, P5, P8
 - **Rubric criteria:** R4, R5, R7, R8
 - **Depends on:** I-10
-- **PR:** -
+- **PR:** [#79](https://github.com/TrentBrown/portreeve/pull/79)
 
 Correct the second live Gatekeeper compatibility defect observed in hosted run
 `33272715923`: Apple accepted the exact request-bound DMG and `spctl` returned
