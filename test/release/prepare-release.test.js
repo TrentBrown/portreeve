@@ -55,6 +55,9 @@ describe('release preparation', () => {
     ]);
     expect(result.record.artifacts.map(({ filename }) => filename)).toEqual([
       'portreeve-v0.1.0-preview.1-macos-arm64',
+      'portreeve-v0.1.0-preview.1-macos-x64',
+      'portreeve-v0.1.0-preview.1-linux-arm64',
+      'portreeve-v0.1.0-preview.1-linux-x64',
       'portreeve.rb',
       'manifest.json',
       'SHA256SUMS',
@@ -185,9 +188,20 @@ describe('release preparation', () => {
 
 /** @param {{destination: string, releaseVersion: string}} options */
 async function fakeBuild(options) {
-  const executable = `portreeve-v${options.releaseVersion}-macos-arm64`;
   await mkdir(options.destination, { recursive: true });
-  await Bun.write(join(options.destination, executable), 'native bytes');
+  const executables = [
+    { operatingSystem: 'macos', architecture: 'arm64' },
+    { operatingSystem: 'macos', architecture: 'x64' },
+    { operatingSystem: 'linux', architecture: 'arm64' },
+    { operatingSystem: 'linux', architecture: 'x64' },
+  ].map((target) => ({
+    type: 'executable',
+    filename: `portreeve-v${options.releaseVersion}-${target.operatingSystem}-${target.architecture}`,
+    ...target,
+  }));
+  for (const executable of executables) {
+    await Bun.write(join(options.destination, executable.filename), 'native bytes');
+  }
   await Bun.write(join(options.destination, 'portreeve.rb'), 'formula');
   await writeFile(join(options.destination, 'manifest.json'), '{}\n');
   await writeFile(join(options.destination, 'SHA256SUMS'), 'checksums\n');
@@ -196,12 +210,7 @@ async function fakeBuild(options) {
     manifest: {
       releaseVersion: options.releaseVersion,
       artifacts: [
-        {
-          type: 'executable',
-          filename: executable,
-          operatingSystem: 'macos',
-          architecture: 'arm64',
-        },
+        ...executables,
         { type: 'homebrew-formula', filename: 'portreeve.rb' },
       ],
     },

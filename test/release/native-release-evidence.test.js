@@ -193,7 +193,9 @@ async function preparedRecord() {
       architecture: target.architecture,
     });
   }
-  record = advanceReleaseRecord(record, 'artifact-digests-established', {});
+  record = advanceReleaseRecord(record, 'artifact-digests-established', {
+    artifactCount: record.artifacts.length,
+  });
   record = advanceReleaseRecord(record, 'candidate-qualified', {
     artifactCount: record.artifacts.length,
     credentialAccess: false,

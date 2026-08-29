@@ -632,26 +632,62 @@ function assertStageEvidence(record, stage, evidence) {
       'Native CLI authority evidence requires the complete target matrix.',
     );
   }
-  if (stage === 'candidate-qualified') {
+  if (
+    record.schemaVersion === RELEASE_RECORD_SCHEMA_VERSION &&
+    ['artifact-digests-established', 'candidate-qualified'].includes(stage)
+  ) {
     const artifactCount = evidence.artifactCount;
+    const initialArtifacts = record.artifacts.filter(
+      (artifact) =>
+        RELEASE_STAGES.indexOf(artifact.provenanceStage) <=
+        RELEASE_STAGES.indexOf('artifact-digests-established'),
+    );
     if (
       typeof artifactCount !== 'number' ||
       !Number.isSafeInteger(artifactCount) ||
-      artifactCount < NATIVE_TARGET_KEYS.length ||
-      evidence.credentialAccess !== false
+      artifactCount !== initialArtifacts.length
     ) {
+      throw new Error('Candidate artifact evidence differs from the release record.');
+    }
+    if (stage === 'candidate-qualified') {
+      const executableTargets = initialArtifacts
+        .filter((artifact) => artifact.type === 'executable')
+        .map(
+          (artifact) =>
+            `${artifact.operatingSystem ?? ''}-${artifact.architecture ?? ''}`,
+        );
+      if (
+        NATIVE_TARGET_KEYS.some((target) => !executableTargets.includes(target)) ||
+        executableTargets.some((target) => !NATIVE_TARGET_KEYS.includes(target)) ||
+        executableTargets.length !== NATIVE_TARGET_KEYS.length ||
+        evidence.credentialAccess !== false
+      ) {
+        throw new Error(
+          'Candidate qualification requires the exact native artifact matrix without credential access.',
+        );
+      }
+    }
+  }
+  if (stage === 'candidate-qualified' && record.schemaVersion === 1) {
+    if (evidence.credentialAccess !== undefined) {
       throw new Error(
-        'Candidate qualification requires artifact coverage without credential access.',
+        'Legacy release records cannot contain candidate qualification evidence.',
       );
     }
   }
   if (stage === 'macos-cli-authority-established') {
+    const expectedMode =
+      record.policy.desktopTrust === 'developer-id-notarized'
+        ? 'developer-id-signed'
+        : 'unsigned-internal';
     if (
-      !['unsigned-internal', 'developer-id-signed'].includes(String(evidence.mode)) ||
+      evidence.mode !== expectedMode ||
       !Array.isArray(evidence.architectures) ||
       evidence.architectures.join(',') !== 'arm64,x64'
     ) {
-      throw new Error('macOS CLI authority evidence is incomplete.');
+      throw new Error(
+        `macOS CLI authority evidence must use ${expectedMode} for the selected policy.`,
+      );
     }
   }
   if (stage === 'authoritative-native-verified') {

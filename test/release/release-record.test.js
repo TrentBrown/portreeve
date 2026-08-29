@@ -102,6 +102,33 @@ describe('release record', () => {
     expect(stable.stages.at(-1)?.name).toBe('desktop-trust-verified');
   });
 
+  test('binds qualification and macOS authority to recorded artifacts and policy', () => {
+    let record = advanceToBuiltRecord(stableRecord());
+    record = advanceReleaseRecord(record, 'artifact-digests-established', {
+      artifactCount: record.artifacts.length,
+    });
+    expect(() =>
+      advanceReleaseRecord(record, 'candidate-qualified', {
+        artifactCount: record.artifacts.length + 1,
+        credentialAccess: false,
+      }),
+    ).toThrow('differs from the release record');
+    record = advanceReleaseRecord(record, 'candidate-qualified', {
+      artifactCount: record.artifacts.length,
+      credentialAccess: false,
+    });
+    const verifications = nativeVerifications(record);
+    expect(() =>
+      advanceReleaseRecord(record, 'macos-cli-authority-established', {
+        mode: 'unsigned-internal',
+        architectures: ['arm64', 'x64'],
+        targets: nativeTargets(),
+        verificationCount: 4,
+        verifications,
+      }),
+    ).toThrow('must use developer-id-signed');
+  });
+
   test('binds publication approval to one exact plan digest', () => {
     let record = publicationReadyRecord();
     expect(record.state).toBe('prepared');
@@ -342,16 +369,54 @@ function legacyPublishedEvidence() {
 
 /** @param {ReturnType<typeof previewRecord>} record */
 function advanceThroughDesktopPackaging(record) {
+  record = advanceToBuiltRecord(record);
+  record = advanceReleaseRecord(record, 'artifact-digests-established', {
+    artifactCount: record.artifacts.length,
+  });
+  record = advanceReleaseRecord(record, 'candidate-qualified', {
+    artifactCount: record.artifacts.length,
+    credentialAccess: false,
+  });
+  const verifications = nativeVerifications(record);
+  record = advanceReleaseRecord(record, 'macos-cli-authority-established', {
+    mode:
+      record.policy.desktopTrust === 'unsigned'
+        ? 'unsigned-internal'
+        : 'developer-id-signed',
+    architectures: ['arm64', 'x64'],
+    targets: nativeTargets(),
+    verificationCount: 4,
+    verifications,
+  });
+  record = advanceReleaseRecord(record, 'desktop-packaged', {
+    packages: /** @type {Array<Record<string, unknown>>} */ ([
+      {
+        architecture: 'arm64',
+        filename: 'PortReeve-arm64.dmg',
+        sha256: 'a'.repeat(64),
+        cliSha256: 'b'.repeat(64),
+      },
+      {
+        architecture: 'x64',
+        filename: 'PortReeve-x64.dmg',
+        sha256: 'c'.repeat(64),
+        cliSha256: 'd'.repeat(64),
+      },
+    ]),
+  });
+  return advanceReleaseRecord(record, 'authoritative-native-verified', {
+    targets: nativeTargets(),
+    desktopArchitectures: ['arm64', 'x64'],
+    verificationCount: 6,
+  });
+}
+
+/** @param {ReturnType<typeof previewRecord>} record */
+function advanceToBuiltRecord(record) {
   for (const stage of RELEASE_STAGES.slice(0, 3)) {
     record = advanceReleaseRecord(record, stage, {});
   }
-  /** @type {Array<['macos'|'linux', 'arm64'|'x64']>} */
-  const targets = [
-    ['macos', 'arm64'],
-    ['macos', 'x64'],
-    ['linux', 'arm64'],
-    ['linux', 'x64'],
-  ];
+  const targets = nativeTargetPairs();
   record.artifacts = targets.map(([operatingSystem, architecture], index) => ({
     type: 'executable',
     filename: `portreeve-${operatingSystem}-${architecture}`,
@@ -362,12 +427,22 @@ function advanceThroughDesktopPackaging(record) {
     operatingSystem,
     architecture,
   }));
-  record = advanceReleaseRecord(record, 'artifact-digests-established', {});
-  record = advanceReleaseRecord(record, 'candidate-qualified', {
-    artifactCount: record.artifacts.length,
-    credentialAccess: false,
-  });
-  const verifications = record.artifacts.map((artifact) => ({
+  return record;
+}
+
+/** @returns {Array<['macos'|'linux', 'arm64'|'x64']>} */
+function nativeTargetPairs() {
+  return [
+    ['macos', 'arm64'],
+    ['macos', 'x64'],
+    ['linux', 'arm64'],
+    ['linux', 'x64'],
+  ];
+}
+
+/** @param {ReturnType<typeof previewRecord>} record */
+function nativeVerifications(record) {
+  return record.artifacts.map((artifact) => ({
     schemaVersion: /** @type {const} */ (1),
     kind: /** @type {const} */ ('native-cli-verification'),
     releaseId: record.releaseId,
@@ -395,41 +470,12 @@ function advanceThroughDesktopPackaging(record) {
     },
     verifiedAt: record.updatedAt,
   }));
-  record = advanceReleaseRecord(record, 'macos-cli-authority-established', {
-    mode:
-      record.policy.desktopTrust === 'unsigned'
-        ? 'unsigned-internal'
-        : 'developer-id-signed',
-    architectures: ['arm64', 'x64'],
-    targets: targets.map(
-      ([operatingSystem, architecture]) => `${operatingSystem}-${architecture}`,
-    ),
-    verificationCount: 4,
-    verifications,
-  });
-  record = advanceReleaseRecord(record, 'desktop-packaged', {
-    packages: /** @type {Array<Record<string, unknown>>} */ ([
-      {
-        architecture: 'arm64',
-        filename: 'PortReeve-arm64.dmg',
-        sha256: 'a'.repeat(64),
-        cliSha256: 'b'.repeat(64),
-      },
-      {
-        architecture: 'x64',
-        filename: 'PortReeve-x64.dmg',
-        sha256: 'c'.repeat(64),
-        cliSha256: 'd'.repeat(64),
-      },
-    ]),
-  });
-  return advanceReleaseRecord(record, 'authoritative-native-verified', {
-    targets: targets.map(
-      ([operatingSystem, architecture]) => `${operatingSystem}-${architecture}`,
-    ),
-    desktopArchitectures: ['arm64', 'x64'],
-    verificationCount: 6,
-  });
+}
+
+function nativeTargets() {
+  return nativeTargetPairs().map(
+    ([operatingSystem, architecture]) => `${operatingSystem}-${architecture}`,
+  );
 }
 
 async function temporaryDirectory() {

@@ -21,3 +21,13 @@
 ## PR Log
 
 Append PR boundary entries here.
+
+### PR #74 - Contract foundation
+
+- **Slice:** `slice-01-contract-foundation`
+- **Plan steps:** P1, P2
+- **Issues:** I-1, I-2
+- **Rubric in scope:** R1, R2, R3, R4, R7
+- **Boundary packet:** [`pr-74/`](pr-74/)
+- **Status:** GateReeve boundary evaluation in progress at pinned source
+  `2d367ae3e8bf715aa98bc2fe12902a629b9c499e`.

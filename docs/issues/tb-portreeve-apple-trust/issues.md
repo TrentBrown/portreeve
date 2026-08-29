@@ -9,12 +9,12 @@ Operational task breakdown derived from the plan.
 
 ## I-1 - Version the release lifecycle and public trust policy
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P1
 - **Rubric criteria:** R1, R2, R7
 - **Depends on:** none
-- **PR:** -
+- **PR:** [#74](https://github.com/TrentBrown/portreeve/pull/74)
 
 Implement strict release-record schema-version dispatch, the twelve-stage v2
 lifecycle, read-only v1 compatibility, and prospective public preview/stable
@@ -23,12 +23,12 @@ historical preview facts.
 
 ## I-2 - Build Apple trust and recovery primitives
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P2
 - **Rubric criteria:** R3, R4, R7
 - **Depends on:** I-1
-- **PR:** -
+- **PR:** [#74](https://github.com/TrentBrown/portreeve/pull/74)
 
 Implement injected codesign, notary, stapler, and Gatekeeper contracts with
 strict parsing, finite bounds, request continuity, version immutability, and
