@@ -15,7 +15,7 @@
 | R4 | Protected production and credential custody | NOT YET | #74, #75, #76 | Main-only producer isolation and cleanup are tested; protected execution remains P8 |
 | R5 | Native Apple verification | NOT YET | #75, #76 | Strict ARM64/Intel collectors and aggregation are complete; current hosted documents remain P8 |
 | R6 | Finalization and publication separation | PASS | #76 | Final metadata consumes aggregated trust, seals the plan digest, and keeps trust/publication authority disjoint |
-| R7 | Failure, recovery, and immutability | NOT YET | #74, #75, #76 | Protected run `33267482516` exposed an unintegrated asynchronous-submit recovery path; correction is active in slice 5 |
+| R7 | Failure, recovery, and immutability | NOT YET | #74, #75, #76, #77 | PR #77 corrects the asynchronous-submit recovery path; a protected rerun from reviewed `main` remains required |
 | R8 | Protected nonpublishing rehearsal | NOT YET | - | Planned for P8 / I-8 |
 
 ## PR Log
@@ -53,6 +53,16 @@ Append PR boundary entries here.
   `5d89cb14a6064cd65a07a489690be2d86568e02e`; merged as
   `4f4610f27639a09ba53692757971ea0ce7af7061`.
 
+### PR #77 - Notarization submit recovery correction
+
+- **Slice:** `slice-05-notarization-submit-recovery`
+- **Plan steps:** P2, P8
+- **Issues:** I-9
+- **Rubric in scope:** R4, R7, R8
+- **Boundary packet:** [`pr-77/`](pr-77/)
+- **Status:** In review at evaluated source
+  `32bdaaa12acdf6efb8a9a1d8baf41039598135ce`.
+
 ## Protected rehearsal attempt - `0.1.0-preview.5`
 
 - **Run:** [33267482516](https://github.com/TrentBrown/portreeve/actions/runs/33267482516)
@@ -76,8 +86,9 @@ Append PR boundary entries here.
 - **Plan steps:** P2, P8
 - **Issues:** I-9
 - **Rubric in scope:** R4, R7, R8
-- **Status:** GateReeve `IMPLEMENTING`; changes
+- **Status:** GateReeve `PR_BOUNDARY`; changes
   `chg-notary-submit-response-recovery` and
-  `chg-notary-failure-evidence-upload` are approved. The correction preserves
+  `chg-notary-failure-evidence-upload` are validated. PR #77 is pinned at
+  `32bdaaa12acdf6efb8a9a1d8baf41039598135ce`. The correction preserves
   the approved explicit polling design, separate architecture-specific DMGs,
   main-only trust approval, and zero publication authority.

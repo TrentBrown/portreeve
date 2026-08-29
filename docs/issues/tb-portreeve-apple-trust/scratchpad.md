@@ -58,7 +58,7 @@ Defer metadata repair until finalization - rejected because native verification 
 
 ## [4] Persist notarization continuity at the producer boundary
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

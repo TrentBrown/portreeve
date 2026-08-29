@@ -22,6 +22,7 @@ import {
   assertProtectedProducerContext,
   createCredentialLifecycle,
   notarizeDmg,
+  preserveNotarizationCandidate,
   rewriteTrustedReleaseMetadata,
 } from '../../scripts/produce-apple-trusted-artifacts.js';
 import { renderChecksumFile, sha256File } from '../../scripts/release-lib.js';
@@ -282,6 +283,26 @@ describe('Apple trust producer', () => {
       'awaiting-poll',
       'accepted',
     ]);
+  });
+
+  test('preserves submitted DMG bytes when the working copy is later mutated', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'portreeve-notary-candidate-'));
+    directories.push(root);
+    const workingPath = join(root, 'work', 'PortReeve-test.dmg');
+    const recoveryRoot = join(root, 'recovery', 'candidates');
+    await mkdir(join(root, 'work'));
+    await writeFile(workingPath, 'signed pre-staple bytes');
+    const submittedPath = await preserveNotarizationCandidate({
+      sourcePath: workingPath,
+      recoveryCandidatesRoot: recoveryRoot,
+    });
+    const submittedSha256 = await sha256File(submittedPath);
+
+    await writeFile(workingPath, 'signed pre-staple bytes plus staple ticket');
+
+    expect(await sha256File(submittedPath)).toBe(submittedSha256);
+    expect(await sha256File(workingPath)).not.toBe(submittedSha256);
+    expect(await readFile(submittedPath, 'utf8')).toBe('signed pre-staple bytes');
   });
 
   test('keeps info status strict while preserving the known request', async () => {

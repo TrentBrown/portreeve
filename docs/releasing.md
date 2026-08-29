@@ -325,7 +325,7 @@ candidate bytes change.
 
 If the protected producer fails after staging a signed DMG, the workflow uploads
 `trusted-recovery-<version>-<run-attempt>` from the producer's intentional recovery
-directory. It contains the exact signed candidate bytes and sanitized, non-secret
+directory. It contains the exact pre-staple bytes submitted to Apple and sanitized, non-secret
 notarization state only; it never contains the P12, P8, passwords, keychain, or
 publication authority. Preserve that artifact as failed-attempt evidence. A known
 request ID may be polled against those exact bytes, but the ordinary release workflow

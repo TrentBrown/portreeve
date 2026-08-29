@@ -117,12 +117,12 @@ before full feature evaluation and close-out.
 
 ## I-9 - Correct asynchronous notarization submission recovery
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P2, P8
 - **Rubric criteria:** R4, R7, R8
 - **Depends on:** I-2, I-4, I-8
-- **PR:** -
+- **PR:** [#77](https://github.com/TrentBrown/portreeve/pull/77)
 
 Correct the protected producer defect observed in hosted run
 `33267482516`: asynchronous `notarytool submit` returned a valid request ID

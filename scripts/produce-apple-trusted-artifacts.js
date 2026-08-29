@@ -239,14 +239,12 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
               'DMG signing',
             );
             const dmgCodesign = await inspectCodesign(run, temporaryDmgPath, false);
-            await mkdir(recoveryCandidatesRoot, { recursive: true });
-            const dmgPath = resolve(recoveryCandidatesRoot, basename(temporaryDmgPath));
-            await cp(temporaryDmgPath, dmgPath, {
-              errorOnExist: true,
-              force: false,
+            const submittedDmgPath = await preserveNotarizationCandidate({
+              sourcePath: temporaryDmgPath,
+              recoveryCandidatesRoot,
             });
             const notarization = await notarizeDmg({
-              dmgPath,
+              dmgPath: submittedDmgPath,
               releaseId: record.releaseId,
               recoveryPath: resolve(recoveryRoot, `notarization-${architecture}.json`),
               scope,
@@ -257,13 +255,13 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
             await requireSuccess(
               run,
               'xcrun',
-              ['stapler', 'staple', dmgPath],
+              ['stapler', 'staple', temporaryDmgPath],
               'stapling',
             );
             const staplerResult = await runBounded(run, 'xcrun', [
               'stapler',
               'validate',
-              dmgPath,
+              temporaryDmgPath,
             ]);
             const stapler = parseStaplerFacts(staplerResult);
             const gatekeeperResult = await runBounded(run, 'spctl', [
@@ -273,11 +271,11 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
               '--context',
               'context:primary-signature',
               '--verbose=4',
-              dmgPath,
+              temporaryDmgPath,
             ]);
             const gatekeeper = parseGatekeeperFacts(gatekeeperResult);
             await verifyDmg({
-              dmgPath,
+              dmgPath: temporaryDmgPath,
               architecture,
               controllerVersion: record.releaseVersion,
               verifyApplication: async (mountedApplicationPath) => {
@@ -320,8 +318,8 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
                 codesign: await inspectCodesign(run, packaged.applicationPath),
               },
               dmg: {
-                filename: basename(dmgPath),
-                ...(await fileIdentity(dmgPath)),
+                filename: basename(temporaryDmgPath),
+                ...(await fileIdentity(temporaryDmgPath)),
                 codesign: dmgCodesign,
                 notarization,
                 stapler,
@@ -348,7 +346,7 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
           }
           for (const entry of packages) {
             await cp(
-              resolve(recoveryCandidatesRoot, entry.dmg.filename),
+              resolve(workRoot, 'dmgs', entry.dmg.filename),
               resolve(artifactsRoot, entry.dmg.filename),
             );
           }
@@ -467,6 +465,24 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
     }
     throw error;
   }
+}
+
+/**
+ * Preserve the exact pre-staple bytes submitted to Apple independently from
+ * the working DMG that stapling and later verification may mutate.
+ * @param {{sourcePath: string, recoveryCandidatesRoot: string}} options
+ */
+export async function preserveNotarizationCandidate(options) {
+  await mkdir(options.recoveryCandidatesRoot, { recursive: true });
+  const submittedPath = resolve(
+    options.recoveryCandidatesRoot,
+    basename(options.sourcePath),
+  );
+  await cp(options.sourcePath, submittedPath, {
+    errorOnExist: true,
+    force: false,
+  });
+  return submittedPath;
 }
 
 /**
