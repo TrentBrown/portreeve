@@ -1,10 +1,11 @@
-# Protected Rehearsal Preflight
+# Protected Rehearsal Attempt
 
 **Checked:** 2026-08-29T15:37:10Z
 **Planned release:** `0.1.0-preview.5`
 **Required dispatch:** `channel=preview`, `trust=true`, `publish=false`
 **Pinned source:** `4f4610f27639a09ba53692757971ea0ce7af7061` on `main`
-**Status:** PAUSED BEFORE DISPATCH
+**Run:** [33267482516](https://github.com/TrentBrown/portreeve/actions/runs/33267482516)
+**Status:** FAILED IN PROTECTED PRODUCER; CORRECTION REQUIRED
 
 ## Passed checks
 
@@ -31,42 +32,64 @@
 | Homebrew formula blob | `759d2635fd84ab7ce2969c7ca51edad09ece3228` |
 | Homebrew cask blob | `fadae00919d8bc43fe7a7dcd9973b2c9b10d7541` |
 
-No tag, release, Homebrew change, Desktop-update change, workflow dispatch, or
-other public mutation was performed during this preflight.
+The protected workflow was subsequently dispatched with `trust=true` and
+`publish=false`. No tag, release, Homebrew change, Desktop-update change, or
+other publication mutation was authorized.
 
-## Blocking check
+## External configuration completed
 
-The PortReeve repository has no GitHub environment named `release-trust`.
-Repository-level Actions variables and secrets are also empty, so there is no
-authorized credential source for the protected producer. Triggering the
-workflow now would either create an unprotected empty environment or fail
-configuration validation; neither would supply valid Apple trust evidence.
+The PortReeve repository now has a protected `release-trust` environment
+restricted to `main`, with Trent Brown as required reviewer. The expected
+Developer ID identity, Team ID, product-specific `PortReeve Notarization` key
+metadata, P12, P12 password, and P8 were configured under independently named
+PortReeve variables and secrets. The user verified the P8 with
+`notarytool history` before dispatch. No secret value was written to this
+record.
 
-GateReeve has an older `release-publication` environment with GateReeve-named
-Apple configuration, but the approved PortReeve design explicitly rejects
-sharing GateReeve's notarization key. Its secret values are not readable or
-transferable through GitHub and were not used.
+The protected reviewer approved only the nonpublishing `release-trust` job.
+The `release-publication` environment was never entered.
 
-## Required external configuration
+## Attempt outcome
 
-Create a protected `release-trust` environment restricted to `main`, with
-Trent Brown as a required reviewer, and configure these non-secret variables:
+- `prepare`, all four native CLI evidence jobs, and `qualify-trust` passed.
+- The protected `release-trust` job ran as job `99140564407` and reached the
+  real signed-DMG notarization submission.
+- Apple returned a valid request UUID but omitted `status`, which is the normal
+  shape of an asynchronous successful `notarytool submit` response.
+- `parseNotarytoolFacts` accepted the UUID and then failed because it required
+  status before the producer's existing `notarytool info` loop could begin.
+- The exact failure was `Apple notarization status must be a non-empty string.`
+- Both native Apple trust jobs, trusted finalization, and publication were
+  skipped. No public mutation occurred.
 
-- `PORTREEVE_APPLE_SIGNING_IDENTITY` =
-  `Developer ID Application: Trent Brown (PMWYD5A82A)`
-- `PORTREEVE_APPLE_TEAM_ID` = `PMWYD5A82A`
-- `PORTREEVE_APPLE_NOTARY_KEY_ID` = the new PortReeve-specific App Store
-  Connect key ID
-- `PORTREEVE_APPLE_NOTARY_ISSUER_ID` = the matching issuer ID
-- `PORTREEVE_APPLE_NOTARY_KEY_NAME` = `PortReeve Notarization`
+The defective producer did not print or persist the returned request UUID and
+deleted its signed output on failure. The request therefore cannot be safely
+continued from repository or workflow evidence. `0.1.0-preview.5` is burned;
+the next protected attempt must use `0.1.0-preview.6` after the correction
+lands on reviewed `main`.
 
-Configure these environment secrets without placing their values in source,
-logs, or conversation text:
+## After-state proof
 
-- `PORTREEVE_APPLE_CERTIFICATE_P12_BASE64`
-- `PORTREEVE_APPLE_CERTIFICATE_PASSWORD`
-- `PORTREEVE_APPLE_NOTARY_KEY_P8_BASE64`
+Read-only checks after the failed workflow confirmed the same authorities as
+the baseline:
 
-Once the environment exists, resume GateReeve and dispatch the exact reviewed
-`main` workflow with `publish=false`. The environment approval authorizes only
-Apple trust production; it does not authorize publication.
+| Surface | After state |
+|---|---|
+| PortReeve `main` | `4f4610f27639a09ba53692757971ea0ce7af7061` |
+| GitHub Releases | latest remains `v0.1.0-preview.4`; `.5` absent |
+| PortReeve Desktop update blob | `95374af5de460b0865aaab2a7732db8e1bdd5203` |
+| Homebrew repository `main` | `23be9c4a5897807bb29a64076d1c84a3bcff2ea5` |
+| Homebrew formula blob | `759d2635fd84ab7ce2969c7ca51edad09ece3228` |
+| Homebrew cask blob | `fadae00919d8bc43fe7a7dcd9973b2c9b10d7541` |
+
+## Governed correction
+
+GateReeve abandoned slice 4 and started
+`slice-05-notarization-submit-recovery` on branch
+`tb-portreeve-apple-trust-05-notarization-submit-recovery`. The approved
+correction keeps the existing architecture-specific installer and explicit
+polling design. It separates submit parsing from strict info parsing, wires the
+real producer through the finite recovery state machine, retains exact signed
+candidate bytes with sanitized non-secret request history, and uploads that
+recovery directory only when the protected producer fails. No `development*`
+branch is merged or rebased into the correction branch.

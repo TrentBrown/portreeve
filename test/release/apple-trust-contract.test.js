@@ -12,6 +12,7 @@ import {
   parseCodesignFacts,
   parseGatekeeperFacts,
   parseNotarytoolFacts,
+  parseNotarytoolSubmissionFacts,
   parseStaplerFacts,
   recordNotarizationObservation,
   runBoundedAppleCommand,
@@ -56,6 +57,11 @@ TeamIdentifier=${APPLE_TEAM_ID}`),
 
   test('parses notarization, stapler, and Gatekeeper evidence', () => {
     expect(
+      parseNotarytoolSubmissionFacts(
+        JSON.stringify({ id: REQUEST_ID, message: 'Successfully uploaded file' }),
+      ),
+    ).toEqual({ requestId: REQUEST_ID });
+    expect(
       parseNotarytoolFacts(JSON.stringify({ id: REQUEST_ID, status: 'Accepted' })),
     ).toEqual({ requestId: REQUEST_ID, status: 'Accepted' });
     expect(
@@ -78,6 +84,9 @@ TeamIdentifier=${APPLE_TEAM_ID}`),
       }),
     ).toThrow('did not accept');
     expect(() => parseNotarytoolFacts('{')).toThrow('not valid JSON');
+    expect(() => parseNotarytoolFacts(JSON.stringify({ id: REQUEST_ID }))).toThrow(
+      'status must be a non-empty string',
+    );
     expect(() =>
       parseNotarytoolFacts(JSON.stringify({ id: REQUEST_ID, status: 'Unknown' })),
     ).toThrow('status is unsupported');
@@ -227,6 +236,39 @@ TeamIdentifier=${APPLE_TEAM_ID}`),
         '2026-08-29T03:01:00.000Z',
       ),
     ).toThrow('submission status is unsupported');
+    const indeterminate = recordNotarizationObservation(
+      recovery(),
+      {
+        kind: 'submission-indeterminate',
+        diagnostic: 'successful response could not be parsed',
+      },
+      '2026-08-29T03:01:00.000Z',
+    );
+    expect(nextNotarizationAction(indeterminate, '2026-08-29T03:02:00.000Z')).toEqual({
+      action: 'blocked',
+    });
+  });
+
+  test('preserves a known request after indeterminate polling', () => {
+    const submitted = recordNotarizationObservation(
+      recovery(),
+      { kind: 'request-created', requestId: REQUEST_ID },
+      '2026-08-29T03:01:00.000Z',
+    );
+    const interrupted = recordNotarizationObservation(
+      submitted,
+      {
+        kind: 'poll-indeterminate',
+        requestId: REQUEST_ID,
+        diagnostic: 'notarytool info output was incomplete',
+      },
+      '2026-08-29T03:02:00.000Z',
+    );
+    expect(nextNotarizationAction(interrupted, '2026-08-29T03:03:00.000Z')).toEqual({
+      action: 'poll',
+      requestId: REQUEST_ID,
+    });
+    expect(interrupted.uploadAttempts).toBe(1);
   });
 
   test('rejects cross-request polling and changed candidate identity', () => {

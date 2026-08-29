@@ -69,8 +69,26 @@ export function parseCodesignFacts(output, options = {}) {
  * Parse the JSON emitted by `xcrun notarytool submit --output-format json`
  * or `xcrun notarytool info --output-format json` without retaining log text.
  * @param {string} output
+ * @returns {{requestId: string, status: string}}
  */
 export function parseNotarytoolFacts(output) {
+  return /** @type {{requestId: string, status: string}} */ (
+    parseNotarytoolResponse(output, true)
+  );
+}
+
+/**
+ * A successful asynchronous `notarytool submit` response always includes the
+ * request ID, but may omit status until `notarytool info` is called.
+ * @param {string} output
+ * @returns {{requestId: string, status?: string}}
+ */
+export function parseNotarytoolSubmissionFacts(output) {
+  return parseNotarytoolResponse(output, false);
+}
+
+/** @param {string} output @param {boolean} requireStatus */
+function parseNotarytoolResponse(output, requireStatus) {
   let value;
   try {
     value = JSON.parse(output);
@@ -79,6 +97,7 @@ export function parseNotarytoolFacts(output) {
   }
   const requestId = requiredString(value?.id, 'Apple notarization request ID');
   assertRequestId(requestId);
+  if (!requireStatus && value?.status === undefined) return { requestId };
   const status = requiredString(value?.status, 'Apple notarization status');
   if (!['Accepted', 'In Progress', 'Invalid', 'Rejected'].includes(status)) {
     throw new Error('Apple notarization status is unsupported.');
@@ -253,8 +272,10 @@ export function assertNotarizationCandidate(recovery, candidate) {
 
 /**
  * @param {NotarizationRecovery} recovery
- * @param {{kind: 'request-created', requestId: string, status?: string}|
+ * @param {{kind: 'request-created', requestId: string, status?: string, diagnostic?: string}|
  *   {kind: 'upload-no-request', diagnostic: string}|
+ *   {kind: 'submission-indeterminate', diagnostic: string}|
+ *   {kind: 'poll-indeterminate', requestId: string, diagnostic: string}|
  *   {kind: 'poll', requestId: string, status: string, diagnostic?: string}} observation
  * @param {string} observedAt
  * @returns {NotarizationRecovery}
@@ -299,6 +320,26 @@ export function recordNotarizationObservation(recovery, observation, observedAt)
     next.uploadAttempts += 1;
     next.status =
       next.uploadAttempts >= next.maxUploadAttempts ? 'blocked' : 'awaiting-upload';
+  } else if (observation.kind === 'submission-indeterminate') {
+    if (next.currentRequestId !== null) {
+      throw new Error('An existing Apple request must be polled, not resubmitted.');
+    }
+    requiredString(observation.diagnostic, 'Submission diagnostic');
+    if (next.uploadAttempts >= next.maxUploadAttempts) {
+      throw new Error('Notarization upload attempt limit is exhausted.');
+    }
+    next.uploadAttempts += 1;
+    next.status = 'blocked';
+  } else if (observation.kind === 'poll-indeterminate') {
+    assertRequestId(observation.requestId);
+    requiredString(observation.diagnostic, 'Polling diagnostic');
+    if (
+      next.currentRequestId === null ||
+      observation.requestId !== next.currentRequestId
+    ) {
+      throw new Error('Notarization poll does not match the active Apple request.');
+    }
+    next.status = 'awaiting-poll';
   } else {
     assertRequestId(observation.requestId);
     if (
@@ -318,7 +359,11 @@ export function recordNotarizationObservation(recovery, observation, observedAt)
   return next;
 }
 
-/** @param {NotarizationRecovery} recovery @param {string} now */
+/**
+ * @param {NotarizationRecovery} recovery
+ * @param {string} now
+ * @returns {{action: 'accepted'}|{action: 'blocked', reason?: string}|{action: 'poll', requestId: string}|{action: 'submit'}}
+ */
 export function nextNotarizationAction(recovery, now) {
   assertNotarizationRecovery(recovery);
   assertTimestamp(now, 'Notarization action time');

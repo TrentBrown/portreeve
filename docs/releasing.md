@@ -323,6 +323,14 @@ drag-to-Applications, quarantine, and first-launch check is optional; absence of
 personal machine does not block acceptance. Increment the preview identifier whenever
 candidate bytes change.
 
+If the protected producer fails after staging a signed DMG, the workflow uploads
+`trusted-recovery-<version>-<run-attempt>` from the producer's intentional recovery
+directory. It contains the exact signed candidate bytes and sanitized, non-secret
+notarization state only; it never contains the P12, P8, passwords, keychain, or
+publication authority. Preserve that artifact as failed-attempt evidence. A known
+request ID may be polled against those exact bytes, but the ordinary release workflow
+must not be rerun for the same version after source, signing, or package bytes change.
+
 ## Recovery
 
 - **Preparation failed before native aggregation:** rerun the failed job or start a new
@@ -330,7 +338,8 @@ candidate bytes change.
 - **A native or Desktop fragment is missing:** restore the exact workflow artifact and
   rerun its native job. Do not mark the check true by hand.
 - **Apple created a notarization request ID:** poll that same request within the bounded
-  deadline; do not resubmit it merely because polling was interrupted.
+  deadline; use the failure-only recovery artifact to bind the request to the exact
+  signed DMG, and do not resubmit it merely because polling was interrupted.
 - **Apple created no request:** retry upload only when retained evidence proves no
   request exists. Preserve every attempt and diagnostic.
 - **Any signed CLI, app, or DMG byte changes:** consume the next unused preview version.

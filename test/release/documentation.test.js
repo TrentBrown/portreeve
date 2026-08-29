@@ -337,11 +337,14 @@ test('release workflow qualifies before one main-only nonpublishing trust produc
   expect(trustJob).toContain('permissions:\n      contents: read');
   expect(trustJob).toContain('release:produce-apple-trust');
   expect(trustJob).toContain('path: ${{ env.TRUSTED_ROOT }}');
+  expect(trustJob).toContain('if: failure()');
+  expect(trustJob).toContain('trusted-recovery-${{ inputs.version }}');
+  expect(trustJob).toContain('path: ${{ env.TRUSTED_ROOT }}/recovery');
   expect(trustJob).toContain('PORTREEVE_APPLE_NOTARY_KEY_P8_BASE64');
   expect(trustJob).not.toContain('PORTREEVE_RELEASE_TOKEN');
   expect(trustJob).not.toContain('contents: write');
   expect(trustJob).not.toContain('pull-requests: write');
-  expect(trustJob.match(/actions\/upload-artifact@v7/gu)).toHaveLength(1);
+  expect(trustJob.match(/actions\/upload-artifact@v7/gu)).toHaveLength(2);
   const nativeTrustJob = workflow.slice(
     workflow.indexOf('  trusted-native-evidence:'),
     workflow.indexOf('  finalize-trusted-distribution:'),

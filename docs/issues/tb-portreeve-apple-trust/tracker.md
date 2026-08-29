@@ -15,7 +15,7 @@
 | R4 | Protected production and credential custody | NOT YET | #74, #75, #76 | Main-only producer isolation and cleanup are tested; protected execution remains P8 |
 | R5 | Native Apple verification | NOT YET | #75, #76 | Strict ARM64/Intel collectors and aggregation are complete; current hosted documents remain P8 |
 | R6 | Finalization and publication separation | PASS | #76 | Final metadata consumes aggregated trust, seals the plan digest, and keeps trust/publication authority disjoint |
-| R7 | Failure, recovery, and immutability | PASS | #74, #75, #76 | Strict transformation, evidence, plan-digest, request-continuity, cleanup, and negative-path tests pass |
+| R7 | Failure, recovery, and immutability | NOT YET | #74, #75, #76 | Protected run `33267482516` exposed an unintegrated asynchronous-submit recovery path; correction is active in slice 5 |
 | R8 | Protected nonpublishing rehearsal | NOT YET | - | Planned for P8 / I-8 |
 
 ## PR Log
@@ -53,15 +53,31 @@ Append PR boundary entries here.
   `5d89cb14a6064cd65a07a489690be2d86568e02e`; merged as
   `4f4610f27639a09ba53692757971ea0ce7af7061`.
 
+## Protected rehearsal attempt - `0.1.0-preview.5`
+
+- **Run:** [33267482516](https://github.com/TrentBrown/portreeve/actions/runs/33267482516)
+- **Source:** reviewed `main` commit
+  `4f4610f27639a09ba53692757971ea0ce7af7061`
+- **Outcome:** preliminary preparation, four native CLI jobs, qualification,
+  and protected environment approval passed. The `release-trust` producer
+  failed after Apple returned a request ID without submit status; downstream
+  Apple evidence, finalization, and publication were skipped.
+- **Identity:** `0.1.0-preview.5` is burned because its signed bytes and request
+  ID were not preserved by the defective producer.
+- **Public state:** unchanged; `.5` has no tag or release and the recorded
+  PortReeve, Homebrew, formula, cask, and Desktop-update authorities still
+  match the preflight baseline.
+
 ## Active Slice
 
-### Slice 4 - Live acceptance and corrections
+### Slice 5 - Notarization submit recovery correction
 
-- **Branch:** `tb-portreeve-apple-trust-04-live-acceptance-and-corrections`
-- **Plan steps:** P8
-- **Issues:** I-8
-- **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7, R8
-- **Status:** GateReeve `IMPLEMENTING`, feature paused before dispatch. Exact
-  reviewed `main` is `4f4610f27639a09ba53692757971ea0ce7af7061`,
-  but the repository has no protected `release-trust` environment or Apple
-  trust configuration. See [`rehearsal-preflight.md`](rehearsal-preflight.md).
+- **Branch:** `tb-portreeve-apple-trust-05-notarization-submit-recovery`
+- **Plan steps:** P2, P8
+- **Issues:** I-9
+- **Rubric in scope:** R4, R7, R8
+- **Status:** GateReeve `IMPLEMENTING`; changes
+  `chg-notary-submit-response-recovery` and
+  `chg-notary-failure-evidence-upload` are approved. The correction preserves
+  the approved explicit polling design, separate architecture-specific DMGs,
+  main-only trust approval, and zero publication authority.

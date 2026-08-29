@@ -216,6 +216,14 @@ jobs:
           bun run release:produce-apple-trust -- --record
           "$RELEASE_ROOT/release-record.json" --qualification
           "$RELEASE_ROOT/evidence/trust-qualification.json" --output "$TRUSTED_ROOT"
+      - name: Preserve failed notarization recovery evidence
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trusted-recovery-${{ inputs.version }}-${{ github.run_attempt }}
+          path: ${{ env.TRUSTED_ROOT }}/recovery
+          if-no-files-found: warn
+          retention-days: 7
       - uses: actions/upload-artifact@v7
         with:
           name: trusted-${{ inputs.version }}
