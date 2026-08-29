@@ -51,6 +51,7 @@ describe('release preparation', () => {
       'policy-resolved',
       'native-cli-built',
       'artifact-digests-established',
+      'candidate-qualified',
     ]);
     expect(result.record.artifacts.map(({ filename }) => filename)).toEqual([
       'portreeve-v0.1.0-preview.1-macos-arm64',
@@ -178,7 +179,7 @@ describe('release preparation', () => {
       { ...options, resume: true },
       { sourceIdentity: async () => source, build: fakeBuild },
     );
-    expect(resumed.record.stages.at(-1)?.name).toBe('artifact-digests-established');
+    expect(resumed.record.stages.at(-1)?.name).toBe('candidate-qualified');
   });
 });
 

@@ -6,15 +6,30 @@ import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { sha256File } from './release-lib.js';
 
-export const RELEASE_RECORD_SCHEMA_VERSION = 1;
+export const RELEASE_RECORD_SCHEMA_VERSION = 2;
 
-export const RELEASE_STAGES = Object.freeze([
+export const LEGACY_RELEASE_STAGES = Object.freeze([
   'source-pinned',
   'policy-resolved',
   'native-cli-built',
   'artifact-digests-established',
   'native-cli-verified',
   'desktop-packaged',
+  'desktop-trust-verified',
+  'distribution-finalized',
+  'publication-approved',
+  'published',
+]);
+
+export const RELEASE_STAGES = Object.freeze([
+  'source-pinned',
+  'policy-resolved',
+  'native-cli-built',
+  'artifact-digests-established',
+  'candidate-qualified',
+  'macos-cli-authority-established',
+  'desktop-packaged',
+  'authoritative-native-verified',
   'desktop-trust-verified',
   'distribution-finalized',
   'publication-approved',
@@ -57,7 +72,7 @@ const NATIVE_TARGET_KEYS = ['macos-arm64', 'macos-x64', 'linux-arm64', 'linux-x6
 
 /**
  * @typedef {{
- *   schemaVersion: number,
+ *   schemaVersion: 1|2,
  *   releaseId: string,
  *   releaseVersion: string,
  *   source: {repository: string, commit: string},
@@ -155,7 +170,8 @@ export function validateReleasePolicy(releaseVersion, policy) {
  */
 export function advanceReleaseRecord(record, stage, evidence, now = () => new Date()) {
   assertReleaseRecord(record);
-  const expected = RELEASE_STAGES[record.stages.length];
+  assertMutableReleaseRecord(record);
+  const expected = stagesFor(record.schemaVersion)[record.stages.length];
   if (expected === undefined) {
     throw new Error('The release record is already in its terminal published state.');
   }
@@ -164,22 +180,26 @@ export function advanceReleaseRecord(record, stage, evidence, now = () => new Da
   }
   assertStageEvidence(record, stage, evidence);
   if (
-    stage === 'native-cli-verified' &&
+    stage === 'macos-cli-authority-established' &&
     (!Array.isArray(evidence.verifications) ||
       evidence.verifications.length !== NATIVE_TARGET_KEYS.length)
   ) {
-    throw new Error('Native CLI transition requires all verification documents.');
+    throw new Error(
+      'macOS CLI authority requires the complete preliminary verification matrix.',
+    );
   }
   const timestamp = now().toISOString();
   const next = structuredClone(record);
   const persistedEvidence =
-    stage === 'native-cli-verified'
+    stage === 'macos-cli-authority-established'
       ? {
+          mode: evidence.mode,
+          architectures: evidence.architectures,
           targets: evidence.targets,
           verificationCount: evidence.verificationCount,
         }
       : evidence;
-  if (stage === 'native-cli-verified') {
+  if (stage === 'macos-cli-authority-established') {
     next.verifications = structuredClone(
       /** @type {NativeVerification[]} */ (evidence.verifications),
     );
@@ -213,9 +233,10 @@ export function advanceReleaseRecord(record, stage, evidence, now = () => new Da
  */
 export async function registerReleaseArtifact(record, artifact) {
   assertReleaseRecord(record);
+  assertMutableReleaseRecord(record);
   requiredString(artifact.type, 'artifact type');
   requiredString(artifact.provenanceStage, 'artifact provenance stage');
-  if (!RELEASE_STAGES.includes(artifact.provenanceStage)) {
+  if (!stagesFor(record.schemaVersion).includes(artifact.provenanceStage)) {
     throw new Error(`Unknown artifact provenance stage: ${artifact.provenanceStage}`);
   }
   if (!record.stages.some(({ name }) => name === artifact.provenanceStage)) {
@@ -284,6 +305,7 @@ export async function verifyReleaseArtifacts(record, root) {
 /** @param {string} path @param {ReleaseRecord} record */
 export async function writeReleaseRecord(path, record) {
   assertReleaseRecord(record);
+  assertMutableReleaseRecord(record);
   await mkdir(dirname(path), { recursive: true });
   const temporary = `${path}.${randomUUID()}.tmp`;
   try {
@@ -306,15 +328,18 @@ export async function readReleaseRecord(path) {
 
 /** @param {unknown} record @returns {asserts record is ReleaseRecord} */
 export function assertReleaseRecord(record) {
+  const schemaVersion =
+    record !== null && typeof record === 'object' && 'schemaVersion' in record
+      ? record.schemaVersion
+      : undefined;
   if (
-    record === null ||
-    typeof record !== 'object' ||
-    !('schemaVersion' in record) ||
-    record.schemaVersion !== RELEASE_RECORD_SCHEMA_VERSION
+    typeof schemaVersion !== 'number' ||
+    ![1, RELEASE_RECORD_SCHEMA_VERSION].includes(schemaVersion)
   ) {
     throw new Error('Unsupported release record schema.');
   }
   const candidate = /** @type {Record<string, any>} */ (record);
+  const releaseStages = stagesFor(candidate.schemaVersion);
   assertSemanticVersion(candidate.releaseVersion, 'release version');
   if (candidate.releaseId !== `portreeve-v${candidate.releaseVersion}`) {
     throw new Error('Release record identity does not match its version.');
@@ -364,7 +389,7 @@ export function assertReleaseRecord(record) {
     }
     return entry.name;
   });
-  if (names.some((name, index) => name !== RELEASE_STAGES[index])) {
+  if (names.some((name, index) => name !== releaseStages[index])) {
     throw new Error('Release record stages are not a valid ordered prefix.');
   }
   for (const stage of candidate.stages) {
@@ -402,7 +427,7 @@ export function assertReleaseRecord(record) {
       throw new Error(`Release artifact identity is invalid: ${artifact.filename}`);
     }
     if (
-      !RELEASE_STAGES.includes(artifact.provenanceStage) ||
+      !releaseStages.includes(artifact.provenanceStage) ||
       !names.includes(artifact.provenanceStage)
     ) {
       throw new Error(`Release artifact provenance is invalid: ${artifact.filename}`);
@@ -451,7 +476,11 @@ export function assertReleaseRecord(record) {
       `${verification.target.operatingSystem}-${verification.target.architecture}`,
     );
   }
-  const nativeStageCompleted = names.includes('native-cli-verified');
+  const nativeStageCompleted = names.includes(
+    candidate.schemaVersion === 1
+      ? 'native-cli-verified'
+      : 'macos-cli-authority-established',
+  );
   if (
     (nativeStageCompleted &&
       verificationKeys.join(',') !== NATIVE_TARGET_KEYS.join(',')) ||
@@ -564,8 +593,12 @@ function assertStageEvidence(record, stage, evidence) {
   }
   if (stage === 'desktop-trust-verified') {
     if (record.policy.desktopTrust === 'unsigned') {
-      if (evidence.status !== 'unsigned-preview') {
-        throw new Error('Unsigned Desktop evidence must identify an unsigned preview.');
+      const expectedStatus =
+        record.schemaVersion === 1 ? 'unsigned-preview' : 'unsigned-internal';
+      if (evidence.status !== expectedStatus) {
+        throw new Error(
+          `Unsigned Desktop evidence must identify an ${expectedStatus} candidate.`,
+        );
       }
       return;
     }
@@ -587,12 +620,52 @@ function assertStageEvidence(record, stage, evidence) {
     }
   }
   if (
-    stage === 'native-cli-verified' &&
+    stage ===
+      (record.schemaVersion === 1
+        ? 'native-cli-verified'
+        : 'macos-cli-authority-established') &&
     (!Array.isArray(evidence.targets) ||
       evidence.targets.join(',') !== NATIVE_TARGET_KEYS.join(',') ||
       evidence.verificationCount !== NATIVE_TARGET_KEYS.length)
   ) {
-    throw new Error('Native CLI stage evidence requires the complete target matrix.');
+    throw new Error(
+      'Native CLI authority evidence requires the complete target matrix.',
+    );
+  }
+  if (stage === 'candidate-qualified') {
+    const artifactCount = evidence.artifactCount;
+    if (
+      typeof artifactCount !== 'number' ||
+      !Number.isSafeInteger(artifactCount) ||
+      artifactCount < NATIVE_TARGET_KEYS.length ||
+      evidence.credentialAccess !== false
+    ) {
+      throw new Error(
+        'Candidate qualification requires artifact coverage without credential access.',
+      );
+    }
+  }
+  if (stage === 'macos-cli-authority-established') {
+    if (
+      !['unsigned-internal', 'developer-id-signed'].includes(String(evidence.mode)) ||
+      !Array.isArray(evidence.architectures) ||
+      evidence.architectures.join(',') !== 'arm64,x64'
+    ) {
+      throw new Error('macOS CLI authority evidence is incomplete.');
+    }
+  }
+  if (stage === 'authoritative-native-verified') {
+    if (
+      !Array.isArray(evidence.targets) ||
+      evidence.targets.join(',') !== NATIVE_TARGET_KEYS.join(',') ||
+      !Array.isArray(evidence.desktopArchitectures) ||
+      evidence.desktopArchitectures.join(',') !== 'arm64,x64' ||
+      evidence.verificationCount !== NATIVE_TARGET_KEYS.length + 2
+    ) {
+      throw new Error(
+        'Authoritative native evidence requires CLI and Desktop coverage.',
+      );
+    }
   }
   if (stage === 'desktop-packaged') {
     const packages = evidence.packages;
@@ -615,6 +688,14 @@ function assertStageEvidence(record, stage, evidence) {
     }
   }
   if (stage === 'publication-approved') {
+    if (
+      record.schemaVersion === RELEASE_RECORD_SCHEMA_VERSION &&
+      record.policy.desktopTrust !== 'developer-id-notarized'
+    ) {
+      throw new Error(
+        'Public publication requires Developer ID-signed and notarized macOS artifacts.',
+      );
+    }
     requiredString(evidence.approvedBy, 'publication approver');
     requiredString(evidence.approvedAt, 'publication approval time');
     if (!SHA256.test(String(evidence.planSha256 ?? ''))) {
@@ -659,6 +740,20 @@ function assertStageEvidence(record, stage, evidence) {
       throw new Error('Legacy published evidence cannot claim pull request transport.');
     }
     assertTimestamp(evidence.publishedAt, 'publication time');
+  }
+}
+
+/** @param {number} schemaVersion */
+function stagesFor(schemaVersion) {
+  if (schemaVersion === 1) return LEGACY_RELEASE_STAGES;
+  if (schemaVersion === RELEASE_RECORD_SCHEMA_VERSION) return RELEASE_STAGES;
+  throw new Error('Unsupported release record schema.');
+}
+
+/** @param {ReleaseRecord} record */
+function assertMutableReleaseRecord(record) {
+  if (record.schemaVersion !== RELEASE_RECORD_SCHEMA_VERSION) {
+    throw new Error('Schema-version-1 release records are read-only.');
   }
 }
 

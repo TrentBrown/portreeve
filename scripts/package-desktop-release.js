@@ -16,8 +16,8 @@ export async function packageDesktopRelease(options) {
   const releaseRoot = dirname(recordPath);
   const workspaceRoot = resolve(options.workspaceRoot ?? process.cwd());
   const record = await readReleaseRecord(recordPath);
-  if (record.stages.at(-1)?.name !== 'native-cli-verified') {
-    throw new Error('Desktop packaging requires complete native CLI verification.');
+  if (record.stages.at(-1)?.name !== 'macos-cli-authority-established') {
+    throw new Error('Desktop packaging requires established macOS CLI authority.');
   }
   await verifyReleaseArtifacts(record, releaseRoot);
   const outputRoot = resolve(releaseRoot, 'desktop-work', options.architecture);

@@ -7,10 +7,7 @@ import { join } from 'node:path';
 import { desktopDmgName } from '../../scripts/desktop-release-lib.js';
 import { finalizeDesktopDistribution } from '../../scripts/finalize-desktop-distribution.js';
 import { inspectReleaseCandidate } from '../../scripts/inspect-release-candidate.js';
-import {
-  createNativeVerification,
-  mergeNativeVerifications,
-} from '../../scripts/native-release-evidence.js';
+import { createNativeVerification } from '../../scripts/native-release-evidence.js';
 import {
   createPublicationCompletion,
   publishPreparedRelease,
@@ -286,7 +283,11 @@ async function finalizedRelease() {
       commit: '8'.repeat(40),
     },
     versions: { server: '0.1.0', desktop: '0.1.0', client: '0.1.0' },
-    policy: { maturity: 'alpha', channel: 'preview', desktopTrust: 'unsigned' },
+    policy: {
+      maturity: 'alpha',
+      channel: 'preview',
+      desktopTrust: 'developer-id-notarized',
+    },
     tools: { bun: '1.3.14' },
   });
   record = advanceReleaseRecord(record, 'source-pinned', {});
@@ -323,16 +324,26 @@ async function finalizedRelease() {
     });
   }
   record = advanceReleaseRecord(record, 'artifact-digests-established', {});
-  record = mergeNativeVerifications(
-    record,
-    RELEASE_TARGETS.map((target) =>
-      createNativeVerification(record, target, {
-        name: 'fixture',
-        operatingSystem: target.operatingSystem,
-        architecture: target.architecture,
-      }),
-    ),
+  record = advanceReleaseRecord(record, 'candidate-qualified', {
+    artifactCount: record.artifacts.length,
+    credentialAccess: false,
+  });
+  const verifications = RELEASE_TARGETS.map((target) =>
+    createNativeVerification(record, target, {
+      name: 'fixture',
+      operatingSystem: target.operatingSystem,
+      architecture: target.architecture,
+    }),
   );
+  record = advanceReleaseRecord(record, 'macos-cli-authority-established', {
+    mode: 'developer-id-signed',
+    architectures: ['arm64', 'x64'],
+    targets: RELEASE_TARGETS.map(
+      ({ operatingSystem, architecture }) => `${operatingSystem}-${architecture}`,
+    ),
+    verificationCount: verifications.length,
+    verifications,
+  });
   const recordPath = join(root, 'release-record.json');
   await writeReleaseRecord(recordPath, record);
   const evidencePaths = [];
@@ -380,11 +391,24 @@ async function finalizedRelease() {
     await writeFile(evidencePath, JSON.stringify(evidence));
     evidencePaths.push(evidencePath);
   }
-  await finalizeDesktopDistribution({ recordPath, evidencePaths });
+  const trustEvidencePath = join(root, 'evidence', 'apple-trust.json');
+  await writeFile(
+    trustEvidencePath,
+    JSON.stringify({
+      signatureIdentity: 'Developer ID Application: Trent Brown (PMWYD5A82A)',
+      hardenedRuntime: true,
+      secureTimestamp: true,
+      notarizationId: 'notary-request-id',
+      stapled: true,
+      gatekeeperAssessment: 'accepted',
+      nativeArchitectures: ['arm64', 'x64'],
+    }),
+  );
+  await finalizeDesktopDistribution({ recordPath, evidencePaths, trustEvidencePath });
   const publicationPlan = await readFile(join(root, 'publication-plan.md'), 'utf8');
   expect(publicationPlan).toContain('npm: deferred');
   expect(publicationPlan).toContain('**Alpha Preview**');
-  expect(publicationPlan).toContain('**unsigned**');
+  expect(publicationPlan).toContain('**Desktop trust:** developer-id-notarized');
   expect(publicationPlan).toContain(
     'https://github.com/TrentBrown/portreeve/blob/main/docs/installation.md',
   );

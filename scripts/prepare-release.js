@@ -158,6 +158,12 @@ export async function prepareRelease(options, dependencies = {}) {
     { artifactCount: record.artifacts.length },
     now,
   );
+  record = advanceReleaseRecord(
+    record,
+    'candidate-qualified',
+    { artifactCount: record.artifacts.length, credentialAccess: false },
+    now,
+  );
   await writeReleaseRecord(recordPath, record);
   await writeFile(
     resolve(releaseRoot, 'publication-plan.md'),
