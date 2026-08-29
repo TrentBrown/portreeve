@@ -35,6 +35,9 @@ gate.
   `release:homebrew-smoke` formula/cask installation check on macOS.
 - For an interrupted candidate, resume only through the exact recovery path documented
   in `docs/releasing.md`; do not rebuild or substitute bytes downstream.
+- Never use GitHub Actions **Re-run jobs** after protected production has begun.
+  Preserve the recovery artifact and use the next unused preview version unless the
+  documented exact-byte recovery path applies.
 - For a request to publish, first identify the exact finalized record and show the exact
   `publication-plan.md`, its digest, all target repositories, and all public mutations.
   A general request to prepare, release-check, or rehearse is not publication authority.

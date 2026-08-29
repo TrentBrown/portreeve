@@ -24,8 +24,10 @@ import {
   notarizeDmg,
   preserveNotarizationCandidate,
   rewriteTrustedReleaseMetadata,
+  stageTrustedReleaseArtifacts,
 } from '../../scripts/produce-apple-trusted-artifacts.js';
 import { renderChecksumFile, sha256File } from '../../scripts/release-lib.js';
+import { createReleaseRecord } from '../../scripts/release-record.js';
 
 const originalEnvironment = { ...process.env };
 /** @type {string[]} */
@@ -46,6 +48,7 @@ describe('Apple trust producer', () => {
       sourceCommit: 'a'.repeat(40),
       desktopTrust: 'developer-id-notarized',
       lastStage: 'candidate-qualified',
+      githubRunAttempt: '1',
     };
     expect(() => assertProtectedProducerContext(valid)).not.toThrow();
     expect(() =>
@@ -57,6 +60,9 @@ describe('Apple trust producer', () => {
     expect(() =>
       assertProtectedProducerContext({ ...valid, desktopTrust: 'unsigned' }),
     ).toThrow('requires Developer ID notarization policy');
+    expect(() =>
+      assertProtectedProducerContext({ ...valid, githubRunAttempt: '2' }),
+    ).toThrow('cannot be rerun after a protected attempt');
   });
 
   test('validates public configuration before credential decoding', async () => {
@@ -218,6 +224,149 @@ describe('Apple trust producer', () => {
         await sha256File(join(artifactsRoot, artifact.filename)),
       );
     }
+  });
+
+  test('stages one predecessor manifest before the authoritative rewrite', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'portreeve-trusted-stage-'));
+    directories.push(root);
+    const releaseRoot = join(root, 'release');
+    const sourceArtifacts = join(releaseRoot, 'artifacts');
+    const signedArtifacts = join(root, 'signed-artifacts');
+    const dmgRoot = join(root, 'dmgs');
+    const outputRoot = join(root, 'trusted');
+    await Promise.all([
+      mkdir(sourceArtifacts, { recursive: true }),
+      mkdir(signedArtifacts, { recursive: true }),
+      mkdir(dmgRoot, { recursive: true }),
+      mkdir(outputRoot, { recursive: true }),
+    ]);
+    const transformations = [
+      transformation('arm64', 'a', 'c', 20, 24),
+      transformation('x64', 'b', 'd', 21, 25),
+    ];
+    const manifest = {
+      schemaVersion: 1,
+      artifacts: [
+        ...transformations.map((entry) => ({
+          type: 'executable',
+          filename: entry.filename,
+          operatingSystem: 'macos',
+          architecture: entry.architecture,
+          ...entry.predecessor,
+        })),
+        {
+          type: 'homebrew-formula',
+          filename: 'portreeve.rb',
+          bytes: 0,
+          sha256: '0'.repeat(64),
+        },
+      ],
+    };
+    const formula = transformations
+      .map((entry) => `sha256 "${entry.predecessor.sha256}"`)
+      .join('\n')
+      .concat('\n');
+    await writeFile(join(sourceArtifacts, 'portreeve.rb'), formula);
+    const formulaManifestEntry = manifest.artifacts.at(-1);
+    if (formulaManifestEntry === undefined) throw new Error('Formula missing.');
+    Object.assign(formulaManifestEntry, {
+      bytes: (await stat(join(sourceArtifacts, 'portreeve.rb'))).size,
+      sha256: await sha256File(join(sourceArtifacts, 'portreeve.rb')),
+    });
+    await writeFile(
+      join(sourceArtifacts, 'manifest.json'),
+      JSON.stringify(manifest, null, 2).concat('\n'),
+    );
+    await writeFile(
+      join(sourceArtifacts, 'SHA256SUMS'),
+      renderChecksumFile(manifest.artifacts),
+    );
+    for (const entry of transformations) {
+      await writeFile(join(signedArtifacts, entry.filename), entry.signed.sha256);
+    }
+    const record = createReleaseRecord({
+      releaseVersion: '0.1.0-preview.9',
+      source: {
+        repository: 'TrentBrown/portreeve',
+        commit: 'a'.repeat(40),
+      },
+      versions: {
+        server: '0.1.0-preview.9',
+        desktop: '0.1.0-preview.9',
+        client: '0.1.0-preview.9',
+      },
+      policy: {
+        maturity: 'alpha',
+        channel: 'preview',
+        desktopTrust: 'developer-id-notarized',
+      },
+      tools: {},
+    });
+    record.artifacts = [
+      ...transformations.map((entry) => ({
+        type: 'executable',
+        filename: entry.filename,
+        path: `artifacts/${entry.filename}`,
+        provenanceStage: 'artifact-digests-established',
+        operatingSystem: 'macos',
+        architecture: entry.architecture,
+        ...entry.predecessor,
+      })),
+      ...(await Promise.all(
+        ['portreeve.rb', 'manifest.json', 'SHA256SUMS'].map(async (filename) => ({
+          type: 'release-metadata',
+          filename,
+          path: `artifacts/${filename}`,
+          provenanceStage: 'artifact-digests-established',
+          bytes: (await stat(join(sourceArtifacts, filename))).size,
+          sha256: await sha256File(join(sourceArtifacts, filename)),
+        })),
+      )),
+    ];
+    const result = await stageTrustedReleaseArtifacts({
+      releaseRoot,
+      outputRoot,
+      signedArtifacts,
+      dmgRoot,
+      record,
+      packages: [],
+      transformations,
+    });
+    const rewrittenManifest = JSON.parse(
+      await readFile(join(outputRoot, 'artifacts', 'manifest.json'), 'utf8'),
+    );
+    for (const entry of transformations) {
+      expect(rewrittenManifest.artifacts).toContainEqual(
+        expect.objectContaining({
+          filename: entry.filename,
+          bytes: entry.signed.bytes,
+          sha256: entry.signed.sha256,
+        }),
+      );
+      expect(result.trustedRecord.artifacts).toContainEqual(
+        expect.objectContaining({
+          filename: entry.filename,
+          bytes: entry.signed.bytes,
+          sha256: entry.signed.sha256,
+        }),
+      );
+    }
+    const untouchedManifest = JSON.parse(
+      await readFile(join(sourceArtifacts, 'manifest.json'), 'utf8'),
+    );
+    expect(untouchedManifest.artifacts[0].sha256).toBe(
+      transformations[0]?.predecessor.sha256,
+    );
+  });
+
+  test('keeps request-bound candidates until producer evidence is durable', async () => {
+    const source = await readFile(
+      join('scripts', 'produce-apple-trusted-artifacts.js'),
+      'utf8',
+    );
+    expect(source.indexOf('await rm(recoveryCandidatesRoot')).toBeGreaterThan(
+      source.indexOf("'apple-trust-producer.json'"),
+    );
   });
 
   test('records an asynchronous submit response and polls exactly one request', async () => {

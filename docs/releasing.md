@@ -331,6 +331,12 @@ publication authority. Preserve that artifact as failed-attempt evidence. A know
 request ID may be polled against those exact bytes, but the ordinary release workflow
 must not be rerun for the same version after source, signing, or package bytes change.
 
+Never use GitHub Actions **Re-run jobs** after `release-trust` has begun. The
+protected producer refuses `GITHUB_RUN_ATTEMPT` values greater than `1` before
+credential activation or Apple submission. Preserve the failed attempt and dispatch a
+new workflow with the next unused preview version; request-bound recovery must continue
+only from the retained exact candidate bytes and request history.
+
 ## Recovery
 
 - **Preparation failed before native aggregation:** rerun the failed job or start a new
