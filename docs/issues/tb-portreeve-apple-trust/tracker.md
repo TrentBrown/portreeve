@@ -60,5 +60,7 @@ Append PR boundary entries here.
 - **Plan steps:** P5, P6, P7
 - **Issues:** I-5, I-6, I-7
 - **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7
-- **Status:** GateReeve `PR_BOUNDARY` for draft PR
-  [#76](https://github.com/TrentBrown/portreeve/pull/76).
+- **Status:** GateReeve `HUMAN_REVIEW` for draft PR
+  [#76](https://github.com/TrentBrown/portreeve/pull/76); all required gates
+  passed at evaluated source `5d89cb14a6064cd65a07a489690be2d86568e02e`
+  and standing non-final-slice review authorization was recorded.
