@@ -3,10 +3,10 @@
 > [!WARNING]
 >
 > **Alpha Preview** — PortReeve is evolving quickly. Breaking changes remain possible,
-> and the current macOS preview is unsigned until Apple Developer ID signing and
-> notarization are configured. Review the
-> [installation and removal guide](docs/installation.md), including the scoped macOS
-> **Open Anyway** procedure, before installing it.
+> and the currently published macOS previews through `0.1.0-preview.4` are immutable
+> unsigned history. New public previews require Apple Developer ID signing and
+> notarization. Review the [installation and removal guide](docs/installation.md),
+> including the narrowly scoped historical-preview guidance, before installing.
 
 <p align="center">
   <img src="apps/desktop/assets/branding/portreeve-lockup.svg" width="570" alt="PortReeve, Local Port Authority">
@@ -32,8 +32,8 @@ brew install trentbrown/portreeve/portreeve
 ```
 
 Homebrew does not silently install or start the supervised service. Direct macOS DMGs,
-Linux executables, checksum verification, unsigned-app guidance, and removal procedures
-are covered in the [installation guide](docs/installation.md).
+Linux executables, checksum verification, historical unsigned-preview guidance, and
+removal procedures are covered in the [installation guide](docs/installation.md).
 
 <!-- product-overview:identity-problem -->
 

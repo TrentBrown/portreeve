@@ -63,6 +63,13 @@ export async function inspectReleaseCandidate(options) {
   if ((await readFile(planPath, 'utf8')) !== expectedPlan) {
     throw new Error('Candidate publication plan does not match its release record.');
   }
+  const publicationPlanSha256 = await sha256File(planPath);
+  if (
+    (await readFile(resolve(releaseRoot, 'publication-plan.sha256'), 'utf8')) !==
+    `${publicationPlanSha256}  publication-plan.md\n`
+  ) {
+    throw new Error('Candidate publication plan digest does not match its packet.');
+  }
 
   return {
     schemaVersion: 1,
@@ -77,7 +84,7 @@ export async function inspectReleaseCandidate(options) {
     artifactCount: record.artifacts.length,
     nativeTargets,
     desktopArchitectures,
-    publicationPlanSha256: await sha256File(planPath),
+    publicationPlanSha256,
     publicMutationPerformed: false,
   };
 }

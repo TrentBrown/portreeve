@@ -1,7 +1,17 @@
 // @ts-check
 
 import { afterEach, describe, expect, test } from 'bun:test';
-import { access } from 'node:fs/promises';
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   APPLE_NOTARY_KEY_NAME,
   APPLE_SIGNING_IDENTITY,
@@ -11,12 +21,19 @@ import {
 import {
   assertProtectedProducerContext,
   createCredentialLifecycle,
+  rewriteTrustedReleaseMetadata,
 } from '../../scripts/produce-apple-trusted-artifacts.js';
+import { renderChecksumFile, sha256File } from '../../scripts/release-lib.js';
 
 const originalEnvironment = { ...process.env };
+/** @type {string[]} */
+const directories = [];
 
-afterEach(() => {
+afterEach(async () => {
   process.env = { ...originalEnvironment };
+  for (const directory of directories.splice(0)) {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 describe('Apple trust producer', () => {
@@ -106,7 +123,111 @@ describe('Apple trust producer', () => {
       access(keychainPath.replace('/release.keychain-db', '')),
     ).rejects.toThrow();
   });
+
+  test('rewrites every signed CLI metadata authority as one consistent set', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'portreeve-trusted-metadata-'));
+    directories.push(root);
+    const artifactsRoot = join(root, 'artifacts');
+    await mkdir(artifactsRoot);
+    const transformations = [
+      transformation('arm64', 'a', 'c', 20, 24),
+      transformation('x64', 'b', 'd', 21, 25),
+    ];
+    const manifest = {
+      schemaVersion: 1,
+      artifacts: [
+        ...transformations.map((entry) => ({
+          type: 'executable',
+          filename: entry.filename,
+          operatingSystem: 'macos',
+          architecture: entry.architecture,
+          ...entry.predecessor,
+        })),
+        {
+          type: 'homebrew-formula',
+          filename: 'portreeve.rb',
+          bytes: 0,
+          sha256: '0'.repeat(64),
+        },
+      ],
+    };
+    const formula = transformations
+      .map((entry) => `sha256 "${entry.predecessor.sha256}"`)
+      .join('\n')
+      .concat('\n');
+    await writeFile(join(artifactsRoot, 'portreeve.rb'), formula);
+    const formulaIdentity = {
+      bytes: (await stat(join(artifactsRoot, 'portreeve.rb'))).size,
+      sha256: await sha256File(join(artifactsRoot, 'portreeve.rb')),
+    };
+    const formulaManifestEntry = manifest.artifacts.at(-1);
+    if (formulaManifestEntry === undefined) {
+      throw new Error('Missing formula manifest fixture.');
+    }
+    Object.assign(formulaManifestEntry, formulaIdentity);
+    await writeFile(
+      join(artifactsRoot, 'manifest.json'),
+      JSON.stringify(manifest, null, 2).concat('\n'),
+    );
+    await writeFile(
+      join(artifactsRoot, 'SHA256SUMS'),
+      renderChecksumFile(manifest.artifacts),
+    );
+    const record = {
+      artifacts: await Promise.all(
+        ['portreeve.rb', 'manifest.json', 'SHA256SUMS'].map(async (filename) => ({
+          filename,
+          bytes: (await stat(join(artifactsRoot, filename))).size,
+          sha256: await sha256File(join(artifactsRoot, filename)),
+        })),
+      ),
+    };
+    await rewriteTrustedReleaseMetadata({ releaseRoot: root, record, transformations });
+    const rewrittenManifest = JSON.parse(
+      await readFile(join(artifactsRoot, 'manifest.json'), 'utf8'),
+    );
+    for (const entry of transformations) {
+      expect(rewrittenManifest.artifacts).toContainEqual(
+        expect.objectContaining({
+          filename: entry.filename,
+          bytes: entry.signed.bytes,
+          sha256: entry.signed.sha256,
+        }),
+      );
+    }
+    const rewrittenFormula = await readFile(
+      join(artifactsRoot, 'portreeve.rb'),
+      'utf8',
+    );
+    const firstTransformation = transformations[0];
+    if (firstTransformation === undefined) {
+      throw new Error('Missing transformation fixture.');
+    }
+    expect(rewrittenFormula).not.toContain(firstTransformation.predecessor.sha256);
+    expect(rewrittenFormula).toContain(firstTransformation.signed.sha256);
+    expect(await readFile(join(artifactsRoot, 'SHA256SUMS'), 'utf8')).toBe(
+      renderChecksumFile(rewrittenManifest.artifacts),
+    );
+    for (const artifact of record.artifacts) {
+      expect(artifact.bytes).toBe(
+        (await stat(join(artifactsRoot, artifact.filename))).size,
+      );
+      expect(artifact.sha256).toBe(
+        await sha256File(join(artifactsRoot, artifact.filename)),
+      );
+    }
+  });
 });
+
+/** @param {'arm64'|'x64'} architecture @param {string} before @param {string} after @param {number} beforeBytes @param {number} afterBytes */
+function transformation(architecture, before, after, beforeBytes, afterBytes) {
+  return {
+    architecture,
+    filename: `portreeve-v0.1.0-preview.5-macos-${architecture}`,
+    predecessor: { bytes: beforeBytes, sha256: before.repeat(64) },
+    signed: { bytes: afterBytes, sha256: after.repeat(64) },
+  };
+}
 
 function configuration() {
   return {

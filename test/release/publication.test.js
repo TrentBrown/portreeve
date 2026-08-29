@@ -55,6 +55,23 @@ describe('release publication', () => {
     );
   });
 
+  test('rejects a candidate whose sealed plan digest was replaced', async () => {
+    const recordPath = await finalizedRelease();
+    await writeFile(
+      join(recordPath, '..', 'publication-plan.sha256'),
+      `${'0'.repeat(64)}  publication-plan.md\n`,
+    );
+    await expect(inspectReleaseCandidate({ recordPath })).rejects.toThrow(
+      'plan digest does not match',
+    );
+    await expect(
+      publishPreparedRelease(
+        { recordPath, confirm: true, approvedBy: 'Trent Brown' },
+        fakeAdapters([]),
+      ),
+    ).rejects.toThrow('plan digest does not match');
+  });
+
   test('requires explicit confirmation before adapter preflight or mutation', async () => {
     const recordPath = await finalizedRelease();
     /** @type {string[]} */

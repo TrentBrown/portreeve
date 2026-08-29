@@ -15,8 +15,10 @@ source pinned
   -> policy resolved
   -> native CLI built
   -> artifact digests established
-  -> native CLI verified (macOS/Linux ARM64/x64)
+  -> candidate qualified without credentials (macOS/Linux ARM64/x64)
+  -> macOS CLI authority established
   -> Desktop packaged (macOS ARM64/x64)
+  -> authoritative native evidence aggregated
   -> Desktop trust verified
   -> distribution finalized
   -> publication approved
@@ -32,21 +34,22 @@ not rebuild.
 
 Do not collapse these independent facts:
 
-| Dimension | Initial preview | Stable requirement |
+| Dimension | Public preview | Stable requirement |
 | --- | --- | --- |
 | Product maturity | `alpha` | `stable` |
 | Release channel | `preview` | `stable` |
-| Desktop trust | `unsigned` | `developer-id-notarized` |
+| Desktop trust | `developer-id-notarized` | `developer-id-notarized` |
 
 A preview version must be a semantic prerelease such as `0.1.0-preview.1`. Stable uses a
-semantic version without a prerelease. Stable Desktop finalization fails closed without
-real Developer ID signing, hardened runtime, secure timestamps, notarization, stapling,
-Gatekeeper acceptance, and native ARM64/x64 evidence. The current workflow deliberately
-has no way to substitute synthetic evidence for those requirements.
+semantic version without a prerelease. Every new public preview and stable Desktop
+finalization fails closed without real Developer ID signing, hardened runtime, secure
+timestamps, notarization, stapling, Gatekeeper acceptance, and native ARM64/x64
+evidence. The workflow has no public unsigned fallback.
 
-Preview Desktop bundles are ad-hoc signed and structurally verified before packaging.
-That integrity seal has no developer identity and confers no Gatekeeper trust; the
-release record therefore continues to describe preview Desktop trust as `unsigned`.
+Unsigned or ad-hoc-signed candidates remain available for local development, CI, and
+explicitly nonpublic internal exercises. Public preview and stable are release channels;
+trust is a separate requirement. Historical public previews through
+`0.1.0-preview.4` remain truthful immutable unsigned history.
 
 ## Coordinated release identity
 
@@ -126,6 +129,7 @@ Dispatch the complete matrix without publication:
 gh workflow run release.yml \
   -f channel=preview \
   -f version=0.1.0-preview.1 \
+  -f trust=true \
   -f publish=false
 ```
 
@@ -133,11 +137,15 @@ The workflow:
 
 1. builds the release workspace once;
 2. transports those exact bytes to macOS ARM64, macOS Intel, Linux x64, and Linux ARM64;
-3. aggregates four create-once native evidence documents;
-4. packages, launches, mounts, and verifies ARM64 and x64 Desktop DMGs on matching Macs;
-5. aggregates the Desktop evidence and finalizes formula, cask, checksums,
-   channel-aware update metadata, and the publication plan;
-6. uploads `distribution-<version>` and stops.
+3. qualifies four create-once native documents before Apple credential access;
+4. pauses at `release-trust`, where one protected Apple Silicon job signs both macOS
+   CLIs and produces both signed, notarized, stapled DMGs without publication authority;
+5. matching native ARM64 and Intel jobs independently verify the exact protected output
+   and emit one immutable Apple trust document each;
+6. aggregates native authority and finalizes formula, cask, checksums, channel-aware
+   update metadata, and the publication plan;
+7. seals the plan with `publication-plan.sha256`, uploads
+   `distribution-<version>`, and stops.
 
 Find the run and download the candidate:
 
@@ -182,16 +190,31 @@ npx --yes bun@1.3.14 run release:homebrew-smoke -- \
 
 Inspect at least:
 
-- workflow conclusions for all six native jobs;
+- workflow conclusions for the four preliminary native jobs, protected producer, and
+  both independent native Apple trust jobs;
 - release source repository and full commit;
 - independent component versions, maturity, channel, and Desktop trust;
 - the four CLI evidence entries and both Desktop package entries;
 - every artifact filename, byte count, SHA-256, and provenance stage;
 - `publication-plan.md`, `SHA256SUMS`, and `SHA256SUMS-DISTRIBUTION`;
+- `publication-plan.sha256` and its exact match to `publication-plan.md`;
 - formula/cask lifecycle caveats and `desktop-update.json` channel identity.
 - temporary local formula and cask installation/uninstallation results.
 
 ## Publication environment and credentials
+
+Apple trust and publication use disjoint protected environments. `release-trust`
+contains only the Developer ID certificate, its import password, the product-specific
+`PortReeve Notarization` team key, and non-secret identity values. It has read-only
+repository permission, one intentional output root, and no publication token.
+`release-publication` contains only publication authority; it receives the sealed
+packet, never Apple private material, and never rebuilds or re-signs.
+
+Configure the expected signing identity and Team ID plus the PortReeve notary Key ID,
+Issuer ID, and key name as `release-trust` environment variables. Configure the base64
+P12, P12 password, and base64 P8 as environment secrets. Rotate or revoke the PortReeve
+notary key independently. Never store Apple Account passwords, two-factor codes, or
+unencrypted private keys in source, logs, artifacts, or conversation records.
 
 For every publication, use the GitHub environment named
 `release-publication` with required human reviewers. Store
@@ -224,6 +247,7 @@ When the operator intends to publish, dispatch with `publish=true`:
 gh workflow run release.yml \
   -f channel=preview \
   -f version=0.1.0-preview.1 \
+  -f trust=true \
   -f publish=true
 ```
 
@@ -267,14 +291,15 @@ did not complete the native and Desktop matrices.
 
 ## Published artifact inventory
 
-A complete unsigned preview candidate contains:
+A complete trusted preview or stable candidate contains:
 
 - standalone CLI/server executables for macOS ARM64/x64 and Linux ARM64/x64;
 - the packed JavaScript client archive, retained as evidence while npm is deferred;
 - `manifest.json`, `SHA256SUMS`, and the checksum-pinned `portreeve.rb` formula;
 - separate ARM64 and x64 `PortReeve-<desktop-version>-macos-<arch>.dmg` files;
 - `portreeve-app.rb`, `desktop-update.json`, and `SHA256SUMS-DISTRIBUTION`;
-- the release record and exact publication plan in the retained workflow workspace.
+- the release record, protected producer evidence, exactly one current native ARM64 and
+  one current native Intel Apple document, and the sealed publication plan.
 
 GitHub Releases is the byte host. `TrentBrown/homebrew-portreeve` publishes formula
 `portreeve` and cask `portreeve-app`. Neither installer silently starts supervision or
@@ -290,10 +315,13 @@ bun test test/release/publication.test.js \
   test/release/release-record.test.js
 ```
 
-Then dispatch hosted preparation with `publish=false`. This proves the hosted matrix and
-transport without entering the publication environment. Never use a real public version
-for destructive experimentation; increment the preview identifier when candidate bytes
-change.
+Then dispatch with `trust=true` and `publish=false`. This enters `release-trust` only
+after preliminary qualification, proves the protected and native matrix, and never
+enters `release-publication`. Record the exact run, source commit, release identity,
+artifact digests, Apple request IDs, and before/after public state. A direct-download,
+drag-to-Applications, quarantine, and first-launch check is optional; absence of another
+personal machine does not block acceptance. Increment the preview identifier whenever
+candidate bytes change.
 
 ## Recovery
 
@@ -301,6 +329,11 @@ change.
   preview version. Do not merge a partial matrix.
 - **A native or Desktop fragment is missing:** restore the exact workflow artifact and
   rerun its native job. Do not mark the check true by hand.
+- **Apple created a notarization request ID:** poll that same request within the bounded
+  deadline; do not resubmit it merely because polling was interrupted.
+- **Apple created no request:** retry upload only when retained evidence proves no
+  request exists. Preserve every attempt and diagnostic.
+- **Any signed CLI, app, or DMG byte changes:** consume the next unused preview version.
 - **Finalization reports changed bytes:** treat the workspace as compromised or stale;
   do not publish it.
 - **Publication preflight fails:** no approval is recorded and no adapter is invoked.

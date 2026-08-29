@@ -52,6 +52,16 @@ describe('Desktop distribution', () => {
     expect(cask).toContain('/blob/main/docs/installation.md');
     expect(cask).toContain('Uninstall preserves claims, history, and settings.');
     expect(cask).not.toContain('zap ');
+    const trustedCask = renderHomebrewCask({
+      version: '0.1.0-preview.5',
+      releaseVersion: '0.1.0-preview.5',
+      releaseBaseUrl: 'https://example.com/releases/download/',
+      homepageUrl: 'https://example.com',
+      checksums: { arm64: 'c'.repeat(64), x64: 'd'.repeat(64) },
+      desktopTrust: 'developer-id-notarized',
+    });
+    expect(trustedCask).toContain('Developer ID-signed and notarized');
+    expect(trustedCask).not.toContain('Open Anyway');
   });
 
   test('strictly validates Desktop package evidence', async () => {

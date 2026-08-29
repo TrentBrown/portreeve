@@ -150,7 +150,8 @@ test('README and every Desktop view carry a persistent truthful Alpha Preview no
   const alpha = readme.indexOf('**Alpha Preview**');
   expect(alpha).toBeGreaterThan(0);
   expect(alpha).toBeLessThan(readme.indexOf('portreeve-lockup.svg'));
-  expect(readme).toContain('current macOS preview is unsigned');
+  expect(readme).toContain('previews through `0.1.0-preview.4`');
+  expect(readme).toContain('New public previews require Apple Developer ID signing');
   expect(readme).toContain('current public alpha preview');
   expect(desktop).toMatch(
     /<header class="app-header">[\s\S]*class="alpha-preview"[\s\S]*Alpha Preview[\s\S]*Product maturity is alpha[\s\S]*<\/header>/u,
@@ -179,6 +180,9 @@ test('preview installation guidance is safe, scoped, and lifecycle explicit', as
   expect(installation).toContain('PortReeve-VERSION-macos-arm64.dmg');
   expect(installation).toContain('ad-hoc signed');
   expect(installation).toMatch(/carries no verified\s+developer identity/u);
+  expect(installation).toMatch(
+    /every new[\s>]+public preview requires Apple Developer ID/u,
+  );
   expect(installation).toContain('System Settings');
   expect(installation).toContain('Privacy & Security');
   expect(installation).toContain('Open Anyway');
@@ -297,6 +301,7 @@ test('release workflow transports one record through native gates and isolated p
   expect(workflow).toContain('release:merge-native-evidence');
   expect(workflow).toContain('release:package-desktop');
   expect(workflow).toContain('release:finalize-desktop');
+  expect(workflow).toContain('release:apple-native-evidence');
   expect(workflow).toContain('release:publish');
   expect(workflow).toContain('runner: ubuntu-24.04-arm');
   expect(workflow).toContain('runner: macos-15-intel');
@@ -305,11 +310,11 @@ test('release workflow transports one record through native gates and isolated p
   expect(workflow.match(/run: bun run stacks:verify/gu)).toHaveLength(1);
   expect(workflow).toContain("if: startsWith(matrix.platform, 'linux-')");
   expect(workflow).toContain('environment: release-publication');
-  expect(workflow).toContain('if: inputs.publish');
+  expect(workflow).toContain('inputs.publish && !failure() && !cancelled()');
   expect(workflow).toContain('PORTREEVE_RELEASE_TOKEN');
   expect(workflow.match(/pull-requests: write/gu)).toHaveLength(1);
   expect(workflow.match(/contents: write/gu)).toHaveLength(1);
-  expect(workflow.match(/contents: read/gu)).toHaveLength(3);
+  expect(workflow.match(/contents: read/gu)?.length ?? 0).toBeGreaterThanOrEqual(5);
   expect(workflow).not.toContain('NPM_TOKEN');
   expect(workflow).not.toContain('npm publish');
   expect(workflow).not.toContain('push:\n    tags:');
@@ -320,7 +325,7 @@ test('release workflow qualifies before one main-only nonpublishing trust produc
   const workflow = await readFile(resolve('.github/workflows/release.yml'), 'utf8');
   const trustJob = workflow.slice(
     workflow.indexOf('  release-trust:'),
-    workflow.indexOf('  desktop-evidence:'),
+    workflow.indexOf('  trusted-native-evidence:'),
   );
   expect(workflow.indexOf('  qualify-trust:')).toBeLessThan(
     workflow.indexOf('  release-trust:'),
@@ -331,12 +336,20 @@ test('release workflow qualifies before one main-only nonpublishing trust produc
   expect(trustJob).toContain('environment: release-trust');
   expect(trustJob).toContain('permissions:\n      contents: read');
   expect(trustJob).toContain('release:produce-apple-trust');
-  expect(trustJob).toContain('path: ${{ env.TRUSTED_OUTPUT_ROOT }}');
+  expect(trustJob).toContain('path: ${{ env.TRUSTED_ROOT }}');
   expect(trustJob).toContain('PORTREEVE_APPLE_NOTARY_KEY_P8_BASE64');
   expect(trustJob).not.toContain('PORTREEVE_RELEASE_TOKEN');
   expect(trustJob).not.toContain('contents: write');
   expect(trustJob).not.toContain('pull-requests: write');
   expect(trustJob.match(/actions\/upload-artifact@v7/gu)).toHaveLength(1);
+  const nativeTrustJob = workflow.slice(
+    workflow.indexOf('  trusted-native-evidence:'),
+    workflow.indexOf('  finalize-trusted-distribution:'),
+  );
+  expect(nativeTrustJob).toContain('runner: macos-15-intel');
+  expect(nativeTrustJob).toContain('release:apple-native-evidence');
+  expect(nativeTrustJob).not.toContain('PORTREEVE_APPLE_CERTIFICATE');
+  expect(nativeTrustJob).not.toContain('PORTREEVE_RELEASE_TOKEN');
 });
 
 test('public guides cover desktop and one representative mixed-stack launcher', async () => {

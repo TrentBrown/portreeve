@@ -42,6 +42,13 @@ export async function publishPreparedRelease(options, adapters) {
     throw new Error('Publication plan does not match the finalized release record.');
   }
   const planSha256 = await sha256File(planPath);
+  const sealedPlanDigest = await readFile(
+    resolve(releaseRoot, 'publication-plan.sha256'),
+    'utf8',
+  );
+  if (sealedPlanDigest !== `${planSha256}  publication-plan.md\n`) {
+    throw new Error('Publication plan digest does not match the sealed packet.');
+  }
   if (!options.confirm) {
     throw new Error(
       `Publication requires --confirm after reviewing ${planPath} (${planSha256}).`,

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "scope": "slice",
+  "featureId": "tb-portreeve-apple-trust",
+  "repositoryAlias": "portreeve",
+  "packetId": "pr-76",
+  "pullRequest": {
+    "repository": "TrentBrown/portreeve",
+    "number": 76,
+    "url": "https://github.com/TrentBrown/portreeve/pull/76",
+    "state": "OPEN",
+    "isDraft": true,
+    "baseRefName": "main",
+    "baseRefOid": "d54fdc0056109a5b0e8442da74332f593f9fe5ed",
+    "headRefName": "tb-portreeve-apple-trust-03-verification-sealed-distribution",
+    "headRefOid": "5d89cb14a6064cd65a07a489690be2d86568e02e"
+  },
+  "mergeBaseSha": "d54fdc0056109a5b0e8442da74332f593f9fe5ed",
+  "evaluatedSourceSha": "5d89cb14a6064cd65a07a489690be2d86568e02e",
+  "featureBaseSha": null,
+  "applicability": {
+    "specEvaluation": true,
+    "judge": true,
+    "patternReview": true
+  },
+  "gates": {
+    "verification": {"disposition": "passed", "reason": null},
+    "specEvaluation": {"disposition": "passed", "reason": null},
+    "judge": {"disposition": "passed", "reason": null},
+    "codeReview": {"disposition": "passed", "reason": null},
+    "patternReview": {"disposition": "passed", "reason": null},
+    "explainDiff": {"disposition": "passed", "reason": null}
+  }
+}

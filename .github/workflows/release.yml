@@ -36,6 +36,7 @@ env:
   BUN_VERSION: 1.3.14
   NODE_VERSION: 22
   RELEASE_ROOT: dist/releases/${{ inputs.version }}
+  TRUSTED_ROOT: dist/trusted/${{ inputs.version }}
   PORTREEVE_HOMEPAGE_URL: ${{ github.server_url }}/${{ github.repository }}
   PORTREEVE_RELEASE_BASE_URL:
     ${{ github.server_url }}/${{ github.repository }}/releases/download
@@ -186,7 +187,6 @@ jobs:
     permissions:
       contents: read
     env:
-      TRUSTED_OUTPUT_ROOT: dist/trusted/${{ inputs.version }}
       PORTREEVE_APPLE_SIGNING_IDENTITY: ${{ vars.PORTREEVE_APPLE_SIGNING_IDENTITY }}
       PORTREEVE_APPLE_TEAM_ID: ${{ vars.PORTREEVE_APPLE_TEAM_ID }}
       PORTREEVE_APPLE_NOTARY_KEY_ID: ${{ vars.PORTREEVE_APPLE_NOTARY_KEY_ID }}
@@ -215,14 +215,93 @@ jobs:
         run: >-
           bun run release:produce-apple-trust -- --record
           "$RELEASE_ROOT/release-record.json" --qualification
-          "$RELEASE_ROOT/evidence/trust-qualification.json" --output
-          "$TRUSTED_OUTPUT_ROOT"
+          "$RELEASE_ROOT/evidence/trust-qualification.json" --output "$TRUSTED_ROOT"
       - uses: actions/upload-artifact@v7
         with:
           name: trusted-${{ inputs.version }}
-          path: ${{ env.TRUSTED_OUTPUT_ROOT }}
+          path: ${{ env.TRUSTED_ROOT }}
           if-no-files-found: error
           retention-days: 7
+
+  trusted-native-evidence:
+    needs: release-trust
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            architecture: arm64
+          - runner: macos-15-intel
+            architecture: x64
+    runs-on: ${{ matrix.runner }}
+    name: Apple trust evidence (macos-${{ matrix.architecture }})
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun ci
+      - uses: actions/download-artifact@v8
+        with:
+          name: trusted-${{ inputs.version }}
+          path: ${{ env.TRUSTED_ROOT }}
+      - name: Restore authoritative executable modes
+        run: chmod 755 "$TRUSTED_ROOT"/artifacts/portreeve-v*
+      - name: Verify exact Apple artifacts on their native architecture
+        run: >-
+          bun run release:apple-native-evidence -- --record
+          "$TRUSTED_ROOT/release-record.json" --producer-evidence
+          "$TRUSTED_ROOT/evidence/apple-trust-producer.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: apple-native-${{ matrix.architecture }}
+          path:
+            ${{ env.TRUSTED_ROOT }}/evidence/apple-native-${{ matrix.architecture
+            }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+  finalize-trusted-distribution:
+    needs: trusted-native-evidence
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun ci
+      - uses: actions/download-artifact@v8
+        with:
+          name: trusted-${{ inputs.version }}
+          path: ${{ env.TRUSTED_ROOT }}
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: apple-native-*
+          path: ${{ env.TRUSTED_ROOT }}/evidence
+          merge-multiple: true
+      - name: Seal exact distribution metadata and publication plan
+        run: >-
+          bun run release:finalize-desktop -- --record
+          "$TRUSTED_ROOT/release-record.json" --producer-evidence
+          "$TRUSTED_ROOT/evidence/apple-trust-producer.json" --apple-evidence
+          "$TRUSTED_ROOT"/evidence/apple-native-*.json --current-update-manifest
+          distribution/desktop-update.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: distribution-${{ inputs.version }}
+          path: ${{ env.TRUSTED_ROOT }}
+          if-no-files-found: error
+          retention-days: 14
 
   desktop-evidence:
     needs: aggregate-native-evidence
@@ -265,6 +344,7 @@ jobs:
           retention-days: 7
 
   finalize-distribution:
+    if: ${{ !inputs.trust }}
     needs: desktop-evidence
     runs-on: ubuntu-24.04
     steps:
@@ -299,8 +379,8 @@ jobs:
           retention-days: 14
 
   publish:
-    if: inputs.publish
-    needs: finalize-distribution
+    if: ${{ always() && inputs.publish && !failure() && !cancelled() }}
+    needs: [finalize-distribution, finalize-trusted-distribution]
     runs-on: ubuntu-24.04
     environment: release-publication
     permissions:

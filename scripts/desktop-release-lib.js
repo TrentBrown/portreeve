@@ -86,11 +86,18 @@ export async function verifyDesktopDmg(options) {
 }
 
 /**
- * @param {{version: string, releaseVersion: string, releaseBaseUrl: string, homepageUrl: string, checksums: {arm64: string, x64: string}}} options
+ * @param {{version: string, releaseVersion: string, releaseBaseUrl: string, homepageUrl: string, checksums: {arm64: string, x64: string}, desktopTrust?: 'unsigned'|'developer-id-notarized'}} options
  */
 export function renderHomebrewCask(options) {
   const base = options.releaseBaseUrl.replace(/\/+$/u, '');
   const homepage = options.homepageUrl.replace(/\/+$/u, '');
+  const trustNotice =
+    options.desktopTrust === 'developer-id-notarized'
+      ? 'PortReeve is alpha software. This application is Developer ID-signed and notarized.'
+      : `PortReeve is alpha software. This internal candidate may be unsigned. If macOS blocks
+    first launch, verify the release checksum and use the scoped System Settings >
+    Privacy & Security > Open Anyway flow described at:
+    ${homepage}/blob/main/docs/installation.md`;
   return `cask "portreeve-app" do
   arch arm: "arm64", intel: "x64"
 
@@ -106,10 +113,7 @@ export function renderHomebrewCask(options) {
   app "PortReeve.app"
 
   caveats <<~EOS
-    PortReeve is alpha software. This preview may be unsigned. If macOS blocks
-    first launch, verify the release checksum and use the scoped System Settings >
-    Privacy & Security > Open Anyway flow described at:
-    ${homepage}/blob/main/docs/installation.md
+    ${trustNotice}
 
     PortReeve Desktop and its supervised per-user service have separate lifecycles.
     Before removing the app, use its Service tab or the PortReeve CLI to uninstall

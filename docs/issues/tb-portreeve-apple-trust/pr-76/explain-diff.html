@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PR #76 - Verification and sealed distribution</title>
+  <style>
+    :root{color-scheme:dark;--bg:#081019;--card:#121d29;--line:#2c3c4d;--text:#edf5fc;--muted:#a6b5c5;--green:#7ee787;--blue:#79c0ff;--orange:#ffa657;--warn:#e3b341}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#18314a,var(--bg) 48%);color:var(--text);font:16px/1.58 ui-sans-serif,system-ui,sans-serif}main{max-width:1080px;margin:auto;padding:42px 22px 76px}h1{font-size:clamp(2.1rem,5vw,3.8rem);line-height:1.03;margin:.25rem 0 1rem}h2{margin-top:2.65rem;color:var(--blue)}h3{margin-top:.1rem}code,pre{font-family:ui-monospace,SFMono-Regular,monospace;color:var(--orange)}pre{white-space:pre-wrap;background:#07101a;border:1px solid var(--line);padding:16px;border-radius:12px;overflow:auto}.eyebrow{color:var(--green);font-weight:750;letter-spacing:.09em;text-transform:uppercase}.lead{font-size:1.2rem;color:#d0dbe5;max-width:820px}.meta{color:var(--muted);font-size:.88rem;word-break:break-all}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:14px}.card{background:color-mix(in srgb,var(--card) 94%,transparent);border:1px solid var(--line);border-radius:14px;padding:18px}.flow{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;align-items:stretch}.node{position:relative;border:1px solid var(--line);border-radius:12px;padding:13px;background:#0b1621}.node:not(:last-child)::after{content:'→';position:absolute;right:-10px;top:50%;transform:translate(50%,-50%);color:var(--green);font-weight:900;z-index:2}.good{color:var(--green)}.warn{color:var(--warn)}details{border:1px solid var(--line);border-radius:10px;margin:10px 0;background:var(--card)}summary{cursor:pointer;padding:13px 16px;font-weight:700}details p{padding:0 16px 14px;color:#cbd6e1}.quiz button{display:block;width:100%;text-align:left;color:var(--text);background:#192635;border:1px solid var(--line);border-radius:8px;padding:11px;margin:7px 0;cursor:pointer}.quiz button:hover{border-color:var(--blue)}.answer{min-height:1.6em;color:var(--green);font-weight:700}ul{padding-left:1.25rem}@media(max-width:780px){.flow{grid-template-columns:1fr}.node:not(:last-child)::after{content:'↓';right:50%;top:auto;bottom:-13px;transform:translate(50%,50%)}}
+  </style>
+</head>
+<body><main>
+  <div class="eyebrow">PortReeve · PR #76 · Slice 3</div>
+  <h1>Verify native Apple trust, then seal the exact distribution</h1>
+  <p class="lead">This slice connects protected artifact production to independent ARM64 and Intel verification, exact distribution metadata, and a tamper-evident publication plan. It still does not publish a release.</p>
+  <p class="meta">Pinned diff: d54fdc0056109a5b0e8442da74332f593f9fe5ed..5d89cb14a6064cd65a07a489690be2d86568e02e</p>
+
+  <h2>Background</h2>
+  <p>Signing changes the bytes of each macOS CLI. That means the unsigned candidate's manifest, formula, checksums, and release record cannot remain authoritative after Developer ID signing. Separately, a producer saying “I made a trusted artifact” is not enough: the exact output must run and pass Apple inspection on both native architectures before final metadata can be trusted.</p>
+
+  <h2>Intuition</h2>
+  <div class="flow" aria-label="trusted verification and finalization flow">
+    <div class="node"><strong>Protected producer</strong><br>signs and notarizes</div>
+    <div class="node"><strong>One authority set</strong><br>rewrites exact identities</div>
+    <div class="node"><strong>ARM64 + Intel</strong><br>verify read-only</div>
+    <div class="node"><strong>Finalizer</strong><br>derives all metadata</div>
+    <div class="node"><strong>Sealed plan</strong><br>digest gates publication</div>
+  </div>
+  <p>The core rule is simple: every later step consumes the exact bytes and facts established by the previous step. No verifier repairs artifacts, no finalizer guesses trust, and no publisher rebuilds.</p>
+
+  <h2>Code</h2>
+  <div class="grid">
+    <section class="card"><h3>Metadata authority</h3><p><code>rewriteTrustedReleaseMetadata</code> updates the macOS entries in the manifest and formula, regenerates SHA256SUMS, and synchronizes the release record before upload.</p></section>
+    <section class="card"><h3>Native collectors</h3><p>Each architecture checks its standalone CLI, DMG, mounted app, embedded helper, CodeResources seal, signing identity, Team ID, timestamp, Gatekeeper result, staple, and smoke behavior.</p></section>
+    <section class="card"><h3>Strict aggregation</h3><p>Exactly one current ARM64 and one current Intel document are accepted. Stale, duplicate, translated, synthetic, cross-architecture, or inconsistent documents fail.</p></section>
+    <section class="card"><h3>Sealed distribution</h3><p>Final checksums, formula, cask, update metadata, release assets, and publication plan are derived from final bytes. A separate SHA-256 file makes plan replacement detectable.</p></section>
+  </div>
+  <pre>qualified tree
+  └─ protected signed tree
+       ├─ apple-native-arm64.json
+       ├─ apple-native-x64.json
+       └─ final metadata + publication-plan.md + publication-plan.sha256</pre>
+
+  <h2>Failure boundaries</h2>
+  <details open><summary>Corrected during review</summary><p>The first boundary attempt incorrectly required hardened runtime on the DMG itself. The corrected validator requires hardened runtime on executable CLI and application code, while retaining strict DMG identity, signing, timestamp, Gatekeeper, notarization, and staple checks.</p></details>
+  <details><summary>Before finalization</summary><p>Any missing architecture, identity mismatch, stale source, translated Intel claim, helper mismatch, seal mismatch, Apple assessment failure, or smoke failure stops aggregation and therefore stops finalization.</p></details>
+  <details><summary>Before publication</summary><p>The publisher must receive separate approval, recompute the plan, match the sealed digest, and pass adapter preflight. It cannot access Apple private material, rebuild, re-sign, or infer approval from the trust job.</p></details>
+
+  <h2>Evidence and limits</h2>
+  <ul>
+    <li class="good">64 focused tests and 495 expectations pass at the corrected source.</li>
+    <li class="good">Typecheck, workflow-document validators, and diff hygiene pass.</li>
+    <li class="good">Trust, native verification, finalization, and publication authorities are separated in workflow source.</li>
+    <li class="warn">The actual protected ARM64 and Intel run is P8 from reviewed <code>main</code>.</li>
+    <li class="warn">The repository-wide check retains exit 1 for five unchanged local launcher/MCP/CLI failures.</li>
+    <li>No publication action is part of this slice or its forthcoming rehearsal.</li>
+  </ul>
+
+  <h2>Quiz</h2>
+  <section class="card quiz"><p>Why must metadata be rewritten immediately after CLI signing?</p><button data-ok="true">Signing changes the bytes, so every downstream authority must name the signed identity.</button><button data-ok="false">Only to make the release notes easier to read.</button><p class="answer" aria-live="polite"></p></section>
+  <section class="card quiz"><p>Can Rosetta execution replace native Intel evidence?</p><button data-ok="false">Yes, if it exits successfully.</button><button data-ok="true">No. Exactly one native Intel document is mandatory.</button><p class="answer" aria-live="polite"></p></section>
+  <section class="card quiz"><p>Which artifacts require hardened runtime?</p><button data-ok="true">The executable CLI and application code, not the DMG container itself.</button><button data-ok="false">Only the DMG container.</button><p class="answer" aria-live="polite"></p></section>
+  <section class="card quiz"><p>Does release-trust approval authorize publication?</p><button data-ok="false">Yes, trust approval covers the entire release.</button><button data-ok="true">No. Publication has a separate environment, credential, permission set, and approval.</button><p class="answer" aria-live="polite"></p></section>
+  <section class="card quiz"><p>What happens if publication-plan.md changes after finalization?</p><button data-ok="true">Inspection and publication reject it because the sealed digest no longer matches.</button><button data-ok="false">The publisher silently regenerates the digest.</button><p class="answer" aria-live="polite"></p></section>
+</main><script>for(const q of document.querySelectorAll('.quiz'))for(const b of q.querySelectorAll('button'))b.addEventListener('click',()=>{q.querySelector('.answer').textContent=b.dataset.ok==='true'?'Correct.':'Not quite—review the explanation above.'})</script></body>
+</html>

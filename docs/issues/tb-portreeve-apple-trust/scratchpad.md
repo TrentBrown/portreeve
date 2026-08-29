@@ -40,3 +40,18 @@ PortReeve accepts only its exact Developer ID identity, Team ID, and product-spe
 - Reuse a shared product credential label - rejected to preserve product separation.
 - Retry submit after an ambiguous timeout - rejected because it can create duplicate Apple requests.
 - Allow unbounded polling - rejected because failure must terminate predictably.
+
+## [3] Transform signed CLI metadata as one authority set
+
+[x] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Protected producer output, release record, manifest, Homebrew formula, checksums, native verification, and finalization
+
+When the protected producer transforms either macOS CLI, it must rewrite the corresponding manifest entries, Homebrew checksums, SHA256SUMS document, and release-record metadata identities before the output is verified or uploaded. Native Apple jobs and finalization consume only this synchronized protected tree; they do not tolerate metadata that still names the unsigned predecessor.
+
+**Triggered by:** Developer ID signing changes the macOS CLI bytes after preliminary qualification
+
+**Alternatives considered:**
+Defer metadata repair until finalization - rejected because native verification must consume a self-consistent protected output. Keep separate unsigned and signed manifests - rejected because multiple authorities would make downstream selection ambiguous. Rebuild metadata independently in each native job - rejected because read-only verifiers must not mutate the producer output.

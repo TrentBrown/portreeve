@@ -7,8 +7,9 @@ bundles a verified CLI artifact and can install that artifact into the one manag
 per-user location used by native supervision.
 
 Desktop is currently alpha software. Its persistent header notice reports product
-maturity independently of update channel and macOS trust; a preview download may be
-unsigned without making every future preview unsigned.
+maturity independently of update channel and macOS trust. Historical previews through
+`0.1.0-preview.4` remain unsigned, while every new public preview requires Developer ID
+signing and notarization.
 
 ## Overview and lifecycle
 
