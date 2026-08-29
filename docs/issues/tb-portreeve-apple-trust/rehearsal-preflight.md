@@ -6,17 +6,17 @@
 **Third attempted release:** `0.1.0-preview.7`
 **Next planned release:** `0.1.0-preview.8`
 **Required dispatch:** `channel=preview`, `trust=true`, `publish=false`
-**Latest pinned source:** `de43dae24f2629748b1c1a3376c478e183e0ec33` on `main`
+**Latest pinned source:** `2042850b8f8573e6b1b77c4c41ead68677cebae9` on `main`
 **Runs:** [preview.5](https://github.com/TrentBrown/portreeve/actions/runs/33267482516), [preview.6](https://github.com/TrentBrown/portreeve/actions/runs/33269593936), [preview.7](https://github.com/TrentBrown/portreeve/actions/runs/33272715923)
-**Status:** PREVIEW.7 PRESERVED; OPTIONAL GATEKEEPER ORIGIN CORRECTION REQUIRED
+**Status:** READY FOR CORRECTED PREVIEW.8 NONPUBLISHING REHEARSAL
 
 ## Passed checks
 
 - GitHub authentication is active for `TrentBrown` with repository and workflow
   access.
 - `.github/workflows/release.yml` is active as workflow ID `323987239`.
-- Remote `main` is the exact reviewed PR #76 merge commit
-  `4f4610f27639a09ba53692757971ea0ce7af7061`.
+- Remote `main` is the exact reviewed PR #79 merge commit
+  `2042850b8f8573e6b1b77c4c41ead68677cebae9`.
 - The latest public release remains `v0.1.0-preview.4`.
 - No release or Git tag exists for `v0.1.0-preview.5`.
 - The local login keychain contains one valid expected signing identity:
@@ -28,8 +28,8 @@
 
 | Surface | Before-state authority |
 |---|---|
-| PortReeve `main` | `4f4610f27639a09ba53692757971ea0ce7af7061` |
-| GitHub Releases | latest `v0.1.0-preview.4`; `.5` absent |
+| PortReeve `main` | `2042850b8f8573e6b1b77c4c41ead68677cebae9` |
+| GitHub Releases | latest `v0.1.0-preview.4`; `.5`, `.6`, `.7`, and `.8` absent |
 | PortReeve Desktop update blob | `95374af5de460b0865aaab2a7732db8e1bdd5203` |
 | Homebrew repository `main` | `23be9c4a5897807bb29a64076d1c84a3bcff2ea5` |
 | Homebrew formula blob | `759d2635fd84ab7ce2969c7ca51edad09ece3228` |
@@ -165,3 +165,16 @@ After the failed run, the latest public release remained
 `759d2635fd84ab7ce2969c7ca51edad09ece3228`, and cask blob
 `fadae00919d8bc43fe7a7dcd9973b2c9b10d7541` were unchanged. Publication and
 all dependent jobs were skipped.
+
+## Preview.8 readiness
+
+PR #79 merged the governed optional-origin correction to `main` as
+`2042850b8f8573e6b1b77c4c41ead68677cebae9`. GateReeve recorded the reviewed
+merge and started feature-final `slice-10-live-acceptance` from that exact
+commit. The next dispatch is `channel=preview`, version
+`0.1.0-preview.8`, `trust=true`, and `publish=false`. It retains separate
+ARM64 and x64 DMGs, requires the independently configured `release-trust`
+approval, and cannot enter `release-publication` or mutate any public surface.
+The correction accepts an omitted Gatekeeper `origin=` display line only while
+exact Developer ID identity, Team ID, hardened runtime, and secure timestamp
+remain mandatory through independent `codesign` evidence.

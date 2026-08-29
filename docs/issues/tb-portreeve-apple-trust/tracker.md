@@ -84,8 +84,10 @@ Append PR boundary entries here.
 - **Issues:** I-11
 - **Rubric in scope:** R4, R5, R7, R8
 - **Boundary packet:** [`pr-79/`](pr-79/)
-- **Status:** Boundary evaluation pinned at source
-  `31da295f7359c25347b96a9d979421bed565671b`.
+- **Status:** Evaluated source
+  `31da295f7359c25347b96a9d979421bed565671b`; reviewed evidence head
+  `b7ff766a6d373a92b5ea2cf7db577c61f6b5058d`; merged as
+  `2042850b8f8573e6b1b77c4c41ead68677cebae9`.
 
 ## Protected rehearsal attempt - `0.1.0-preview.5`
 
@@ -144,15 +146,14 @@ Append PR boundary entries here.
 
 ## Active Slice
 
-### Slice 9 - Gatekeeper optional origin correction
+### Slice 10 - Corrected live acceptance and feature closeout
 
-- **Branch:** `tb-portreeve-apple-trust-09-gatekeeper-origin`
-- **Plan steps:** P2, P5, P8
-- **Issues:** I-11
-- **Rubric in scope:** R4, R5, R7, R8
-- **Status:** GateReeve `PR_BOUNDARY`; change
-  `chg-gatekeeper-optional-origin-display` is validated against live preview
-  `.7` evidence and the complete test suite. Slice 8 was abandoned after the
-  failed acceptance attempt. The correction keeps independent exact codesign
-  identity and Team ID facts, rejects every present wrong Gatekeeper origin,
-  and adds no publication authority.
+- **Branch:** `tb-portreeve-apple-trust-10-live-acceptance`
+- **Plan steps:** P8
+- **Issues:** I-8
+- **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7, R8
+- **Status:** GateReeve `IMPLEMENTING`; preview `.8` will run from reviewed
+  `main` commit `2042850b8f8573e6b1b77c4c41ead68677cebae9` with
+  `trust=true` and `publish=false`. Separate architecture-specific DMGs,
+  main-only trust approval, independent exact codesign authority, and zero
+  publication authority remain mandatory.

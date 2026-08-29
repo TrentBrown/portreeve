@@ -151,7 +151,7 @@ next protected attempt.
 
 ## I-11 - Accept omitted Gatekeeper origin display metadata
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 0.5d
 - **Plan steps:** P2, P5, P8
 - **Rubric criteria:** R4, R5, R7, R8
