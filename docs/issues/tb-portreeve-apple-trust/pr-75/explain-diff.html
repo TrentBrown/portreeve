@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PR #75 - Trusted artifact construction</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0d1117;--card:#161b22;--line:#30363d;--text:#e6edf3;--muted:#9da7b3;--accent:#7ee787;--blue:#79c0ff;--warn:#d29922}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#17243a,var(--bg) 45%);color:var(--text);font:16px/1.55 ui-sans-serif,system-ui,sans-serif}main{max-width:1040px;margin:auto;padding:42px 22px 72px}h1{font-size:clamp(2rem,5vw,3.7rem);line-height:1.02;margin:.2rem 0 1rem}h2{margin-top:2.5rem;color:var(--blue)}code{font-family:ui-monospace,SFMono-Regular,monospace;color:#ffa657}.eyebrow{color:var(--accent);font-weight:700;letter-spacing:.08em;text-transform:uppercase}.lead{font-size:1.2rem;color:#c9d1d9;max-width:780px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}.card{background:color-mix(in srgb,var(--card) 92%,transparent);border:1px solid var(--line);border-radius:14px;padding:18px}.flow{display:flex;flex-wrap:wrap;align-items:center;gap:9px}.node{border:1px solid var(--line);border-radius:999px;padding:8px 12px;background:#0d1117}.arrow{color:var(--accent);font-weight:800}.good{color:var(--accent)}.warn{color:#e3b341}details{border:1px solid var(--line);border-radius:10px;margin:10px 0;background:var(--card)}summary{cursor:pointer;padding:13px 16px;font-weight:700}details p{padding:0 16px 14px;color:#c9d1d9}.quiz button{display:block;width:100%;text-align:left;color:var(--text);background:#21262d;border:1px solid var(--line);border-radius:8px;padding:11px;margin:7px 0;cursor:pointer}.quiz button:hover{border-color:var(--blue)}.answer{min-height:1.6em;color:var(--accent);font-weight:700}.meta{color:var(--muted);font-size:.88rem;word-break:break-all}ul{padding-left:1.25rem}</style>
+</head>
+<body><main>
+  <div class="eyebrow">PortReeve · PR #75 · Slice 2</div>
+  <h1>One signed CLI, preserved all the way into the DMG</h1>
+  <p class="lead">This slice builds the protected Apple artifact producer. It does not publish a release and it does not claim the later independent ARM64/Intel verification has happened.</p>
+  <p class="meta">Pinned diff: 0de186b584be0ef4318c34cba5169dc1c5a76dd1..f12b1241b9cb7f0aac609b36bc130821106766b6</p>
+
+  <h2>The central idea</h2>
+  <div class="flow" aria-label="trusted artifact flow">
+    <span class="node">Qualified unsigned CLI</span><span class="arrow">→</span>
+    <span class="node">Developer ID signing, once</span><span class="arrow">→</span>
+    <span class="node">Contents/Helpers</span><span class="arrow">→</span>
+    <span class="node">Signed app</span><span class="arrow">→</span>
+    <span class="node">Notarized DMG</span>
+  </div>
+  <p>At each boundary, PortReeve compares the helper's byte count, SHA-256, and parsed signing facts. Electron may seal the enclosing app, but it must not rewrite the authoritative helper.</p>
+
+  <h2>What changed</h2>
+  <div class="grid">
+    <section class="card"><h3>Canonical topology</h3><p>The executable moved from <code>Contents/Resources</code> to a flat <code>Contents/Helpers</code> entry. Runtime resolution and tests now enforce that contract.</p></section>
+    <section class="card"><h3>Credential-free qualification</h3><p>Four native candidates must pass before any Apple secret can be decoded. Qualification explicitly records <code>credentialAccess: false</code>.</p></section>
+    <section class="card"><h3>Protected producer</h3><p>One Apple Silicon job signs both macOS architectures, builds both apps and DMGs, notarizes and staples them, and stages one intentional output tree.</p></section>
+    <section class="card"><h3>Authority separation</h3><p>The trust job has read-only repository access and Apple credentials only. It has neither publication credentials nor a publication step.</p></section>
+  </div>
+
+  <h2>Failure boundaries</h2>
+  <details open><summary>Before credential access</summary><p>Reject the wrong ref, wrong source commit, unsigned public policy, incomplete stage sequence, invalid product identity, or incomplete four-target qualification.</p></details>
+  <details><summary>During protected work</summary><p>Every Apple command is bounded. Signature, team, runtime, timestamp, notarization request, staple, Gatekeeper, or byte mismatch stops production.</p></details>
+  <details><summary>During cleanup</summary><p>The captured keychain search list is restored and the ephemeral keychain and private files are removed after success, preparation failure, action failure, or combined action-and-cleanup failure.</p></details>
+
+  <h2>Evidence and limits</h2>
+  <ul>
+    <li class="good">62 focused tests and 415 expectations passed with the repository-pinned Bun version.</li>
+    <li class="good">A real x64 app and DMG were built, deep-verified, mounted, and checked for helper equality.</li>
+    <li class="warn">No Apple credentials were used from the topic branch; the live protected rehearsal is deliberately main-only.</li>
+    <li class="warn">Independent native ARM64 and Intel evidence is P5, in the next slice.</li>
+    <li>Five broad-suite failures in unchanged launcher/MCP/CLI paths are preserved in the verification report with exit status 1.</li>
+  </ul>
+
+  <h2>Reviewer quiz</h2>
+  <section class="card quiz" data-answer="">
+    <p>Which statement best describes PR #75?</p>
+    <button data-ok="false">It publishes a notarized preview release.</button>
+    <button data-ok="true">It creates a nonpublishing protected producer and canonical packaging path.</button>
+    <button data-ok="false">It replaces separate ARM64 and Intel installers with one universal DMG.</button>
+    <p class="answer" aria-live="polite"></p>
+  </section>
+  <section class="card quiz">
+    <p>Why is the promoted CLI skipped during Electron child signing?</p>
+    <button data-ok="true">Its Developer ID-signed bytes are already authoritative and must remain unchanged.</button>
+    <button data-ok="false">The helper does not need a signature.</button>
+    <p class="answer" aria-live="polite"></p>
+  </section>
+  <section class="card quiz">
+    <p>What authority does <code>release-trust</code> have?</p>
+    <button data-ok="false">Apple trust and public publication authority.</button>
+    <button data-ok="true">Apple trust authority only, with read-only repository permission.</button>
+    <p class="answer" aria-live="polite"></p>
+  </section>
+  <section class="card quiz">
+    <p>Does the local x64 DMG proof replace native Intel and ARM64 evidence?</p>
+    <button data-ok="false">Yes.</button><button data-ok="true">No; those remain independent P5 obligations.</button>
+    <p class="answer" aria-live="polite"></p>
+  </section>
+  <section class="card quiz">
+    <p>What happens if cleanup and protected work both fail?</p>
+    <button data-ok="true">Both failures are retained in an aggregate error.</button>
+    <button data-ok="false">Cleanup hides the original failure.</button>
+    <p class="answer" aria-live="polite"></p>
+  </section>
+</main><script>for(const q of document.querySelectorAll('.quiz'))for(const b of q.querySelectorAll('button'))b.addEventListener('click',()=>{q.querySelector('.answer').textContent=b.dataset.ok==='true'?'Correct.':'Not quite—review the sections above.'})</script></body>
+</html>

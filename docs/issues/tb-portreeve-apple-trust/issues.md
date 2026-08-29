@@ -36,12 +36,12 @@ failure-injection tests. No live credential use belongs in this issue.
 
 ## I-3 - Establish canonical signed-CLI Desktop packaging
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P3
 - **Rubric criteria:** R3, R5, R7
 - **Depends on:** I-1, I-2
-- **PR:** -
+- **PR:** [#75](https://github.com/TrentBrown/portreeve/pull/75)
 
 Move the embedded executable contract from `Contents/Resources` to a flat
 `Contents/Helpers` entry, preserve the authoritative signed bytes through
@@ -50,12 +50,12 @@ retaining separate ARM64/x64 artifacts.
 
 ## I-4 - Add qualification and the protected trust producer
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P4
 - **Rubric criteria:** R4, R7
 - **Depends on:** I-1, I-2, I-3
-- **PR:** -
+- **PR:** [#75](https://github.com/TrentBrown/portreeve/pull/75)
 
 Separate credential-free qualification from one main-only `release-trust`
 producer. Implement validated configuration, least-privilege credential
