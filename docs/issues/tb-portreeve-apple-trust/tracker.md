@@ -49,18 +49,19 @@ Append PR boundary entries here.
 - **Issues:** I-5, I-6, I-7
 - **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7
 - **Boundary packet:** [`pr-76/`](pr-76/)
-- **Status:** Draft boundary evaluation at pinned source
-  `5d89cb14a6064cd65a07a489690be2d86568e02e`.
+- **Status:** Evaluated source
+  `5d89cb14a6064cd65a07a489690be2d86568e02e`; merged as
+  `4f4610f27639a09ba53692757971ea0ce7af7061`.
 
 ## Active Slice
 
-### Slice 3 - Verification and sealed distribution
+### Slice 4 - Live acceptance and corrections
 
-- **Branch:** `tb-portreeve-apple-trust-03-verification-sealed-distribution`
-- **Plan steps:** P5, P6, P7
-- **Issues:** I-5, I-6, I-7
-- **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7
-- **Status:** GateReeve `HUMAN_REVIEW` for draft PR
-  [#76](https://github.com/TrentBrown/portreeve/pull/76); all required gates
-  passed at evaluated source `5d89cb14a6064cd65a07a489690be2d86568e02e`
-  and standing non-final-slice review authorization was recorded.
+- **Branch:** `tb-portreeve-apple-trust-04-live-acceptance-and-corrections`
+- **Plan steps:** P8
+- **Issues:** I-8
+- **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7, R8
+- **Status:** GateReeve `IMPLEMENTING`, feature paused before dispatch. Exact
+  reviewed `main` is `4f4610f27639a09ba53692757971ea0ce7af7061`,
+  but the repository has no protected `release-trust` environment or Apple
+  trust configuration. See [`rehearsal-preflight.md`](rehearsal-preflight.md).

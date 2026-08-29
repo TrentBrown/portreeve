@@ -64,7 +64,7 @@ unconditional cleanup.
 
 ## I-5 - Produce and aggregate native trust evidence
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P5
 - **Rubric criteria:** R3, R5, R7
@@ -77,7 +77,7 @@ aggregation require one current document for each native architecture.
 
 ## I-6 - Seal finalization and publication boundaries
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 2d
 - **Plan steps:** P6
 - **Rubric criteria:** R1, R2, R6, R7
@@ -90,7 +90,7 @@ recovery and disjoint Apple/publication authority.
 
 ## I-7 - Complete operator documentation and regression suites
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P7
 - **Rubric criteria:** R1, R3, R4, R5, R6, R7
@@ -103,7 +103,7 @@ the focused and broad verification matrices.
 
 ## I-8 - Run protected rehearsal and complete verification
 
-- **Status:** open
+- **Status:** in-progress
 - **Estimate:** 1d
 - **Plan steps:** P8
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
