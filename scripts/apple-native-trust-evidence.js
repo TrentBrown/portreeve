@@ -2,8 +2,19 @@
 
 import { Command } from 'commander';
 import { randomUUID } from 'node:crypto';
-import { link, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { basename, dirname, resolve } from 'node:path';
+import {
+  chmod,
+  copyFile,
+  link,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { basename, dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   APPLE_SIGNING_IDENTITY,
@@ -26,7 +37,7 @@ const COMMAND_TIMEOUT_MS = 5 * 60 * 1000;
  * protected producer output. The runner architecture is authority.
  *
  * @param {{recordPath: string, producerEvidencePath: string, outputPath?: string, workspaceRoot?: string, architecture?: 'arm64'|'x64'}} options
- * @param {{run?: typeof runCommand, verifyDmg?: typeof verifyDesktopDmg, verifyNativeCli?: typeof verifyNativeCli, smokeApplication?: typeof smokePackagedDesktop, now?: () => Date}} [dependencies]
+ * @param {{run?: typeof runCommand, verifyDmg?: typeof verifyDesktopDmg, verifyNativeCli?: typeof verifyNativeCli, verifyQuarantinedCli?: typeof verifyQuarantinedNativeCli, smokeApplication?: typeof smokePackagedDesktop, now?: () => Date}} [dependencies]
  */
 export async function collectAppleNativeTrustEvidence(options, dependencies = {}) {
   const architecture = options.architecture ?? nativeArchitecture();
@@ -72,7 +83,6 @@ export async function collectAppleNativeTrustEvidence(options, dependencies = {}
   }
   const run = dependencies.run ?? runCommand;
   const cliCodesign = await inspectCodesign(run, cliPath);
-  const cliGatekeeper = await inspectGatekeeper(run, cliPath, 'execute');
   const dmgCodesign = await inspectCodesign(run, dmgPath, false);
   const dmgGatekeeper = await inspectGatekeeper(run, dmgPath, 'open');
   const stapler = parseStaplerFacts(
@@ -81,6 +91,11 @@ export async function collectAppleNativeTrustEvidence(options, dependencies = {}
   await (dependencies.verifyNativeCli ?? verifyNativeCli)({
     releaseDirectory: resolve(releaseRoot, 'artifacts'),
     workspaceRoot: resolve(options.workspaceRoot ?? process.cwd()),
+  });
+  await (dependencies.verifyQuarantinedCli ?? verifyQuarantinedNativeCli)({
+    cliPath,
+    releaseVersion: record.releaseVersion,
+    run,
   });
   let application;
   await (dependencies.verifyDmg ?? verifyDesktopDmg)({
@@ -138,7 +153,6 @@ export async function collectAppleNativeTrustEvidence(options, dependencies = {}
       filename: transformation.filename,
       ...cliIdentity,
       codesign: cliCodesign,
-      gatekeeper: cliGatekeeper,
     },
     application,
     dmg: {
@@ -153,6 +167,7 @@ export async function collectAppleNativeTrustEvidence(options, dependencies = {}
       deepStrictSignature: true,
       embeddedCliEqual: true,
       nativeCliSmoke: true,
+      quarantinedCliSmoke: true,
       applicationSmoke: true,
       lifecycleSmoke: true,
     },
@@ -226,7 +241,13 @@ export function assertAppleNativeTrustEvidence(value) {
     if (
       subject.codesign?.identity !== APPLE_SIGNING_IDENTITY ||
       subject.codesign?.teamId !== APPLE_TEAM_ID ||
-      subject.codesign?.secureTimestamp !== true ||
+      subject.codesign?.secureTimestamp !== true
+    ) {
+      throw new Error('Apple native trust identity checks are incomplete.');
+    }
+  }
+  for (const subject of [candidate.application, candidate.dmg]) {
+    if (
       subject.gatekeeper?.accepted !== true ||
       subject.gatekeeper?.source !== 'Notarized Developer ID' ||
       (subject.gatekeeper?.origin !== undefined &&
@@ -256,6 +277,7 @@ export function assertAppleNativeTrustEvidence(value) {
     'deepStrictSignature',
     'embeddedCliEqual',
     'nativeCliSmoke',
+    'quarantinedCliSmoke',
     'applicationSmoke',
     'lifecycleSmoke',
   ]) {
@@ -445,6 +467,44 @@ async function verifyNativeCli(options) {
   const code = await child.exited;
   if (code !== 0)
     throw new Error(`Trusted native CLI verification failed with exit ${code}.`);
+}
+
+/**
+ * Exercise the exact signed native CLI with a quarantine attribute instead of
+ * asking Gatekeeper to classify a bare executable as an application bundle.
+ *
+ * @param {{cliPath: string, releaseVersion: string, run?: typeof runCommand}} options
+ */
+export async function verifyQuarantinedNativeCli(options) {
+  const run = options.run ?? runCommand;
+  const quarantineValue =
+    '0081;00000000;PortReeve;00000000-0000-0000-0000-000000000000';
+  const root = await mkdtemp(join(tmpdir(), 'portreeve-quarantine-'));
+  const probePath = resolve(root, basename(options.cliPath));
+  try {
+    await copyFile(options.cliPath, probePath);
+    await chmod(probePath, 0o755);
+    await requireSuccess(run, 'xattr', [
+      '-w',
+      'com.apple.quarantine',
+      quarantineValue,
+      probePath,
+    ]);
+    const quarantine = await requireSuccess(run, 'xattr', [
+      '-p',
+      'com.apple.quarantine',
+      probePath,
+    ]);
+    if (quarantine.stdout.trim() !== quarantineValue) {
+      throw new Error('Quarantined CLI probe did not retain its quarantine identity.');
+    }
+    const version = await requireSuccess(run, probePath, ['--version']);
+    if (version.stdout.trim() !== options.releaseVersion) {
+      throw new Error('Quarantined CLI probe reported an unexpected release version.');
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 }
 
 /** @param {string} path @param {unknown} value */

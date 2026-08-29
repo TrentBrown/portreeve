@@ -11,11 +11,11 @@
 |---|-------------------|--------|----|-------|
 | R1 | Public-channel trust policy | PASS | #74 | P1 contract and tests complete; P6-P8 must preserve it |
 | R2 | Schema lifecycle and compatibility | PASS | #74 | P1 schema-v2 lifecycle and read-only v1 dispatch complete |
-| R3 | CLI byte and bundle authority | NOT YET | #74, #75, #76 | Preview.8 reached accepted Apple trust for both signed architecture-specific sets, but contradictory duplicate metadata rewriting stopped authoritative output before downstream byte proof |
-| R4 | Protected production and credential custody | NOT YET | #74, #75, #76, #77, #78, #79 | Preview.8 proved both architecture-specific Apple paths; post-notary finalization atomicity and rerun rejection must land before complete protected execution |
-| R5 | Native Apple verification | NOT YET | #75, #76, #78, #79 | Preview.8 completed producer-side Apple checks for both architectures, but finalization failed before current ARM64/Intel evidence documents were emitted |
+| R3 | CLI byte and bundle authority | NOT YET | #74, #75, #76, #80 | Preview.9 produced both authoritative signed CLI sets and local ARM64 inspection proved the mounted helper is byte-identical; complete native ARM64/Intel documents remain pending after the invalid bare-CLI assessment is corrected |
+| R4 | Protected production and credential custody | PASS | #74, #75, #76, #77, #78, #79, #80 | Preview.9 completed the main-only protected producer for both architectures, uploaded only the intentional trusted tree, and never entered publication |
+| R5 | Native Apple verification | NOT YET | #75, #76, #78, #79 | Both preview.9 native runners exposed the same invalid bare-CLI `spctl` requirement before creating current evidence; DMG and local mounted-app Gatekeeper checks pass |
 | R6 | Finalization and publication separation | PASS | #76 | Final metadata consumes aggregated trust, seals the plan digest, and keeps trust/publication authority disjoint |
-| R7 | Failure, recovery, and immutability | NOT YET | #74, #75, #76, #77, #78, #79 | Preview.8 retained sanitized request histories but deleted exact candidate DMGs before a later failure; slice 11 retains them until durable success and blocks GitHub reruns |
+| R7 | Failure, recovery, and immutability | PASS | #74, #75, #76, #77, #78, #79, #80 | Preview.9 completed atomic producer finalization, preserved exact trusted output and request histories, and used one protected attempt; the consumed `.9` identity will not be reused |
 | R8 | Protected nonpublishing rehearsal | NOT YET | - | Planned for P8 / I-8 |
 
 ## PR Log
@@ -96,8 +96,20 @@ Append PR boundary entries here.
 - **Issues:** I-12
 - **Rubric in scope:** R3, R4, R6, R7, R8
 - **Boundary packet:** [`pr-80/`](pr-80/)
-- **Status:** Draft review of pinned source
-  `181028b2a0e8d2bfc75b70799dea9440b7b958c8`.
+- **Status:** Evaluated source
+  `181028b2a0e8d2bfc75b70799dea9440b7b958c8`; reviewed evidence head
+  `1337a4a953e760c29ebc4d6ec283b00629d93101`; merged as
+  `bfa64a9d930154ce0509c67b23a81ee1aa601221`.
+
+### PR #81 - CLI trust-surface alignment
+
+- **Slice:** `slice-13-cli-trust-surface`
+- **Plan steps:** P5, P7, P8
+- **Issues:** I-13
+- **Rubric in scope:** R4, R5, R7, R8
+- **Boundary packet:** [`pr-81/`](pr-81/)
+- **Status:** Evaluated source
+  `8957c037b6a8e0c71e3e8ef34108bd0cfc93b548`; formal boundary in progress.
 
 ## Protected rehearsal attempt - `0.1.0-preview.5`
 
@@ -182,17 +194,58 @@ Append PR boundary entries here.
   `main`, Desktop update, Homebrew `main`, formula, and cask authorities match
   the preflight baseline. Publication and all dependent jobs were skipped.
 
+## Protected rehearsal attempt - `0.1.0-preview.9`
+
+- **Run:** [33279682396](https://github.com/TrentBrown/portreeve/actions/runs/33279682396)
+- **Source:** reviewed `main` commit
+  `bfa64a9d930154ce0509c67b23a81ee1aa601221`
+- **Outcome:** preparation, all four native CLI jobs, qualification, protected
+  approval, both signed CLIs, both separate signed/notarized/stapled DMGs, and
+  the atomic protected producer completed. Both independent Apple trust jobs
+  then failed at the first standalone-CLI `spctl --type execute` call because
+  macOS returned exit 3 and "the code is valid but does not seem to be an app."
+- **Requests:** ARM64 `9757340b-aa28-4af7-980a-0fc41c520ae6`; x64
+  `3bb773dd-b6ea-4944-af47-d4acd83317f0`; both `Accepted`.
+- **Exact output:** trusted artifact `9722728731`; signed CLI SHA-256 values
+  `15343fbcdf4c396b535dbb85ae3abb0066b8af2c1f99585c292ca5d4825c84d2`
+  (ARM64) and
+  `8e35efcb728381acc7073c1f07e6c09bc07116073912b32cef2829c8c2af0dd4`
+  (x64); DMG SHA-256 values
+  `b37b695a0ab960fdba5d454a68cb00a59573fac6743c710a53ed4bafc4d1a0e1`
+  (ARM64) and
+  `7029ca0dabf5a2ecf6429b66163069bd5318b3b5c9fb6d49f6db211de165c794`
+  (x64).
+- **Independent diagnosis:** both DMGs pass Gatekeeper primary-signature
+  assessment. The mounted ARM64 app passes deep strict signing and Gatekeeper
+  execution assessment, its helper matches the standalone CLI exactly, and a
+  quarantined copy of that signed CLI executes and reports preview.9. GateReeve
+  likewise assesses only its app and DMG with Gatekeeper.
+- **Identity:** `.9` is immutable failed-attempt evidence and will not be
+  reused. After the governed correction lands, use `.10`.
+- **Public state:** unchanged; no `.9` tag or release exists, the latest public
+  release remains `.4`, Desktop update blob
+  `95374af5de460b0865aaab2a7732db8e1bdd5203`, Homebrew `main`
+  `23be9c4a5897807bb29a64076d1c84a3bcff2ea5`, formula blob
+  `759d2635fd84ab7ce2969c7ca51edad09ece3228`, and cask blob
+  `fadae00919d8bc43fe7a7dcd9973b2c9b10d7541` remain unchanged.
+
 ## Active Slice
 
-### Slice 11 - Post-notarization finalization and recovery correction
+### Slice 13 - CLI trust-surface alignment
 
-- **Branch:** `tb-portreeve-apple-trust-11-post-notary-finalization`
-- **Plan steps:** P2, P4, P7, P8
-- **Issues:** I-12
-- **Rubric in scope:** R3, R4, R6, R7, R8
-- **Status:** GateReeve `PR_BOUNDARY` for draft PR #80 after validating
-  `chg-post-notary-finalization-atomicity`. The correction performs one
-  authoritative predecessor-to-signed rewrite, retains exact request-bound
-  candidates until producer evidence is durable, and rejects
-  `GITHUB_RUN_ATTEMPT > 1` before credential activation. No `development*`
-  branch was merged or rebased, and publication remains out of scope.
+- **Branch:** `tb-portreeve-apple-trust-13-cli-trust-surface`
+- **Plan steps:** P5, P7, P8
+- **Issues:** I-13
+- **Rubric in scope:** R4, R5, R7, R8
+- **Status:** GateReeve `PR_BOUNDARY`; draft PR
+  [#81](https://github.com/TrentBrown/portreeve/pull/81). The collector no longer applies app
+  policy to a bare CLI; it creates an exact quarantined copy, verifies the
+  quarantine attribute and versioned execution, requires that check in native
+  evidence, and retains DMG/app Gatekeeper checks. Pinned Bun 1.3.14 focused
+  tests pass 4/4 and the full repository passes 581 tests with 3,040
+  assertions. The corrected collector also completed against exact preview.9
+  ARM64 producer bytes when the separately hosted-proven native lifecycle
+  callback was isolated from this machine's launchd timeout. Land this
+  intermediate correction before preview.10; publication remains disabled.
+  Additional physical-machine or cross-architecture installation remains
+  optional. No `development*` branch was merged or rebased.

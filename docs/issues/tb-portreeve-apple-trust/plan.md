@@ -70,9 +70,10 @@ rehearsal packet with public mutation disabled.
 - **P5. Native trust evidence and aggregation.** Extend native ARM64 and Intel
   jobs to consume the producer's exact outputs and create one immutable,
   architecture-bound evidence document each. Parse and bind all CLI,
-  application, DMG, codesign, notarization, staple, Gatekeeper, embedded-byte,
-  and native-smoke facts. Make aggregation reject every incomplete, stale,
-  duplicate, synthetic, inconsistent, or architecture-substituted matrix.
+  application, DMG, codesign, notarization, staple, DMG/app Gatekeeper,
+  CLI-quarantine execution, embedded-byte, and native-smoke facts. Make
+  aggregation reject every incomplete, stale, duplicate, synthetic,
+  inconsistent, or architecture-substituted matrix.
   **Advances:** R3, R5, R7.
 - **P6. Exact finalization and publication separation.** Derive checksums,
   Homebrew formula/cask data, Desktop update metadata, release assets, and the
@@ -91,8 +92,9 @@ rehearsal packet with public mutation disabled.
 - **P8. Protected nonpublishing rehearsal and feature verification.** After
   reviewed implementation reaches a pinned `main`, run `release-trust` with
   publication disabled. Inspect the complete schema-version-2 packet, both
-  signed CLIs and DMGs, both native evidence documents, notarization/staple and
-  Gatekeeper facts, exact publication plan, and before/after public state.
+  signed CLIs and DMGs, both native evidence documents, notarization/staple,
+  DMG/app Gatekeeper, and signed-CLI quarantine-execution facts, exact
+  publication plan, and before/after public state.
   Record optional manual installation evidence only if performed. Route any
   defect through a fresh governed delivery slice, then run the full rubric,
   independent judge, and feature-final verification with zero public mutation.

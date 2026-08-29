@@ -168,7 +168,7 @@ required `codesign` facts.
 
 ## I-12 - Make post-notarization finalization atomic and rerun-safe
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P2, P4, P7, P8
 - **Rubric criteria:** R3, R4, R6, R7, R8
@@ -183,3 +183,21 @@ rewrite a second time. Stage one untouched predecessor metadata set, perform
 one authoritative rewrite, retain request-bound candidates until producer
 evidence is durable, and reject protected GitHub reruns before credential
 activation or Apple submission.
+
+## I-13 - Align CLI trust evidence with GateReeve delivery surfaces
+
+- **Status:** in-review
+- **Estimate:** 0.5d
+- **Plan steps:** P5, P7, P8
+- **Rubric criteria:** R4, R5, R7, R8
+- **Depends on:** I-12
+- **PR:** [#81](https://github.com/TrentBrown/portreeve/pull/81)
+
+Correct the approved trust-surface assumption exposed by hosted run
+`33279682396`: both independent native runners rejected `spctl --type execute`
+for the exact signed bare CLI because macOS does not classify it as an app.
+Retain Gatekeeper assessment for each notarized DMG and mounted app; replace
+the invalid CLI app-policy assertion with strict Developer ID, Team ID,
+hardened-runtime, timestamp, byte-equality, native lifecycle, and quarantined
+execution evidence. Preserve the separate ARM64/x64 release shape and land the
+correction on reviewed `main` before using the unused preview.10 identity.
