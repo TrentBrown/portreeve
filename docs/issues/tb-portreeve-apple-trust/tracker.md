@@ -50,7 +50,7 @@ Append PR boundary entries here.
 - **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7
 - **Boundary packet:** [`pr-76/`](pr-76/)
 - **Status:** Draft boundary evaluation at pinned source
-  `2edacf3a2e627e6e9842532b60ab8535d41aed0f`.
+  `5d89cb14a6064cd65a07a489690be2d86568e02e`.
 
 ## Active Slice
 
