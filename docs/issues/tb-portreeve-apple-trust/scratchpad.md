@@ -43,7 +43,7 @@ PortReeve accepts only its exact Developer ID identity, Team ID, and product-spe
 
 ## [3] Transform signed CLI metadata as one authority set
 
-[ ] **Promote**
+[x] **Promote**
 
 **Confidence:** HIGH
 

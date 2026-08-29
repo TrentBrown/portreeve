@@ -226,7 +226,6 @@ export function assertAppleNativeTrustEvidence(value) {
     if (
       subject.codesign?.identity !== APPLE_SIGNING_IDENTITY ||
       subject.codesign?.teamId !== APPLE_TEAM_ID ||
-      subject.codesign?.hardenedRuntime !== true ||
       subject.codesign?.secureTimestamp !== true ||
       subject.gatekeeper?.accepted !== true ||
       subject.gatekeeper?.source !== 'Notarized Developer ID' ||
@@ -234,6 +233,13 @@ export function assertAppleNativeTrustEvidence(value) {
     ) {
       throw new Error('Apple native trust identity checks are incomplete.');
     }
+  }
+  if (
+    candidate.cli.codesign.hardenedRuntime !== true ||
+    candidate.application.codesign.hardenedRuntime !== true ||
+    typeof candidate.dmg.codesign.hardenedRuntime !== 'boolean'
+  ) {
+    throw new Error('Apple native executable hardened-runtime checks are incomplete.');
   }
   if (
     candidate.dmg.notarization?.status !== 'Accepted' ||

@@ -64,12 +64,12 @@ unconditional cleanup.
 
 ## I-5 - Produce and aggregate native trust evidence
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P5
 - **Rubric criteria:** R3, R5, R7
 - **Depends on:** I-3, I-4
-- **PR:** -
+- **PR:** [#76](https://github.com/TrentBrown/portreeve/pull/76)
 
 Create strict ARM64 and Intel evidence schemas and collection paths for exact
 CLI, DMG, application, Apple trust, Gatekeeper, and native-smoke facts. Make
@@ -77,12 +77,12 @@ aggregation require one current document for each native architecture.
 
 ## I-6 - Seal finalization and publication boundaries
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 2d
 - **Plan steps:** P6
 - **Rubric criteria:** R1, R2, R6, R7
 - **Depends on:** I-1, I-5
-- **PR:** -
+- **PR:** [#76](https://github.com/TrentBrown/portreeve/pull/76)
 
 Bind all generated distribution metadata and both hosted/local publishers to
 the final sealed packet and publication-plan digest, preserving idempotent
@@ -90,12 +90,12 @@ recovery and disjoint Apple/publication authority.
 
 ## I-7 - Complete operator documentation and regression suites
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P7
 - **Rubric criteria:** R1, R3, R4, R5, R6, R7
 - **Depends on:** I-4, I-5, I-6
-- **PR:** -
+- **PR:** [#76](https://github.com/TrentBrown/portreeve/pull/76)
 
 Update repository-owned release guidance, credential and recovery contracts,
 architecture labeling, rehearsal and optional manual-install instructions, and

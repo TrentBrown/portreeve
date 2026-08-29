@@ -60,6 +60,11 @@ describe('Apple native trust evidence', () => {
     expect(() => assertAppleNativeTrustEvidence(forgedIdentity)).toThrow(
       'identity checks',
     );
+    const missingRuntime = structuredClone(valid);
+    missingRuntime.application.codesign.hardenedRuntime = false;
+    expect(() => assertAppleNativeTrustEvidence(missingRuntime)).toThrow(
+      'executable hardened-runtime',
+    );
     const stale = structuredClone(valid);
     stale.source.commit = '9'.repeat(40);
     expect(() =>
@@ -161,7 +166,7 @@ function trustedAuthorityFixture() {
       filename: `PortReeve-0.1.0-preview.5-macos-${transformation.architecture}.dmg`,
       bytes: 800 + index,
       sha256: `${index + 5}`.repeat(64),
-      codesign: codesign(),
+      codesign: codesign(false),
       notarization: {
         requestId: `${index + 1}1111111-2222-4333-8444-555555555555`,
         status: 'Accepted',
@@ -224,7 +229,7 @@ function nativeEvidence(record, producer, architecture) {
       filename: packageEntry.dmg.filename,
       bytes: packageEntry.dmg.bytes,
       sha256: packageEntry.dmg.sha256,
-      codesign: codesign(),
+      codesign: codesign(false),
       notarization: packageEntry.dmg.notarization,
       stapler: { stapled: true, validated: true },
       gatekeeper: gatekeeper(),
@@ -241,11 +246,12 @@ function nativeEvidence(record, producer, architecture) {
   };
 }
 
-function codesign() {
+/** @param {boolean} [hardenedRuntime] */
+function codesign(hardenedRuntime = true) {
   return {
     identity: APPLE_SIGNING_IDENTITY,
     teamId: APPLE_TEAM_ID,
-    hardenedRuntime: true,
+    hardenedRuntime,
     secureTimestamp: true,
   };
 }
