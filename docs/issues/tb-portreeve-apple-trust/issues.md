@@ -134,7 +134,7 @@ continuity with producer-level tests before another protected attempt.
 
 ## I-10 - Accept real Gatekeeper assessment output
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 0.5d
 - **Plan steps:** P2, P8
 - **Rubric criteria:** R4, R5, R7, R8

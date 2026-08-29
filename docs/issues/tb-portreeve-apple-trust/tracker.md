@@ -72,8 +72,10 @@ Append PR boundary entries here.
 - **Issues:** I-10
 - **Rubric in scope:** R4, R5, R7, R8
 - **Boundary packet:** [`pr-78/`](pr-78/)
-- **Status:** Boundary evaluation pinned at source
-  `bc2bf1d7b33573666c749b5eeb2e12327433cbab`.
+- **Status:** Evaluated source
+  `bc2bf1d7b33573666c749b5eeb2e12327433cbab`; reviewed evidence head
+  `0ec83fd9d2ae831e2fe90f091c33360139405de2`; merged as
+  `de43dae24f2629748b1c1a3376c478e183e0ec33`.
 
 ## Protected rehearsal attempt - `0.1.0-preview.5`
 
@@ -112,15 +114,14 @@ Append PR boundary entries here.
 
 ## Active Slice
 
-### Slice 7 - Gatekeeper assessment parser correction
+### Slice 8 - Corrected live acceptance and feature closeout
 
-- **Branch:** `tb-portreeve-apple-trust-07-gatekeeper-parser`
-- **Plan steps:** P2, P8
-- **Issues:** I-10
-- **Rubric in scope:** R4, R5, R7, R8
-- **Status:** GateReeve `PR_BOUNDARY`; change
-  `chg-gatekeeper-path-prefixed-acceptance` is validated against the exact
-  tested source. Slice 6 was abandoned after the failed preview.6 acceptance
-  attempt. This intermediate correction preserves separate architecture-specific
-  DMGs, main-only trust approval, strict Developer ID facts, and zero
-  publication authority.
+- **Branch:** `tb-portreeve-apple-trust-08-live-acceptance`
+- **Plan steps:** P8
+- **Issues:** I-8
+- **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7, R8
+- **Status:** GateReeve `IMPLEMENTING`; preview `.7` will run from reviewed
+  `main` commit `de43dae24f2629748b1c1a3376c478e183e0ec33` with
+  `trust=true` and `publish=false`. Separate architecture-specific DMGs,
+  main-only trust approval, strict Developer ID facts, and zero publication
+  authority remain mandatory.

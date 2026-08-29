@@ -1,13 +1,13 @@
 # Protected Rehearsal Attempt
 
-**Checked:** 2026-08-29T19:51:48Z
+**Checked:** 2026-08-29T20:05:34Z
 **First attempted release:** `0.1.0-preview.5`
 **Second attempted release:** `0.1.0-preview.6`
 **Next planned release:** `0.1.0-preview.7`
 **Required dispatch:** `channel=preview`, `trust=true`, `publish=false`
-**Latest pinned source:** `0a28b89c23ddd553467eae0fe8bb89a84ac78ddc` on `main`
+**Latest pinned source:** `de43dae24f2629748b1c1a3376c478e183e0ec33` on `main`
 **Runs:** [preview.5](https://github.com/TrentBrown/portreeve/actions/runs/33267482516), [preview.6](https://github.com/TrentBrown/portreeve/actions/runs/33269593936)
-**Status:** PREVIEW.6 PRESERVED; GATEKEEPER PARSER CORRECTION REQUIRED
+**Status:** READY FOR CORRECTED PREVIEW.7 NONPUBLISHING REHEARSAL
 
 ## Passed checks
 
@@ -128,3 +128,13 @@ the bare or real path-prefixed acceptance status while continuing to require
 exit code zero, `Notarized Developer ID`, and the exact signing origin. The
 next hosted rehearsal must use the unused `.7` identity after this change
 lands on reviewed `main`. No `development*` branch was merged or rebased.
+
+## Preview.7 readiness
+
+PR #78 merged the governed Gatekeeper parser correction to `main` as
+`de43dae24f2629748b1c1a3376c478e183e0ec33`. GateReeve recorded the reviewed
+merge and started feature-final `slice-08-live-acceptance` from that exact
+commit. The next dispatch is `channel=preview`, version
+`0.1.0-preview.7`, `trust=true`, and `publish=false`. It retains separate
+ARM64 and x64 DMGs and enters only the protected `release-trust` environment;
+it cannot enter `release-publication` or mutate a public surface.
