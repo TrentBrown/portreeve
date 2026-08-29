@@ -1,13 +1,14 @@
 # Protected Rehearsal Attempt
 
-**Checked:** 2026-08-29T19:51:48Z
+**Checked:** 2026-08-29T21:01:52Z
 **First attempted release:** `0.1.0-preview.5`
 **Second attempted release:** `0.1.0-preview.6`
-**Next planned release:** `0.1.0-preview.7`
+**Third attempted release:** `0.1.0-preview.7`
+**Next planned release:** `0.1.0-preview.8`
 **Required dispatch:** `channel=preview`, `trust=true`, `publish=false`
-**Latest pinned source:** `0a28b89c23ddd553467eae0fe8bb89a84ac78ddc` on `main`
-**Runs:** [preview.5](https://github.com/TrentBrown/portreeve/actions/runs/33267482516), [preview.6](https://github.com/TrentBrown/portreeve/actions/runs/33269593936)
-**Status:** PREVIEW.6 PRESERVED; GATEKEEPER PARSER CORRECTION REQUIRED
+**Latest pinned source:** `de43dae24f2629748b1c1a3376c478e183e0ec33` on `main`
+**Runs:** [preview.5](https://github.com/TrentBrown/portreeve/actions/runs/33267482516), [preview.6](https://github.com/TrentBrown/portreeve/actions/runs/33269593936), [preview.7](https://github.com/TrentBrown/portreeve/actions/runs/33272715923)
+**Status:** PREVIEW.7 PRESERVED; OPTIONAL GATEKEEPER ORIGIN CORRECTION REQUIRED
 
 ## Passed checks
 
@@ -128,3 +129,39 @@ the bare or real path-prefixed acceptance status while continuing to require
 exit code zero, `Notarized Developer ID`, and the exact signing origin. The
 next hosted rehearsal must use the unused `.7` identity after this change
 lands on reviewed `main`. No `development*` branch was merged or rebased.
+
+## Preview.7 readiness
+
+PR #78 merged the governed Gatekeeper parser correction to `main` as
+`de43dae24f2629748b1c1a3376c478e183e0ec33`. GateReeve recorded the reviewed
+merge and started feature-final `slice-08-live-acceptance` from that exact
+commit. The next dispatch is `channel=preview`, version
+`0.1.0-preview.7`, `trust=true`, and `publish=false`. It retains separate
+ARM64 and x64 DMGs and enters only the protected `release-trust` environment;
+it cannot enter `release-publication` or mutate a public surface.
+
+## Preview.7 outcome
+
+Run [33272715923](https://github.com/TrentBrown/portreeve/actions/runs/33272715923)
+used reviewed `main` commit
+`de43dae24f2629748b1c1a3376c478e183e0ec33`, `trust=true`, and
+`publish=false`. Preparation, all four native CLI jobs, qualification, and the
+human-approved `release-trust` entry passed. Apple accepted request
+`2e9f8382-58d1-4d8e-a2d6-5ad32d6ce4aa` for the exact preserved ARM64 DMG at
+SHA-256 `02e11e0bec065bff8dc9d546cbf44316b29b784dc7793f5d121d5debd6890a3b`.
+
+The exact producer command and an independent local replay both returned exit
+zero, `<path>: accepted`, and `source=Notarized Developer ID`, with no
+`origin=` display line. The parser still required that optional line even
+though the producer separately required exact Developer ID and Team ID facts
+from `codesign`. GateReeve preserved recovery artifact
+`trusted-recovery-0.1.0-preview.7-1`, abandoned final slice 8, validated
+`chg-gatekeeper-optional-origin-display`, and started intermediate slice 9.
+
+After the failed run, the latest public release remained
+`v0.1.0-preview.4`; `.7` had no release or tag; Desktop update blob
+`95374af5de460b0865aaab2a7732db8e1bdd5203`, Homebrew `main`
+`23be9c4a5897807bb29a64076d1c84a3bcff2ea5`, formula blob
+`759d2635fd84ab7ce2969c7ca51edad09ece3228`, and cask blob
+`fadae00919d8bc43fe7a7dcd9973b2c9b10d7541` were unchanged. Publication and
+all dependent jobs were skipped.

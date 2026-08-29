@@ -87,6 +87,15 @@ TeamIdentifier=${APPLE_TEAM_ID}`),
       source: 'Notarized Developer ID',
       origin: APPLE_SIGNING_IDENTITY,
     });
+    expect(
+      parseGatekeeperFacts({
+        exitCode: 0,
+        stderr: `/tmp/PortReeve-0.1.0-preview.7-macos-arm64.dmg: accepted\nsource=Notarized Developer ID\n`,
+      }),
+    ).toEqual({
+      accepted: true,
+      source: 'Notarized Developer ID',
+    });
     expect(() =>
       parseGatekeeperFacts({
         exitCode: 0,
@@ -97,6 +106,12 @@ TeamIdentifier=${APPLE_TEAM_ID}`),
       parseGatekeeperFacts({
         exitCode: 0,
         stderr: `accepted\nsource=Developer ID\norigin=${APPLE_SIGNING_IDENTITY}\n`,
+      }),
+    ).toThrow('did not accept');
+    expect(() =>
+      parseGatekeeperFacts({
+        exitCode: 0,
+        stderr: `accepted\nsource=Notarized Developer ID\norigin=Developer ID Application: Somebody Else (AAAAAAAAAA)\n`,
       }),
     ).toThrow('did not accept');
     expect(() => parseNotarytoolFacts('{')).toThrow('not valid JSON');

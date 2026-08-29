@@ -124,11 +124,15 @@ export function parseGatekeeperFacts(result) {
     result.exitCode !== 0 ||
     !accepted ||
     source !== 'Notarized Developer ID' ||
-    origin !== APPLE_SIGNING_IDENTITY
+    (origin !== undefined && origin !== APPLE_SIGNING_IDENTITY)
   ) {
     throw new Error('Gatekeeper did not accept the notarized PortReeve identity.');
   }
-  return { accepted: true, source, origin };
+  return {
+    accepted: true,
+    source,
+    ...(origin === undefined ? {} : { origin }),
+  };
 }
 
 /**
