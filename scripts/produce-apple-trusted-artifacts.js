@@ -60,10 +60,14 @@ const NOTARIZATION_DEADLINE_MS = 30 * 60 * 1000;
  */
 
 /**
+ * @typedef {ReturnType<typeof import('./release-record.js').createReleaseRecord>} ReleaseRecord
+ */
+
+/**
  * Produce both architecture-specific trusted macOS artifact sets inside one
  * protected credential scope. The input workspace is never modified.
  *
- * @param {{recordPath: string, qualificationPath: string, outputRoot: string, workspaceRoot?: string, configuration: Parameters<typeof assertAppleSigningConfiguration>[0], githubRef?: string, githubSha?: string}} options
+ * @param {{recordPath: string, qualificationPath: string, outputRoot: string, workspaceRoot?: string, configuration: Parameters<typeof assertAppleSigningConfiguration>[0], githubRef?: string, githubSha?: string, githubRunAttempt?: string}} options
  * @param {{run?: typeof runCommand, credentialLifecycle?: ReturnType<typeof createCredentialLifecycle>, now?: () => Date, packageDesktop?: typeof packageDesktop, createDmg?: typeof createAndVerifyDesktopDmg, verifyDmg?: typeof verifyDesktopDmg}} [dependencies]
  */
 export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
@@ -76,12 +80,14 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
   const record = await readReleaseRecord(recordPath);
   const githubRef = options.githubRef ?? process.env.GITHUB_REF;
   const githubSha = options.githubSha ?? process.env.GITHUB_SHA;
+  const githubRunAttempt = options.githubRunAttempt ?? process.env.GITHUB_RUN_ATTEMPT;
   const lastStage = record.stages.at(-1)?.name;
   assertProtectedProducerContext({
     ...(githubRef === undefined ? {} : { githubRef }),
     ...(githubSha === undefined ? {} : { githubSha }),
     sourceCommit: record.source.commit,
     desktopTrust: record.policy.desktopTrust,
+    ...(githubRunAttempt === undefined ? {} : { githubRunAttempt }),
     ...(lastStage === undefined ? {} : { lastStage }),
   });
   await verifyReleaseArtifacts(record, releaseRoot);
@@ -328,63 +334,20 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
             });
           }
 
-          const artifactsRoot = resolve(outputRoot, 'artifacts');
-          const evidenceRoot = resolve(outputRoot, 'evidence');
-          const stateRoot = resolve(outputRoot, 'release-state');
-          await cp(resolve(releaseRoot, 'artifacts'), artifactsRoot, {
-            recursive: true,
-          });
-          await Promise.all([
-            mkdir(evidenceRoot, { recursive: true }),
-            mkdir(stateRoot, { recursive: true }),
-          ]);
-          for (const transformation of transformations) {
-            await cp(
-              resolve(signedArtifacts, transformation.filename),
-              resolve(artifactsRoot, transformation.filename),
-            );
-          }
-          for (const entry of packages) {
-            await cp(
-              resolve(workRoot, 'dmgs', entry.dmg.filename),
-              resolve(artifactsRoot, entry.dmg.filename),
-            );
-          }
-          await rm(recoveryCandidatesRoot, { recursive: true, force: true });
-          await cp(
-            resolve(signedArtifacts, 'manifest.json'),
-            resolve(artifactsRoot, 'manifest.json'),
-          );
           const preliminaryVerifications = assertNativeVerificationMatrix(
             record,
             await readPreliminaryVerifications(releaseRoot),
           );
-          const trustedRecord = structuredClone(record);
-          for (const transformation of transformations) {
-            const artifact = trustedRecord.artifacts.find(
-              (entry) =>
-                entry.type === 'executable' &&
-                entry.operatingSystem === 'macos' &&
-                entry.architecture === transformation.architecture,
-            );
-            if (
-              artifact === undefined ||
-              artifact.filename !== transformation.filename ||
-              artifact.bytes !== transformation.predecessor.bytes ||
-              artifact.sha256 !== transformation.predecessor.sha256
-            ) {
-              throw new Error(
-                'Signed CLI predecessor differs from the qualified release record.',
-              );
-            }
-            artifact.bytes = transformation.signed.bytes;
-            artifact.sha256 = transformation.signed.sha256;
-          }
-          await rewriteTrustedReleaseMetadata({
-            releaseRoot: outputRoot,
-            record: trustedRecord,
-            transformations,
-          });
+          const { evidenceRoot, stateRoot, trustedRecord } =
+            await stageTrustedReleaseArtifacts({
+              releaseRoot,
+              outputRoot,
+              signedArtifacts,
+              dmgRoot: resolve(workRoot, 'dmgs'),
+              record,
+              packages,
+              transformations,
+            });
           const authoritativeRecord = advanceReleaseRecord(
             trustedRecord,
             'macos-cli-authority-established',
@@ -450,6 +413,7 @@ export async function produceAppleTrustedArtifacts(options, dependencies = {}) {
               flag: 'wx',
             },
           );
+          await rm(recoveryCandidatesRoot, { recursive: true, force: true });
           return { outputRoot, evidencePath, evidence };
         } finally {
           await rm(workRoot, { recursive: true, force: true });
@@ -483,6 +447,65 @@ export async function preserveNotarizationCandidate(options) {
     force: false,
   });
   return submittedPath;
+}
+
+/**
+ * Stage transformed executables and DMGs over one untouched copy of the
+ * qualified artifact set, then perform the single authoritative metadata
+ * rewrite from predecessor identities to signed identities.
+ *
+ * @param {{releaseRoot: string, outputRoot: string, signedArtifacts: string, dmgRoot: string, record: ReleaseRecord, packages: Array<Record<string, any>>, transformations: Array<Record<string, any>>}} options
+ */
+export async function stageTrustedReleaseArtifacts(options) {
+  const artifactsRoot = resolve(options.outputRoot, 'artifacts');
+  const evidenceRoot = resolve(options.outputRoot, 'evidence');
+  const stateRoot = resolve(options.outputRoot, 'release-state');
+  await cp(resolve(options.releaseRoot, 'artifacts'), artifactsRoot, {
+    recursive: true,
+  });
+  await Promise.all([
+    mkdir(evidenceRoot, { recursive: true }),
+    mkdir(stateRoot, { recursive: true }),
+  ]);
+  for (const transformation of options.transformations) {
+    await cp(
+      resolve(options.signedArtifacts, transformation.filename),
+      resolve(artifactsRoot, transformation.filename),
+    );
+  }
+  for (const entry of options.packages) {
+    await cp(
+      resolve(options.dmgRoot, entry.dmg.filename),
+      resolve(artifactsRoot, entry.dmg.filename),
+    );
+  }
+  const trustedRecord = structuredClone(options.record);
+  for (const transformation of options.transformations) {
+    const artifact = trustedRecord.artifacts.find(
+      (/** @type {Record<string, any>} */ entry) =>
+        entry.type === 'executable' &&
+        entry.operatingSystem === 'macos' &&
+        entry.architecture === transformation.architecture,
+    );
+    if (
+      artifact === undefined ||
+      artifact.filename !== transformation.filename ||
+      artifact.bytes !== transformation.predecessor.bytes ||
+      artifact.sha256 !== transformation.predecessor.sha256
+    ) {
+      throw new Error(
+        'Signed CLI predecessor differs from the qualified release record.',
+      );
+    }
+    artifact.bytes = transformation.signed.bytes;
+    artifact.sha256 = transformation.signed.sha256;
+  }
+  await rewriteTrustedReleaseMetadata({
+    releaseRoot: options.outputRoot,
+    record: trustedRecord,
+    transformations: options.transformations,
+  });
+  return { artifactsRoot, evidenceRoot, stateRoot, trustedRecord };
 }
 
 /**
@@ -561,7 +584,7 @@ async function readPreliminaryVerifications(releaseRoot) {
   );
 }
 
-/** @param {{githubRef?: string, githubSha?: string, sourceCommit: string, desktopTrust: string, lastStage?: string}} context */
+/** @param {{githubRef?: string, githubSha?: string, githubRunAttempt?: string, sourceCommit: string, desktopTrust: string, lastStage?: string}} context */
 export function assertProtectedProducerContext(context) {
   if (context.githubRef !== 'refs/heads/main') {
     throw new Error('Apple trusted-artifact production is main-only.');
@@ -569,6 +592,11 @@ export function assertProtectedProducerContext(context) {
   if (context.githubSha !== context.sourceCommit) {
     throw new Error(
       'Protected producer source does not match the pinned release commit.',
+    );
+  }
+  if (context.githubRunAttempt !== undefined && context.githubRunAttempt !== '1') {
+    throw new Error(
+      'Apple trusted-artifact production cannot be rerun after a protected attempt; dispatch the next unused preview version.',
     );
   }
   if (context.desktopTrust !== 'developer-id-notarized') {

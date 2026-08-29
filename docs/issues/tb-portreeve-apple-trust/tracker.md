@@ -11,11 +11,11 @@
 |---|-------------------|--------|----|-------|
 | R1 | Public-channel trust policy | PASS | #74 | P1 contract and tests complete; P6-P8 must preserve it |
 | R2 | Schema lifecycle and compatibility | PASS | #74 | P1 schema-v2 lifecycle and read-only v1 dispatch complete |
-| R3 | CLI byte and bundle authority | NOT YET | #74, #75, #76 | Signed transformation and metadata authority are enforced; live protected byte proof remains P8 |
-| R4 | Protected production and credential custody | NOT YET | #74, #75, #76, #77, #78 | Preview.7 again proved accepted notarization and exact recovery continuity; optional Gatekeeper display metadata must be handled before complete protected execution |
-| R5 | Native Apple verification | NOT YET | #75, #76, #78 | Preview.7 reached real ARM64 Gatekeeper acceptance without an `origin` display line, but parser compatibility stopped the matrix before current ARM64/Intel documents were emitted |
+| R3 | CLI byte and bundle authority | NOT YET | #74, #75, #76 | Preview.8 reached accepted Apple trust for both signed architecture-specific sets, but contradictory duplicate metadata rewriting stopped authoritative output before downstream byte proof |
+| R4 | Protected production and credential custody | NOT YET | #74, #75, #76, #77, #78, #79 | Preview.8 proved both architecture-specific Apple paths; post-notary finalization atomicity and rerun rejection must land before complete protected execution |
+| R5 | Native Apple verification | NOT YET | #75, #76, #78, #79 | Preview.8 completed producer-side Apple checks for both architectures, but finalization failed before current ARM64/Intel evidence documents were emitted |
 | R6 | Finalization and publication separation | PASS | #76 | Final metadata consumes aggregated trust, seals the plan digest, and keeps trust/publication authority disjoint |
-| R7 | Failure, recovery, and immutability | NOT YET | #74, #75, #76, #77, #78 | Preview.7 preserved exact request-bound bytes and sanitized history; a complete protected rerun after the optional-origin correction remains required |
+| R7 | Failure, recovery, and immutability | NOT YET | #74, #75, #76, #77, #78, #79 | Preview.8 retained sanitized request histories but deleted exact candidate DMGs before a later failure; slice 11 retains them until durable success and blocks GitHub reruns |
 | R8 | Protected nonpublishing rehearsal | NOT YET | - | Planned for P8 / I-8 |
 
 ## PR Log
@@ -144,16 +144,45 @@ Append PR boundary entries here.
 - **Public state:** unchanged; `.7` has no tag or release, and PortReeve,
   Homebrew, formula, cask, and Desktop-update authorities match the baseline.
 
+## Protected rehearsal attempt - `0.1.0-preview.8`
+
+- **Run:** [33276106920](https://github.com/TrentBrown/portreeve/actions/runs/33276106920)
+- **Source:** reviewed `main` commit
+  `2042850b8f8573e6b1b77c4c41ead68677cebae9`
+- **Outcome:** preparation, four native CLI jobs, qualification, protected
+  approval, signing, both architecture-specific DMGs, and all four Apple
+  notarization requests across the original run and GitHub rerun reached
+  `Accepted`. Both attempts then failed deterministically while staging trusted
+  metadata because an already rewritten manifest was subjected to the
+  predecessor-to-signed rewrite a second time.
+- **Requests:** attempt 1 ARM64
+  `63a299ac-cb95-42ce-ac9b-7b5e39ec3f20`, attempt 1 x64
+  `361fc2e2-923a-429e-b242-a92ef0f1c159`, attempt 2 ARM64
+  `90c075d3-12ef-44d6-8e15-f4ffdf8dfad6`, and attempt 2 x64
+  `63207094-b916-49bd-93e4-bef278eb12e0`.
+- **Recovery:** `trusted-recovery-0.1.0-preview.8-1` and
+  `trusted-recovery-0.1.0-preview.8-2` retain sanitized request histories, but
+  the producer deleted the request-bound candidate DMGs before the later
+  metadata failure. Those requests therefore cannot be resumed from preserved
+  exact bytes.
+- **Identity:** `.8` is burned and will not be reused. GitHub **Re-run jobs**
+  is no longer an allowed protected recovery action; the next complete attempt
+  must use `.9` after slice 11 lands on reviewed `main`.
+- **Public state:** unchanged; `.8` has no tag or release, and PortReeve
+  `main`, Desktop update, Homebrew `main`, formula, and cask authorities match
+  the preflight baseline. Publication and all dependent jobs were skipped.
+
 ## Active Slice
 
-### Slice 10 - Corrected live acceptance and feature closeout
+### Slice 11 - Post-notarization finalization and recovery correction
 
-- **Branch:** `tb-portreeve-apple-trust-10-live-acceptance`
-- **Plan steps:** P8
-- **Issues:** I-8
-- **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7, R8
-- **Status:** GateReeve `IMPLEMENTING`; preview `.8` will run from reviewed
-  `main` commit `2042850b8f8573e6b1b77c4c41ead68677cebae9` with
-  `trust=true` and `publish=false`. Separate architecture-specific DMGs,
-  main-only trust approval, independent exact codesign authority, and zero
-  publication authority remain mandatory.
+- **Branch:** `tb-portreeve-apple-trust-11-post-notary-finalization`
+- **Plan steps:** P2, P4, P7, P8
+- **Issues:** I-12
+- **Rubric in scope:** R3, R4, R6, R7, R8
+- **Status:** GateReeve `IMPLEMENTING` after validating
+  `chg-post-notary-finalization-atomicity`. The correction performs one
+  authoritative predecessor-to-signed rewrite, retains exact request-bound
+  candidates until producer evidence is durable, and rejects
+  `GITHUB_RUN_ATTEMPT > 1` before credential activation. No `development*`
+  branch was merged or rebased, and publication remains out of scope.

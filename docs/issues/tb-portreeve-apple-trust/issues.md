@@ -165,3 +165,21 @@ exit zero, a path-prefixed `accepted` line, and
 line. Permit that field to be absent while rejecting any present wrong origin;
 retain exact Developer ID and Team ID authority through the independently
 required `codesign` facts.
+
+## I-12 - Make post-notarization finalization atomic and rerun-safe
+
+- **Status:** in-progress
+- **Estimate:** 1d
+- **Plan steps:** P2, P4, P7, P8
+- **Rubric criteria:** R3, R4, R6, R7, R8
+- **Depends on:** I-11
+- **PR:** -
+
+Correct the deterministic finalization failure observed in both attempts of
+hosted run `33276106920`: both architecture-specific DMGs reached accepted
+Apple notarization, but the producer copied an already rewritten manifest over
+the trusted output and then invoked the authoritative predecessor-to-signed
+rewrite a second time. Stage one untouched predecessor metadata set, perform
+one authoritative rewrite, retain request-bound candidates until producer
+evidence is durable, and reject protected GitHub reruns before credential
+activation or Apple submission.

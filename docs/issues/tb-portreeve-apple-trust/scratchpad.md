@@ -110,3 +110,28 @@ through `codesign` facts for every CLI, application, and DMG.
 - Continue requiring `origin=` - rejected because live `spctl` can omit it from an accepted notarized assessment.
 - Synthesize the expected origin when absent - rejected because evidence must not invent command output.
 - Drop exact identity verification - rejected because the approved design requires independent Developer ID and Team ID authority.
+
+## [7] Make protected producer completion atomic and single-attempt
+
+[ ] **Promote**
+
+**Confidence:** HIGH
+
+**Blast Radius:** Protected trusted-artifact staging, release metadata authority, failed-attempt recovery, and operator workflow controls
+
+Copy the untouched qualified artifact set once, overlay signed executables and
+architecture-specific DMGs, and perform exactly one authoritative
+predecessor-to-signed metadata rewrite. Retain each request-bound candidate and
+its request history until the complete producer output and evidence are
+durable. Reject `GITHUB_RUN_ATTEMPT > 1` before credential activation or Apple
+submission; changed or repeated protected attempts use the next unused preview
+version, while exact-request recovery remains bound to retained identical
+bytes.
+
+**Triggered by:** Both attempts of live preview.8 run 33276106920 reached accepted notarization for both architectures, then failed on a duplicate metadata rewrite after candidate deletion; the GitHub rerun also created new Apple requests for the same version
+
+**Alternatives considered:**
+
+- Rewrite the already signed manifest again - rejected because the rewrite contract intentionally requires predecessor identities and must remain fail-closed.
+- Delete candidate bytes immediately after Apple acceptance - rejected because later producer failure would leave request history without the exact submitted bytes.
+- Permit GitHub job reruns for convenience - rejected because a rerun reconstructs and resubmits protected artifacts instead of continuing the exact request-bound recovery record.

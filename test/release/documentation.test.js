@@ -244,10 +244,12 @@ test('release runbook and project skill preserve one script-owned contract', asy
   expect(skill).toContain('deterministic merge-commit PRs');
   expect(skill).toContain('Never write directly to destination `main`');
   expect(skill).toContain('independent review block');
+  expect(skill).toContain('Re-run jobs');
   expect(runbook).toMatch(/Pull requests:\s+Read and write/u);
   expect(runbook).toContain('It does not require ordinary Git credentials');
   expect(runbook).toContain('leaves the PR intact');
   expect(runbook).toContain('both PR URLs and merge commits');
+  expect(runbook).toContain('Re-run jobs');
   expect(runbook).toContain(
     '0.1.0-preview.2 < 0.1.0-preview.3 < 0.1.0-preview.4 < 0.1.0',
   );
