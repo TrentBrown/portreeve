@@ -9,14 +9,14 @@
 
 | # | Criterion (short) | Status | PR | Notes |
 |---|-------------------|--------|----|-------|
-| R1 | Public-channel trust policy | PASS | #74 | P1 contract and tests complete; P6-P8 must preserve it |
+| R1 | Public-channel trust policy | PASS | #74, final PR | Preview.10 retained `developer-id-notarized` for the new public-capable preview path while publication stayed disabled and historical previews remained unchanged |
 | R2 | Schema lifecycle and compatibility | PASS | #74 | P1 schema-v2 lifecycle and read-only v1 dispatch complete |
-| R3 | CLI byte and bundle authority | NOT YET | #74, #75, #76, #80 | Preview.9 produced both authoritative signed CLI sets and local ARM64 inspection proved the mounted helper is byte-identical; complete native ARM64/Intel documents remain pending after the invalid bare-CLI assessment is corrected |
-| R4 | Protected production and credential custody | PASS | #74, #75, #76, #77, #78, #79, #80 | Preview.9 completed the main-only protected producer for both architectures, uploaded only the intentional trusted tree, and never entered publication |
-| R5 | Native Apple verification | NOT YET | #75, #76, #78, #79 | Both preview.9 native runners exposed the same invalid bare-CLI `spctl` requirement before creating current evidence; DMG and local mounted-app Gatekeeper checks pass |
-| R6 | Finalization and publication separation | PASS | #76 | Final metadata consumes aggregated trust, seals the plan digest, and keeps trust/publication authority disjoint |
-| R7 | Failure, recovery, and immutability | PASS | #74, #75, #76, #77, #78, #79, #80 | Preview.9 completed atomic producer finalization, preserved exact trusted output and request histories, and used one protected attempt; the consumed `.9` identity will not be reused |
-| R8 | Protected nonpublishing rehearsal | NOT YET | - | Planned for P8 / I-8 |
+| R3 | CLI byte and bundle authority | PASS | #74, #75, #76, #80, #81 | Preview.10 records exact signed CLI identities across standalone, Homebrew, and mounted `Contents/Helpers` surfaces; both native Apple documents passed embedded-byte equality and deep strict signing |
+| R4 | Protected production and credential custody | PASS | #74, #75, #76, #77, #78, #79, #80, final PR | Preview.10 completed the main-only protected producer for both architectures, its evidence records no publication authority, and the run never entered publication |
+| R5 | Native Apple verification | PASS | #75, #76, #78, #79, #81 | Preview.10 produced exactly one current native ARM64 and one current native Intel Apple document; all required signing, notarization, stapling, DMG/app Gatekeeper, equality, quarantine, smoke, and lifecycle checks passed |
+| R6 | Finalization and publication separation | PASS | #76, final PR | Preview.10 finalized 13 exact artifacts and a matching sealed plan while `publication.state` remained `unpublished` and the publish job was skipped |
+| R7 | Failure, recovery, and immutability | PASS | #74, #75, #76, #77, #78, #79, #80, final PR | Failed previews remain durable immutable history; preview.10 used one protected attempt and retained both accepted request histories through finalization |
+| R8 | Protected nonpublishing rehearsal | PASS | final PR | Preview.10 run 33281790384 passed from reviewed main, finalized a sealed 13-artifact packet, skipped publish, and preserved every public authority unchanged; see `preview-10-acceptance.md` |
 
 ## PR Log
 
@@ -231,6 +231,25 @@ Append PR boundary entries here.
   `759d2635fd84ab7ce2969c7ca51edad09ece3228`, and cask blob
   `fadae00919d8bc43fe7a7dcd9973b2c9b10d7541` remain unchanged.
 
+## Successful protected rehearsal - `0.1.0-preview.10`
+
+- **Run:** [33281790384](https://github.com/TrentBrown/portreeve/actions/runs/33281790384)
+- **Source:** reviewed `main` commit
+  `1da97cb2a1983fe416f6abab763e6b4b06222c9f`
+- **Outcome:** preparation, all four preliminary native jobs, qualification,
+  protected production, native ARM64 and Intel Apple verification, and sealed
+  trusted-distribution finalization passed. `publish` was skipped.
+- **Authority:** both current Apple documents require the exact Developer ID
+  and Team ID, report accepted notarization, stapling, DMG/app Gatekeeper,
+  strict signatures, exact helper bytes, native and quarantined CLI execution,
+  application smoke, and lifecycle smoke.
+- **Plan:** `publication-plan.md` and `publication-plan.sha256` both bind SHA-256
+  `ac75019cd5addd954d8611142d6419fc96b0e1b5952fa030f2b23ca7408fee9d`.
+- **Public state:** unchanged; `.10` has no tag or release, publication was not
+  entered, and the PortReeve, Homebrew, formula, cask, and Desktop-update
+  authorities match the baseline.
+- **Evidence:** [`preview-10-acceptance.md`](preview-10-acceptance.md).
+
 ## Active Slice
 
 ### Slice 14 - Final preview.10 live acceptance and feature closeout
@@ -239,12 +258,10 @@ Append PR boundary entries here.
 - **Plan steps:** P8
 - **Issues:** I-8
 - **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7, R8
-- **Status:** GateReeve `IMPLEMENTING`. PR #81 merged the approved CLI
-  trust-surface correction to reviewed `main` as
-  `1da97cb2a1983fe416f6abab763e6b4b06222c9f`. Dispatch the unused
-  `0.1.0-preview.10` identity with `trust=true` and `publish=false`, require
-  complete protected producer, native ARM64/Intel, finalization, sealed-plan,
-  and zero-public-mutation evidence, then prepare the feature-final PR for the
-  user's explicit approval. Additional physical-machine or cross-architecture
-  installation remains optional. No `development*` branch was merged or
-  rebased.
+- **Status:** GateReeve `IMPLEMENTING`. Preview.10 run 33281790384 completed
+  every nonpublishing trust and finalization job from reviewed `main`; both
+  current native Apple authorities and the sealed 13-artifact distribution
+  passed independent inspection, while `publish` was skipped and public state
+  remained unchanged. Prepare the feature-final PR for the user's explicit
+  approval. Additional physical-machine or cross-architecture installation
+  remains optional. No `development*` branch was merged or rebased.

@@ -1,15 +1,15 @@
 # Protected Rehearsal Attempt
 
-**Checked:** 2026-08-29T21:01:52Z
+**Checked:** 2026-08-30T00:18:39Z
 **First attempted release:** `0.1.0-preview.5`
 **Second attempted release:** `0.1.0-preview.6`
 **Third attempted release:** `0.1.0-preview.7`
 **Fourth attempted release:** `0.1.0-preview.8`
-**Next planned release:** `0.1.0-preview.9`
+**Successful release:** `0.1.0-preview.10`
 **Required dispatch:** `channel=preview`, `trust=true`, `publish=false`
-**Latest pinned source:** `2042850b8f8573e6b1b77c4c41ead68677cebae9` on `main`
-**Runs:** [preview.5](https://github.com/TrentBrown/portreeve/actions/runs/33267482516), [preview.6](https://github.com/TrentBrown/portreeve/actions/runs/33269593936), [preview.7](https://github.com/TrentBrown/portreeve/actions/runs/33272715923), [preview.8](https://github.com/TrentBrown/portreeve/actions/runs/33276106920)
-**Status:** PREVIEW.8 FAILED; GOVERNED PREVIEW.9 CORRECTION IN PROGRESS
+**Latest pinned source:** `1da97cb2a1983fe416f6abab763e6b4b06222c9f` on `main`
+**Runs:** [preview.5](https://github.com/TrentBrown/portreeve/actions/runs/33267482516), [preview.6](https://github.com/TrentBrown/portreeve/actions/runs/33269593936), [preview.7](https://github.com/TrentBrown/portreeve/actions/runs/33272715923), [preview.8](https://github.com/TrentBrown/portreeve/actions/runs/33276106920), [preview.9](https://github.com/TrentBrown/portreeve/actions/runs/33279682396), [preview.10](https://github.com/TrentBrown/portreeve/actions/runs/33281790384)
+**Status:** PREVIEW.10 PASSED; FEATURE-FINAL EVALUATION IN PROGRESS
 
 ## Passed checks
 
@@ -268,3 +268,31 @@ release remains `.4`; Desktop update blob
 all dependent jobs were skipped. Preview.9 is consumed evidence and must not be
 reused; the next protected attempt uses preview.10 only after the correction
 lands on reviewed `main`.
+
+## Preview.10 outcome
+
+PR #81 merged the governed trust-surface correction to reviewed `main` as
+`1da97cb2a1983fe416f6abab763e6b4b06222c9f`. Run
+[33281790384](https://github.com/TrentBrown/portreeve/actions/runs/33281790384)
+then used that exact source with `channel=preview`, `trust=true`, and
+`publish=false`.
+
+The complete hosted matrix passed: preparation, all four preliminary native
+jobs, credential-free qualification, the protected producer, independent
+native ARM64 and Intel Apple trust verification, and trusted distribution
+finalization. Apple accepted ARM64 request
+`f9666ed3-036e-4893-8e7f-72527f3538fe` and x64 request
+`8802be2d-776b-4726-bbad-e450170eca54`. Both exact DMGs are signed, notarized,
+stapled, Gatekeeper-accepted, and paired with applications and signed CLIs that
+passed every required current native check. The sealed publication-plan digest
+is `ac75019cd5addd954d8611142d6419fc96b0e1b5952fa030f2b23ca7408fee9d`.
+
+The downloaded 13-artifact record passed `release:inspect`. The disposable
+Homebrew smoke stopped safely before changing this machine because formula and
+cask `0.1.0-preview.4` are already installed; they were preserved. The
+physical-machine/cross-architecture installation check remains optional.
+
+The `publish` job was skipped. Read-only after-state checks found no preview.10
+tag or release and confirmed unchanged Desktop update, Homebrew `main`, formula,
+and cask authorities. The full exact-byte and zero-public-mutation record is in
+[`preview-10-acceptance.md`](preview-10-acceptance.md).
