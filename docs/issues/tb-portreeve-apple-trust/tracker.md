@@ -9,14 +9,14 @@
 
 | # | Criterion (short) | Status | PR | Notes |
 |---|-------------------|--------|----|-------|
-| R1 | Public-channel trust policy | PASS | #74, final PR | Preview.10 retained `developer-id-notarized` for the new public-capable preview path while publication stayed disabled and historical previews remained unchanged |
+| R1 | Public-channel trust policy | PASS | #74, #82 | Preview.10 retained `developer-id-notarized` for the new public-capable preview path while publication stayed disabled and historical previews remained unchanged |
 | R2 | Schema lifecycle and compatibility | PASS | #74 | P1 schema-v2 lifecycle and read-only v1 dispatch complete |
 | R3 | CLI byte and bundle authority | PASS | #74, #75, #76, #80, #81 | Preview.10 records exact signed CLI identities across standalone, Homebrew, and mounted `Contents/Helpers` surfaces; both native Apple documents passed embedded-byte equality and deep strict signing |
-| R4 | Protected production and credential custody | PASS | #74, #75, #76, #77, #78, #79, #80, final PR | Preview.10 completed the main-only protected producer for both architectures, its evidence records no publication authority, and the run never entered publication |
+| R4 | Protected production and credential custody | PASS | #74, #75, #76, #77, #78, #79, #80, #82 | Preview.10 completed the main-only protected producer for both architectures, its evidence records no publication authority, and the run never entered publication |
 | R5 | Native Apple verification | PASS | #75, #76, #78, #79, #81 | Preview.10 produced exactly one current native ARM64 and one current native Intel Apple document; all required signing, notarization, stapling, DMG/app Gatekeeper, equality, quarantine, smoke, and lifecycle checks passed |
-| R6 | Finalization and publication separation | PASS | #76, final PR | Preview.10 finalized 13 exact artifacts and a matching sealed plan while `publication.state` remained `unpublished` and the publish job was skipped |
-| R7 | Failure, recovery, and immutability | PASS | #74, #75, #76, #77, #78, #79, #80, final PR | Failed previews remain durable immutable history; preview.10 used one protected attempt and retained both accepted request histories through finalization |
-| R8 | Protected nonpublishing rehearsal | PASS | final PR | Preview.10 run 33281790384 passed from reviewed main, finalized a sealed 13-artifact packet, skipped publish, and preserved every public authority unchanged; see `preview-10-acceptance.md` |
+| R6 | Finalization and publication separation | PASS | #76, #82 | Preview.10 finalized 13 exact artifacts and a matching sealed plan while `publication.state` remained `unpublished` and the publish job was skipped |
+| R7 | Failure, recovery, and immutability | PASS | #74, #75, #76, #77, #78, #79, #80, #82 | Failed previews remain durable immutable history; preview.10 used one protected attempt and retained both accepted request histories through finalization |
+| R8 | Protected nonpublishing rehearsal | PASS | #82 | Preview.10 run 33281790384 passed from reviewed main, finalized a sealed 13-artifact packet, skipped publish, and preserved every public authority unchanged; see `preview-10-acceptance.md` |
 
 ## PR Log
 
@@ -112,6 +112,16 @@ Append PR boundary entries here.
   `8957c037b6a8e0c71e3e8ef34108bd0cfc93b548`; reviewed evidence head
   `555db3cb545726537c428f00578dfec30ac85e34`; merged as
   `1da97cb2a1983fe416f6abab763e6b4b06222c9f`.
+
+### PR #82 - Final preview.10 live acceptance and feature closeout
+
+- **Slice:** `slice-14-live-acceptance`
+- **Plan steps:** P8
+- **Issues:** I-8
+- **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7, R8
+- **Boundary packet:** [`pr-82/`](pr-82/)
+- **Status:** Feature-final draft PR under governed review; evaluated source
+  `d5e582520b6a009f1629b5e3daea486aa7a99d07`.
 
 ## Protected rehearsal attempt - `0.1.0-preview.5`
 
