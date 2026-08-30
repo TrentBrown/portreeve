@@ -2,20 +2,20 @@
   "schemaVersion": 2,
   "releases": [
     {
-      "releaseVersion": "0.1.0-preview.4",
-      "desktopVersion": "0.1.0-preview.4",
+      "releaseVersion": "0.1.0-preview.10",
+      "desktopVersion": "0.1.0-preview.10",
       "maturity": "alpha",
       "channel": "preview",
-      "desktopTrust": "unsigned",
+      "desktopTrust": "developer-id-notarized",
       "downloadPageUrl": "https://github.com/TrentBrown/portreeve/releases",
       "artifacts": {
         "arm64": {
-          "filename": "PortReeve-0.1.0-preview.4-macos-arm64.dmg",
-          "sha256": "152bae9e7fc72e7b9c9d99e38b26c770cbcc5cb980a3d636a95578f6ca30e770"
+          "filename": "PortReeve-0.1.0-preview.10-macos-arm64.dmg",
+          "sha256": "31ede1d5059bd5ca750810c666e58dfb436623e3762eef7773d713048d23fc90"
         },
         "x64": {
-          "filename": "PortReeve-0.1.0-preview.4-macos-x64.dmg",
-          "sha256": "10b5e6461294616a6dfbc77894ad9665863872a60f4103919b749d7a2733dcd7"
+          "filename": "PortReeve-0.1.0-preview.10-macos-x64.dmg",
+          "sha256": "b74a8d2af4e5c026a083dd5e1bac15b8a31d009658911245b14a9084b5f67b62"
         }
       }
     }
