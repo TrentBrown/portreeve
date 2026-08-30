@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PR #82 - PortReeve Apple trust acceptance</title>
+  <style>
+    :root { color-scheme: light dark; --accent:#0d6b64; --panel:#edf7f5; --ink:#17312f; --line:#8ebdb7; }
+    * { box-sizing:border-box; }
+    body { margin:0; font:17px/1.65 system-ui,sans-serif; color:var(--ink); background:#fbfdfc; }
+    main { max-width:980px; margin:auto; padding:2rem 1.2rem 5rem; }
+    h1,h2,h3 { line-height:1.2; color:#123f3b; }
+    h1 { font-size:clamp(2rem,5vw,3.4rem); }
+    nav,.callout,.flow,.quiz { border:1px solid var(--line); border-radius:14px; padding:1rem 1.2rem; background:var(--panel); }
+    nav a { margin-right:1rem; color:var(--accent); }
+    code,pre { background:#17312f; color:#f2fbf9; border-radius:8px; }
+    code { padding:.12rem .3rem; }
+    pre { padding:1rem; overflow:auto; white-space:pre-wrap; }
+    .flow { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.7rem; }
+    .node { background:white; border:1px solid var(--line); border-radius:10px; padding:.8rem; }
+    .node strong { display:block; color:var(--accent); }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; }
+    th,td { border:1px solid var(--line); padding:.6rem; text-align:left; vertical-align:top; }
+    button { display:block; width:100%; margin:.45rem 0; padding:.7rem; border:1px solid var(--line); border-radius:8px; background:white; color:var(--ink); text-align:left; cursor:pointer; }
+    button:hover { border-color:var(--accent); }
+    .feedback { min-height:1.7rem; font-weight:600; }
+    @media (prefers-color-scheme:dark) {
+      :root { --panel:#17312f; --ink:#e7f3f1; --line:#427f78; }
+      body { background:#0e1d1c; } h1,h2,h3 { color:#c8eeea; } .node,button { background:#102724; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>PortReeve Apple trust: the acceptance boundary</h1>
+  <p>This explains the exact pinned final-slice diff
+    <code>1da97cb2…d5e58252</code> for PR #82. The production implementation
+    was delivered in the preceding slices; this PR records the successful live
+    proof and carries the complete feature to its human-review boundary.</p>
+
+  <nav aria-label="Table of contents">
+    <strong>Contents:</strong>
+    <a href="#background">Background</a><a href="#intuition">Intuition</a>
+    <a href="#code">Change</a><a href="#proof">Proof</a><a href="#quiz">Quiz</a>
+  </nav>
+
+  <section id="background">
+    <h2>Background</h2>
+    <p>A macOS release has several independent claims. Developer ID signing
+      identifies the producer. Hardened runtime and secure timestamps constrain
+      and preserve the signature. Apple notarization scans a submitted package.
+      Stapling attaches Apple's ticket to the DMG. Gatekeeper then assesses the
+      user-facing app and disk image. None of these facts, by itself, proves
+      that the command-line executable inside the app is the same file offered
+      as a standalone download.</p>
+    <div class="callout"><strong>Key distinction.</strong> Trust approval is
+      permission to create signed artifacts. Publication approval is permission
+      to change public distribution surfaces. PortReeve keeps them in separate
+      protected environments.</div>
+    <p>The implementation therefore builds once, transforms the two macOS CLIs
+      under one protected producer, packages separate ARM64 and x64 DMGs, and
+      asks native machines to verify the exact output. A sealed release record
+      is the authority; filenames are only labels.</p>
+  </section>
+
+  <section id="intuition">
+    <h2>Intuition</h2>
+    <p>Think of the candidate as a chain of custody. Each box consumes bytes
+      whose digest was fixed by the previous box. A box may add evidence, but
+      it may not silently rebuild or substitute the payload.</p>
+    <div class="flow" aria-label="Release chain of custody">
+      <div class="node"><strong>Reviewed main</strong><span>Exact source commit</span></div>
+      <div class="node"><strong>Build once</strong><span>Four native CLIs</span></div>
+      <div class="node"><strong>Protected trust</strong><span>Two signed CLIs and two DMGs</span></div>
+      <div class="node"><strong>Native proof</strong><span>ARM64 plus Intel</span></div>
+      <div class="node"><strong>Seal</strong><span>13 artifacts and one plan digest</span></div>
+      <div class="node"><strong>Stop</strong><span>Publish remains disabled</span></div>
+    </div>
+    <p>For example, the ARM64 standalone CLI and the helper mounted from the
+      ARM64 DMG both have SHA-256 <code>e9915a8d…c217f</code>. The native verifier
+      checks that equality before writing its immutable document. A matching
+      filename with different bytes would fail.</p>
+  </section>
+
+  <section id="code">
+    <h2>What the final slice changes</h2>
+    <p>The slice is intentionally documentary. It adds the preview.10 acceptance
+      record, updates the cumulative tracker from three outstanding criteria to
+      eight passes, moves the last issue into review, and appends GateReeve's
+      boundary event. It does not alter production code or a public endpoint.</p>
+    <table>
+      <thead><tr><th>File</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>preview-10-acceptance.md</code></td><td>Exact run, job, artifact, Apple request, digest, and zero-mutation evidence.</td></tr>
+        <tr><td><code>rehearsal-preflight.md</code></td><td>Preserves the failed-attempt history and appends the successful outcome.</td></tr>
+        <tr><td><code>tracker.md</code></td><td>Moves R3, R5, and R8 to PASS and links the final boundary.</td></tr>
+        <tr><td><code>issues.md</code></td><td>Moves I-8 to review under PR #82.</td></tr>
+        <tr><td><code>events.jsonl</code></td><td>Records the governed feature-final boundary; historical approvals are not reused.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="proof">
+    <h2>Why the evidence is sufficient</h2>
+    <div class="flow">
+      <div class="node"><strong>ARM64</strong><span>Native job passed; request f9666ed3… accepted</span></div>
+      <div class="node"><strong>Intel</strong><span>Native job passed; request 8802be2d… accepted</span></div>
+      <div class="node"><strong>Sealed plan</strong><span>SHA-256 ac75019c… exact match</span></div>
+      <div class="node"><strong>Public state</strong><span>No tag, release, tap, metadata, or npm change</span></div>
+    </div>
+    <p>The downloaded inspector rehashed every recorded artifact and confirmed
+      four native targets and two Desktop DMGs. The hosted <code>publish</code>
+      job was skipped. Independent read-only checks found no preview.10 tag or
+      release and unchanged Homebrew and Desktop-update authorities.</p>
+    <div class="callout"><strong>Homebrew safety stop.</strong> The local smoke
+      helper refused to replace an existing preview.4 installation before any
+      mutation. That is the designed safety behavior, not missing Apple trust
+      evidence. The hosted native matrix and exact record remain authoritative.</div>
+  </section>
+
+  <section id="quiz">
+    <h2>Quiz</h2>
+    <div class="quiz" data-answer="1">
+      <h3>1. What did approval of <code>release-trust</code> authorize?</h3>
+      <button>Publishing the sealed release to all public destinations</button>
+      <button>Producing signed and notarized artifacts without publication authority</button>
+      <button>Replacing the installed Homebrew formula for local smoke testing</button>
+      <p class="feedback"></p>
+    </div>
+    <div class="quiz" data-answer="2">
+      <h3>2. Which pair supplies the required independent Apple authority?</h3>
+      <button>Two Apple Silicon jobs, one running under Rosetta</button>
+      <button>The protected producer and a local maintainer installation</button>
+      <button>One current native ARM64 document and one current native Intel document</button>
+      <p class="feedback"></p>
+    </div>
+    <div class="quiz" data-answer="0">
+      <h3>3. Why does the CLI not need a bare-executable Gatekeeper app assessment?</h3>
+      <button>Its exact signing, runtime, timestamp, byte equality, native lifecycle, and quarantined execution are verified; Gatekeeper remains on app and DMG</button>
+      <button>Apple notarization automatically proves every possible CLI runtime behavior</button>
+      <button>The CLI is unsigned and inherits the enclosing app's identity</button>
+      <p class="feedback"></p>
+    </div>
+    <div class="quiz" data-answer="1">
+      <h3>4. What does the sealed plan digest protect?</h3>
+      <button>Only the human-readable preview version label</button>
+      <button>The exact planned public actions and artifact identities consumed by a later publisher</button>
+      <button>The Apple private key stored in the trust environment</button>
+      <p class="feedback"></p>
+    </div>
+    <div class="quiz" data-answer="2">
+      <h3>5. Why did the local Homebrew smoke stop?</h3>
+      <button>The formula checksum differed from the release record</button>
+      <button>The hosted native Intel evidence was missing</button>
+      <button>An existing PortReeve formula/cask was present, and replacement is deliberately forbidden</button>
+      <p class="feedback"></p>
+    </div>
+  </section>
+</main>
+<script>
+  document.querySelectorAll('.quiz').forEach((quiz) => {
+    quiz.querySelectorAll('button').forEach((button, index) => {
+      button.addEventListener('click', () => {
+        const correct = index === Number(quiz.dataset.answer);
+        quiz.querySelector('.feedback').textContent = correct
+          ? 'Correct. This preserves the separation and exact-evidence model.'
+          : 'Not quite. Revisit the chain of custody and publication boundary above.';
+      });
+    });
+  });
+</script>
+</body>
+</html>

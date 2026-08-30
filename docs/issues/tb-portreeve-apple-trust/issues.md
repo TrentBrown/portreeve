@@ -103,12 +103,12 @@ the focused and broad verification matrices.
 
 ## I-8 - Run protected rehearsal and complete verification
 
-- **Status:** in-progress
+- **Status:** in-review
 - **Estimate:** 1d
 - **Plan steps:** P8
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
 - **Depends on:** I-1, I-2, I-3, I-4, I-5, I-6, I-7
-- **PR:** -
+- **PR:** [#82](https://github.com/TrentBrown/portreeve/pull/82)
 
 From reviewed code pinned on `main`, produce and inspect the complete trusted
 preview packet with both native authorities and publication disabled. Preserve
@@ -186,7 +186,7 @@ activation or Apple submission.
 
 ## I-13 - Align CLI trust evidence with GateReeve delivery surfaces
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 0.5d
 - **Plan steps:** P5, P7, P8
 - **Rubric criteria:** R4, R5, R7, R8
