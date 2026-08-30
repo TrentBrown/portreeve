@@ -268,10 +268,12 @@ Append PR boundary entries here.
 - **Plan steps:** P8
 - **Issues:** I-8
 - **Rubric in scope:** R1, R2, R3, R4, R5, R6, R7, R8
-- **Status:** GateReeve `IMPLEMENTING`. Preview.10 run 33281790384 completed
+- **Status:** GateReeve `COMPLETE`. Preview.10 run 33281790384 completed
   every nonpublishing trust and finalization job from reviewed `main`; both
   current native Apple authorities and the sealed 13-artifact distribution
   passed independent inspection, while `publish` was skipped and public state
-  remained unchanged. Prepare the feature-final PR for the user's explicit
-  approval. Additional physical-machine or cross-architecture installation
-  remains optional. No `development*` branch was merged or rebased.
+  remained unchanged. The user explicitly approved feature-final PR #82, and
+  GitHub merged its reviewed head into `main` as
+  `c07a3d0e5bfe731ea3d2a0c0dbde2d6e8991c720`. Additional physical-machine or
+  cross-architecture installation remains optional. No `development*` branch
+  was merged or rebased.

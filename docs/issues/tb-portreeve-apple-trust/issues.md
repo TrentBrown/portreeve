@@ -103,7 +103,7 @@ the focused and broad verification matrices.
 
 ## I-8 - Run protected rehearsal and complete verification
 
-- **Status:** in-review
+- **Status:** closed
 - **Estimate:** 1d
 - **Plan steps:** P8
 - **Rubric criteria:** R1, R2, R3, R4, R5, R6, R7, R8
@@ -113,7 +113,8 @@ the focused and broad verification matrices.
 From reviewed code pinned on `main`, produce and inspect the complete trusted
 preview packet with both native authorities and publication disabled. Preserve
 zero-public-mutation evidence; route defects through fresh sequential slices
-before full feature evaluation and close-out.
+before full feature evaluation and close-out. PR #82 merged the explicitly
+approved reviewed head as `c07a3d0e5bfe731ea3d2a0c0dbde2d6e8991c720`.
 
 ## I-9 - Correct asynchronous notarization submission recovery
 
